@@ -6,9 +6,12 @@ import { useRouter } from "next/navigation";
 
 type BookResult = {
   id: number;
+  isbn13: string;
   title: string;
   author: string;
   publisher: string;
+  thumbnail: string | null;
+  source: string;
 };
 
 /* 별점 선택 컴포넌트 — hover 시 색상 미리보기 */
@@ -72,13 +75,14 @@ export default function WritePage() {
         `http://localhost:8080/api/books/search?q=${encodeURIComponent(query)}`
       );
       if (res.ok) {
-        setResults(await res.json());
+        /* 백엔드 응답: { success, data: BookResponse[], message } */
+        const json = await res.json();
+        setResults(json.data ?? json);
       } else {
-        /* 백엔드 미연결 시 임시 결과 */
-        setResults([{ id: 0, title: query, author: "저자를 입력해주세요", publisher: "출판사" }]);
+        setResults([]);
       }
     } catch {
-      setResults([{ id: 0, title: query, author: "저자를 입력해주세요", publisher: "출판사" }]);
+      setResults([]);
     } finally {
       setSearching(false);
     }
@@ -137,8 +141,13 @@ export default function WritePage() {
 
           {selectedBook ? (
             /* 선택된 책 표시 */
-            <div className="flex items-center justify-between bg-cream-50 rounded-xl px-4 py-3 border border-cream-200">
-              <div>
+            <div className="flex items-center gap-3 bg-cream-50 rounded-xl px-4 py-3 border border-cream-200">
+              {selectedBook.thumbnail ? (
+                <img src={selectedBook.thumbnail} alt="" className="w-10 h-14 object-cover rounded flex-shrink-0 shadow-sm" />
+              ) : (
+                <div className="w-10 h-14 bg-brown-300 rounded flex-shrink-0" />
+              )}
+              <div className="flex-1 min-w-0">
                 <p className="font-medium text-brown-800">{selectedBook.title}</p>
                 <p className="text-sm text-brown-400 mt-0.5">
                   {selectedBook.author} · {selectedBook.publisher}
@@ -147,7 +156,7 @@ export default function WritePage() {
               <button
                 type="button"
                 onClick={() => { setSelectedBook(null); setResults([]); setQuery(""); }}
-                className="text-xs text-brown-400 hover:text-brown-600 transition-colors ml-4"
+                className="text-xs text-brown-400 hover:text-brown-600 transition-colors ml-2 flex-shrink-0"
               >
                 변경
               </button>
@@ -178,18 +187,28 @@ export default function WritePage() {
               {results.length > 0 && (
                 <ul className="mt-2 border border-cream-200 rounded-xl overflow-hidden">
                   {results.map((book) => (
-                    <li key={book.id} className="border-b border-cream-100 last:border-0">
+                    <li key={`${book.isbn13}-${book.source}`} className="border-b border-cream-100 last:border-0">
                       <button
                         type="button"
                         onClick={() => { setSelectedBook(book); setResults([]); }}
-                        className="w-full text-left px-4 py-3 hover:bg-cream-50 transition-colors"
+                        className="w-full text-left px-4 py-3 hover:bg-cream-50 transition-colors flex items-center gap-3"
                       >
-                        <span className="text-sm font-medium text-brown-800">{book.title}</span>
-                        <span className="text-xs text-brown-400 ml-2">{book.author}</span>
+                        {book.thumbnail ? (
+                          <img src={book.thumbnail} alt="" className="w-8 h-11 object-cover rounded flex-shrink-0" />
+                        ) : (
+                          <div className="w-8 h-11 bg-brown-200 rounded flex-shrink-0" />
+                        )}
+                        <div>
+                          <p className="text-sm font-medium text-brown-800">{book.title}</p>
+                          <p className="text-xs text-brown-400">{book.author} · {book.publisher}</p>
+                        </div>
                       </button>
                     </li>
                   ))}
                 </ul>
+              )}
+              {results.length === 0 && query && !searching && (
+                <p className="mt-2 text-sm text-brown-400 text-center py-3">검색 결과가 없습니다.</p>
               )}
             </>
           )}

@@ -12,12 +12,24 @@ export default function MobileMenu({ links }: { links: NavLink[] }) {
   const [loggedIn, setLoggedIn] = useState(false);
 
   useEffect(() => {
-    setLoggedIn(!!localStorage.getItem("token"));
+    function syncAuth() {
+      const token = localStorage.getItem("token");
+      if (!token || token === "undefined" || token === "null") {
+        localStorage.removeItem("token");
+        setLoggedIn(false);
+      } else {
+        setLoggedIn(true);
+      }
+    }
+
+    syncAuth();
+    window.addEventListener("auth-change", syncAuth);
+    return () => window.removeEventListener("auth-change", syncAuth);
   }, []);
 
   function logout() {
     localStorage.removeItem("token");
-    setLoggedIn(false);
+    window.dispatchEvent(new Event("auth-change"));
     setOpen(false);
     router.push("/");
     router.refresh();

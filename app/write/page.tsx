@@ -79,6 +79,7 @@ export default function WritePage() {
   }, [searchParams]);
 
   /* 독후감 상태 */
+  const [title, setTitle] = useState("");
   const [rating, setRating] = useState(0);
   const [content, setContent] = useState("");
 
@@ -110,6 +111,7 @@ export default function WritePage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedBook) { setError("책을 선택해주세요."); return; }
+    if (!title.trim()) { setError("제목을 입력해주세요."); return; }
     if (rating === 0) { setError("별점을 선택해주세요."); return; }
     if (content.trim().length < 10) { setError("독후감을 10자 이상 작성해주세요."); return; }
 
@@ -129,7 +131,7 @@ export default function WritePage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ bookId: selectedBook.id, rating, content }),
+        body: JSON.stringify({ bookId: selectedBook.id, title: title.trim(), rating, content }),
       });
 
       if (res.ok) {
@@ -237,18 +239,32 @@ export default function WritePage() {
           )}
         </section>
 
-        {/* STEP 2: 별점 */}
+        {/* STEP 2: 제목 */}
         <section className="bg-white rounded-2xl border border-cream-200 p-6 shadow-sm">
           <h2 className="font-serif text-lg font-bold text-brown-700 mb-4">
-            2. 별점을 매겨주세요
+            2. 독후감 제목
+          </h2>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="독후감 제목을 입력해주세요"
+            className="w-full px-4 py-2.5 rounded-xl border border-cream-300 text-sm text-brown-800 bg-cream-50 placeholder:text-brown-300 focus:outline-none focus:border-brown-400 focus:ring-2 focus:ring-brown-100 transition"
+          />
+        </section>
+
+        {/* STEP 3: 별점 */}
+        <section className="bg-white rounded-2xl border border-cream-200 p-6 shadow-sm">
+          <h2 className="font-serif text-lg font-bold text-brown-700 mb-4">
+            3. 별점을 매겨주세요
           </h2>
           <StarPicker value={rating} onChange={setRating} />
         </section>
 
-        {/* STEP 3: 독후감 본문 */}
+        {/* STEP 4: 독후감 본문 */}
         <section className="bg-white rounded-2xl border border-cream-200 p-6 shadow-sm">
           <h2 className="font-serif text-lg font-bold text-brown-700 mb-4">
-            3. 독후감을 남겨주세요
+            4. 독후감을 남겨주세요
           </h2>
           <textarea
             value={content}

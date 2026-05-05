@@ -5,14 +5,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 type FormState = {
-  name: string;
+  nickname: string;
   email: string;
   password: string;
   confirmPassword: string;
 };
 
 const FIELDS: { id: keyof FormState; label: string; type: string; placeholder: string }[] = [
-  { id: "name", label: "닉네임", type: "text", placeholder: "책방지기" },
+  { id: "nickname", label: "닉네임", type: "text", placeholder: "책방지기" },
   { id: "email", label: "이메일", type: "email", placeholder: "example@email.com" },
   { id: "password", label: "비밀번호", type: "password", placeholder: "8자 이상 입력하세요" },
   { id: "confirmPassword", label: "비밀번호 확인", type: "password", placeholder: "비밀번호를 다시 입력하세요" },
@@ -21,7 +21,7 @@ const FIELDS: { id: keyof FormState; label: string; type: string; placeholder: s
 export default function RegisterPage() {
   const router = useRouter();
   const [form, setForm] = useState<FormState>({
-    name: "",
+    nickname: "",
     email: "",
     password: "",
     confirmPassword: "",
@@ -50,7 +50,7 @@ export default function RegisterPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: form.name,
+          nickname: form.nickname,
           email: form.email,
           password: form.password,
         }),

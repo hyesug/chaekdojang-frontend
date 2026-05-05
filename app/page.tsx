@@ -62,11 +62,12 @@ const MOCK_POSTS: Post[] = [
 
 async function getPosts(): Promise<Post[]> {
   try {
-    const res = await fetch("http://localhost:8080/api/posts", {
+    const res = await fetch("http://localhost:8080/api/reviews", {
       next: { revalidate: 60 },
     });
     if (!res.ok) return MOCK_POSTS;
-    return res.json();
+    const json = await res.json();
+    return json.data ?? MOCK_POSTS;
   } catch {
     /* 백엔드 미실행 시 샘플 데이터 표시 */
     return MOCK_POSTS;

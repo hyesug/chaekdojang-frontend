@@ -62,7 +62,8 @@ export default function RegisterPage() {
         return;
       }
 
-      const { token } = await res.json();
+      const json = await res.json();
+      const token = json.data?.token ?? json.token;
       localStorage.setItem("token", token);
       router.push("/");
     } catch {

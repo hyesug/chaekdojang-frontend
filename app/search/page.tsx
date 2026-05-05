@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 type BookResult = {
   id: number;
@@ -14,11 +15,12 @@ type BookResult = {
   source: string;
 };
 
-type AddingState = Record<string, "idle" | "loading" | "done">;
+type AddingState = Record<string, "idle" | "loading" | "done" | "error">;
 
 const COVER_COLORS = ["#8B6048", "#6E7A4A", "#4A6E7A", "#7A4A6E", "#4A7A6E"];
 
 export default function SearchPage() {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<BookResult[]>([]);
   const [searching, setSearching] = useState(false);
@@ -52,7 +54,8 @@ export default function SearchPage() {
     const key = book.isbn13 || String(book.id);
     const token = localStorage.getItem("token");
     if (!token) {
-      alert("로그인이 필요합니다.");
+      // 로그인 안 된 경우 로그인 페이지로 이동
+      router.push("/auth/login");
       return;
     }
 
@@ -66,9 +69,22 @@ export default function SearchPage() {
         },
         body: JSON.stringify({ bookId: book.id, status: "WISHLIST" }),
       });
-      setAdding((prev) => ({ ...prev, [key]: res.ok ? "done" : "idle" }));
-    } catch {
-      setAdding((prev) => ({ ...prev, [key]: "idle" }));
+
+      if (res.ok) {
+        setAdding((prev) => ({ ...prev, [key]: "done" }));
+      } else {
+        // 서버가 에러를 반환한 경우 (예: 이미 담긴 책, 인증 만료 등)
+        const json = await res.json().catch(() => ({}));
+        console.error("서재 담기 실패:", json);
+        setAdding((prev) => ({ ...prev, [key]: "error" }));
+        // 3초 후 idle로 복구해서 재시도 가능하게
+        setTimeout(() => setAdding((prev) => ({ ...prev, [key]: "idle" })), 3000);
+      }
+    } catch (err) {
+      // 네트워크 오류 (CORS, 서버 다운 등)
+      console.error("서재 담기 네트워크 오류:", err);
+      setAdding((prev) => ({ ...prev, [key]: "error" }));
+      setTimeout(() => setAdding((prev) => ({ ...prev, [key]: "idle" })), 3000);
     }
   }
 
@@ -155,14 +171,22 @@ export default function SearchPage() {
                     <button
                       type="button"
                       onClick={() => addToLibrary(book)}
-                      disabled={addState !== "idle"}
+                      disabled={addState === "loading" || addState === "done"}
                       className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
                         addState === "done"
                           ? "border-sage-500 text-sage-600 cursor-default"
+                          : addState === "error"
+                          ? "border-red-300 text-red-400"
                           : "border-brown-300 text-brown-500 hover:border-brown-500 hover:text-brown-700"
                       }`}
                     >
-                      {addState === "done" ? "✓ 서재 추가됨" : addState === "loading" ? "..." : "+ 서재에 담기"}
+                      {addState === "done"
+                        ? "✓ 서재 추가됨"
+                        : addState === "loading"
+                        ? "추가 중..."
+                        : addState === "error"
+                        ? "실패 (재시도)"
+                        : "+ 서재에 담기"}
                     </button>
                   </div>
                 </div>

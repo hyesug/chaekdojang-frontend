@@ -1,5 +1,6 @@
 import Link from "next/link";
 import MobileMenu from "./MobileMenu";
+import AuthButtons from "./AuthButtons";
 
 const navLinks = [
   { href: "/", label: "피드" },
@@ -33,21 +34,8 @@ export default function Header() {
           ))}
         </nav>
 
-        {/* 로그인 / 회원가입 버튼 */}
-        <div className="hidden md:flex items-center gap-2">
-          <Link
-            href="/auth/login"
-            className="px-4 py-1.5 text-sm text-brown-600 hover:text-brown-800 transition-colors"
-          >
-            로그인
-          </Link>
-          <Link
-            href="/auth/register"
-            className="px-4 py-1.5 text-sm bg-brown-600 text-white rounded-full hover:bg-brown-700 transition-colors"
-          >
-            회원가입
-          </Link>
-        </div>
+        {/* 로그인 상태에 따라 버튼이 바뀌는 Client Component */}
+        <AuthButtons />
 
         {/* 모바일: 햄버거 메뉴 (클라이언트 컴포넌트) */}
         <MobileMenu links={navLinks} />

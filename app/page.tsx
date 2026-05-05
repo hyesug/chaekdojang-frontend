@@ -67,6 +67,7 @@ async function getPosts(): Promise<Post[]> {
     });
     if (!res.ok) return MOCK_POSTS;
     const json = await res.json();
+    console.log("[피드 응답]", JSON.stringify(json.data?.[0], null, 2));
     return json.data ?? MOCK_POSTS;
   } catch {
     /* 백엔드 미실행 시 샘플 데이터 표시 */

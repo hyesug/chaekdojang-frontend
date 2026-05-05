@@ -1,26 +1,39 @@
 @import "tailwindcss";
 
+/* 책인감 디자인 토큰: 따뜻한 크림·브라운 계열 */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --font-sans-kr: '';
+  --font-serif-kr: '';
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-sans-kr), 'Apple SD Gothic Neo', system-ui, sans-serif;
+  --font-serif: var(--font-serif-kr), 'Apple Myungjo', Georgia, serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Tailwind v4 커스텀 색상 — bg-cream-100, text-brown-600 등으로 사용 */
+@theme {
+  --color-cream-50:  #FDFAF5;
+  --color-cream-100: #FAF6EF;
+  --color-cream-200: #F0E6D2;
+  --color-cream-300: #E4D4B8;
+
+  --color-brown-100: #F0DCC8;
+  --color-brown-200: #D9B896;
+  --color-brown-300: #BA9470;
+  --color-brown-400: #9E7352;
+  --color-brown-500: #8B6048;
+  --color-brown-600: #6E4A36;
+  --color-brown-700: #4A2C17;
+  --color-brown-800: #2A1810;
+
+  --color-sage-300: #B5C9B8;
+  --color-sage-400: #9DB49F;
+  --color-sage-500: #7A9B7D;
+  --color-sage-600: #5C7A60;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: #FAF6EF;
+  color: #2A1810;
 }

@@ -1,12 +1,10 @@
 export type Post = {
   id: number;
-  user: { name: string };
-  book: { title: string; author: string };
+  author: { nickname: string; profileImage: string | null };
+  book: { title: string; author: string; thumbnail: string | null };
   rating: number;
   content: string;
   createdAt: string;
-  likeCount: number;
-  commentCount: number;
 };
 
 /* 책 표지 색상 — 실제 표지 이미지가 없을 때 사용하는 컬러 팔레트 */
@@ -29,19 +27,27 @@ export default function PostCard({ post }: { post: Post }) {
   return (
     <article className="bg-white rounded-2xl border border-cream-200 p-5 hover:shadow-md transition-shadow">
       <div className="flex gap-4">
-        {/* 책 표지 — 실제 이미지 없이 색상 블록으로 표현 */}
-        <div
-          className="flex-shrink-0 w-11 h-16 rounded shadow-sm flex items-end justify-center pb-1 text-white/70 text-xs font-bold"
-          style={{ backgroundColor: coverColor }}
-          aria-hidden
-        >
-          {post.book.title[0]}
-        </div>
+        {/* 책 표지 */}
+        {post.book.thumbnail ? (
+          <img
+            src={post.book.thumbnail}
+            alt={post.book.title}
+            className="flex-shrink-0 w-11 h-16 rounded shadow-sm object-cover"
+          />
+        ) : (
+          <div
+            className="flex-shrink-0 w-11 h-16 rounded shadow-sm flex items-end justify-center pb-1 text-white/70 text-xs font-bold"
+            style={{ backgroundColor: coverColor }}
+            aria-hidden
+          >
+            {post.book.title[0]}
+          </div>
+        )}
 
         <div className="flex-1 min-w-0">
           {/* 작성자 + 날짜 */}
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-brown-400 font-medium">{post.user.name}</span>
+            <span className="text-xs text-brown-400 font-medium">{post.author.nickname}</span>
             <time className="text-xs text-brown-300" dateTime={post.createdAt}>
               {post.createdAt.slice(0, 7).replace("-", ".")}
             </time>
@@ -60,12 +66,6 @@ export default function PostCard({ post }: { post: Post }) {
       <p className="mt-3 text-sm text-brown-600 leading-relaxed line-clamp-3">
         {post.content}
       </p>
-
-      {/* 좋아요·댓글 수 */}
-      <div className="mt-3 flex gap-4 text-xs text-brown-400">
-        <span>♥ {post.likeCount}</span>
-        <span>💬 {post.commentCount}</span>
-      </div>
     </article>
   );
 }

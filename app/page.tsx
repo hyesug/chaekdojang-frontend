@@ -5,58 +5,30 @@ import PostCard, { type Post } from "./components/PostCard";
 const MOCK_POSTS: Post[] = [
   {
     id: 1,
-    user: { name: "이서연" },
-    book: { title: "채식주의자", author: "한강" },
+    author: { nickname: "이서연", profileImage: null },
+    book: { title: "채식주의자", author: "한강", thumbnail: null },
     rating: 5,
     content:
-      "한강 작가의 문장은 언제나 나를 멈추게 한다. 이 책을 읽고 나서 한동안 아무 말도 하지 못했다. 채식을 선택한 영혜의 이야기지만, 결국 이것은 자유에 대한 이야기이고, 폭력에 대한 이야기다. 읽는 내내 불편했지만 그 불편함이 문학이 할 수 있는 가장 정직한 일이라고 생각했다.",
+      "한강 작가의 문장은 언제나 나를 멈추게 한다. 이 책을 읽고 나서 한동안 아무 말도 하지 못했다. 채식을 선택한 영혜의 이야기지만, 결국 이것은 자유에 대한 이야기이고, 폭력에 대한 이야기다.",
     createdAt: "2026-05-03",
-    likeCount: 42,
-    commentCount: 7,
   },
   {
     id: 2,
-    user: { name: "김민준" },
-    book: { title: "아몬드", author: "손원평" },
+    author: { nickname: "김민준", profileImage: null },
+    book: { title: "아몬드", author: "손원평", thumbnail: null },
     rating: 4,
     content:
-      "감정을 느끼지 못하는 소년 윤재의 이야기. 처음에는 낯설고 어색했지만, 읽어나갈수록 이 소년이 배워가는 '감정'이 내게도 전해지는 느낌이었다. 작가가 말하는 공감의 본질에 대해 오래 생각하게 되는 책이다.",
+      "감정을 느끼지 못하는 소년 윤재의 이야기. 처음에는 낯설고 어색했지만, 읽어나갈수록 이 소년이 배워가는 '감정'이 내게도 전해지는 느낌이었다.",
     createdAt: "2026-04-28",
-    likeCount: 28,
-    commentCount: 3,
   },
   {
     id: 3,
-    user: { name: "박지유" },
-    book: { title: "달러구트 꿈 백화점", author: "이미예" },
+    author: { nickname: "박지유", profileImage: null },
+    book: { title: "달러구트 꿈 백화점", author: "이미예", thumbnail: null },
     rating: 4,
     content:
-      "꿈을 파는 백화점이라는 아이디어가 정말 신선하다. 각 에피소드마다 따뜻한 이야기가 담겨 있어서 지친 하루 끝에 읽기 딱 좋은 책이었다. 두 번째 권도 금방 읽었을 만큼 매력적인 세계관.",
+      "꿈을 파는 백화점이라는 아이디어가 정말 신선하다. 각 에피소드마다 따뜻한 이야기가 담겨 있어서 지친 하루 끝에 읽기 딱 좋은 책이었다.",
     createdAt: "2026-04-20",
-    likeCount: 61,
-    commentCount: 12,
-  },
-  {
-    id: 4,
-    user: { name: "최우진" },
-    book: { title: "불편한 편의점", author: "김호연" },
-    rating: 5,
-    content:
-      "편의점이라는 공간이 이토록 따뜻한 이야기를 품을 수 있다는 게 놀라웠다. 독고 씨를 통해 만나는 다양한 사람들의 이야기가 결국은 나 자신의 이야기처럼 느껴졌다. 마지막 장을 덮을 때 눈물이 났다.",
-    createdAt: "2026-04-15",
-    likeCount: 89,
-    commentCount: 19,
-  },
-  {
-    id: 5,
-    user: { name: "정하은" },
-    book: { title: "82년생 김지영", author: "조남주" },
-    rating: 5,
-    content:
-      "처음에는 소설인지 사회보고서인지 모를 만큼 현실적이었다. 김지영 씨의 이야기가 내 이야기, 우리 엄마의 이야기, 주변 모든 여성의 이야기처럼 느껴졌다. 많은 사람이 읽었으면 한다.",
-    createdAt: "2026-04-10",
-    likeCount: 74,
-    commentCount: 22,
   },
 ];
 
@@ -67,7 +39,6 @@ async function getPosts(): Promise<Post[]> {
     });
     if (!res.ok) return MOCK_POSTS;
     const json = await res.json();
-    console.log("[피드 응답]", JSON.stringify(json.data?.[0], null, 2));
     return json.data ?? MOCK_POSTS;
   } catch {
     /* 백엔드 미실행 시 샘플 데이터 표시 */

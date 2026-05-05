@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type BookResult = {
   id: number;
@@ -52,12 +52,31 @@ function StarPicker({
 
 export default function WritePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   /* 책 검색 상태 */
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<BookResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [selectedBook, setSelectedBook] = useState<BookResult | null>(null);
+
+  /* 검색 페이지에서 넘어온 경우 책 자동 선택 */
+  useEffect(() => {
+    const bookId = searchParams.get("bookId");
+    const title = searchParams.get("title");
+    const author = searchParams.get("author");
+    if (bookId && title) {
+      setSelectedBook({
+        id: Number(bookId),
+        title,
+        author: author ?? "",
+        publisher: searchParams.get("publisher") ?? "",
+        thumbnail: searchParams.get("thumbnail"),
+        isbn13: "",
+        source: "",
+      });
+    }
+  }, [searchParams]);
 
   /* 독후감 상태 */
   const [rating, setRating] = useState(0);

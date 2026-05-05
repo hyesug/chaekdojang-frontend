@@ -63,7 +63,7 @@ export default function RegisterPage() {
       }
 
       const json = await res.json();
-      const token = json.data?.token ?? json.token;
+      const token = json.data?.accessToken ?? json.accessToken;
       localStorage.setItem("token", token);
       window.dispatchEvent(new Event("auth-change"));
       router.push("/");

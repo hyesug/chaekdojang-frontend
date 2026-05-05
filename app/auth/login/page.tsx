@@ -30,9 +30,7 @@ export default function LoginPage() {
       }
 
       const json = await res.json();
-      console.log("[로그인 응답]", json);
-      const token = json.data?.token ?? json.token;
-      console.log("[저장할 토큰]", token);
+      const token = json.data?.accessToken ?? json.accessToken;
       localStorage.setItem("token", token);
       window.dispatchEvent(new Event("auth-change"));
       router.push("/");

@@ -8,28 +8,35 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 export default function AuthButtons() {
   const router = useRouter();
-  const pathname = usePathname();
   const [loggedIn, setLoggedIn] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-    const token = localStorage.getItem("token");
-    if (token === "undefined" || token === "null") {
-      localStorage.removeItem("token");
-      setLoggedIn(false);
-    } else {
-      setLoggedIn(!!token);
+    function syncAuth() {
+      const token = localStorage.getItem("token");
+      if (!token || token === "undefined" || token === "null") {
+        localStorage.removeItem("token");
+        setLoggedIn(false);
+      } else {
+        setLoggedIn(true);
+      }
     }
-  }, [pathname]); // 페이지 이동 시마다 토큰 재확인
+
+    setMounted(true);
+    syncAuth();
+
+    // 로그인/로그아웃 시 같은 탭에서도 즉시 반영
+    window.addEventListener("auth-change", syncAuth);
+    return () => window.removeEventListener("auth-change", syncAuth);
+  }, []);
 
   function logout() {
     localStorage.removeItem("token");
-    setLoggedIn(false);
+    window.dispatchEvent(new Event("auth-change"));
     router.push("/");
     router.refresh(); // 서버 컴포넌트(피드 등)도 새로 불러오도록
   }

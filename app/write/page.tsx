@@ -97,14 +97,18 @@ export default function WritePage() {
     setSubmitting(true);
     setError("");
 
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/auth/login");
+      return;
+    }
 
     try {
       const res = await fetch("http://localhost:8080/api/reviews", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ bookId: selectedBook.id, rating, content }),
       });

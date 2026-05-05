@@ -73,11 +73,14 @@ export default function SearchPage() {
       if (res.ok) {
         setAdding((prev) => ({ ...prev, [key]: "done" }));
       } else {
-        // 서버가 에러를 반환한 경우 (예: 이미 담긴 책, 인증 만료 등)
         const json = await res.json().catch(() => ({}));
-        console.error("서재 담기 실패:", json);
+        console.error(`서재 담기 실패 [${res.status}]:`, json);
+        if (res.status === 401) {
+          localStorage.removeItem("token");
+          router.push("/auth/login");
+          return;
+        }
         setAdding((prev) => ({ ...prev, [key]: "error" }));
-        // 3초 후 idle로 복구해서 재시도 가능하게
         setTimeout(() => setAdding((prev) => ({ ...prev, [key]: "idle" })), 3000);
       }
     } catch (err) {

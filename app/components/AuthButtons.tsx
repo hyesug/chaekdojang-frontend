@@ -19,7 +19,14 @@ export default function AuthButtons() {
     // 컴포넌트가 브라우저에 마운트된 이후에만 localStorage를 읽는다.
     // 서버 렌더링 시점에는 이 블록이 실행되지 않으므로 hydration 오류가 생기지 않는다.
     setMounted(true);
-    setLoggedIn(!!localStorage.getItem("token"));
+    const token = localStorage.getItem("token");
+    // 이전 버그로 "undefined" 문자열이 저장됐을 수 있으므로 정리
+    if (token === "undefined" || token === "null") {
+      localStorage.removeItem("token");
+      setLoggedIn(false);
+    } else {
+      setLoggedIn(!!token);
+    }
   }, []);
 
   function logout() {

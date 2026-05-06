@@ -10,6 +10,8 @@ const MOCK_POSTS: Post[] = [
     rating: 5,
     content:
       "한강 작가의 문장은 언제나 나를 멈추게 한다. 이 책을 읽고 나서 한동안 아무 말도 하지 못했다. 채식을 선택한 영혜의 이야기지만, 결국 이것은 자유에 대한 이야기이고, 폭력에 대한 이야기다.",
+    likeCount: 12,
+    commentCount: 3,
     createdAt: "2026-05-03",
   },
   {
@@ -19,6 +21,8 @@ const MOCK_POSTS: Post[] = [
     rating: 4,
     content:
       "감정을 느끼지 못하는 소년 윤재의 이야기. 처음에는 낯설고 어색했지만, 읽어나갈수록 이 소년이 배워가는 '감정'이 내게도 전해지는 느낌이었다.",
+    likeCount: 7,
+    commentCount: 1,
     createdAt: "2026-04-28",
   },
   {
@@ -28,6 +32,8 @@ const MOCK_POSTS: Post[] = [
     rating: 4,
     content:
       "꿈을 파는 백화점이라는 아이디어가 정말 신선하다. 각 에피소드마다 따뜻한 이야기가 담겨 있어서 지친 하루 끝에 읽기 딱 좋은 책이었다.",
+    likeCount: 5,
+    commentCount: 0,
     createdAt: "2026-04-20",
   },
 ];

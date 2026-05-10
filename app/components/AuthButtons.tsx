@@ -50,6 +50,12 @@ export default function AuthButtons() {
     return (
       <div className="hidden md:flex items-center gap-2">
         <Link
+          href="/profile"
+          className="px-4 py-1.5 text-sm text-brown-600 hover:text-brown-800 transition-colors"
+        >
+          내 프로필
+        </Link>
+        <Link
           href="/library"
           className="px-4 py-1.5 text-sm text-brown-600 hover:text-brown-800 transition-colors"
         >

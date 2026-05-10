@@ -13,11 +13,16 @@ type BookResult = {
   publisher: string;
   thumbnail: string | null;
   source: string;
+  category?: string;
 };
 
 type AddingState = Record<string, "idle" | "loading" | "done" | "error">;
 
 const COVER_COLORS = ["#8B6048", "#6E7A4A", "#4A6E7A", "#7A4A6E", "#4A7A6E"];
+
+const CATEGORIES = [
+  "소설", "에세이", "자기계발", "인문", "경제경영", "과학", "역사", "사회",
+];
 
 export default function SearchPage() {
   const router = useRouter();
@@ -50,11 +55,32 @@ export default function SearchPage() {
     }
   }
 
+  async function handleCategorySearch(category: string) {
+    setQuery(category);
+    setSearching(true);
+    setSearched(true);
+
+    try {
+      const res = await fetch(
+        `http://localhost:8080/api/books/category?name=${encodeURIComponent(category)}`
+      );
+      if (res.ok) {
+        const json = await res.json();
+        setResults(json.data ?? []);
+      } else {
+        setResults([]);
+      }
+    } catch {
+      setResults([]);
+    } finally {
+      setSearching(false);
+    }
+  }
+
   async function addToLibrary(book: BookResult) {
     const key = book.isbn13 || String(book.id);
     const token = localStorage.getItem("token");
     if (!token) {
-      // 로그인 안 된 경우 로그인 페이지로 이동
       router.push("/auth/login");
       return;
     }
@@ -84,7 +110,6 @@ export default function SearchPage() {
         setTimeout(() => setAdding((prev) => ({ ...prev, [key]: "idle" })), 3000);
       }
     } catch (err) {
-      // 네트워크 오류 (CORS, 서버 다운 등)
       console.error("서재 담기 네트워크 오류:", err);
       setAdding((prev) => ({ ...prev, [key]: "error" }));
       setTimeout(() => setAdding((prev) => ({ ...prev, [key]: "idle" })), 3000);
@@ -96,7 +121,7 @@ export default function SearchPage() {
       <h1 className="font-serif text-2xl font-bold text-brown-800 mb-6">책 검색</h1>
 
       {/* 검색 폼 */}
-      <form onSubmit={handleSearch} className="flex gap-2 mb-8">
+      <form onSubmit={handleSearch} className="flex gap-2 mb-4">
         <input
           type="text"
           value={query}
@@ -113,13 +138,28 @@ export default function SearchPage() {
         </button>
       </form>
 
-      {/* 검색 결과 */}
+      {/* 카테고리 필터 */}
+      <div className="flex flex-wrap gap-2 mb-8">
+        {CATEGORIES.map((cat) => (
+          <button
+            key={cat}
+            onClick={() => handleCategorySearch(cat)}
+            disabled={searching}
+            className="px-3 py-1.5 text-xs rounded-full border border-brown-200 text-brown-500 hover:border-brown-400 hover:text-brown-700 hover:bg-cream-100 transition-colors disabled:opacity-50"
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+
+      {/* 검색 중 */}
       {searching && (
         <div className="text-center py-12 text-brown-400">
           <p>검색 중...</p>
         </div>
       )}
 
+      {/* 결과 없음 */}
       {!searching && searched && results.length === 0 && (
         <div className="text-center py-12 text-brown-400">
           <p className="text-4xl mb-3">🔍</p>
@@ -128,12 +168,14 @@ export default function SearchPage() {
         </div>
       )}
 
+      {/* 검색 결과 */}
       {!searching && results.length > 0 && (
         <div className="flex flex-col gap-3">
           <p className="text-sm text-brown-400 mb-1">{results.length}권의 책을 찾았어요</p>
           {results.map((book, i) => {
             const key = book.isbn13 || String(book.id);
             const addState = adding[key] ?? "idle";
+            const encodedTitle = encodeURIComponent(book.title);
 
             return (
               <div
@@ -162,11 +204,19 @@ export default function SearchPage() {
                 <div className="flex-1 min-w-0">
                   <p className="font-serif font-bold text-brown-800 leading-snug">{book.title}</p>
                   <p className="text-sm text-brown-400 mt-0.5">{book.author}</p>
-                  <p className="text-xs text-brown-300 mt-0.5">{book.publisher}</p>
+                  <p className="text-xs text-brown-300 mt-0.5">
+                    {book.publisher}
+                    {book.category && (
+                      <span className="ml-2 px-1.5 py-0.5 bg-cream-200 text-brown-500 rounded text-xs">
+                        {book.category}
+                      </span>
+                    )}
+                  </p>
 
-                  <div className="flex gap-2 mt-3">
+                  {/* 액션 버튼 */}
+                  <div className="flex flex-wrap gap-2 mt-3">
                     <Link
-                      href={`/write?bookId=${book.id}&title=${encodeURIComponent(book.title)}&author=${encodeURIComponent(book.author)}&publisher=${encodeURIComponent(book.publisher)}${book.thumbnail ? `&thumbnail=${encodeURIComponent(book.thumbnail)}` : ""}`}
+                      href={`/write?bookId=${book.id}&title=${encodedTitle}&author=${encodeURIComponent(book.author)}&publisher=${encodeURIComponent(book.publisher)}${book.thumbnail ? `&thumbnail=${encodeURIComponent(book.thumbnail)}` : ""}`}
                       className="px-3 py-1.5 text-xs bg-brown-600 text-white rounded-full hover:bg-brown-700 transition-colors"
                     >
                       독후감 쓰기
@@ -191,6 +241,27 @@ export default function SearchPage() {
                         ? "실패 (재시도)"
                         : "+ 서재에 담기"}
                     </button>
+                  </div>
+
+                  {/* 구매 링크 */}
+                  <div className="flex gap-2 mt-2">
+                    <a
+                      href={`https://www.coupang.com/np/search?q=${encodedTitle}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-brown-400 hover:text-brown-600 hover:underline transition-colors"
+                    >
+                      쿠팡에서 보기 →
+                    </a>
+                    <span className="text-brown-200 text-xs">|</span>
+                    <a
+                      href={`https://search.kyobobook.co.kr/search?keyword=${encodedTitle}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-brown-400 hover:text-brown-600 hover:underline transition-colors"
+                    >
+                      교보문고에서 보기 →
+                    </a>
                   </div>
                 </div>
               </div>

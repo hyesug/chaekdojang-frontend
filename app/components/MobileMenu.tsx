@@ -59,12 +59,21 @@ export default function MobileMenu({ links }: { links: NavLink[] }) {
           ))}
           <hr className="border-cream-200 my-1" />
           {loggedIn ? (
-            <button
-              onClick={logout}
-              className="text-sm text-brown-500 font-medium py-1.5 px-2 text-left"
-            >
-              로그아웃
-            </button>
+            <>
+              <Link
+                href="/profile"
+                onClick={() => setOpen(false)}
+                className="text-sm text-brown-700 font-medium py-1.5 px-2 rounded-lg hover:bg-cream-50 transition-colors"
+              >
+                내 프로필
+              </Link>
+              <button
+                onClick={logout}
+                className="text-sm text-brown-500 font-medium py-1.5 px-2 text-left"
+              >
+                로그아웃
+              </button>
+            </>
           ) : (
             <>
               <Link

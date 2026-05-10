@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 type LibraryStatus = "READING" | "FINISHED" | "WISHLIST";
 
@@ -29,6 +30,7 @@ const TABS: { value: LibraryStatus | "ALL"; label: string; emoji: string }[] = [
 const COVER_COLORS = ["#8B6048", "#6E7A4A", "#4A6E7A", "#7A4A6E", "#4A7A6E"];
 
 export default function LibraryPage() {
+  const router = useRouter();
   const [items, setItems] = useState<LibraryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<LibraryStatus | "ALL">("ALL");
@@ -50,6 +52,11 @@ export default function LibraryPage() {
       const res = await fetch("http://localhost:8080/api/library", {
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (res.status === 401) {
+        localStorage.removeItem("token");
+        router.push("/auth/login");
+        return;
+      }
       if (res.ok) {
         const json = await res.json();
         setItems(json.data ?? []);
@@ -73,8 +80,12 @@ export default function LibraryPage() {
       },
       body: JSON.stringify({ status }),
     });
+    if (res.status === 401) {
+      localStorage.removeItem("token");
+      router.push("/auth/login");
+      return;
+    }
     if (res.ok) {
-      /* 상태 업데이트 후 목록 다시 불러오기 */
       const json = await res.json();
       setItems((prev) =>
         prev.map((item) => (item.id === id ? { ...item, status: json.data.status } : item))
@@ -90,6 +101,11 @@ export default function LibraryPage() {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
     });
+    if (res.status === 401) {
+      localStorage.removeItem("token");
+      router.push("/auth/login");
+      return;
+    }
     if (res.ok) {
       setItems((prev) => prev.filter((item) => item.id !== id));
     }

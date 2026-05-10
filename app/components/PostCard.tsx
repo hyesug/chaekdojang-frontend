@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export type Post = {
   id: number;
-  author: { nickname: string; profileImage: string | null };
+  author: { id?: number; nickname: string; profileImage: string | null };
   book?: { title: string; author: string; thumbnail: string | null } | null;
   rating: number;
   content: string;
@@ -319,9 +320,18 @@ export default function PostCard({ post }: { post: Post }) {
           <div className="flex-1 min-w-0">
             {/* 작성자 + 날짜 */}
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-brown-400 font-medium">
-                {post.author.nickname}
-              </span>
+              {post.author.id != null ? (
+                <Link
+                  href={`/users/${post.author.id}`}
+                  className="text-xs text-brown-400 font-medium hover:text-brown-700 hover:underline transition-colors"
+                >
+                  {post.author.nickname}
+                </Link>
+              ) : (
+                <span className="text-xs text-brown-400 font-medium">
+                  {post.author.nickname}
+                </span>
+              )}
               <time className="text-xs text-brown-300" dateTime={post.createdAt}>
                 {post.createdAt.slice(0, 7).replace("-", ".")}
               </time>

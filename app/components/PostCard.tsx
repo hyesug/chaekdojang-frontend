@@ -119,6 +119,11 @@ function CommentModal({
         },
         body: JSON.stringify({ content: trimmed }),
       });
+      if (res.status === 401) {
+        localStorage.removeItem("token");
+        router.push("/auth/login");
+        return;
+      }
       if (res.ok) {
         setText("");
         onCountChange(1);
@@ -137,6 +142,11 @@ function CommentModal({
         headers: { Authorization: `Bearer ${getToken()}` },
       }
     );
+    if (res.status === 401) {
+      localStorage.removeItem("token");
+      router.push("/auth/login");
+      return;
+    }
     if (res.ok) {
       setComments((prev) => prev.filter((c) => c.id !== commentId));
       onCountChange(-1);
@@ -289,7 +299,15 @@ export default function PostCard({ post }: { post: Post }) {
       headers: { Authorization: `Bearer ${getToken()}` },
     });
 
-    // 요청 실패 시 원래대로 되돌리기
+    if (res.status === 401) {
+      /* 토큰 만료 — 낙관적 업데이트 되돌리고 로그인 이동 */
+      setLiked(!next);
+      setLikeCount((c) => c + (next ? -1 : 1));
+      localStorage.removeItem("token");
+      router.push("/auth/login");
+      return;
+    }
+
     if (!res.ok) {
       setLiked(!next);
       setLikeCount((c) => c + (next ? -1 : 1));

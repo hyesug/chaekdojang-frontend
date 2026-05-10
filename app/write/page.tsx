@@ -132,6 +132,11 @@ export default function WritePage() {
         body: JSON.stringify({ bookId: selectedBook.id, rating, content }),
       });
 
+      if (res.status === 401) {
+        localStorage.removeItem("token");
+        router.push("/auth/login");
+        return;
+      }
       if (res.ok) {
         router.push("/");
       } else {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import PostCard, { type Post } from "./components/PostCard";
 
 const BASE = "http://localhost:8080";
@@ -46,6 +47,7 @@ const MOCK_POSTS: Post[] = [
 ];
 
 export default function FeedPage() {
+  const router = useRouter();
   const [tab, setTab] = useState<FeedTab>("all");
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,7 +83,11 @@ export default function FeedPage() {
             headers: { Authorization: `Bearer ${token}` },
           });
           if (!cancelled) {
-            if (res.ok) {
+            if (res.status === 401) {
+              localStorage.removeItem("token");
+              setLoggedIn(false);
+              setPosts([]);
+            } else if (res.ok) {
               const json = await res.json();
               setPosts(json.data ?? []);
             } else {

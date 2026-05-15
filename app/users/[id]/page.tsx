@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import PostCard, { type Post } from "../../components/PostCard";
+import ReviewCard, { type Review } from "../../components/ReviewCard";
+import FollowListModal from "../../components/FollowListModal";
 
 const BASE = "http://localhost:8080";
 
@@ -42,11 +43,12 @@ export default function UserProfilePage() {
   const userId = Number(params.id);
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [reviews, setReviews] = useState<Post[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [following, setFollowing] = useState(false);
   const [followerCount, setFollowerCount] = useState(0);
   const [followLoading, setFollowLoading] = useState(false);
+  const [followModal, setFollowModal] = useState<null | "followers" | "followings">(null);
 
   const myId = getMyUserId();
   const isLoggedIn = myId !== null;
@@ -173,16 +175,31 @@ export default function UserProfilePage() {
             <p className="font-bold text-brown-800 text-xl">{profile.reviewCount}</p>
             <p className="text-xs text-brown-400 mt-0.5">독후감</p>
           </div>
-          <div>
+          <button
+            onClick={() => setFollowModal("followers")}
+            className="flex flex-col items-center hover:opacity-70 transition-opacity"
+          >
             <p className="font-bold text-brown-800 text-xl">{followerCount}</p>
             <p className="text-xs text-brown-400 mt-0.5">팔로워</p>
-          </div>
-          <div>
+          </button>
+          <button
+            onClick={() => setFollowModal("followings")}
+            className="flex flex-col items-center hover:opacity-70 transition-opacity"
+          >
             <p className="font-bold text-brown-800 text-xl">{profile.followingCount}</p>
             <p className="text-xs text-brown-400 mt-0.5">팔로잉</p>
-          </div>
+          </button>
         </div>
       </div>
+
+      {/* 팔로워/팔로잉 모달 */}
+      {followModal && (
+        <FollowListModal
+          userId={userId}
+          type={followModal}
+          onClose={() => setFollowModal(null)}
+        />
+      )}
 
       {/* 독후감 목록 */}
       <h2 className="font-serif text-lg font-bold text-brown-800 mb-4">
@@ -196,7 +213,7 @@ export default function UserProfilePage() {
       ) : (
         <div className="flex flex-col gap-4">
           {reviews.map((post) => (
-            <PostCard key={post.id} post={post} />
+            <ReviewCard key={post.id} post={post} />
           ))}
         </div>
       )}

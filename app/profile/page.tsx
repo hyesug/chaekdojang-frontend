@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import PostCard, { type Post } from "../components/PostCard";
+import ReviewCard, { type Review } from "../components/ReviewCard";
+import FollowListModal from "../components/FollowListModal";
 
 const BASE = "http://localhost:8080";
 
@@ -26,12 +27,13 @@ type EditForm = {
 export default function ProfilePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [reviews, setReviews] = useState<Post[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState<EditForm>({ nickname: "", bio: "", profileImage: "" });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [followModal, setFollowModal] = useState<null | "followers" | "followings">(null);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -174,14 +176,20 @@ export default function ProfilePage() {
                 <p className="font-bold text-brown-800 text-xl">{profile.reviewCount}</p>
                 <p className="text-xs text-brown-400 mt-0.5">독후감</p>
               </div>
-              <div>
+              <button
+                onClick={() => setFollowModal("followers")}
+                className="flex flex-col items-center hover:opacity-70 transition-opacity"
+              >
                 <p className="font-bold text-brown-800 text-xl">{profile.followerCount}</p>
                 <p className="text-xs text-brown-400 mt-0.5">팔로워</p>
-              </div>
-              <div>
+              </button>
+              <button
+                onClick={() => setFollowModal("followings")}
+                className="flex flex-col items-center hover:opacity-70 transition-opacity"
+              >
                 <p className="font-bold text-brown-800 text-xl">{profile.followingCount}</p>
                 <p className="text-xs text-brown-400 mt-0.5">팔로잉</p>
-              </div>
+              </button>
             </div>
           </>
         ) : (
@@ -250,6 +258,15 @@ export default function ProfilePage() {
         )}
       </div>
 
+      {/* 팔로워/팔로잉 모달 */}
+      {followModal && (
+        <FollowListModal
+          userId={profile.id}
+          type={followModal}
+          onClose={() => setFollowModal(null)}
+        />
+      )}
+
       {/* 내 독후감 목록 */}
       <h2 className="font-serif text-lg font-bold text-brown-800 mb-4">내 독후감</h2>
       {reviews.length === 0 ? (
@@ -266,7 +283,7 @@ export default function ProfilePage() {
       ) : (
         <div className="flex flex-col gap-4">
           {reviews.map((post) => (
-            <PostCard key={post.id} post={post} />
+            <ReviewCard key={post.id} post={post} />
           ))}
         </div>
       )}

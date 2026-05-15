@@ -3,14 +3,14 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import PostCard, { type Post } from "./components/PostCard";
+import ReviewCard, { type Review } from "./components/ReviewCard";
 
 const BASE = "http://localhost:8080";
 
 type FeedTab = "all" | "following";
 
 /* 백엔드 연결 전 보여줄 샘플 데이터 */
-const MOCK_POSTS: Post[] = [
+const MOCK_POSTS: Review[] = [
   {
     id: 1,
     author: { nickname: "이서연", profileImage: null },
@@ -49,7 +49,7 @@ const MOCK_POSTS: Post[] = [
 export default function FeedPage() {
   const router = useRouter();
   const [tab, setTab] = useState<FeedTab>("all");
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [loggedIn, setLoggedIn] = useState(false);
 
@@ -76,7 +76,7 @@ export default function FeedPage() {
       try {
         if (tab === "following") {
           if (!hasToken) {
-            if (!cancelled) setPosts([]);
+            if (!cancelled) setReviews([]);
             return;
           }
           const res = await fetch(`${BASE}/api/reviews/feed`, {
@@ -86,12 +86,12 @@ export default function FeedPage() {
             if (res.status === 401) {
               localStorage.removeItem("token");
               setLoggedIn(false);
-              setPosts([]);
+              setReviews([]);
             } else if (res.ok) {
               const json = await res.json();
-              setPosts(json.data ?? []);
+              setReviews(json.data ?? []);
             } else {
-              setPosts([]);
+              setReviews([]);
             }
           }
         } else {
@@ -99,14 +99,14 @@ export default function FeedPage() {
           if (!cancelled) {
             if (res.ok) {
               const json = await res.json();
-              setPosts(json.data ?? MOCK_POSTS);
+              setReviews(json.data ?? MOCK_POSTS);
             } else {
-              setPosts(MOCK_POSTS);
+              setReviews(MOCK_POSTS);
             }
           }
         }
       } catch {
-        if (!cancelled) setPosts(tab === "all" ? MOCK_POSTS : []);
+        if (!cancelled) setReviews(tab === "all" ? MOCK_POSTS : []);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -179,16 +179,16 @@ export default function FeedPage() {
       )}
 
       {/* 독후감 목록 */}
-      {!loading && posts.length > 0 && (
+      {!loading && reviews.length > 0 && (
         <div className="flex flex-col gap-4">
-          {posts.map((post) => (
-            <PostCard key={post.id} post={post} />
+          {reviews.map((post) => (
+            <ReviewCard key={post.id} post={post} />
           ))}
         </div>
       )}
 
       {/* 빈 상태 */}
-      {!loading && posts.length === 0 && !(tab === "following" && !loggedIn) && (
+      {!loading && reviews.length === 0 && !(tab === "following" && !loggedIn) && (
         <div className="text-center py-24 text-brown-400">
           <p className="text-5xl mb-4">📖</p>
           <p className="font-medium">

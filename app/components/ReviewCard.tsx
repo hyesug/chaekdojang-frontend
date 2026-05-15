@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-export type Post = {
+export type Review = {
   id: number;
   author: { id?: number; nickname: string; profileImage: string | null };
   book?: { title: string; author: string; thumbnail: string | null } | null;
@@ -33,17 +33,12 @@ function getToken(): string | null {
   return localStorage.getItem("token");
 }
 
-/**
- * JWT payload를 디코딩해서 현재 로그인한 사용자의 id를 꺼낸다.
- * 백엔드가 sub / id / userId 중 하나에 담는다고 가정.
- */
 function getMyUserId(): number | null {
   const token = getToken();
   if (!token) return null;
   try {
     const parts = token.split(".");
     if (parts.length !== 3) return null;
-    // base64url → base64 변환 후 디코딩
     const payload = JSON.parse(
       atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))
     );
@@ -59,6 +54,31 @@ function Stars({ rating }: { rating: number }) {
     <span className="text-sm">
       <span className="text-amber-500">{"★".repeat(rating)}</span>
       <span className="text-cream-300">{"★".repeat(5 - rating)}</span>
+    </span>
+  );
+}
+
+function EditableStars({
+  rating,
+  onChange,
+}: {
+  rating: number;
+  onChange: (r: number) => void;
+}) {
+  return (
+    <span className="text-sm">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button
+          key={n}
+          type="button"
+          onClick={() => onChange(n)}
+          className={`text-base leading-none transition-colors ${
+            n <= rating ? "text-amber-500" : "text-brown-200 hover:text-amber-300"
+          }`}
+        >
+          ★
+        </button>
+      ))}
     </span>
   );
 }
@@ -155,11 +175,9 @@ function CommentModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      {/* 반투명 배경 — 클릭하면 닫힘 */}
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
 
       <div className="relative z-10 w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl max-h-[80vh] flex flex-col shadow-xl">
-        {/* 헤더 */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-cream-200">
           <h2 className="font-serif font-bold text-brown-800">댓글</h2>
           <button
@@ -171,7 +189,6 @@ function CommentModal({
           </button>
         </div>
 
-        {/* 댓글 목록 */}
         <div className="flex-1 overflow-y-auto px-5 py-3 space-y-4">
           {loading ? (
             <p className="text-center text-brown-400 text-sm py-8">불러오는 중…</p>
@@ -195,7 +212,6 @@ function CommentModal({
                     {c.content}
                   </p>
                 </div>
-                {/* 내가 쓴 댓글에만 삭제 버튼 표시 */}
                 {myId !== null && myId === c.author.id && (
                   <button
                     onClick={() => handleDelete(c.id)}
@@ -209,7 +225,6 @@ function CommentModal({
           )}
         </div>
 
-        {/* 입력창 */}
         <form
           onSubmit={handleSubmit}
           className="px-5 py-3 border-t border-cream-200 flex gap-2 items-end"
@@ -220,7 +235,6 @@ function CommentModal({
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={(e) => {
-                  // Shift+Enter는 줄바꿈, Enter만 누르면 제출
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
                     handleSubmit(e as unknown as React.FormEvent);
@@ -257,16 +271,37 @@ function CommentModal({
 // ─────────────────────────────────────────────
 // 피드 카드
 // ─────────────────────────────────────────────
-export default function PostCard({ post }: { post: Post }) {
+export default function ReviewCard({ post }: { post: Review }) {
   const coverColor = COVER_COLORS[post.id % COVER_COLORS.length];
   const router = useRouter();
+  const myId = getMyUserId();
 
+  const isOwner =
+    myId !== null && post.author.id != null && myId === post.author.id;
+  const isOther =
+    myId !== null && post.author.id != null && myId !== post.author.id;
+
+  // 좋아요
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likeCount);
   const [commentCount, setCommentCount] = useState(post.commentCount);
   const [showComments, setShowComments] = useState(false);
 
-  // 카드가 마운트될 때 내 좋아요 여부 조회
+  // 삭제
+  const [deleted, setDeleted] = useState(false);
+
+  // 수정
+  const [editing, setEditing] = useState(false);
+  const [editContent, setEditContent] = useState(post.content);
+  const [editRating, setEditRating] = useState(post.rating);
+  const [displayContent, setDisplayContent] = useState(post.content);
+  const [displayRating, setDisplayRating] = useState(post.rating);
+  const [saving, setSaving] = useState(false);
+
+  // 팔로우
+  const [following, setFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
+
   useEffect(() => {
     const token = getToken();
     if (!token) return;
@@ -275,21 +310,30 @@ export default function PostCard({ post }: { post: Post }) {
     })
       .then((r) => (r.ok ? r.json() : null))
       .then((json) => {
-        if (json !== null) {
-          // 백엔드가 { data: true } 또는 그냥 true 형태로 줄 수 있음
-          setLiked(Boolean(json.data ?? json));
-        }
+        if (json !== null) setLiked(Boolean(json.data ?? json));
       })
       .catch(() => {});
   }, [post.id]);
+
+  useEffect(() => {
+    if (!isOther || !post.author.id) return;
+    const token = getToken();
+    if (!token) return;
+    fetch(`${BASE}/api/users/${post.author.id}/follow/status`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (json !== null) setFollowing(Boolean(json.data ?? json));
+      })
+      .catch(() => {});
+  }, [post.author.id, isOther]);
 
   async function handleLike() {
     if (!getToken()) {
       router.push("/auth/login");
       return;
     }
-
-    // 낙관적 업데이트: 요청 전에 먼저 UI에 반영
     const next = !liked;
     setLiked(next);
     setLikeCount((c) => c + (next ? 1 : -1));
@@ -300,19 +344,84 @@ export default function PostCard({ post }: { post: Post }) {
     });
 
     if (res.status === 401) {
-      /* 토큰 만료 — 낙관적 업데이트 되돌리고 로그인 이동 */
       setLiked(!next);
       setLikeCount((c) => c + (next ? -1 : 1));
       localStorage.removeItem("token");
       router.push("/auth/login");
       return;
     }
-
     if (!res.ok) {
       setLiked(!next);
       setLikeCount((c) => c + (next ? -1 : 1));
     }
   }
+
+  async function handleDelete() {
+    if (!confirm("이 독후감을 삭제할까요?")) return;
+    const res = await fetch(`${BASE}/api/reviews/${post.id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${getToken()}` },
+    });
+    if (res.status === 204 || res.ok) {
+      setDeleted(true);
+    } else if (res.status === 401) {
+      localStorage.removeItem("token");
+      router.push("/auth/login");
+    }
+  }
+
+  async function handleSave() {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`${BASE}/api/reviews/${post.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getToken()}`,
+        },
+        body: JSON.stringify({ content: editContent, rating: editRating }),
+      });
+      if (res.ok) {
+        setDisplayContent(editContent);
+        setDisplayRating(editRating);
+        setEditing(false);
+      } else if (res.status === 401) {
+        localStorage.removeItem("token");
+        router.push("/auth/login");
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleFollow() {
+    if (!post.author.id) return;
+    if (!getToken()) {
+      router.push("/auth/login");
+      return;
+    }
+    setFollowLoading(true);
+    const next = !following;
+    setFollowing(next);
+    try {
+      const res = await fetch(`${BASE}/api/users/${post.author.id}/follow`, {
+        method: next ? "POST" : "DELETE",
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      if (res.status === 401) {
+        setFollowing(!next);
+        localStorage.removeItem("token");
+        router.push("/auth/login");
+      } else if (!res.ok) {
+        setFollowing(!next);
+      }
+    } finally {
+      setFollowLoading(false);
+    }
+  }
+
+  if (deleted) return null;
 
   return (
     <>
@@ -336,26 +445,66 @@ export default function PostCard({ post }: { post: Post }) {
           )}
 
           <div className="flex-1 min-w-0">
-            {/* 작성자 + 날짜 */}
+            {/* 작성자 + 팔로우 버튼 + 날짜/수정/삭제 */}
             <div className="flex items-center justify-between mb-1">
-              {post.author.id != null ? (
-                <Link
-                  href={`/users/${post.author.id}`}
-                  className="text-xs text-brown-400 font-medium hover:text-brown-700 hover:underline transition-colors"
-                >
-                  {post.author.nickname}
-                </Link>
-              ) : (
-                <span className="text-xs text-brown-400 font-medium">
-                  {post.author.nickname}
-                </span>
-              )}
-              <time className="text-xs text-brown-300" dateTime={post.createdAt}>
-                {post.createdAt.slice(0, 7).replace("-", ".")}
-              </time>
+              {/* 왼쪽: 작성자 + 팔로우 버튼 */}
+              <div className="flex items-center gap-1.5 min-w-0">
+                {post.author.id != null ? (
+                  <Link
+                    href={`/users/${post.author.id}`}
+                    className="text-xs text-brown-400 font-medium hover:text-brown-700 hover:underline transition-colors truncate"
+                  >
+                    {post.author.nickname}
+                  </Link>
+                ) : (
+                  <span className="text-xs text-brown-400 font-medium truncate">
+                    {post.author.nickname}
+                  </span>
+                )}
+                {isOther && (
+                  <button
+                    onClick={handleFollow}
+                    disabled={followLoading}
+                    className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full border transition-colors ${
+                      following
+                        ? "border-brown-300 text-brown-400 hover:border-red-300 hover:text-red-400"
+                        : "border-brown-400 text-brown-600 hover:bg-brown-50"
+                    } disabled:opacity-50`}
+                  >
+                    {following ? "팔로잉" : "팔로우"}
+                  </button>
+                )}
+              </div>
+
+              {/* 오른쪽: 수정/삭제(내 글일 때) + 날짜 */}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {isOwner && !editing && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setEditContent(displayContent);
+                        setEditRating(displayRating);
+                        setEditing(true);
+                      }}
+                      className="text-xs text-brown-400 hover:text-brown-700 transition-colors"
+                    >
+                      수정
+                    </button>
+                    <button
+                      onClick={handleDelete}
+                      className="text-xs text-red-400 hover:text-red-600 transition-colors"
+                    >
+                      삭제
+                    </button>
+                  </>
+                )}
+                <time className="text-xs text-brown-300" dateTime={post.createdAt}>
+                  {post.createdAt.slice(0, 7).replace("-", ".")}
+                </time>
+              </div>
             </div>
 
-            {/* 책 정보 — 백엔드가 book 필드를 주는 경우에만 표시 */}
+            {/* 책 정보 */}
             {post.book && (
               <>
                 <p className="font-serif text-base font-bold text-brown-800 leading-snug">
@@ -364,14 +513,46 @@ export default function PostCard({ post }: { post: Post }) {
                 <p className="text-xs text-brown-400 mb-1">{post.book.author}</p>
               </>
             )}
-            <Stars rating={post.rating} />
+
+            {/* 별점: 수정 모드이면 클릭 가능 */}
+            {editing ? (
+              <EditableStars rating={editRating} onChange={setEditRating} />
+            ) : (
+              <Stars rating={displayRating} />
+            )}
           </div>
         </div>
 
-        {/* 독후감 본문 — 3줄까지만 표시 */}
-        <p className="mt-3 text-sm text-brown-600 leading-relaxed line-clamp-3">
-          {post.content}
-        </p>
+        {/* 본문: 수정 모드이면 textarea */}
+        {editing ? (
+          <div className="mt-3">
+            <textarea
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              rows={4}
+              className="w-full rounded-xl border border-cream-200 px-3 py-2 text-sm text-brown-700 focus:outline-none focus:border-brown-400 resize-none"
+            />
+            <div className="flex gap-2 mt-2 justify-end">
+              <button
+                onClick={() => setEditing(false)}
+                className="px-3 py-1.5 text-xs text-brown-500 bg-cream-100 rounded-lg hover:bg-cream-200 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving || !editContent.trim()}
+                className="px-3 py-1.5 text-xs text-white bg-brown-600 rounded-lg hover:bg-brown-700 disabled:opacity-40 transition-colors"
+              >
+                {saving ? "저장 중…" : "저장"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className="mt-3 text-sm text-brown-600 leading-relaxed line-clamp-3">
+            {displayContent}
+          </p>
+        )}
 
         {/* 좋아요 / 댓글 버튼 */}
         <div className="flex items-center gap-5 mt-3 pt-3 border-t border-cream-100">
@@ -405,7 +586,6 @@ export default function PostCard({ post }: { post: Post }) {
         </div>
       </article>
 
-      {/* 댓글 모달 — showComments가 true일 때만 렌더링 */}
       {showComments && (
         <CommentModal
           reviewId={post.id}

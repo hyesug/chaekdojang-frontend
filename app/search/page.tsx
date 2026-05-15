@@ -5,6 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 
+type SearchTab = "books" | "users";
+
 type BookResult = {
   id: number;
   isbn13: string;
@@ -16,9 +18,17 @@ type BookResult = {
   category?: string;
 };
 
+type UserResult = {
+  id: number;
+  nickname: string;
+  profileImage: string | null;
+};
+
 type AddingState = Record<string, "idle" | "loading" | "done" | "error">;
 
 const COVER_COLORS = ["#8B6048", "#6E7A4A", "#4A6E7A", "#7A4A6E", "#4A7A6E"];
+
+const BASE = "http://localhost:8080";
 
 const CATEGORIES = [
   "소설", "에세이", "자기계발", "인문", "경제경영", "과학", "역사", "사회",
@@ -26,8 +36,10 @@ const CATEGORIES = [
 
 export default function SearchPage() {
   const router = useRouter();
+  const [tab, setTab] = useState<SearchTab>("books");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<BookResult[]>([]);
+  const [userResults, setUserResults] = useState<UserResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
   const [adding, setAdding] = useState<AddingState>({});
@@ -39,17 +51,30 @@ export default function SearchPage() {
     setSearched(true);
 
     try {
-      const res = await fetch(
-        `http://localhost:8080/api/books/search?q=${encodeURIComponent(query.trim())}`
-      );
-      if (res.ok) {
-        const json = await res.json();
-        setResults(json.data ?? []);
+      if (tab === "users") {
+        const res = await fetch(
+          `${BASE}/api/users/search?q=${encodeURIComponent(query.trim())}`
+        );
+        if (res.ok) {
+          const json = await res.json();
+          setUserResults(json.data ?? []);
+        } else {
+          setUserResults([]);
+        }
       } else {
-        setResults([]);
+        const res = await fetch(
+          `${BASE}/api/books/search?q=${encodeURIComponent(query.trim())}`
+        );
+        if (res.ok) {
+          const json = await res.json();
+          setResults(json.data ?? []);
+        } else {
+          setResults([]);
+        }
       }
     } catch {
-      setResults([]);
+      if (tab === "users") setUserResults([]);
+      else setResults([]);
     } finally {
       setSearching(false);
     }
@@ -118,7 +143,27 @@ export default function SearchPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
-      <h1 className="font-serif text-2xl font-bold text-brown-800 mb-6">책 검색</h1>
+      <h1 className="font-serif text-2xl font-bold text-brown-800 mb-6">검색</h1>
+
+      {/* 탭 */}
+      <div className="flex gap-1 mb-4 bg-cream-200 rounded-xl p-1">
+        {(
+          [
+            { value: "books", label: "📚 책" },
+            { value: "users", label: "👤 사람" },
+          ] as const
+        ).map(({ value, label }) => (
+          <button
+            key={value}
+            onClick={() => { setTab(value); setSearched(false); setResults([]); setUserResults([]); }}
+            className={`flex-1 py-2 text-xs font-medium rounded-lg transition-colors ${
+              tab === value ? "bg-white text-brown-800 shadow-sm" : "text-brown-400 hover:text-brown-600"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
       {/* 검색 폼 */}
       <form onSubmit={handleSearch} className="flex gap-2 mb-4">
@@ -126,7 +171,7 @@ export default function SearchPage() {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="책 제목, 저자, ISBN으로 검색"
+          placeholder={tab === "users" ? "닉네임으로 검색" : "책 제목, 저자, ISBN으로 검색"}
           className="flex-1 px-4 py-3 rounded-xl border border-cream-300 text-sm text-brown-800 bg-white placeholder:text-brown-300 focus:outline-none focus:border-brown-400 focus:ring-2 focus:ring-brown-100 transition"
         />
         <button
@@ -138,8 +183,8 @@ export default function SearchPage() {
         </button>
       </form>
 
-      {/* 카테고리 필터 */}
-      <div className="flex flex-wrap gap-2 mb-8">
+      {/* 카테고리 필터 — 책 탭에서만 표시 */}
+      <div className={`flex flex-wrap gap-2 mb-8 ${tab !== "books" ? "hidden" : ""}`}>
         {CATEGORIES.map((cat) => (
           <button
             key={cat}
@@ -160,7 +205,10 @@ export default function SearchPage() {
       )}
 
       {/* 결과 없음 */}
-      {!searching && searched && results.length === 0 && (
+      {!searching && searched && (
+        (tab === "books" && results.length === 0) ||
+        (tab === "users" && userResults.length === 0)
+      ) && (
         <div className="text-center py-12 text-brown-400">
           <p className="text-4xl mb-3">🔍</p>
           <p>검색 결과가 없습니다.</p>
@@ -168,8 +216,34 @@ export default function SearchPage() {
         </div>
       )}
 
-      {/* 검색 결과 */}
-      {!searching && results.length > 0 && (
+      {/* 사람 검색 결과 */}
+      {!searching && tab === "users" && userResults.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <p className="text-sm text-brown-400 mb-1">{userResults.length}명을 찾았어요</p>
+          {userResults.map((user) => (
+            <Link
+              key={user.id}
+              href={`/users/${user.id}`}
+              className="bg-white rounded-2xl border border-cream-200 p-4 flex items-center gap-3 hover:shadow-sm transition-shadow"
+            >
+              <div className="w-11 h-11 rounded-full bg-brown-200 flex-shrink-0 overflow-hidden flex items-center justify-center text-white font-bold">
+                {user.profileImage ? (
+                  <img src={user.profileImage} alt={user.nickname} className="w-full h-full object-cover" />
+                ) : (
+                  <span>{user.nickname[0]}</span>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-brown-800 truncate">{user.nickname}</p>
+              </div>
+              <span className="text-brown-300 text-sm">›</span>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {/* 책 검색 결과 */}
+      {!searching && tab === "books" && results.length > 0 && (
         <div className="flex flex-col gap-3">
           <p className="text-sm text-brown-400 mb-1">{results.length}권의 책을 찾았어요</p>
           {results.map((book, i) => {

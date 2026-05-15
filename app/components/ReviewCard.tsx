@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import ReviewDetailModal from "./ReviewDetailModal";
 
 export type Review = {
   id: number;
@@ -302,6 +303,12 @@ export default function ReviewCard({ post }: { post: Review }) {
   const [following, setFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
 
+  // 상세 모달
+  const [showDetail, setShowDetail] = useState(false);
+
+  // 북마크
+  const [bookmarked, setBookmarked] = useState(false);
+
   useEffect(() => {
     const token = getToken();
     if (!token) return;
@@ -328,6 +335,19 @@ export default function ReviewCard({ post }: { post: Review }) {
       })
       .catch(() => {});
   }, [post.author.id, isOther]);
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    fetch(`${BASE}/api/reviews/${post.id}/bookmark/status`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (json !== null) setBookmarked(Boolean(json.data ?? json));
+      })
+      .catch(() => {});
+  }, [post.id]);
 
   async function handleLike() {
     if (!getToken()) {
@@ -392,6 +412,21 @@ export default function ReviewCard({ post }: { post: Review }) {
       }
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleBookmark() {
+    if (!getToken()) { router.push("/auth/login"); return; }
+    const next = !bookmarked;
+    setBookmarked(next);
+    const res = await fetch(`${BASE}/api/reviews/${post.id}/bookmark`, {
+      method: next ? "POST" : "DELETE",
+      headers: { Authorization: `Bearer ${getToken()}` },
+    });
+    if (res.status === 401) {
+      setBookmarked(!next); localStorage.removeItem("token"); router.push("/auth/login");
+    } else if (!res.ok) {
+      setBookmarked(!next);
     }
   }
 
@@ -549,9 +584,17 @@ export default function ReviewCard({ post }: { post: Review }) {
             </div>
           </div>
         ) : (
-          <p className="mt-3 text-sm text-brown-600 leading-relaxed line-clamp-3">
-            {displayContent}
-          </p>
+          <button
+            onClick={() => setShowDetail(true)}
+            className="mt-3 text-left w-full group"
+          >
+            <p className="text-sm text-brown-600 leading-relaxed line-clamp-3 group-hover:text-brown-800 transition-colors">
+              {displayContent}
+            </p>
+            <span className="text-xs text-brown-300 group-hover:text-brown-500 transition-colors mt-1 inline-block">
+              더 보기
+            </span>
+          </button>
         )}
 
         {/* 좋아요 / 댓글 버튼 */}
@@ -583,6 +626,17 @@ export default function ReviewCard({ post }: { post: Review }) {
             <span className="text-base leading-none">💬</span>
             <span>{commentCount}</span>
           </button>
+
+          {/* 북마크 버튼 — 오른쪽 끝 */}
+          <button
+            onClick={handleBookmark}
+            className="ml-auto flex items-center gap-1 text-sm transition-colors group"
+            aria-label={bookmarked ? "북마크 해제" : "북마크"}
+          >
+            <span className={`text-base leading-none transition-colors ${bookmarked ? "text-brown-600" : "text-brown-200 group-hover:text-brown-400"}`}>
+              {bookmarked ? "🔖" : "🔖"}
+            </span>
+          </button>
         </div>
       </article>
 
@@ -591,6 +645,13 @@ export default function ReviewCard({ post }: { post: Review }) {
           reviewId={post.id}
           onClose={() => setShowComments(false)}
           onCountChange={(delta) => setCommentCount((c) => c + delta)}
+        />
+      )}
+
+      {showDetail && (
+        <ReviewDetailModal
+          reviewId={post.id}
+          onClose={() => setShowDetail(false)}
         />
       )}
     </>

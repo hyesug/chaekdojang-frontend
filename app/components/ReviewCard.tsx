@@ -8,7 +8,7 @@ import ReviewDetailModal from "./ReviewDetailModal";
 export type Review = {
   id: number;
   author: { id?: number; nickname: string; profileImage: string | null };
-  book?: { title: string; author: string; thumbnail: string | null } | null;
+  book?: { id?: number; title: string; author: string; thumbnail: string | null } | null;
   rating: number;
   content: string;
   likeCount: number;
@@ -542,9 +542,19 @@ export default function ReviewCard({ post }: { post: Review }) {
             {/* 책 정보 */}
             {post.book && (
               <>
-                <p className="font-serif text-base font-bold text-brown-800 leading-snug">
-                  {post.book.title}
-                </p>
+                {post.book.id ? (
+                  <Link
+                    href={`/books/${post.book.id}`}
+                    className="font-serif text-base font-bold text-brown-800 leading-snug hover:text-brown-600 hover:underline transition-colors"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {post.book.title}
+                  </Link>
+                ) : (
+                  <p className="font-serif text-base font-bold text-brown-800 leading-snug">
+                    {post.book.title}
+                  </p>
+                )}
                 <p className="text-xs text-brown-400 mb-1">{post.book.author}</p>
               </>
             )}

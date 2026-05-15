@@ -34,6 +34,7 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [followModal, setFollowModal] = useState<null | "followers" | "followings">(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -84,6 +85,34 @@ export default function ProfilePage() {
       }
     } catch {
       /* 무시 */
+    }
+  }
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch(`${BASE}/api/upload/profile-image`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      if (res.ok) {
+        const json = await res.json();
+        const url = (json.data as { url: string }).url;
+        setEditForm((f) => ({ ...f, profileImage: url }));
+      } else {
+        setSaveError("이미지 업로드에 실패했습니다.");
+      }
+    } catch {
+      setSaveError("이미지 업로드 중 오류가 발생했습니다.");
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -221,16 +250,28 @@ export default function ProfilePage() {
               />
             </div>
             <div>
-              <label className="block text-sm text-brown-600 mb-1.5" htmlFor="p-img">
-                프로필 이미지 URL
+              <label className="block text-sm text-brown-600 mb-1.5">
+                프로필 이미지
               </label>
-              <input
-                id="p-img"
-                value={editForm.profileImage}
-                onChange={(e) => setEditForm((f) => ({ ...f, profileImage: e.target.value }))}
-                placeholder="https://..."
-                className="w-full px-4 py-2.5 rounded-xl border border-cream-300 text-sm text-brown-800 bg-cream-50 placeholder:text-brown-300 focus:outline-none focus:border-brown-400 transition"
-              />
+              <div className="flex items-center gap-3">
+                <div className="w-14 h-14 rounded-full bg-brown-200 flex-shrink-0 overflow-hidden flex items-center justify-center text-white font-bold">
+                  {editForm.profileImage ? (
+                    <img src={editForm.profileImage} alt="미리보기" className="w-full h-full object-cover" />
+                  ) : (
+                    <span>{editForm.nickname[0] ?? "?"}</span>
+                  )}
+                </div>
+                <label className={`flex-1 cursor-pointer px-4 py-2.5 rounded-xl border border-cream-300 text-sm text-center transition ${uploading ? "opacity-50 cursor-not-allowed" : "hover:border-brown-400 hover:bg-cream-50"}`}>
+                  {uploading ? "업로드 중..." : "사진 변경"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={uploading}
+                    onChange={handleFileChange}
+                  />
+                </label>
+              </div>
             </div>
             {saveError && (
               <p className="text-sm text-red-500 bg-red-50 px-4 py-2.5 rounded-xl">{saveError}</p>
@@ -266,6 +307,22 @@ export default function ProfilePage() {
           onClose={() => setFollowModal(null)}
         />
       )}
+
+      {/* 빠른 메뉴 */}
+      <div className="flex gap-2 mb-6">
+        <Link
+          href="/bookmarks"
+          className="flex-1 py-3 rounded-2xl border border-cream-200 bg-white text-center text-sm text-brown-600 hover:bg-cream-50 hover:shadow-sm transition-all"
+        >
+          🔖 저장한 독후감
+        </Link>
+        <Link
+          href="/library"
+          className="flex-1 py-3 rounded-2xl border border-cream-200 bg-white text-center text-sm text-brown-600 hover:bg-cream-50 hover:shadow-sm transition-all"
+        >
+          📚 내 서재
+        </Link>
+      </div>
 
       {/* 내 독후감 목록 */}
       <h2 className="font-serif text-lg font-bold text-brown-800 mb-4">내 독후감</h2>

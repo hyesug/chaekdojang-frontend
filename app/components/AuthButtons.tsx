@@ -55,12 +55,6 @@ export default function AuthButtons() {
         >
           내 프로필
         </Link>
-        <Link
-          href="/library"
-          className="px-4 py-1.5 text-sm text-brown-600 hover:text-brown-800 transition-colors"
-        >
-          내 서재
-        </Link>
         <button
           onClick={logout}
           className="px-4 py-1.5 text-sm border border-brown-300 text-brown-500 rounded-full hover:bg-cream-200 transition-colors"

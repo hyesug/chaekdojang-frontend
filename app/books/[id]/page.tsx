@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import ReviewCard, { type Review } from "../../components/ReviewCard";
@@ -17,28 +17,137 @@ type Book = {
   category: string | null;
 };
 
+type LibraryStatus = "READING" | "FINISHED" | "WISHLIST";
+
+type LibraryState = {
+  inLibrary: boolean;
+  status: LibraryStatus | null;
+  libraryId: number | null;
+};
+
+const STATUS_LABELS: Record<LibraryStatus, string> = {
+  READING: "읽는 중",
+  FINISHED: "완독",
+  WISHLIST: "읽고 싶다",
+};
+
+function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("token");
+}
+
 export default function BookDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const bookId = Number(params.id);
 
   const [book, setBook] = useState<Book | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
+  const [libraryState, setLibraryState] = useState<LibraryState>({
+    inLibrary: false,
+    status: null,
+    libraryId: null,
+  });
+  const [showLibraryMenu, setShowLibraryMenu] = useState(false);
+  const [libraryLoading, setLibraryLoading] = useState(false);
 
   useEffect(() => {
     if (!bookId) return;
 
-    Promise.all([
-      fetch(`${BASE}/api/books/${bookId}`).then((r) => (r.ok ? r.json() : null)),
-      fetch(`${BASE}/api/books/${bookId}/reviews`).then((r) => (r.ok ? r.json() : null)),
-    ])
-      .then(([bookJson, reviewsJson]) => {
-        if (bookJson) setBook(bookJson.data ?? bookJson);
-        if (reviewsJson) setReviews(reviewsJson.data ?? []);
-      })
+    const token = getToken();
+    const fetches: Promise<void>[] = [
+      fetch(`${BASE}/api/books/${bookId}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((json) => { if (json) setBook(json.data ?? json); }),
+      fetch(`${BASE}/api/books/${bookId}/reviews`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((json) => { if (json) setReviews(json.data ?? []); }),
+    ];
+
+    if (token) {
+      fetches.push(
+        fetch(`${BASE}/api/library/books/${bookId}/status`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((json) => {
+            if (json) {
+              const d = json.data ?? json;
+              setLibraryState({
+                inLibrary: d.inLibrary,
+                status: d.status ?? null,
+                libraryId: d.libraryId ?? null,
+              });
+            }
+          })
+      );
+    }
+
+    Promise.all(fetches)
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [bookId]);
+
+  async function handleAddToLibrary(status: LibraryStatus) {
+    const token = getToken();
+    if (!token) { router.push("/auth/login"); return; }
+    setLibraryLoading(true);
+    setShowLibraryMenu(false);
+    try {
+      if (libraryState.inLibrary && libraryState.libraryId) {
+        // 이미 담겨 있으면 상태 변경
+        const res = await fetch(`${BASE}/api/library/${libraryState.libraryId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ status }),
+        });
+        if (res.ok) setLibraryState((prev) => ({ ...prev, status }));
+      } else {
+        // 새로 추가
+        const res = await fetch(`${BASE}/api/library`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ bookId, status }),
+        });
+        if (res.ok) {
+          const json = await res.json();
+          const d = json.data ?? json;
+          setLibraryState({ inLibrary: true, status, libraryId: d.id });
+        }
+      }
+    } catch {
+      /* 무시 */
+    } finally {
+      setLibraryLoading(false);
+    }
+  }
+
+  async function handleRemoveFromLibrary() {
+    const token = getToken();
+    if (!token || !libraryState.libraryId) return;
+    setLibraryLoading(true);
+    setShowLibraryMenu(false);
+    try {
+      const res = await fetch(`${BASE}/api/library/${libraryState.libraryId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok || res.status === 204) {
+        setLibraryState({ inLibrary: false, status: null, libraryId: null });
+      }
+    } catch {
+      /* 무시 */
+    } finally {
+      setLibraryLoading(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -61,6 +170,7 @@ export default function BookDetailPage() {
   }
 
   const encodedTitle = encodeURIComponent(book.title);
+  const isLoggedIn = !!getToken();
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
@@ -113,13 +223,67 @@ export default function BookDetailPage() {
             </a>
           </div>
 
-          {/* 독후감 쓰기 버튼 */}
-          <Link
-            href={`/write?bookId=${book.id}&title=${encodedTitle}&author=${encodeURIComponent(book.author)}&publisher=${encodeURIComponent(book.publisher)}${book.thumbnail ? `&thumbnail=${encodeURIComponent(book.thumbnail)}` : ""}`}
-            className="inline-block mt-3 px-4 py-1.5 bg-brown-600 text-white text-xs rounded-full hover:bg-brown-700 transition-colors"
-          >
-            이 책 독후감 쓰기
-          </Link>
+          {/* 버튼 영역 */}
+          <div className="flex items-center gap-2 mt-3 flex-wrap">
+            {/* 독후감 쓰기 버튼 */}
+            <Link
+              href={`/write?bookId=${book.id}&title=${encodedTitle}&author=${encodeURIComponent(book.author)}&publisher=${encodeURIComponent(book.publisher)}${book.thumbnail ? `&thumbnail=${encodeURIComponent(book.thumbnail)}` : ""}`}
+              className="px-4 py-1.5 bg-brown-600 text-white text-xs rounded-full hover:bg-brown-700 transition-colors"
+            >
+              독후감 쓰기
+            </Link>
+
+            {/* 서재 담기 버튼 — 로그인 시에만 */}
+            {isLoggedIn && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowLibraryMenu((v) => !v)}
+                  disabled={libraryLoading}
+                  className={`px-4 py-1.5 text-xs rounded-full border transition-colors disabled:opacity-50 ${
+                    libraryState.inLibrary
+                      ? "bg-cream-200 text-brown-700 border-brown-300 hover:bg-cream-300"
+                      : "bg-white text-brown-600 border-brown-300 hover:bg-cream-100"
+                  }`}
+                >
+                  {libraryLoading
+                    ? "처리 중..."
+                    : libraryState.inLibrary && libraryState.status
+                    ? `📚 ${STATUS_LABELS[libraryState.status]} ▾`
+                    : "📚 서재 담기 ▾"}
+                </button>
+
+                {showLibraryMenu && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setShowLibraryMenu(false)}
+                    />
+                    <div className="absolute left-0 top-full mt-1 z-20 bg-white rounded-xl border border-cream-200 shadow-lg overflow-hidden w-36">
+                      {(["READING", "FINISHED", "WISHLIST"] as LibraryStatus[]).map((s) => (
+                        <button
+                          key={s}
+                          onClick={() => handleAddToLibrary(s)}
+                          className={`w-full px-4 py-2.5 text-xs text-left hover:bg-cream-100 transition-colors ${
+                            libraryState.status === s ? "text-brown-800 font-semibold bg-cream-50" : "text-brown-600"
+                          }`}
+                        >
+                          {STATUS_LABELS[s]}
+                        </button>
+                      ))}
+                      {libraryState.inLibrary && (
+                        <button
+                          onClick={handleRemoveFromLibrary}
+                          className="w-full px-4 py-2.5 text-xs text-left text-red-400 hover:bg-red-50 transition-colors border-t border-cream-200"
+                        >
+                          서재에서 제거
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

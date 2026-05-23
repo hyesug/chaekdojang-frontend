@@ -1,12 +1,26 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import Link from "next/link";
 import ReviewCard, { type Review } from "../components/ReviewCard";
 
 const BASE = "http://localhost:8080";
 const PAGE_SIZE = 10;
 
 type SortType = "recent" | "popular";
+
+type RecommendedUser = {
+  id: number;
+  nickname: string;
+  profileImage: string | null;
+  bio: string | null;
+  overlapCount: number;
+};
+
+function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("token");
+}
 
 export default function ExplorePage() {
   const [sort, setSort] = useState<SortType>("recent");
@@ -22,7 +36,47 @@ export default function ExplorePage() {
   const [allReviews, setAllReviews] = useState<Review[]>([]);
   const [popularLoading, setPopularLoading] = useState(false);
 
+  // 추천 독자
+  const [recommendedUsers, setRecommendedUsers] = useState<RecommendedUser[]>([]);
+  const [followingMap, setFollowingMap] = useState<Record<number, boolean>>({});
+  const [followLoadingMap, setFollowLoadingMap] = useState<Record<number, boolean>>({});
+
   const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // 추천 독자 로드
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    fetch(`${BASE}/api/users/me/recommendations`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (json) setRecommendedUsers(json.data ?? []);
+      })
+      .catch(() => {});
+  }, []);
+
+  async function handleFollow(userId: number) {
+    const token = getToken();
+    if (!token) return;
+    const next = !followingMap[userId];
+    setFollowingMap((prev) => ({ ...prev, [userId]: next }));
+    setFollowLoadingMap((prev) => ({ ...prev, [userId]: true }));
+    try {
+      const res = await fetch(`${BASE}/api/users/${userId}/follow`, {
+        method: next ? "POST" : "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        setFollowingMap((prev) => ({ ...prev, [userId]: !next }));
+      }
+    } catch {
+      setFollowingMap((prev) => ({ ...prev, [userId]: !next }));
+    } finally {
+      setFollowLoadingMap((prev) => ({ ...prev, [userId]: false }));
+    }
+  }
 
   // 최신순 — 페이지 단위 로드
   const loadPage = useCallback(async (pageNum: number) => {
@@ -47,7 +101,7 @@ export default function ExplorePage() {
 
   // 인기순 — 전체 로드
   const loadPopular = useCallback(async () => {
-    if (allReviews.length > 0) return; // 이미 로드됨
+    if (allReviews.length > 0) return;
     setPopularLoading(true);
     try {
       const res = await fetch(`${BASE}/api/reviews`);
@@ -111,6 +165,57 @@ export default function ExplorePage() {
           <p className="text-xs text-brown-400 mt-0.5">모든 독후감 둘러보기</p>
         </div>
       </div>
+
+      {/* 추천 독자 섹션 — 로그인 + 추천 있을 때만 */}
+      {recommendedUsers.length > 0 && (
+        <section className="mb-6">
+          <h2 className="text-sm font-semibold text-brown-600 mb-3">👥 추천 독자</h2>
+          <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+            {recommendedUsers.map((user) => (
+              <div
+                key={user.id}
+                className="flex-shrink-0 w-40 bg-white rounded-2xl border border-cream-200 p-3 flex flex-col items-center gap-2"
+              >
+                <Link href={`/users/${user.id}`}>
+                  <div className="w-12 h-12 rounded-full bg-brown-200 overflow-hidden flex items-center justify-center text-white font-bold text-lg">
+                    {user.profileImage ? (
+                      <img
+                        src={user.profileImage}
+                        alt={user.nickname}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span>{user.nickname[0]}</span>
+                    )}
+                  </div>
+                </Link>
+                <div className="text-center min-w-0 w-full">
+                  <Link
+                    href={`/users/${user.id}`}
+                    className="text-xs font-semibold text-brown-700 hover:underline truncate block"
+                  >
+                    {user.nickname}
+                  </Link>
+                  {user.overlapCount > 0 && (
+                    <span className="text-xs text-brown-400">{user.overlapCount}권 겹침</span>
+                  )}
+                </div>
+                <button
+                  onClick={() => handleFollow(user.id)}
+                  disabled={followLoadingMap[user.id]}
+                  className={`w-full py-1 text-xs rounded-full transition-colors disabled:opacity-50 ${
+                    followingMap[user.id]
+                      ? "bg-cream-200 text-brown-600 border border-brown-300"
+                      : "bg-brown-600 text-white hover:bg-brown-700"
+                  }`}
+                >
+                  {followingMap[user.id] ? "팔로잉" : "팔로우"}
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* 정렬 탭 */}
       <div className="flex gap-1 mb-6 bg-cream-200 rounded-xl p-1">

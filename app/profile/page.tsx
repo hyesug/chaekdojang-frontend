@@ -8,6 +8,12 @@ import FollowListModal from "../components/FollowListModal";
 
 const BASE = "http://localhost:8080";
 
+type ReadingStats = {
+  totalFinished: number;
+  monthly: { year: number; month: number; count: number }[];
+  genres: { genre: string; count: number }[];
+};
+
 type UserProfile = {
   id: number;
   nickname: string;
@@ -35,6 +41,7 @@ export default function ProfilePage() {
   const [saveError, setSaveError] = useState("");
   const [followModal, setFollowModal] = useState<null | "followers" | "followings">(null);
   const [uploading, setUploading] = useState(false);
+  const [stats, setStats] = useState<ReadingStats | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -66,11 +73,26 @@ export default function ProfilePage() {
           profileImage: data.profileImage ?? "",
         });
         loadReviews(data.id, token);
+        loadStats(token);
       }
     } catch {
       /* 서버 미연결 시 무시 */
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadStats(token: string) {
+    try {
+      const res = await fetch(`${BASE}/api/users/me/stats`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setStats(json.data ?? json);
+      }
+    } catch {
+      /* 무시 */
     }
   }
 
@@ -323,6 +345,74 @@ export default function ProfilePage() {
           📚 내 서재
         </Link>
       </div>
+
+      {/* 독서 통계 */}
+      {stats && (stats.totalFinished > 0 || stats.genres.length > 0) && (
+        <div className="bg-white rounded-2xl border border-cream-200 p-5 mb-6">
+          <h2 className="font-serif text-base font-bold text-brown-800 mb-4">📊 독서 기록</h2>
+
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="text-center bg-cream-50 rounded-xl p-3">
+              <p className="text-2xl font-bold text-brown-800">{stats.totalFinished}</p>
+              <p className="text-xs text-brown-400 mt-0.5">완독한 책</p>
+            </div>
+            {stats.genres[0] && (
+              <div className="text-center bg-cream-50 rounded-xl p-3">
+                <p className="text-sm font-bold text-brown-800 truncate">{stats.genres[0].genre}</p>
+                <p className="text-xs text-brown-400 mt-0.5">최애 장르</p>
+              </div>
+            )}
+          </div>
+
+          {/* 월별 독서량 */}
+          {stats.monthly.length > 0 && (
+            <div className="mb-3">
+              <p className="text-xs text-brown-500 font-medium mb-2">월별 독서량</p>
+              <div className="flex items-end gap-1 h-16">
+                {stats.monthly.slice(0, 6).reverse().map((m) => {
+                  const maxCount = Math.max(...stats.monthly.map((x) => x.count));
+                  const heightPct = maxCount > 0 ? (m.count / maxCount) * 100 : 0;
+                  return (
+                    <div key={`${m.year}-${m.month}`} className="flex-1 flex flex-col items-center gap-0.5">
+                      <span className="text-xs text-brown-500 font-medium">{m.count}</span>
+                      <div
+                        className="w-full bg-brown-400 rounded-t"
+                        style={{ height: `${Math.max(heightPct * 0.6, 4)}px` }}
+                      />
+                      <span className="text-xs text-brown-300">{m.month}월</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* 장르 분포 */}
+          {stats.genres.length > 0 && (
+            <div>
+              <p className="text-xs text-brown-500 font-medium mb-2">선호 장르</p>
+              <div className="flex flex-col gap-1.5">
+                {stats.genres.slice(0, 4).map((g) => {
+                  const maxCount = stats.genres[0].count;
+                  const pct = maxCount > 0 ? Math.round((g.count / maxCount) * 100) : 0;
+                  return (
+                    <div key={g.genre} className="flex items-center gap-2">
+                      <span className="text-xs text-brown-600 w-20 truncate flex-shrink-0">{g.genre}</span>
+                      <div className="flex-1 bg-cream-200 rounded-full h-2">
+                        <div
+                          className="bg-brown-500 h-2 rounded-full transition-all"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-brown-400 flex-shrink-0">{g.count}권</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 내 독후감 목록 */}
       <h2 className="font-serif text-lg font-bold text-brown-800 mb-4">내 독후감</h2>

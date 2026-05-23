@@ -309,6 +309,10 @@ export default function ReviewCard({ post }: { post: Review }) {
   // 북마크
   const [bookmarked, setBookmarked] = useState(false);
 
+  // 공유
+  const [showShare, setShowShare] = useState(false);
+  const [copied, setCopied] = useState(false);
+
   useEffect(() => {
     const token = getToken();
     if (!token) return;
@@ -427,6 +431,19 @@ export default function ReviewCard({ post }: { post: Review }) {
       setBookmarked(!next); localStorage.removeItem("token"); router.push("/auth/login");
     } else if (!res.ok) {
       setBookmarked(!next);
+    }
+  }
+
+  async function handleCopyLink() {
+    const url = post.book?.id
+      ? `${window.location.origin}/books/${post.book.id}`
+      : window.location.href;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard API 미지원 */
     }
   }
 
@@ -555,7 +572,29 @@ export default function ReviewCard({ post }: { post: Review }) {
                     {post.book.title}
                   </p>
                 )}
-                <p className="text-xs text-brown-400 mb-1">{post.book.author}</p>
+                <p className="text-xs text-brown-400 mb-0.5">{post.book.author}</p>
+                {/* 구매 링크 */}
+                <div className="flex items-center gap-2 mb-1">
+                  <a
+                    href={`https://www.coupang.com/np/search?q=${encodeURIComponent(post.book.title)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-brown-300 hover:text-brown-500 hover:underline transition-colors"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    쿠팡 →
+                  </a>
+                  <span className="text-brown-200 text-xs">|</span>
+                  <a
+                    href={`https://search.kyobobook.co.kr/search?keyword=${encodeURIComponent(post.book.title)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-brown-300 hover:text-brown-500 hover:underline transition-colors"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    교보문고 →
+                  </a>
+                </div>
               </>
             )}
 
@@ -637,6 +676,15 @@ export default function ReviewCard({ post }: { post: Review }) {
             <span>{commentCount}</span>
           </button>
 
+          {/* 공유 버튼 */}
+          <button
+            onClick={() => setShowShare(true)}
+            className="flex items-center gap-1 text-sm text-brown-300 hover:text-brown-500 transition-colors"
+            aria-label="공유"
+          >
+            <span className="text-base leading-none">↗</span>
+          </button>
+
           {/* 북마크 버튼 — 오른쪽 끝 */}
           <button
             onClick={handleBookmark}
@@ -663,6 +711,44 @@ export default function ReviewCard({ post }: { post: Review }) {
           reviewId={post.id}
           onClose={() => setShowDetail(false)}
         />
+      )}
+
+      {showShare && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowShare(false)} />
+          <div className="relative z-10 bg-white rounded-2xl p-5 shadow-xl w-72">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-serif font-bold text-brown-800">공유하기</h3>
+              <button
+                onClick={() => setShowShare(false)}
+                className="text-brown-400 hover:text-brown-600 text-lg leading-none"
+              >
+                ✕
+              </button>
+            </div>
+            {post.book?.title && (
+              <p className="text-xs text-brown-400 mb-4 truncate">{post.book.title}</p>
+            )}
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={handleCopyLink}
+                className="w-full py-3 text-sm text-brown-700 bg-cream-100 rounded-xl hover:bg-cream-200 transition-colors flex items-center justify-center gap-2"
+              >
+                🔗 링크 복사
+                {copied && <span className="text-xs text-brown-500 ml-1">복사됨!</span>}
+              </button>
+              <a
+                href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`${post.book?.title ?? "독후감"} 📚`)}&url=${encodeURIComponent(post.book?.id ? `${window.location.origin}/books/${post.book.id}` : window.location.href)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setShowShare(false)}
+                className="w-full py-3 text-sm text-brown-700 bg-cream-100 rounded-xl hover:bg-cream-200 transition-colors flex items-center justify-center gap-2 text-center"
+              >
+                𝕏 트위터에 공유
+              </a>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

@@ -42,31 +42,16 @@ export default function SubscriptionPage() {
     const amount = plan === 'MONTHLY' ? 9900 : 99000;
     const orderId = `chaekingam-${Date.now()}`;
 
-    if (TOSS_CLIENT_KEY) {
-      // 토스페이먼츠 결제 위젯 로드
-      const { loadTossPayments } = await import('@tosspayments/tosspayments-sdk');
-      const toss = await loadTossPayments(TOSS_CLIENT_KEY);
-      const payment = toss.payment({ customerKey: `user-${Date.now()}` });
-      await payment.requestPayment({
-        method: 'CARD',
-        amount: { currency: 'KRW', value: amount },
-        orderId,
-        orderName: plan === 'MONTHLY' ? '책인감 월간 프리미엄' : '책인감 연간 프리미엄',
-        successUrl: `${window.location.origin}/subscription/success?plan=${plan}`,
-        failUrl: `${window.location.origin}/subscription`,
-      });
-    } else {
-      // 테스트 환경: 결제 없이 바로 구독
-      const res = await fetch(`${API}/api/subscriptions`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan, paymentKey: 'test', orderId, amount }),
-      });
-      if (res.ok) {
-        const d = await res.json();
-        setSubscription(d.data);
-        alert('구독이 완료되었습니다!');
-      }
+    // TODO: 결제 연동 (토스페이먼츠) 추후 구현
+    const res = await fetch(`${API}/api/subscriptions`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan, paymentKey: 'test', orderId, amount }),
+    });
+    if (res.ok) {
+      const d = await res.json();
+      setSubscription(d.data);
+      alert('구독이 완료되었습니다!');
     }
   };
 

@@ -1,117 +1,80 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+
+const BACKEND = "http://localhost:8080";
 
 export default function LoginPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-
-    try {
-      const res = await fetch("http://localhost:8080/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError((data as { message?: string }).message ?? "이메일 또는 비밀번호를 확인해주세요.");
-        return;
-      }
-
-      const json = await res.json();
-      const token = json.data?.accessToken ?? json.accessToken;
-      localStorage.setItem("token", token);
-      window.dispatchEvent(new Event("auth-change"));
-      router.push("/");
-    } catch {
-      setError("서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.");
-    } finally {
-      setLoading(false);
-    }
-  }
+  const searchParams = useSearchParams();
+  const hasError = searchParams.get("error") === "oauth_failed";
 
   return (
     <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
-        {/* 로그인 헤더 */}
         <div className="text-center mb-8">
           <h1 className="font-serif text-3xl font-bold text-brown-800 mb-2">로그인</h1>
           <p className="text-sm text-brown-400">책인감에 오신 것을 환영합니다</p>
         </div>
 
-        {/* 로그인 폼 */}
-        <form
-          onSubmit={handleSubmit}
-          className="bg-white rounded-2xl border border-cream-200 p-6 shadow-sm"
-        >
-          <div className="flex flex-col gap-4">
-            <div>
-              <label className="block text-sm text-brown-600 mb-1.5" htmlFor="email">
-                이메일
-              </label>
-              <input
-                id="email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="example@email.com"
-                className="w-full px-4 py-2.5 rounded-xl border border-cream-300 text-sm text-brown-800 bg-cream-50 placeholder:text-brown-300 focus:outline-none focus:border-brown-400 focus:ring-2 focus:ring-brown-100 transition"
-              />
-            </div>
+        {hasError && (
+          <p className="text-sm text-red-500 bg-red-50 px-4 py-2.5 rounded-xl text-center mb-4">
+            로그인에 실패했습니다. 다시 시도해주세요.
+          </p>
+        )}
 
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-sm text-brown-600" htmlFor="password">
-                  비밀번호
-                </label>
-                <Link href="/auth/forgot-password" className="text-xs text-brown-400 hover:text-brown-600 hover:underline transition-colors">
-                  비밀번호 찾기
-                </Link>
-              </div>
-              <input
-                id="password"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="비밀번호를 입력하세요"
-                className="w-full px-4 py-2.5 rounded-xl border border-cream-300 text-sm text-brown-800 bg-cream-50 placeholder:text-brown-300 focus:outline-none focus:border-brown-400 focus:ring-2 focus:ring-brown-100 transition"
-              />
-            </div>
-
-            {error && (
-              <p className="text-sm text-red-500 bg-red-50 px-4 py-2.5 rounded-xl">{error}</p>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2.5 bg-brown-600 text-white rounded-xl text-sm font-medium hover:bg-brown-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-1"
-            >
-              {loading ? "로그인 중..." : "로그인"}
-            </button>
-          </div>
-        </form>
-
-        <p className="text-center text-sm text-brown-400 mt-6">
-          계정이 없으신가요?{" "}
-          <Link href="/auth/register" className="text-brown-600 font-medium hover:underline">
-            회원가입
-          </Link>
-        </p>
+        <div className="bg-white rounded-2xl border border-cream-200 p-6 shadow-sm flex flex-col gap-3">
+          <a
+            href={`${BACKEND}/oauth2/authorization/kakao`}
+            className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-medium bg-[#FEE500] text-[#3C1E1E] hover:brightness-95 transition"
+          >
+            <KakaoIcon />
+            카카오로 로그인
+          </a>
+          <a
+            href={`${BACKEND}/oauth2/authorization/naver`}
+            className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-medium bg-[#03C75A] text-white hover:brightness-95 transition"
+          >
+            <NaverIcon />
+            네이버로 로그인
+          </a>
+          <a
+            href={`${BACKEND}/oauth2/authorization/google`}
+            className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-medium bg-white text-brown-800 border border-cream-300 hover:bg-cream-50 transition"
+          >
+            <GoogleIcon />
+            구글로 로그인
+          </a>
+        </div>
       </div>
     </div>
+  );
+}
+
+function KakaoIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <path fillRule="evenodd" clipRule="evenodd"
+        d="M9 1C4.582 1 1 3.91 1 7.5c0 2.254 1.458 4.234 3.658 5.385L3.75 16.5l4.032-2.67A9.6 9.6 0 009 14c4.418 0 8-2.91 8-6.5S13.418 1 9 1z"
+        fill="#3C1E1E"/>
+    </svg>
+  );
+}
+
+function NaverIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <path d="M10.35 9.27L7.5 5H5v8h2.65V9.73L10.5 13H13V5h-2.65v4.27z" fill="white"/>
+    </svg>
+  );
+}
+
+function GoogleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18">
+      <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+      <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
+      <path d="M3.964 10.706A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.038l3.007-2.332z" fill="#FBBC05"/>
+      <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+    </svg>
   );
 }

@@ -5,7 +5,25 @@
       "WebFetch(domain:localhost)",
       "Bash(ping -n 4 127.0.0.1)",
       "Bash(git add *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8080/api/books/search?q=test)",
+      "Bash(curl *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\kysn2\\\\Desktop\\\\05_책인감\\\\web\" -Recurse -Directory -Name)",
+      "Bash(Select-String -Pattern \"\\(auth|signup|register\\)\")",
+      "Bash(Get-Process -Name \"node\" -ErrorAction SilentlyContinue)",
+      "Bash(Select-Object Id, ProcessName, CPU)",
+      "PowerShell(Get-Process *)",
+      "Bash(Get-Content \"C:\\\\Users\\\\kysn2\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-kysn2-Desktop-05-----web\\\\99f70b83-622c-4fcb-9e21-73f2494bde3b\\\\tasks\\\\b9na3angg.output\" -Wait)",
+      "Bash(Select-String -Pattern \"Ready|ready|error|Error|localhost\" --SimpleMatch)",
+      "PowerShell(taskkill *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\kysn2\\\\Desktop\\\\05_책인감\\\\web\" -Recurse -Directory -Include \"app\")",
+      "Bash(Select-Object -First 5)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\kysn2\\\\Desktop\\\\05_책인감\\\\web\" | Select-Object Name, @{n='Type';e={if\\($_.PSIsContainer\\){'Dir'}else{'File'}}})",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\kysn2\\\\Desktop\\\\05_책인감\\\\web\" -Recurse -Depth 1 -Directory | Where-Object { $_.FullName -notmatch 'node_modules|\\\\.next' } | Select-Object FullName)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\kysn2\\\\Desktop\\\\05_책인감\\\\web\" -Force)",
+      "Bash(Select-Object Name, PSIsContainer)",
+      "Bash(npx tsc *)"
     ]
   }
 }

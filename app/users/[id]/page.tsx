@@ -57,12 +57,21 @@ export default function UserProfilePage() {
     const token = getToken();
     const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
     const res = await fetch(`${BASE}/api/users/${userId}`, { headers });
-    if (res.ok) {
-      const json = await res.json();
-      const data: UserProfile = json.data ?? json;
-      setProfile(data);
-      setFollowerCount(data.followerCount ?? 0);
-      setFollowing(data.isFollowing ?? false);
+    if (!res.ok) return;
+    const json = await res.json();
+    const data: UserProfile = json.data ?? json;
+    setProfile(data);
+    setFollowerCount(data.followerCount ?? 0);
+
+    // 팔로우 상태는 별도 API로 확인 (UserProfileResponse에 isFollowing 없음)
+    if (token) {
+      const statusRes = await fetch(`${BASE}/api/users/${userId}/follow/status`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (statusRes.ok) {
+        const statusJson = await statusRes.json();
+        setFollowing(Boolean(statusJson.data ?? statusJson));
+      }
     }
   }, [userId]);
 

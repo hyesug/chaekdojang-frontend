@@ -1,13 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-/**
- * 소셜 로그인 후 백엔드가 이 페이지로 리다이렉트한다.
- * URL 파라미터에서 JWT 토큰을 꺼내 localStorage에 저장하고 메인 페이지로 이동.
- */
-export default function OAuthCallbackPage() {
+// useSearchParams()는 Next.js에서 반드시 Suspense 안에 있어야 빌드가 통과됨
+function OAuthCallback() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -30,5 +27,19 @@ export default function OAuthCallbackPage() {
     <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center">
       <p className="text-sm text-brown-400">로그인 처리 중...</p>
     </div>
+  );
+}
+
+export default function OAuthCallbackPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center">
+          <p className="text-sm text-brown-400">로그인 처리 중...</p>
+        </div>
+      }
+    >
+      <OAuthCallback />
+    </Suspense>
   );
 }

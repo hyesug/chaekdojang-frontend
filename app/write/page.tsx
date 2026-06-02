@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -50,7 +50,7 @@ function StarPicker({
   );
 }
 
-export default function WritePage() {
+function WriteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -278,5 +278,19 @@ export default function WritePage() {
         </button>
       </form>
     </div>
+  );
+}
+
+export default function WritePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center">
+          <p className="text-sm text-brown-400">불러오는 중...</p>
+        </div>
+      }
+    >
+      <WriteContent />
+    </Suspense>
   );
 }

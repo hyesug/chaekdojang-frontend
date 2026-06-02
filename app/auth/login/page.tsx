@@ -1,10 +1,11 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
 const BACKEND = "http://localhost:8080";
 
-export default function LoginPage() {
+function LoginContent() {
   const searchParams = useSearchParams();
   const hasError = searchParams.get("error") === "oauth_failed";
 
@@ -47,6 +48,20 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center">
+          <p className="text-sm text-brown-400">불러오는 중...</p>
+        </div>
+      }
+    >
+      <LoginContent />
+    </Suspense>
   );
 }
 

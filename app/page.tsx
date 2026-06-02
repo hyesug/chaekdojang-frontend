@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import ReviewCard, { type Review } from "./components/ReviewCard";
 
 const BASE = "http://localhost:8080";
+const PAGE_SIZE = 10;
 
 type FeedTab = "all" | "following";
 
@@ -51,7 +52,11 @@ export default function FeedPage() {
   const [tab, setTab] = useState<FeedTab>("all");
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [page, setPage] = useState(0);
   const [loggedIn, setLoggedIn] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   /* 로그인 상태 동기화 */
   useEffect(() => {
@@ -64,59 +69,99 @@ export default function FeedPage() {
     return () => window.removeEventListener("auth-change", syncAuth);
   }, []);
 
-  /* 탭이 바뀔 때마다 피드 다시 로드 */
-  useEffect(() => {
-    let cancelled = false;
+  /* 전체 피드 — 페이지 단위 로드 */
+  const loadAllPage = useCallback(async (pageNum: number) => {
+    if (pageNum === 0) setLoading(true);
+    else setLoadingMore(true);
 
-    async function load() {
-      setLoading(true);
-      const token = localStorage.getItem("token");
-      const hasToken = !!token && token !== "undefined" && token !== "null";
-
-      try {
-        if (tab === "following") {
-          if (!hasToken) {
-            if (!cancelled) setReviews([]);
-            return;
-          }
-          const res = await fetch(`${BASE}/api/reviews/feed`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (!cancelled) {
-            if (res.status === 401) {
-              localStorage.removeItem("token");
-              setLoggedIn(false);
-              setReviews([]);
-            } else if (res.ok) {
-              const json = await res.json();
-              setReviews(json.data ?? []);
-            } else {
-              setReviews([]);
-            }
-          }
-        } else {
-          const res = await fetch(`${BASE}/api/reviews`);
-          if (!cancelled) {
-            if (res.ok) {
-              const json = await res.json();
-              setReviews(json.data ?? MOCK_POSTS);
-            } else {
-              setReviews(MOCK_POSTS);
-            }
-          }
-        }
-      } catch {
-        if (!cancelled) setReviews(tab === "all" ? MOCK_POSTS : []);
-      } finally {
-        if (!cancelled) setLoading(false);
+    try {
+      const res = await fetch(`${BASE}/api/reviews?page=${pageNum}&size=${PAGE_SIZE}`);
+      if (!res.ok) {
+        if (pageNum === 0) setReviews(MOCK_POSTS);
+        return;
       }
+      const json = await res.json();
+      // 백엔드가 Spring Page 객체를 반환: { content: [...], last: boolean, ... }
+      const content: Review[] = json.data?.content ?? [];
+      const last: boolean = json.data?.last ?? true;
+      setReviews((prev) =>
+        pageNum === 0 ? (content.length > 0 ? content : MOCK_POSTS) : [...prev, ...content]
+      );
+      setHasMore(!last);
+    } catch {
+      if (pageNum === 0) setReviews(MOCK_POSTS);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
     }
+  }, []);
 
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [tab]);
+  /* 팔로잉 피드 — 단일 로드 */
+  const loadFollowing = useCallback(async () => {
+    setLoading(true);
+    const token = localStorage.getItem("token");
+    const hasToken = !!token && token !== "undefined" && token !== "null";
+
+    if (!hasToken) {
+      setReviews([]);
+      setLoading(false);
+      return;
+    }
+    try {
+      const res = await fetch(`${BASE}/api/reviews/feed`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.status === 401) {
+        localStorage.removeItem("token");
+        setLoggedIn(false);
+        setReviews([]);
+      } else if (res.ok) {
+        const json = await res.json();
+        setReviews(json.data ?? []);
+      } else {
+        setReviews([]);
+      }
+    } catch {
+      setReviews([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  /* 탭 바뀔 때 — 상태 초기화 후 첫 페이지 로드 */
+  useEffect(() => {
+    setReviews([]);
+    setPage(0);
+    setHasMore(true);
+    if (tab === "all") {
+      loadAllPage(0);
+    } else {
+      loadFollowing();
+    }
+  }, [tab, loadAllPage, loadFollowing]);
+
+  /* page 증가 시 추가 로드 (전체 탭만) */
+  useEffect(() => {
+    if (page === 0 || tab !== "all") return;
+    loadAllPage(page);
+  }, [page, tab, loadAllPage]);
+
+  /* Intersection Observer — 스크롤 끝에 sentinel이 보이면 다음 페이지 */
+  useEffect(() => {
+    if (tab !== "all") return;
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
+          setPage((p) => p + 1);
+        }
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [tab, hasMore, loadingMore, loading]);
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
@@ -184,6 +229,13 @@ export default function FeedPage() {
           {reviews.map((post) => (
             <ReviewCard key={post.id} post={post} />
           ))}
+        </div>
+      )}
+
+      {/* 전체 탭 — 무한 스크롤 sentinel */}
+      {tab === "all" && (
+        <div ref={sentinelRef} className="py-6 text-center text-sm text-brown-300">
+          {loadingMore ? "불러오는 중..." : hasMore ? "" : reviews.length > 0 ? "마지막 독후감이에요" : ""}
         </div>
       )}
 

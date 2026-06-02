@@ -83,7 +83,7 @@ export default function ExplorePage() {
     if (pageNum === 0) setLoading(true);
     else setLoadingMore(true);
     try {
-      const res = await fetch(`${BASE}/api/reviews/paged?page=${pageNum}&size=${PAGE_SIZE}`);
+      const res = await fetch(`${BASE}/api/reviews?page=${pageNum}&size=${PAGE_SIZE}`);
       if (!res.ok) return;
       const json = await res.json();
       const pageData = json.data;
@@ -104,10 +104,12 @@ export default function ExplorePage() {
     if (allReviews.length > 0) return;
     setPopularLoading(true);
     try {
-      const res = await fetch(`${BASE}/api/reviews`);
+      // 인기순은 전체를 한 번에 받아서 클라이언트에서 정렬. 최대 100개 요청
+      const res = await fetch(`${BASE}/api/reviews?page=0&size=100`);
       if (res.ok) {
         const json = await res.json();
-        const data: Review[] = json.data ?? [];
+        // 백엔드가 Page 구조 반환: data.content 가 실제 배열
+        const data: Review[] = json.data?.content ?? [];
         data.sort((a, b) => b.likeCount - a.likeCount);
         setAllReviews(data);
       }

@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import ReviewCard, { type Review } from "../components/ReviewCard";
 import FollowListModal from "../components/FollowListModal";
+import { API_BASE } from "../lib/api";
 
-const BASE = "http://localhost:8080";
+const BASE = API_BASE;
 
 type ReadingStats = {
   totalFinished: number;

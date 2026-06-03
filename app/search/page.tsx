@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { API_BASE } from "../lib/api";
 
 type SearchTab = "books" | "users";
 
@@ -28,7 +29,7 @@ type AddingState = Record<string, "idle" | "loading" | "done" | "error">;
 
 const COVER_COLORS = ["#8B6048", "#6E7A4A", "#4A6E7A", "#7A4A6E", "#4A7A6E"];
 
-const BASE = "http://localhost:8080";
+const BASE = API_BASE;
 
 const CATEGORIES = [
   "소설", "에세이", "자기계발", "인문", "경제경영", "과학", "역사", "사회",
@@ -87,7 +88,7 @@ export default function SearchPage() {
 
     try {
       const res = await fetch(
-        `http://localhost:8080/api/books/category?name=${encodeURIComponent(category)}`
+        `${BASE}/api/books/category?name=${encodeURIComponent(category)}`
       );
       if (res.ok) {
         const json = await res.json();
@@ -112,7 +113,7 @@ export default function SearchPage() {
 
     setAdding((prev) => ({ ...prev, [key]: "loading" }));
     try {
-      const res = await fetch("http://localhost:8080/api/library", {
+      const res = await fetch(`${BASE}/api/library`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -5,8 +5,9 @@ import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import ReviewCard, { type Review } from "../../components/ReviewCard";
+import { API_BASE } from "../../lib/api";
 
-const BASE = "http://localhost:8080";
+const BASE = API_BASE;
 
 type Book = {
   id: number;
@@ -23,6 +24,12 @@ type LibraryState = {
   inLibrary: boolean;
   status: LibraryStatus | null;
   libraryId: number | null;
+};
+
+type PurchaseLink = {
+  id: number;
+  provider: "COUPANG" | "KYOBO";
+  url: string;
 };
 
 const STATUS_LABELS: Record<LibraryStatus, string> = {
@@ -43,6 +50,7 @@ export default function BookDetailPage() {
 
   const [book, setBook] = useState<Book | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [purchaseLinks, setPurchaseLinks] = useState<PurchaseLink[]>([]);
   const [loading, setLoading] = useState(true);
   const [libraryState, setLibraryState] = useState<LibraryState>({
     inLibrary: false,
@@ -63,6 +71,9 @@ export default function BookDetailPage() {
       fetch(`${BASE}/api/books/${bookId}/reviews`)
         .then((r) => (r.ok ? r.json() : null))
         .then((json) => { if (json) setReviews(json.data ?? []); }),
+      fetch(`${BASE}/api/books/${bookId}/purchase-links`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((json) => { if (json) setPurchaseLinks(json.data ?? []); }),
     ];
 
     if (token) {
@@ -171,6 +182,10 @@ export default function BookDetailPage() {
 
   const encodedTitle = encodeURIComponent(book.title);
   const isLoggedIn = !!getToken();
+  const providerLabels: Record<PurchaseLink["provider"], string> = {
+    COUPANG: "쿠팡에서 보기",
+    KYOBO: "교보문고에서 보기",
+  };
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
@@ -204,23 +219,41 @@ export default function BookDetailPage() {
 
           {/* 구매 링크 */}
           <div className="flex gap-3 mt-4">
-            <a
-              href={`https://www.coupang.com/np/search?q=${encodedTitle}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-brown-400 hover:text-brown-600 hover:underline transition-colors"
-            >
-              쿠팡에서 보기 →
-            </a>
-            <span className="text-brown-200 text-xs">|</span>
-            <a
-              href={`https://search.kyobobook.co.kr/search?keyword=${encodedTitle}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-brown-400 hover:text-brown-600 hover:underline transition-colors"
-            >
-              교보문고에서 보기 →
-            </a>
+            {purchaseLinks.length > 0 ? (
+              purchaseLinks.map((link, index) => (
+                <span key={link.id} className="contents">
+                  {index > 0 && <span className="text-brown-200 text-xs">|</span>}
+                  <a
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-brown-400 hover:text-brown-600 hover:underline transition-colors"
+                  >
+                    {providerLabels[link.provider]} →
+                  </a>
+                </span>
+              ))
+            ) : (
+              <>
+                <a
+                  href={`https://www.coupang.com/np/search?q=${encodedTitle}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-brown-400 hover:text-brown-600 hover:underline transition-colors"
+                >
+                  쿠팡에서 보기 →
+                </a>
+                <span className="text-brown-200 text-xs">|</span>
+                <a
+                  href={`https://search.kyobobook.co.kr/search?keyword=${encodedTitle}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-brown-400 hover:text-brown-600 hover:underline transition-colors"
+                >
+                  교보문고에서 보기 →
+                </a>
+              </>
+            )}
           </div>
 
           {/* 버튼 영역 */}

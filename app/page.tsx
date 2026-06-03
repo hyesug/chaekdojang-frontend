@@ -4,8 +4,9 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import ReviewCard, { type Review } from "./components/ReviewCard";
+import { API_BASE } from "./lib/api";
 
-const BASE = "http://localhost:8080";
+const BASE = API_BASE;
 const PAGE_SIZE = 10;
 
 type FeedTab = "all" | "following";

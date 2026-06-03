@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { API_BASE } from "../lib/api";
 
 type LibraryStatus = "READING" | "FINISHED" | "WISHLIST";
 
@@ -49,7 +50,7 @@ export default function LibraryPage() {
     }
 
     try {
-      const res = await fetch("http://localhost:8080/api/library", {
+      const res = await fetch(`${API_BASE}/api/library`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.status === 401) {
@@ -72,7 +73,7 @@ export default function LibraryPage() {
     const token = localStorage.getItem("token");
     if (!token) return;
 
-    const res = await fetch(`http://localhost:8080/api/library/${id}`, {
+    const res = await fetch(`${API_BASE}/api/library/${id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -97,7 +98,7 @@ export default function LibraryPage() {
     const token = localStorage.getItem("token");
     if (!token) return;
 
-    const res = await fetch(`http://localhost:8080/api/library/${id}`, {
+    const res = await fetch(`${API_BASE}/api/library/${id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
     });

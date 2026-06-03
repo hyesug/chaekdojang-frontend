@@ -3,6 +3,7 @@
 import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { API_BASE } from "../lib/api";
 
 type BookResult = {
   id: number;
@@ -91,7 +92,7 @@ function WriteContent() {
     setSearching(true);
     try {
       const res = await fetch(
-        `http://localhost:8080/api/books/search?q=${encodeURIComponent(query)}`
+        `${API_BASE}/api/books/search?q=${encodeURIComponent(query)}`
       );
       if (res.ok) {
         /* 백엔드 응답: { success, data: BookResponse[], message } */
@@ -123,7 +124,7 @@ function WriteContent() {
     }
 
     try {
-      const res = await fetch("http://localhost:8080/api/reviews", {
+      const res = await fetch(`${API_BASE}/api/reviews`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

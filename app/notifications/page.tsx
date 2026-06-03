@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { API_BASE } from "../lib/api";
 
-const BASE = "http://localhost:8080";
+const BASE = API_BASE;
 
 type NotificationType = "LIKE" | "COMMENT" | "FOLLOW";
 

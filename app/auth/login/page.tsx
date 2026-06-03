@@ -2,8 +2,9 @@
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { API_BASE } from "../../lib/api";
 
-const BACKEND = "http://localhost:8080";
+const BACKEND = API_BASE;
 
 function LoginContent() {
   const searchParams = useSearchParams();

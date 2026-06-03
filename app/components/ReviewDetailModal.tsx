@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { API_BASE } from "../lib/api";
 
-const BASE = "http://localhost:8080";
+const BASE = API_BASE;
 
 type ReviewDetail = {
   id: number;

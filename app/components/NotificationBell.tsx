@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { API_BASE } from "../lib/api";
 
-const BASE = "http://localhost:8080";
+const BASE = API_BASE;
 
 export default function NotificationBell() {
   const [unread, setUnread] = useState(0);

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import ReviewDetailModal from "./ReviewDetailModal";
+import { API_BASE } from "../lib/api";
 
 export type Review = {
   id: number;
@@ -23,7 +24,7 @@ type Comment = {
   createdAt: string;
 };
 
-const BASE = "http://localhost:8080";
+const BASE = API_BASE;
 
 const COVER_COLORS = [
   "#8B6048", "#6E7A4A", "#4A6E7A", "#7A4A6E", "#6E4A7A", "#4A7A6E",

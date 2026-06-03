@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import ReviewCard, { type Review } from "../components/ReviewCard";
+import { API_BASE } from "../lib/api";
 
-const BASE = "http://localhost:8080";
+const BASE = API_BASE;
 
 export default function BookmarksPage() {
   const router = useRouter();

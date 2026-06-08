@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import ReviewDetailModal from "./ReviewDetailModal";
 import { API_BASE } from "../lib/api";
+import { buildSearchLinks } from "../lib/purchaseLinks";
 
 export type Review = {
   id: number;
@@ -580,25 +581,20 @@ export default function ReviewCard({ post }: { post: Review }) {
                 <p className="text-xs text-brown-400 mb-0.5">{post.book.author}</p>
                 {/* 구매 링크 */}
                 <div className="flex items-center gap-2 mb-1">
-                  <a
-                    href={`https://www.coupang.com/np/search?q=${encodeURIComponent(post.book.title)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-brown-300 hover:text-brown-500 hover:underline transition-colors"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    쿠팡 →
-                  </a>
-                  <span className="text-brown-200 text-xs">|</span>
-                  <a
-                    href={`https://search.kyobobook.co.kr/search?keyword=${encodeURIComponent(post.book.title)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-brown-300 hover:text-brown-500 hover:underline transition-colors"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    교보문고 →
-                  </a>
+                  {buildSearchLinks(post.book.title).map((link, idx) => (
+                    <span key={link.provider} className="contents">
+                      {idx > 0 && <span className="text-brown-200 text-xs">|</span>}
+                      <a
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-brown-300 hover:text-brown-500 hover:underline transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {link.provider === "COUPANG" ? "쿠팡" : "교보문고"} →
+                      </a>
+                    </span>
+                  ))}
                 </div>
               </>
             )}

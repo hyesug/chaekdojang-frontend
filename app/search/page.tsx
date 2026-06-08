@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { API_BASE } from "../lib/api";
+import { buildSearchLinks } from "../lib/purchaseLinks";
 
 type SearchTab = "books" | "users";
 
@@ -320,23 +321,19 @@ export default function SearchPage() {
 
                   {/* 구매 링크 */}
                   <div className="flex gap-2 mt-2">
-                    <a
-                      href={`https://www.coupang.com/np/search?q=${encodedTitle}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-brown-400 hover:text-brown-600 hover:underline transition-colors"
-                    >
-                      쿠팡에서 보기 →
-                    </a>
-                    <span className="text-brown-200 text-xs">|</span>
-                    <a
-                      href={`https://search.kyobobook.co.kr/search?keyword=${encodedTitle}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-brown-400 hover:text-brown-600 hover:underline transition-colors"
-                    >
-                      교보문고에서 보기 →
-                    </a>
+                    {buildSearchLinks(book.title).map((link, idx) => (
+                      <span key={link.provider} className="contents">
+                        {idx > 0 && <span className="text-brown-200 text-xs">|</span>}
+                        <a
+                          href={link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-brown-400 hover:text-brown-600 hover:underline transition-colors"
+                        >
+                          {link.label} →
+                        </a>
+                      </span>
+                    ))}
                   </div>
                 </div>
               </div>

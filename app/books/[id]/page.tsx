@@ -27,7 +27,7 @@ type LibraryState = {
 };
 
 type PurchaseLink = {
-  id: number;
+  id: number | null;
   provider: "COUPANG" | "KYOBO";
   url: string;
 };
@@ -217,43 +217,21 @@ export default function BookDetailPage() {
             </span>
           )}
 
-          {/* 구매 링크 */}
+          {/* 구매 링크 — 백엔드 /api/books/{id}/purchase-links 에서 반환 */}
           <div className="flex gap-3 mt-4">
-            {purchaseLinks.length > 0 ? (
-              purchaseLinks.map((link, index) => (
-                <span key={link.id} className="contents">
-                  {index > 0 && <span className="text-brown-200 text-xs">|</span>}
-                  <a
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-brown-400 hover:text-brown-600 hover:underline transition-colors"
-                  >
-                    {providerLabels[link.provider]} →
-                  </a>
-                </span>
-              ))
-            ) : (
-              <>
+            {purchaseLinks.map((link, index) => (
+              <span key={link.provider} className="contents">
+                {index > 0 && <span className="text-brown-200 text-xs">|</span>}
                 <a
-                  href={`https://www.coupang.com/np/search?q=${encodedTitle}`}
+                  href={link.url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs text-brown-400 hover:text-brown-600 hover:underline transition-colors"
                 >
-                  쿠팡에서 보기 →
+                  {providerLabels[link.provider]} →
                 </a>
-                <span className="text-brown-200 text-xs">|</span>
-                <a
-                  href={`https://search.kyobobook.co.kr/search?keyword=${encodedTitle}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-brown-400 hover:text-brown-600 hover:underline transition-colors"
-                >
-                  교보문고에서 보기 →
-                </a>
-              </>
-            )}
+              </span>
+            ))}
           </div>
 
           {/* 버튼 영역 */}

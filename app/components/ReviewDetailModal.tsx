@@ -53,6 +53,23 @@ function Stars({ rating }: { rating: number }) {
   );
 }
 
+function EditableStars({ rating, onChange }: { rating: number; onChange: (r: number) => void }) {
+  return (
+    <span>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button
+          key={n}
+          type="button"
+          onClick={() => onChange(n)}
+          className={`text-base leading-none transition-colors ${n <= rating ? "text-amber-500" : "text-cream-300 hover:text-amber-300"}`}
+        >
+          ★
+        </button>
+      ))}
+    </span>
+  );
+}
+
 type Props = {
   reviewId: number;
   onClose: () => void;
@@ -75,6 +92,12 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentText, setCommentText] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // 수정
+  const [editing, setEditing] = useState(false);
+  const [editContent, setEditContent] = useState("");
+  const [editRating, setEditRating] = useState(0);
+  const [saving, setSaving] = useState(false);
 
   // 독후감 상세 + 좋아요 상태 로드
   useEffect(() => {
@@ -194,6 +217,26 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
     }
   }
 
+  async function handleSave() {
+    if (!review || saving) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`${BASE}/api/reviews/${review.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({ content: editContent, rating: editRating }),
+      });
+      if (res.ok) {
+        setReview((prev) => prev ? { ...prev, content: editContent, rating: editRating } : prev);
+        setEditing(false);
+      } else if (res.status === 401) {
+        localStorage.removeItem("token"); router.push("/auth/login");
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function handleCommentDelete(commentId: number) {
     const res = await fetch(`${BASE}/api/reviews/${reviewId}/comments/${commentId}`, {
       method: "DELETE",
@@ -210,7 +253,17 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
         {/* 헤더 */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-cream-200 flex-shrink-0">
           <span className="font-serif font-bold text-brown-800 text-sm">독후감</span>
-          <button onClick={onClose} className="text-brown-400 hover:text-brown-600 text-xl leading-none">✕</button>
+          <div className="flex items-center gap-3">
+            {!loading && review && myId === review.author.id && !editing && (
+              <button
+                onClick={() => { setEditContent(review.content); setEditRating(review.rating); setEditing(true); }}
+                className="text-xs text-brown-400 hover:text-brown-700 transition-colors"
+              >
+                수정
+              </button>
+            )}
+            <button onClick={onClose} className="text-brown-400 hover:text-brown-600 text-xl leading-none">✕</button>
+          </div>
         </div>
 
         {loading ? (
@@ -263,14 +316,44 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
                   <time className="text-xs text-brown-300 ml-auto">{review.createdAt.slice(0, 10)}</time>
                 </div>
                 <div className="mt-1">
-                  <Stars rating={review.rating} />
+                  {editing
+                    ? <EditableStars rating={editRating} onChange={setEditRating} />
+                    : <Stars rating={review.rating} />
+                  }
                 </div>
               </div>
             </div>
 
             {/* 본문 전체 */}
             <div className="px-5 py-4 border-b border-cream-100">
-              <p className="text-sm text-brown-700 leading-relaxed whitespace-pre-wrap">{review.content}</p>
+              {editing ? (
+                <>
+                  <textarea
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    rows={10}
+                    className="w-full rounded-xl border border-cream-200 px-3 py-2 text-sm text-brown-700 focus:outline-none focus:border-brown-400 resize-none"
+                    autoFocus
+                  />
+                  <div className="flex gap-2 mt-2 justify-end">
+                    <button
+                      onClick={() => setEditing(false)}
+                      className="px-3 py-1.5 text-xs text-brown-500 bg-cream-100 rounded-lg hover:bg-cream-200 transition-colors"
+                    >
+                      취소
+                    </button>
+                    <button
+                      onClick={handleSave}
+                      disabled={saving || !editContent.trim()}
+                      className="px-3 py-1.5 text-xs text-white bg-brown-600 rounded-lg hover:bg-brown-700 disabled:opacity-40 transition-colors"
+                    >
+                      {saving ? "저장 중…" : "저장"}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-brown-700 leading-relaxed whitespace-pre-wrap">{review.content}</p>
+              )}
             </div>
 
             {/* 좋아요 */}

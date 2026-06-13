@@ -80,6 +80,13 @@ export default function SetupNicknamePage() {
           >
             {loading ? "저장 중..." : "시작하기"}
           </button>
+          <button
+            type="button"
+            onClick={() => { localStorage.removeItem("token"); router.replace("/auth/login"); }}
+            className="w-full py-3 text-sm text-brown-400 hover:text-brown-600 transition-colors"
+          >
+            취소
+          </button>
         </form>
       </div>
     </div>

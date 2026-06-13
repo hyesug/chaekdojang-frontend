@@ -272,6 +272,73 @@ function CommentModal({
 }
 
 // ─────────────────────────────────────────────
+// 독후감 수정 모달
+// ─────────────────────────────────────────────
+function EditModal({
+  initialContent,
+  initialRating,
+  saving,
+  onClose,
+  onSave,
+}: {
+  initialContent: string;
+  initialRating: number;
+  saving: boolean;
+  onClose: () => void;
+  onSave: (content: string, rating: number) => void;
+}) {
+  const [content, setContent] = useState(initialContent);
+  const [rating, setRating] = useState(initialRating);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative z-10 w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl flex flex-col shadow-xl">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-cream-200">
+          <h2 className="font-serif font-bold text-brown-800">독후감 수정</h2>
+          <button
+            onClick={onClose}
+            className="text-brown-400 hover:text-brown-600 text-xl leading-none"
+            aria-label="닫기"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="px-5 py-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-brown-500">별점</span>
+            <EditableStars rating={rating} onChange={setRating} />
+          </div>
+          <textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            rows={10}
+            className="w-full rounded-xl border border-cream-200 px-3 py-2 text-sm text-brown-700 focus:outline-none focus:border-brown-400 resize-none"
+            placeholder="독후감을 입력하세요…"
+            autoFocus
+          />
+        </div>
+        <div className="flex gap-2 px-5 pb-5 justify-end">
+          <button
+            onClick={onClose}
+            className="px-3 py-1.5 text-xs text-brown-500 bg-cream-100 rounded-lg hover:bg-cream-200 transition-colors"
+          >
+            취소
+          </button>
+          <button
+            onClick={() => onSave(content, rating)}
+            disabled={saving || !content.trim()}
+            className="px-3 py-1.5 text-xs text-white bg-brown-600 rounded-lg hover:bg-brown-700 disabled:opacity-40 transition-colors"
+          >
+            {saving ? "저장 중…" : "저장"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
 // 피드 카드
 // ─────────────────────────────────────────────
 export default function ReviewCard({ post }: { post: Review }) {
@@ -295,8 +362,6 @@ export default function ReviewCard({ post }: { post: Review }) {
 
   // 수정
   const [editing, setEditing] = useState(false);
-  const [editContent, setEditContent] = useState(post.content);
-  const [editRating, setEditRating] = useState(post.rating);
   const [displayContent, setDisplayContent] = useState(post.content);
   const [displayRating, setDisplayRating] = useState(post.rating);
   const [saving, setSaving] = useState(false);
@@ -400,7 +465,7 @@ export default function ReviewCard({ post }: { post: Review }) {
     }
   }
 
-  async function handleSave() {
+  async function handleSave(content: string, rating: number) {
     if (saving) return;
     setSaving(true);
     try {
@@ -410,11 +475,11 @@ export default function ReviewCard({ post }: { post: Review }) {
           "Content-Type": "application/json",
           Authorization: `Bearer ${getToken()}`,
         },
-        body: JSON.stringify({ content: editContent, rating: editRating }),
+        body: JSON.stringify({ content, rating }),
       });
       if (res.ok) {
-        setDisplayContent(editContent);
-        setDisplayRating(editRating);
+        setDisplayContent(content);
+        setDisplayRating(rating);
         setEditing(false);
       } else if (res.status === 401) {
         localStorage.removeItem("token");
@@ -539,11 +604,7 @@ export default function ReviewCard({ post }: { post: Review }) {
                 {isOwner && !editing && (
                   <>
                     <button
-                      onClick={() => {
-                        setEditContent(displayContent);
-                        setEditRating(displayRating);
-                        setEditing(true);
-                      }}
+                      onClick={() => setEditing(true)}
                       className="text-xs text-brown-400 hover:text-brown-700 transition-colors"
                     >
                       수정
@@ -599,53 +660,22 @@ export default function ReviewCard({ post }: { post: Review }) {
               </>
             )}
 
-            {/* 별점: 수정 모드이면 클릭 가능 */}
-            {editing ? (
-              <EditableStars rating={editRating} onChange={setEditRating} />
-            ) : (
-              <Stars rating={displayRating} />
-            )}
+            <Stars rating={displayRating} />
           </div>
         </div>
 
-        {/* 본문: 수정 모드이면 textarea */}
-        {editing ? (
-          <div className="mt-3">
-            <textarea
-              value={editContent}
-              onChange={(e) => setEditContent(e.target.value)}
-              rows={4}
-              className="w-full rounded-xl border border-cream-200 px-3 py-2 text-sm text-brown-700 focus:outline-none focus:border-brown-400 resize-none"
-            />
-            <div className="flex gap-2 mt-2 justify-end">
-              <button
-                onClick={() => setEditing(false)}
-                className="px-3 py-1.5 text-xs text-brown-500 bg-cream-100 rounded-lg hover:bg-cream-200 transition-colors"
-              >
-                취소
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving || !editContent.trim()}
-                className="px-3 py-1.5 text-xs text-white bg-brown-600 rounded-lg hover:bg-brown-700 disabled:opacity-40 transition-colors"
-              >
-                {saving ? "저장 중…" : "저장"}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <button
-            onClick={() => setShowDetail(true)}
-            className="mt-3 text-left w-full group"
-          >
-            <p className="text-sm text-brown-600 leading-relaxed line-clamp-3 group-hover:text-brown-800 transition-colors">
-              {displayContent}
-            </p>
-            <span className="text-xs text-brown-300 group-hover:text-brown-500 transition-colors mt-1 inline-block">
-              더 보기
-            </span>
-          </button>
-        )}
+        {/* 본문 */}
+        <button
+          onClick={() => setShowDetail(true)}
+          className="mt-3 text-left w-full group"
+        >
+          <p className="text-sm text-brown-600 leading-relaxed line-clamp-3 group-hover:text-brown-800 transition-colors">
+            {displayContent}
+          </p>
+          <span className="text-xs text-brown-300 group-hover:text-brown-500 transition-colors mt-1 inline-block">
+            더 보기
+          </span>
+        </button>
 
         {/* 번역 결과 */}
         {translatedContent && (
@@ -726,6 +756,16 @@ export default function ReviewCard({ post }: { post: Review }) {
           </button>
         </div>
       </article>
+
+      {editing && (
+        <EditModal
+          initialContent={displayContent}
+          initialRating={displayRating}
+          saving={saving}
+          onClose={() => setEditing(false)}
+          onSave={handleSave}
+        />
+      )}
 
       {showComments && (
         <CommentModal

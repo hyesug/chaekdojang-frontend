@@ -15,6 +15,14 @@ type ReadingStats = {
   genres: { genre: string; count: number }[];
 };
 
+type RecommendedUser = {
+  id: number;
+  nickname: string;
+  profileImage: string | null;
+  bio: string | null;
+  score: number;
+};
+
 type LifeBook = {
   id: number;
   title: string;
@@ -55,6 +63,7 @@ export default function ProfilePage() {
   const [lifeBookResults, setLifeBookResults] = useState<LifeBook[]>([]);
   const [lifeBookSearching, setLifeBookSearching] = useState(false);
   const [showLifeBookSearch, setShowLifeBookSearch] = useState(false);
+  const [recommendations, setRecommendations] = useState<RecommendedUser[]>([]);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -87,6 +96,7 @@ export default function ProfilePage() {
         });
         loadReviews(data.id, token);
         loadStats(token);
+        loadRecommendations(token);
       }
     } catch {
       /* 서버 미연결 시 무시 */
@@ -103,6 +113,20 @@ export default function ProfilePage() {
       if (res.ok) {
         const json = await res.json();
         setStats(json.data ?? json);
+      }
+    } catch {
+      /* 무시 */
+    }
+  }
+
+  async function loadRecommendations(token: string) {
+    try {
+      const res = await fetch(`${BASE}/api/users/me/recommendations`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setRecommendations(json.data ?? []);
       }
     } catch {
       /* 무시 */
@@ -534,6 +558,36 @@ export default function ProfilePage() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* 취향 맞는 독자 추천 */}
+      {recommendations.length > 0 && (
+        <div className="bg-white rounded-2xl border border-cream-200 p-5 mb-6">
+          <h2 className="font-serif text-base font-bold text-brown-800 mb-1">🤝 취향이 비슷한 독자</h2>
+          <p className="text-xs text-brown-400 mb-4">읽은 책·별점·인생책을 기반으로 추천해요</p>
+          <div className="flex flex-col gap-3">
+            {recommendations.map((user) => (
+              <Link
+                key={user.id}
+                href={`/users/${user.id}`}
+                className="flex items-center gap-3 hover:opacity-75 transition-opacity"
+              >
+                <div className="w-10 h-10 rounded-full bg-brown-200 flex-shrink-0 overflow-hidden flex items-center justify-center text-white font-bold text-sm">
+                  {user.profileImage ? (
+                    <img src={user.profileImage} alt={user.nickname} className="w-full h-full object-cover" />
+                  ) : (
+                    <span>{user.nickname[0]}</span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-brown-800 truncate">{user.nickname}</p>
+                  {user.bio && <p className="text-xs text-brown-400 truncate">{user.bio}</p>}
+                </div>
+                <span className="text-brown-300 text-xs flex-shrink-0">›</span>
+              </Link>
+            ))}
+          </div>
         </div>
       )}
 

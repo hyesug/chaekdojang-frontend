@@ -9,6 +9,7 @@ const navLinks = [
   { href: "/search", label: "검색" },
   { href: "/library", label: "서재" },
   { href: "/write", label: "독후감 쓰기" },
+  { href: "/cs", label: "고객센터" },
   // { href: "/subscription", label: "프리미엄" }, // 추후 오픈 예정
 ];
 

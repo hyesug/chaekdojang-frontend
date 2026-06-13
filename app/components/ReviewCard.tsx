@@ -178,7 +178,7 @@ function CommentModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
 
       <div className="relative z-10 w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl max-h-[80vh] flex flex-col shadow-xl">
         <div className="flex items-center justify-between px-5 py-4 border-b border-cream-200">
@@ -292,7 +292,7 @@ function EditModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="relative z-10 w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl flex flex-col shadow-xl">
         <div className="flex items-center justify-between px-5 py-4 border-b border-cream-200">
           <h2 className="font-serif font-bold text-brown-800">독후감 수정</h2>

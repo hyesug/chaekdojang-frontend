@@ -32,9 +32,6 @@ const COVER_COLORS = ["#8B6048", "#6E7A4A", "#4A6E7A", "#7A4A6E", "#4A7A6E"];
 
 const BASE = API_BASE;
 
-const CATEGORIES = [
-  "소설", "에세이", "자기계발", "인문", "경제경영", "과학", "역사", "사회",
-];
 
 export default function SearchPage() {
   const router = useRouter();
@@ -77,28 +74,6 @@ export default function SearchPage() {
     } catch {
       if (tab === "users") setUserResults([]);
       else setResults([]);
-    } finally {
-      setSearching(false);
-    }
-  }
-
-  async function handleCategorySearch(category: string) {
-    setQuery(category);
-    setSearching(true);
-    setSearched(true);
-
-    try {
-      const res = await fetch(
-        `${BASE}/api/books/category?name=${encodeURIComponent(category)}`
-      );
-      if (res.ok) {
-        const json = await res.json();
-        setResults(json.data ?? []);
-      } else {
-        setResults([]);
-      }
-    } catch {
-      setResults([]);
     } finally {
       setSearching(false);
     }
@@ -184,20 +159,6 @@ export default function SearchPage() {
           {searching ? "검색 중..." : "검색"}
         </button>
       </form>
-
-      {/* 카테고리 필터 — 책 탭에서만 표시 */}
-      <div className={`flex flex-wrap gap-2 mb-8 ${tab !== "books" ? "hidden" : ""}`}>
-        {CATEGORIES.map((cat) => (
-          <button
-            key={cat}
-            onClick={() => handleCategorySearch(cat)}
-            disabled={searching}
-            className="px-3 py-1.5 text-xs rounded-full border border-brown-200 text-brown-500 hover:border-brown-400 hover:text-brown-700 hover:bg-cream-100 transition-colors disabled:opacity-50"
-          >
-            {cat}
-          </button>
-        ))}
-      </div>
 
       {/* 검색 중 */}
       {searching && (

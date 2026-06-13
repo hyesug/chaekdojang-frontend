@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { API_BASE } from "../../../../lib/api";
+import { API_BASE } from "../../../lib/api";
 
 interface Comment { id: number; authorName: string; content: string; createdAt: string; }
 interface InquiryDetail { id: number; title: string; content: string; authorName: string; createdAt: string; comments: Comment[]; }

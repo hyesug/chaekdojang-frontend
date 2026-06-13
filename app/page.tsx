@@ -10,7 +10,7 @@ const BASE = API_BASE;
 const PAGE_SIZE = 10;
 
 type FeedTab = "all" | "following";
-type SortType = "recent" | "rating";
+type SortType = "recent" | "rating" | "popular";
 
 export default function FeedPage() {
   const router = useRouter();
@@ -170,7 +170,7 @@ export default function FeedPage() {
       {/* 전체 탭 — 정렬 선택 */}
       {tab === "all" && (
         <div className="flex gap-2 mb-4">
-          {([{ value: "recent", label: "최신순" }, { value: "rating", label: "⭐ 별점순" }] as const).map(({ value, label }) => (
+          {([{ value: "recent", label: "최신순" }, { value: "rating", label: "⭐ 별점순" }, { value: "popular", label: "🔥 인기순" }] as const).map(({ value, label }) => (
             <button
               key={value}
               onClick={() => setSort(value)}

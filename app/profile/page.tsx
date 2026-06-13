@@ -15,6 +15,13 @@ type ReadingStats = {
   genres: { genre: string; count: number }[];
 };
 
+type LifeBook = {
+  id: number;
+  title: string;
+  author: string;
+  thumbnail: string | null;
+};
+
 type UserProfile = {
   id: number;
   nickname: string;
@@ -23,6 +30,7 @@ type UserProfile = {
   reviewCount: number;
   followerCount: number;
   followingCount: number;
+  lifeBook: LifeBook | null;
 };
 
 type EditForm = {
@@ -43,6 +51,10 @@ export default function ProfilePage() {
   const [followModal, setFollowModal] = useState<null | "followers" | "followings">(null);
   const [uploading, setUploading] = useState(false);
   const [stats, setStats] = useState<ReadingStats | null>(null);
+  const [lifeBookSearch, setLifeBookSearch] = useState("");
+  const [lifeBookResults, setLifeBookResults] = useState<LifeBook[]>([]);
+  const [lifeBookSearching, setLifeBookSearching] = useState(false);
+  const [showLifeBookSearch, setShowLifeBookSearch] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -109,6 +121,36 @@ export default function ProfilePage() {
     } catch {
       /* 무시 */
     }
+  }
+
+  async function searchLifeBook(q: string) {
+    if (!q.trim()) { setLifeBookResults([]); return; }
+    setLifeBookSearching(true);
+    try {
+      const res = await fetch(`${BASE}/api/books/search?q=${encodeURIComponent(q)}`);
+      if (res.ok) {
+        const json = await res.json();
+        const books = (json.data ?? []).slice(0, 5).map((b: { id: number; title: string; author: string; thumbnail?: string }) => ({
+          id: b.id, title: b.title, author: b.author, thumbnail: b.thumbnail ?? null,
+        }));
+        setLifeBookResults(books);
+      }
+    } catch { /* 무시 */ }
+    finally { setLifeBookSearching(false); }
+  }
+
+  async function selectLifeBook(book: LifeBook | null) {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    await fetch(`${BASE}/api/users/me/life-book`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ bookId: book?.id ?? null }),
+    });
+    setProfile((prev) => prev ? { ...prev, lifeBook: book } : prev);
+    setShowLifeBookSearch(false);
+    setLifeBookSearch("");
+    setLifeBookResults([]);
   }
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -330,6 +372,86 @@ export default function ProfilePage() {
           onClose={() => setFollowModal(null)}
         />
       )}
+
+      {/* 인생책 */}
+      <div className="bg-white rounded-2xl border border-cream-200 p-5 mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-serif text-base font-bold text-brown-800">📖 인생책</h2>
+          <button
+            onClick={() => setShowLifeBookSearch((v) => !v)}
+            className="text-xs text-brown-400 hover:text-brown-600 transition-colors"
+          >
+            {showLifeBookSearch ? "취소" : profile.lifeBook ? "변경" : "+ 선택"}
+          </button>
+        </div>
+
+        {/* 검색 UI */}
+        {showLifeBookSearch && (
+          <div className="mb-3">
+            <div className="flex gap-2">
+              <input
+                value={lifeBookSearch}
+                onChange={(e) => setLifeBookSearch(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && searchLifeBook(lifeBookSearch)}
+                placeholder="책 제목 또는 저자 검색"
+                className="flex-1 px-3 py-2 text-sm rounded-xl border border-cream-300 bg-cream-50 focus:outline-none focus:border-brown-400 transition"
+              />
+              <button
+                onClick={() => searchLifeBook(lifeBookSearch)}
+                disabled={lifeBookSearching}
+                className="px-3 py-2 text-sm bg-brown-600 text-white rounded-xl hover:bg-brown-700 transition-colors disabled:opacity-50"
+              >
+                검색
+              </button>
+            </div>
+            {lifeBookResults.length > 0 && (
+              <ul className="mt-2 border border-cream-200 rounded-xl overflow-hidden">
+                {lifeBookResults.map((book) => (
+                  <li key={book.id}>
+                    <button
+                      onClick={() => selectLifeBook(book)}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-cream-50 transition-colors text-left"
+                    >
+                      {book.thumbnail && (
+                        <img src={book.thumbnail} alt={book.title} className="w-8 h-11 object-cover rounded flex-shrink-0" />
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-sm text-brown-800 font-medium truncate">{book.title}</p>
+                        <p className="text-xs text-brown-400 truncate">{book.author}</p>
+                      </div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        {/* 현재 인생책 표시 */}
+        {profile.lifeBook ? (
+          <div className="flex items-center gap-3">
+            {profile.lifeBook.thumbnail && (
+              <img src={profile.lifeBook.thumbnail} alt={profile.lifeBook.title} className="w-12 h-16 object-cover rounded-lg flex-shrink-0 shadow-sm" />
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-brown-800 truncate">{profile.lifeBook.title}</p>
+              <p className="text-xs text-brown-400 mt-0.5 truncate">{profile.lifeBook.author}</p>
+            </div>
+            {!showLifeBookSearch && (
+              <button
+                onClick={() => selectLifeBook(null)}
+                className="text-xs text-brown-300 hover:text-red-400 transition-colors flex-shrink-0"
+              >
+                삭제
+              </button>
+            )}
+          </div>
+        ) : (
+          !showLifeBookSearch && (
+            <p className="text-sm text-brown-300 text-center py-2">아직 선택한 인생책이 없어요</p>
+          )
+        )}
+      </div>
 
       {/* 빠른 메뉴 */}
       <div className="flex gap-2 mb-6">

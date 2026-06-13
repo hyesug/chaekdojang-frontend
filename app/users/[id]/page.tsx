@@ -8,6 +8,13 @@ import { API_BASE } from "../../lib/api";
 
 const BASE = API_BASE;
 
+type LifeBook = {
+  id: number;
+  title: string;
+  author: string;
+  thumbnail: string | null;
+};
+
 type UserProfile = {
   id: number;
   nickname: string;
@@ -17,6 +24,7 @@ type UserProfile = {
   followerCount: number;
   followingCount: number;
   isFollowing?: boolean;
+  lifeBook: LifeBook | null;
 };
 
 function getToken(): string | null {
@@ -209,6 +217,26 @@ export default function UserProfilePage() {
           type={followModal}
           onClose={() => setFollowModal(null)}
         />
+      )}
+
+      {/* 인생책 */}
+      {profile.lifeBook && (
+        <div className="bg-white rounded-2xl border border-cream-200 p-5 mb-6">
+          <h2 className="font-serif text-base font-bold text-brown-800 mb-3">📖 인생책</h2>
+          <div className="flex items-center gap-3">
+            {profile.lifeBook.thumbnail && (
+              <img
+                src={profile.lifeBook.thumbnail}
+                alt={profile.lifeBook.title}
+                className="w-12 h-16 object-cover rounded-lg flex-shrink-0 shadow-sm"
+              />
+            )}
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-brown-800 truncate">{profile.lifeBook.title}</p>
+              <p className="text-xs text-brown-400 mt-0.5 truncate">{profile.lifeBook.author}</p>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* 독후감 목록 */}

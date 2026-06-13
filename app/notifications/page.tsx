@@ -55,6 +55,22 @@ export default function NotificationsPage() {
     window.dispatchEvent(new Event("notification-read"));
   }
 
+  async function deleteAllNotifications() {
+    const token = getToken();
+    if (!token) return;
+    try {
+      const res = await fetch(`${BASE}/api/notifications`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      setNotifications([]);
+      notifyBell();
+    } catch (e) {
+      console.error("전체 삭제 오류:", e);
+    }
+  }
+
   async function markAllAsRead() {
     const token = getToken();
     if (!token) return;
@@ -82,11 +98,19 @@ export default function NotificationsPage() {
   async function deleteNotification(id: number) {
     const token = getToken();
     if (!token) return;
-    await fetch(`${BASE}/api/notifications/${id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    try {
+      const res = await fetch(`${BASE}/api/notifications/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        console.error("알림 삭제 실패:", res.status);
+        return;
+      }
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
+    } catch (e) {
+      console.error("알림 삭제 오류:", e);
+    }
   }
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
@@ -100,13 +124,23 @@ export default function NotificationsPage() {
             <p className="text-xs text-brown-400 mt-0.5">읽지 않은 알림 {unreadCount}개</p>
           )}
         </div>
-        {unreadCount > 0 && (
-          <button
-            onClick={markAllAsRead}
-            className="text-xs text-brown-400 hover:text-brown-600 underline underline-offset-2 transition-colors"
-          >
-            모두 읽음
-          </button>
+        {notifications.length > 0 && (
+          <div className="flex items-center gap-3">
+            {unreadCount > 0 && (
+              <button
+                onClick={markAllAsRead}
+                className="text-xs text-brown-400 hover:text-brown-600 underline underline-offset-2 transition-colors"
+              >
+                모두 읽음
+              </button>
+            )}
+            <button
+              onClick={deleteAllNotifications}
+              className="text-xs text-brown-300 hover:text-red-400 underline underline-offset-2 transition-colors"
+            >
+              전체 삭제
+            </button>
+          </div>
         )}
       </div>
 

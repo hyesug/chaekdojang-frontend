@@ -17,9 +17,11 @@ export default function NotificationBell() {
     // 30초마다 새 알림 확인
     const interval = setInterval(fetchUnreadCount, 30_000);
     window.addEventListener("auth-change", fetchUnreadCount);
+    window.addEventListener("notification-read", fetchUnreadCount);
     return () => {
       clearInterval(interval);
       window.removeEventListener("auth-change", fetchUnreadCount);
+      window.removeEventListener("notification-read", fetchUnreadCount);
     };
   }, []);
 

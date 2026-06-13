@@ -51,6 +51,10 @@ export default function NotificationsPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  function notifyBell() {
+    window.dispatchEvent(new Event("notification-read"));
+  }
+
   async function markAllAsRead() {
     const token = getToken();
     if (!token) return;
@@ -59,6 +63,7 @@ export default function NotificationsPage() {
       headers: { Authorization: `Bearer ${token}` },
     });
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    notifyBell();
   }
 
   async function markAsRead(id: number) {
@@ -71,6 +76,7 @@ export default function NotificationsPage() {
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
     );
+    notifyBell();
   }
 
   async function deleteNotification(id: number) {

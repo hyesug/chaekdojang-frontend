@@ -379,6 +379,7 @@ export default function ReviewCard({ post }: { post: Review }) {
   // 공유
   const [showShare, setShowShare] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [instaCopied, setInstaCopied] = useState(false);
 
   // 번역
   const [translatedContent, setTranslatedContent] = useState<string | null>(null);
@@ -798,24 +799,63 @@ export default function ReviewCard({ post }: { post: Review }) {
             {post.book?.title && (
               <p className="text-xs text-brown-400 mb-4 truncate">{post.book.title}</p>
             )}
-            <div className="flex flex-col gap-2">
-              <button
-                onClick={handleCopyLink}
-                className="w-full py-3 text-sm text-brown-700 bg-cream-100 rounded-xl hover:bg-cream-200 transition-colors flex items-center justify-center gap-2"
-              >
-                🔗 링크 복사
-                {copied && <span className="text-xs text-brown-500 ml-1">복사됨!</span>}
-              </button>
-              <a
-                href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`${post.book?.title ?? "독후감"} 📚`)}&url=${encodeURIComponent(post.book?.id ? `${window.location.origin}/books/${post.book.id}` : window.location.href)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setShowShare(false)}
-                className="w-full py-3 text-sm text-brown-700 bg-cream-100 rounded-xl hover:bg-cream-200 transition-colors flex items-center justify-center gap-2 text-center"
-              >
-                𝕏 트위터에 공유
-              </a>
-            </div>
+            {(() => {
+              const shareUrl = post.book?.id
+                ? `${window.location.origin}/books/${post.book.id}`
+                : window.location.href;
+              const shareText = `${post.book?.title ?? "독후감"} 📚`;
+              return (
+                <div className="flex flex-col gap-2">
+                  {/* 링크 복사 */}
+                  <button
+                    onClick={handleCopyLink}
+                    className="w-full py-3 text-sm text-brown-700 bg-cream-100 rounded-xl hover:bg-cream-200 transition-colors flex items-center justify-center gap-2"
+                  >
+                    🔗 링크 복사{copied && <span className="text-xs text-brown-500">복사됨!</span>}
+                  </button>
+
+                  {/* 트위터(X) */}
+                  <a
+                    href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setShowShare(false)}
+                    className="w-full py-3 text-sm text-brown-700 bg-cream-100 rounded-xl hover:bg-cream-200 transition-colors flex items-center justify-center gap-2"
+                  >
+                    𝕏 트위터에 공유
+                  </a>
+
+                  {/* 페이스북 */}
+                  <a
+                    href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setShowShare(false)}
+                    className="w-full py-3 text-sm text-brown-700 bg-cream-100 rounded-xl hover:bg-cream-200 transition-colors flex items-center justify-center gap-2"
+                  >
+                    📘 페이스북에 공유
+                  </a>
+
+                  {/* 인스타그램 — 직접 공유 API 없음, 링크 복사 후 안내 */}
+                  <button
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(shareUrl);
+                        setInstaCopied(true);
+                        setTimeout(() => setInstaCopied(false), 3000);
+                      } catch { /* 무시 */ }
+                    }}
+                    className="w-full py-3 text-sm text-brown-700 bg-cream-100 rounded-xl hover:bg-cream-200 transition-colors flex flex-col items-center justify-center gap-0.5"
+                  >
+                    <span>📸 인스타그램 공유</span>
+                    {instaCopied
+                      ? <span className="text-xs text-brown-500">링크 복사됨! 인스타그램에 붙여넣기하세요</span>
+                      : <span className="text-xs text-brown-400">링크를 복사해서 붙여넣기하세요</span>
+                    }
+                  </button>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}

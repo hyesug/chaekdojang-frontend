@@ -1,40 +1,27 @@
 import type { MetadataRoute } from "next";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.chaekdojang.com";
+const siteUrl = (
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.chaekdojang.com"
+).replace(/\/$/, "");
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
 
-  return [
-    {
-      url: siteUrl,
-      lastModified: now,
-      changeFrequency: "daily",
-      priority: 1,
-    },
-    {
-      url: `${siteUrl}/search`,
-      lastModified: now,
-      changeFrequency: "weekly",
-      priority: 0.8,
-    },
-    {
-      url: `${siteUrl}/explore`,
-      lastModified: now,
-      changeFrequency: "weekly",
-      priority: 0.7,
-    },
-    {
-      url: `${siteUrl}/library`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.5,
-    },
-    {
-      url: `${siteUrl}/cs`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.3,
-    },
-  ];
+  const routes = [
+    { path: "", changeFrequency: "daily", priority: 1 },
+    { path: "/search", changeFrequency: "weekly", priority: 0.8 },
+    { path: "/explore", changeFrequency: "weekly", priority: 0.7 },
+    { path: "/cs", changeFrequency: "monthly", priority: 0.3 },
+  ] satisfies Array<{
+    path: string;
+    changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"];
+    priority: number;
+  }>;
+
+  return routes.map((route) => ({
+    url: `${siteUrl}${route.path}`,
+    lastModified: now,
+    changeFrequency: route.changeFrequency,
+    priority: route.priority,
+  }));
 }

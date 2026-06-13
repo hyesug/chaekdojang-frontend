@@ -10,10 +10,12 @@ const BASE = API_BASE;
 const PAGE_SIZE = 10;
 
 type FeedTab = "all" | "following";
+type SortType = "recent" | "rating";
 
 export default function FeedPage() {
   const router = useRouter();
   const [tab, setTab] = useState<FeedTab>("all");
+  const [sort, setSort] = useState<SortType>("recent");
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -34,12 +36,12 @@ export default function FeedPage() {
   }, []);
 
   /* 전체 피드 — 페이지 단위 로드 */
-  const loadAllPage = useCallback(async (pageNum: number) => {
+  const loadAllPage = useCallback(async (pageNum: number, sortType: SortType) => {
     if (pageNum === 0) setLoading(true);
     else setLoadingMore(true);
 
     try {
-      const res = await fetch(`${BASE}/api/reviews?page=${pageNum}&size=${PAGE_SIZE}`);
+      const res = await fetch(`${BASE}/api/reviews?page=${pageNum}&size=${PAGE_SIZE}&sort=${sortType}`);
       if (!res.ok) {
         setHasMore(false);
         return;
@@ -92,23 +94,23 @@ export default function FeedPage() {
     }
   }, []);
 
-  /* 탭 바뀔 때 — 상태 초기화 후 첫 페이지 로드 */
+  /* 탭 또는 정렬 바뀔 때 — 상태 초기화 후 첫 페이지 로드 */
   useEffect(() => {
     setReviews([]);
     setPage(0);
     setHasMore(true);
     if (tab === "all") {
-      loadAllPage(0);
+      loadAllPage(0, sort);
     } else {
       loadFollowing();
     }
-  }, [tab, loadAllPage, loadFollowing]);
+  }, [tab, sort, loadAllPage, loadFollowing]);
 
   /* page 증가 시 추가 로드 (전체 탭만) */
   useEffect(() => {
     if (page === 0 || tab !== "all") return;
-    loadAllPage(page);
-  }, [page, tab, loadAllPage]);
+    loadAllPage(page, sort);
+  }, [page, tab, sort, loadAllPage]);
 
   /* Intersection Observer — 스크롤 끝에 sentinel이 보이면 다음 페이지 */
   useEffect(() => {
@@ -164,6 +166,25 @@ export default function FeedPage() {
           </button>
         ))}
       </div>
+
+      {/* 전체 탭 — 정렬 선택 */}
+      {tab === "all" && (
+        <div className="flex gap-2 mb-4">
+          {([{ value: "recent", label: "최신순" }, { value: "rating", label: "⭐ 별점순" }] as const).map(({ value, label }) => (
+            <button
+              key={value}
+              onClick={() => setSort(value)}
+              className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
+                sort === value
+                  ? "bg-brown-600 text-white border-brown-600"
+                  : "bg-white text-brown-500 border-cream-300 hover:border-brown-400"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* 로딩 */}
       {loading && (

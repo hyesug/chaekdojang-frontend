@@ -119,7 +119,7 @@ export default function CustomerSupportPage() {
             <div className="text-center py-8">
               <p className="text-2xl mb-2">✅</p>
               <p className="text-brown-800 font-medium">문의가 접수되었어요</p>
-              <p className="text-sm text-brown-400 mt-1">답변은 이메일로 안내드려요</p>
+              <p className="text-sm text-brown-400 mt-1">답변은 내 문의 탭에서 확인하실 수 있어요</p>
               <button
                 onClick={() => setSuccess(false)}
                 className="mt-4 px-4 py-2 text-sm bg-brown-600 text-white rounded-xl hover:bg-brown-700"

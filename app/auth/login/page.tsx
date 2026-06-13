@@ -2,9 +2,9 @@
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { API_BASE } from "../../lib/api";
+import { OAUTH_BASE } from "../../lib/api";
 
-const BACKEND = API_BASE;
+const BACKEND = OAUTH_BASE;
 
 function LoginContent() {
   const searchParams = useSearchParams();

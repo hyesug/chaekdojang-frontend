@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { API_BASE } from "../lib/api";
 
@@ -13,40 +12,37 @@ interface InquirySummary {
 }
 
 export default function CustomerSupportPage() {
-  const router = useRouter();
   const [tab, setTab] = useState<"write" | "list">("write");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [guestName, setGuestName] = useState("");
-  const [guestEmail, setGuestEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [myList, setMyList] = useState<InquirySummary[]>([]);
   const [listLoading, setListLoading] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
 
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-  const isLoggedIn = !!token && token !== "undefined" && token !== "null";
+  useEffect(() => {
+    const t = localStorage.getItem("token");
+    const valid = t && t !== "undefined" && t !== "null" ? t : null;
+    setToken(valid);
+  }, []);
+
+  const isLoggedIn = !!token;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim() || !content.trim()) { setError("제목과 내용을 입력해주세요."); return; }
-    if (!isLoggedIn && (!guestName.trim() || !guestEmail.trim())) {
-      setError("비회원은 이름과 이메일을 입력해주세요."); return;
-    }
     setLoading(true); setError("");
     try {
       const res = await fetch(`${API_BASE}/api/inquiries`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(isLoggedIn ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ title, content, guestName: guestName || null, guestEmail: guestEmail || null }),
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ title, content }),
       });
       if (res.ok) {
         setSuccess(true);
-        setTitle(""); setContent(""); setGuestName(""); setGuestEmail("");
+        setTitle(""); setContent("");
       } else {
         setError("오류가 발생했어요. 다시 시도해주세요.");
       }
@@ -58,13 +54,11 @@ export default function CustomerSupportPage() {
   }
 
   async function loadMyList() {
+    if (!token) return;
     setListLoading(true);
     try {
-      const url = isLoggedIn
-        ? `${API_BASE}/api/inquiries/my`
-        : `${API_BASE}/api/inquiries/my?email=${encodeURIComponent(guestEmail)}`;
-      const res = await fetch(url, {
-        headers: isLoggedIn ? { Authorization: `Bearer ${token}` } : {},
+      const res = await fetch(`${API_BASE}/api/inquiries/my`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
         const json = await res.json();
@@ -76,8 +70,25 @@ export default function CustomerSupportPage() {
   }
 
   useEffect(() => {
-    if (tab === "list") loadMyList();
-  }, [tab]);
+    if (tab === "list" && token) loadMyList();
+  }, [tab, token]);
+
+  // 비로그인 안내 화면
+  if (token === null && typeof window !== "undefined") {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
+        <p className="text-2xl mb-3">📩</p>
+        <p className="text-brown-800 font-medium mb-1">문의는 회원만 가능해요</p>
+        <p className="text-sm text-brown-400 mb-6">로그인 후 문의를 남겨주세요</p>
+        <Link
+          href="/auth/login"
+          className="px-6 py-3 bg-brown-600 text-white rounded-xl text-sm font-medium hover:bg-brown-700 transition-colors"
+        >
+          로그인하기
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
@@ -116,24 +127,6 @@ export default function CustomerSupportPage() {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              {!isLoggedIn && (
-                <div className="flex gap-3">
-                  <input
-                    type="text"
-                    placeholder="이름"
-                    value={guestName}
-                    onChange={(e) => setGuestName(e.target.value)}
-                    className="flex-1 px-4 py-3 rounded-xl border border-cream-300 text-sm text-brown-800 placeholder-brown-300 focus:outline-none focus:border-brown-400"
-                  />
-                  <input
-                    type="email"
-                    placeholder="이메일"
-                    value={guestEmail}
-                    onChange={(e) => setGuestEmail(e.target.value)}
-                    className="flex-1 px-4 py-3 rounded-xl border border-cream-300 text-sm text-brown-800 placeholder-brown-300 focus:outline-none focus:border-brown-400"
-                  />
-                </div>
-              )}
               <input
                 type="text"
                 placeholder="제목"
@@ -164,23 +157,6 @@ export default function CustomerSupportPage() {
 
       {tab === "list" && (
         <div>
-          {!isLoggedIn && (
-            <div className="mb-4 flex gap-2">
-              <input
-                type="email"
-                placeholder="문의 시 입력한 이메일"
-                value={guestEmail}
-                onChange={(e) => setGuestEmail(e.target.value)}
-                className="flex-1 px-4 py-2 rounded-xl border border-cream-300 text-sm text-brown-800 placeholder-brown-300 focus:outline-none focus:border-brown-400"
-              />
-              <button
-                onClick={loadMyList}
-                className="px-4 py-2 text-sm bg-brown-600 text-white rounded-xl hover:bg-brown-700"
-              >
-                조회
-              </button>
-            </div>
-          )}
           {listLoading ? (
             <p className="text-center text-brown-300 py-8">불러오는 중...</p>
           ) : myList.length === 0 ? (
@@ -190,7 +166,7 @@ export default function CustomerSupportPage() {
               {myList.map((item) => (
                 <Link
                   key={item.id}
-                  href={`/cs/${item.id}${!isLoggedIn ? `?email=${encodeURIComponent(guestEmail)}` : ""}`}
+                  href={`/cs/${item.id}`}
                   className="bg-white rounded-2xl p-4 shadow-sm border border-cream-200 hover:border-brown-300 transition-colors"
                 >
                   <div className="flex items-center justify-between">

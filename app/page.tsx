@@ -11,43 +11,6 @@ const PAGE_SIZE = 10;
 
 type FeedTab = "all" | "following";
 
-/* 백엔드 연결 전 보여줄 샘플 데이터 */
-const MOCK_POSTS: Review[] = [
-  {
-    id: 1,
-    author: { nickname: "이서연", profileImage: null },
-    book: { title: "채식주의자", author: "한강", thumbnail: null },
-    rating: 5,
-    content:
-      "한강 작가의 문장은 언제나 나를 멈추게 한다. 이 책을 읽고 나서 한동안 아무 말도 하지 못했다. 채식을 선택한 영혜의 이야기지만, 결국 이것은 자유에 대한 이야기이고, 폭력에 대한 이야기다.",
-    likeCount: 12,
-    commentCount: 3,
-    createdAt: "2026-05-03",
-  },
-  {
-    id: 2,
-    author: { nickname: "김민준", profileImage: null },
-    book: { title: "아몬드", author: "손원평", thumbnail: null },
-    rating: 4,
-    content:
-      "감정을 느끼지 못하는 소년 윤재의 이야기. 처음에는 낯설고 어색했지만, 읽어나갈수록 이 소년이 배워가는 '감정'이 내게도 전해지는 느낌이었다.",
-    likeCount: 7,
-    commentCount: 1,
-    createdAt: "2026-04-28",
-  },
-  {
-    id: 3,
-    author: { nickname: "박지유", profileImage: null },
-    book: { title: "달러구트 꿈 백화점", author: "이미예", thumbnail: null },
-    rating: 4,
-    content:
-      "꿈을 파는 백화점이라는 아이디어가 정말 신선하다. 각 에피소드마다 따뜻한 이야기가 담겨 있어서 지친 하루 끝에 읽기 딱 좋은 책이었다.",
-    likeCount: 5,
-    commentCount: 0,
-    createdAt: "2026-04-20",
-  },
-];
-
 export default function FeedPage() {
   const router = useRouter();
   const [tab, setTab] = useState<FeedTab>("all");
@@ -78,7 +41,6 @@ export default function FeedPage() {
     try {
       const res = await fetch(`${BASE}/api/reviews?page=${pageNum}&size=${PAGE_SIZE}`);
       if (!res.ok) {
-        if (pageNum === 0) setReviews(MOCK_POSTS);
         return;
       }
       const json = await res.json();
@@ -86,11 +48,11 @@ export default function FeedPage() {
       const content: Review[] = json.data?.content ?? [];
       const last: boolean = json.data?.last ?? true;
       setReviews((prev) =>
-        pageNum === 0 ? (content.length > 0 ? content : MOCK_POSTS) : [...prev, ...content]
+        pageNum === 0 ? content : [...prev, ...content]
       );
       setHasMore(!last);
     } catch {
-      if (pageNum === 0) setReviews(MOCK_POSTS);
+      // 에러 시 빈 상태 유지
     } finally {
       setLoading(false);
       setLoadingMore(false);

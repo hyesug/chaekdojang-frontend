@@ -4,6 +4,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { API_BASE } from "../lib/api";
 
+async function deleteAccount(token: string) {
+  await fetch(`${API_BASE}/api/users/me`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
 export default function SetupNicknamePage() {
   const router = useRouter();
   const [nickname, setNickname] = useState("");
@@ -82,7 +89,12 @@ export default function SetupNicknamePage() {
           </button>
           <button
             type="button"
-            onClick={() => { localStorage.removeItem("token"); router.replace("/auth/login"); }}
+            onClick={async () => {
+              const token = localStorage.getItem("token");
+              if (token) await deleteAccount(token);
+              localStorage.removeItem("token");
+              router.replace("/auth/login");
+            }}
             className="w-full py-3 text-sm text-brown-400 hover:text-brown-600 transition-colors"
           >
             취소

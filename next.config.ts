@@ -15,10 +15,9 @@ const nextConfig: NextConfig = {
   // Vercel 서버가 EC2에 대신 요청 → Mixed Content 없음
   async rewrites() {
     return [
-      {
-        source: "/api/:path*",
-        destination: `${BACKEND_URL}/api/:path*`,
-      },
+      { source: "/api/:path*",            destination: `${BACKEND_URL}/api/:path*` },
+      { source: "/oauth2/:path*",         destination: `${BACKEND_URL}/oauth2/:path*` },
+      { source: "/login/oauth2/:path*",   destination: `${BACKEND_URL}/login/oauth2/:path*` },
     ];
   },
 };

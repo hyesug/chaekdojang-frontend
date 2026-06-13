@@ -41,6 +41,7 @@ export default function FeedPage() {
     try {
       const res = await fetch(`${BASE}/api/reviews?page=${pageNum}&size=${PAGE_SIZE}`);
       if (!res.ok) {
+        setHasMore(false);
         return;
       }
       const json = await res.json();

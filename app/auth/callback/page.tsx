@@ -15,7 +15,8 @@ function OAuthCallback() {
     if (token) {
       localStorage.setItem("token", token);
       window.dispatchEvent(new Event("auth-change"));
-      router.replace("/");
+      const setup = searchParams.get("setup");
+      router.replace(setup === "true" ? "/setup-nickname" : "/");
     } else if (error) {
       router.replace("/auth/login?error=oauth_failed");
     } else {

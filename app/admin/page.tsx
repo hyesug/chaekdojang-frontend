@@ -20,10 +20,16 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [unauthorized, setUnauthorized] = useState(false);
 
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-  const h = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+  function getToken() {
+    if (typeof window === "undefined") return null;
+    const t = localStorage.getItem("token");
+    return !t || t === "undefined" || t === "null" ? null : t;
+  }
 
   async function load() {
+    const token = getToken();
+    if (!token) { router.replace("/auth/login"); return; }
+    const h = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
     setLoading(true);
     try {
       if (tab === "users") {
@@ -47,9 +53,12 @@ export default function AdminPage() {
     } finally { setLoading(false); }
   }
 
-  useEffect(() => { if (!token) { router.replace("/auth/login"); return; } load(); }, [tab]);
+  useEffect(() => { load(); }, [tab]);
 
   async function setRole(userId: number, role: string) {
+    const token = getToken();
+    if (!token) return;
+    const h = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
     await fetch(`${API_BASE}/api/admin/users/${userId}/role`, {
       method: "PATCH", headers: h, body: JSON.stringify({ role }),
     });
@@ -57,6 +66,9 @@ export default function AdminPage() {
   }
 
   async function toggleHidden(reviewId: number, hidden: boolean) {
+    const token = getToken();
+    if (!token) return;
+    const h = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
     await fetch(`${API_BASE}/api/admin/reviews/${reviewId}/hidden`, {
       method: "PATCH", headers: h, body: JSON.stringify({ hidden }),
     });

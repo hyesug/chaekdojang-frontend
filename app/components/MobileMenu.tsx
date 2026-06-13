@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import AdminNavLink from "./AdminNavLink";
 
 type NavLink = { href: string; label: string };
 
@@ -57,6 +58,7 @@ export default function MobileMenu({ links }: { links: NavLink[] }) {
               {label}
             </Link>
           ))}
+          <AdminNavLink onClick={() => setOpen(false)} />
           <hr className="border-cream-200 my-1" />
           {loggedIn ? (
             <>

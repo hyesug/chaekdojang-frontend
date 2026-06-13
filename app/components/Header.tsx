@@ -2,6 +2,7 @@ import Link from "next/link";
 import MobileMenu from "./MobileMenu";
 import AuthButtons from "./AuthButtons";
 import NotificationBell from "./NotificationBell";
+import AdminNavLink from "./AdminNavLink";
 
 const navLinks = [
   { href: "/", label: "피드" },
@@ -38,8 +39,9 @@ export default function Header() {
           ))}
         </nav>
 
-        {/* 우측: 알림 + 로그인 버튼 */}
-        <div className="hidden md:flex items-center gap-1 flex-none ml-auto">
+        {/* 우측: 관리자 + 알림 + 로그인 버튼 */}
+        <div className="hidden md:flex items-center gap-3 flex-none ml-auto">
+          <AdminNavLink />
           <NotificationBell />
           <AuthButtons />
         </div>

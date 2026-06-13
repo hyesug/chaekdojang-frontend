@@ -266,7 +266,7 @@ export default function FeedPage() {
       )}
 
       {/* 빈 상태 */}
-      {!loading && reviews.length === 0 && !(tab === "following" && !loggedIn) && (
+      {!loading && reviews.length === 0 && !(tab === "following" && !loggedIn) && !(tab === "taste" && loggedIn) && (
         <div className="text-center py-24 text-brown-400">
           <p className="text-5xl mb-4">📖</p>
           <p className="font-medium">

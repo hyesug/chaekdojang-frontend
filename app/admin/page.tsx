@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { API_BASE } from "../lib/api";
@@ -19,6 +19,11 @@ export default function AdminPage() {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [loading, setLoading] = useState(false);
   const [unauthorized, setUnauthorized] = useState(false);
+  const [reviewPage, setReviewPage] = useState(0);
+  const [reviewTotalPages, setReviewTotalPages] = useState(1);
+  const [reviewAuthorQ, setReviewAuthorQ] = useState("");
+  const [reviewTitleQ, setReviewTitleQ] = useState("");
+  const appliedSearch = useRef({ author: "", title: "" });
 
   function getToken() {
     if (typeof window === "undefined") return null;
@@ -29,7 +34,7 @@ export default function AdminPage() {
   async function load() {
     const token = getToken();
     if (!token) { router.replace("/auth/login"); return; }
-    const h = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+    const h = { Authorization: `Bearer ${token}` };
     setLoading(true);
     try {
       if (tab === "users") {
@@ -37,13 +42,6 @@ export default function AdminPage() {
         if (r.status === 403) { setUnauthorized(true); return; }
         const j = await r.json();
         setUsers(j.data?.content ?? []);
-      } else if (tab === "reviews") {
-        const [rv, st] = await Promise.all([
-          fetch(`${API_BASE}/api/admin/reviews?size=50`, { headers: h }).then((r) => r.json()),
-          fetch(`${API_BASE}/api/admin/reviews/stats`, { headers: h }).then((r) => r.json()),
-        ]);
-        setReviews(rv.data?.content ?? []);
-        setBookStats(st.data ?? []);
       } else {
         const r = await fetch(`${API_BASE}/api/admin/inquiries?size=50`, { headers: h });
         if (r.status === 403) { setUnauthorized(true); return; }
@@ -53,7 +51,36 @@ export default function AdminPage() {
     } finally { setLoading(false); }
   }
 
-  useEffect(() => { load(); }, [tab]);
+  async function loadReviews(page: number, author: string, title: string) {
+    const token = getToken();
+    if (!token) { router.replace("/auth/login"); return; }
+    const h = { Authorization: `Bearer ${token}` };
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ page: String(page), size: "20" });
+      if (author) params.set("author", author);
+      if (title) params.set("title", title);
+      const [rv, st] = await Promise.all([
+        fetch(`${API_BASE}/api/admin/reviews?${params}`, { headers: h }).then((r) => r.json()),
+        fetch(`${API_BASE}/api/admin/reviews/stats`, { headers: h }).then((r) => r.json()),
+      ]);
+      setReviews(rv.data?.content ?? []);
+      setReviewTotalPages(rv.data?.totalPages ?? 1);
+      setReviewPage(page);
+      setBookStats(st.data ?? []);
+    } finally { setLoading(false); }
+  }
+
+  useEffect(() => {
+    if (tab === "reviews") {
+      appliedSearch.current = { author: "", title: "" };
+      setReviewAuthorQ("");
+      setReviewTitleQ("");
+      loadReviews(0, "", "");
+    } else {
+      load();
+    }
+  }, [tab]);
 
   async function setRole(userId: number, role: string) {
     const token = getToken();
@@ -72,7 +99,13 @@ export default function AdminPage() {
     await fetch(`${API_BASE}/api/admin/reviews/${reviewId}/hidden`, {
       method: "PATCH", headers: h, body: JSON.stringify({ hidden }),
     });
-    load();
+    loadReviews(reviewPage, appliedSearch.current.author, appliedSearch.current.title);
+  }
+
+  function handleReviewSearch(e: React.FormEvent) {
+    e.preventDefault();
+    appliedSearch.current = { author: reviewAuthorQ, title: reviewTitleQ };
+    loadReviews(0, reviewAuthorQ, reviewTitleQ);
   }
 
   if (unauthorized) return (
@@ -166,6 +199,30 @@ export default function AdminPage() {
               </div>
             </div>
           )}
+          {/* 검색 */}
+          <form onSubmit={handleReviewSearch} className="flex gap-2">
+            <input
+              value={reviewAuthorQ}
+              onChange={(e) => setReviewAuthorQ(e.target.value)}
+              placeholder="작성자 닉네임"
+              className="flex-1 px-3 py-2 text-sm rounded-xl border border-cream-300 bg-white focus:outline-none focus:border-brown-400 transition"
+            />
+            <input
+              value={reviewTitleQ}
+              onChange={(e) => setReviewTitleQ(e.target.value)}
+              placeholder="책 제목"
+              className="flex-1 px-3 py-2 text-sm rounded-xl border border-cream-300 bg-white focus:outline-none focus:border-brown-400 transition"
+            />
+            <button type="submit" className="px-4 py-2 text-sm bg-brown-600 text-white rounded-xl hover:bg-brown-700 transition-colors">검색</button>
+            {(appliedSearch.current.author || appliedSearch.current.title) && (
+              <button type="button" onClick={() => {
+                setReviewAuthorQ(""); setReviewTitleQ("");
+                appliedSearch.current = { author: "", title: "" };
+                loadReviews(0, "", "");
+              }} className="px-3 py-2 text-sm border border-cream-300 text-brown-400 rounded-xl hover:bg-cream-50 transition-colors">초기화</button>
+            )}
+          </form>
+
           <div className="bg-white rounded-2xl shadow-sm border border-cream-200 overflow-hidden">
             <table className="w-full text-sm">
               <thead className="bg-cream-100">
@@ -195,9 +252,29 @@ export default function AdminPage() {
                     </td>
                   </tr>
                 ))}
+                {reviews.length === 0 && (
+                  <tr><td colSpan={5} className="text-center py-8 text-brown-300">검색 결과가 없어요</td></tr>
+                )}
               </tbody>
             </table>
           </div>
+
+          {/* 페이징 */}
+          {reviewTotalPages > 1 && (
+            <div className="flex items-center justify-center gap-2">
+              <button
+                onClick={() => loadReviews(reviewPage - 1, appliedSearch.current.author, appliedSearch.current.title)}
+                disabled={reviewPage === 0}
+                className="px-3 py-1.5 text-sm border border-cream-300 rounded-lg text-brown-500 hover:bg-cream-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >← 이전</button>
+              <span className="text-sm text-brown-400">{reviewPage + 1} / {reviewTotalPages}</span>
+              <button
+                onClick={() => loadReviews(reviewPage + 1, appliedSearch.current.author, appliedSearch.current.title)}
+                disabled={reviewPage >= reviewTotalPages - 1}
+                className="px-3 py-1.5 text-sm border border-cream-300 rounded-lg text-brown-500 hover:bg-cream-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >다음 →</button>
+            </div>
+          )}
         </div>
       )}
 

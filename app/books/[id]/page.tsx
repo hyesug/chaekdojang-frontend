@@ -298,14 +298,8 @@ export default function BookDetailPage() {
         </div>
       </div>
 
-      {/* 채팅방 입장 버튼 */}
-      <Link
-        href={`/chat/${bookId}`}
-        className="flex items-center justify-center gap-2 w-full py-3 mb-8 bg-white border border-cream-200 rounded-2xl text-sm text-brown-600 hover:bg-cream-50 transition-colors"
-      >
-        <span>💬</span>
-        <span>이 책 읽은 사람들과 대화하기</span>
-      </Link>
+      {/* 채팅방 입장 버튼 — v1.0 이후 오픈 예정 */}
+      {/* <Link href={`/chat/${bookId}`} ...> */}
 
       {/* 독후감 목록 */}
       <h2 className="font-serif text-lg font-bold text-brown-800 mb-4">

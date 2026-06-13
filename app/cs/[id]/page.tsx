@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { API_BASE } from "../../lib/api";
 
 interface Comment { id: number; authorName: string; content: string; createdAt: string; }
 interface InquiryDetail { id: number; title: string; content: string; authorName: string; createdAt: string; comments: Comment[]; }
 
-export default function InquiryDetailPage({ params }: { params: { id: string } }) {
+export default function InquiryDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id: inquiryId } = use(params);
   const router = useRouter();
   const searchParams = useSearchParams();
   const guestEmail = searchParams.get("email") ?? "";
@@ -28,15 +29,15 @@ export default function InquiryDetailPage({ params }: { params: { id: string } }
   });
 
   useEffect(() => {
-    fetch(url(params.id), { headers: headers() })
+    fetch(url(inquiryId), { headers: headers() })
       .then((r) => r.json())
       .then((j) => { setInquiry(j.data); setEditTitle(j.data?.title ?? ""); setEditContent(j.data?.content ?? ""); })
       .catch(() => setError("조회 권한이 없거나 존재하지 않는 문의입니다."))
       .finally(() => setLoading(false));
-  }, [params.id]);
+  }, [inquiryId]);
 
   async function handleUpdate() {
-    const res = await fetch(url(params.id), {
+    const res = await fetch(url(inquiryId), {
       method: "PATCH", headers: headers(),
       body: JSON.stringify({ title: editTitle, content: editContent }),
     });
@@ -45,7 +46,7 @@ export default function InquiryDetailPage({ params }: { params: { id: string } }
 
   async function handleDelete() {
     if (!confirm("문의를 삭제할까요?")) return;
-    const res = await fetch(url(params.id), { method: "DELETE", headers: headers() });
+    const res = await fetch(url(inquiryId), { method: "DELETE", headers: headers() });
     if (res.ok) router.replace("/cs");
   }
 

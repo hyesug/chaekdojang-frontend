@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { API_BASE } from "../../../lib/api";
 
 interface Comment { id: number; authorName: string; content: string; createdAt: string; }
 interface InquiryDetail { id: number; title: string; content: string; authorName: string; createdAt: string; comments: Comment[]; }
 
-export default function AdminInquiryDetailPage({ params }: { params: { id: string } }) {
+export default function AdminInquiryDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id: inquiryId } = use(params);
   const router = useRouter();
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
   const h = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
@@ -18,7 +19,7 @@ export default function AdminInquiryDetailPage({ params }: { params: { id: strin
   const [submitting, setSubmitting] = useState(false);
 
   async function load() {
-    const r = await fetch(`${API_BASE}/api/admin/inquiries/${params.id}`, { headers: h });
+    const r = await fetch(`${API_BASE}/api/admin/inquiries/${inquiryId}`, { headers: h });
     if (r.status === 403) { router.replace("/admin"); return; }
     const j = await r.json();
     setInquiry(j.data);
@@ -31,7 +32,7 @@ export default function AdminInquiryDetailPage({ params }: { params: { id: strin
     e.preventDefault();
     if (!comment.trim()) return;
     setSubmitting(true);
-    const r = await fetch(`${API_BASE}/api/admin/inquiries/${params.id}/comments`, {
+    const r = await fetch(`${API_BASE}/api/admin/inquiries/${inquiryId}/comments`, {
       method: "POST", headers: h, body: JSON.stringify({ content: comment }),
     });
     if (r.ok) { setComment(""); load(); }

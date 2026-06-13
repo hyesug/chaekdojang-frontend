@@ -292,6 +292,12 @@ export default function SearchPage() {
                   {/* 액션 버튼 */}
                   <div className="flex flex-wrap gap-2 mt-3">
                     <Link
+                      href={`/books/${book.id}`}
+                      className="px-3 py-1.5 text-xs border border-brown-300 text-brown-600 rounded-full hover:border-brown-500 transition-colors"
+                    >
+                      독후감 보기
+                    </Link>
+                    <Link
                       href={`/write?bookId=${book.id}&title=${encodedTitle}&author=${encodeURIComponent(book.author)}&publisher=${encodeURIComponent(book.publisher)}${book.thumbnail ? `&thumbnail=${encodeURIComponent(book.thumbnail)}` : ""}`}
                       className="px-3 py-1.5 text-xs bg-brown-600 text-white rounded-full hover:bg-brown-700 transition-colors"
                     >

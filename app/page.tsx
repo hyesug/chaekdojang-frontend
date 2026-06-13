@@ -9,7 +9,7 @@ import { API_BASE } from "./lib/api";
 const BASE = API_BASE;
 const PAGE_SIZE = 10;
 
-type FeedTab = "all" | "following";
+type FeedTab = "all" | "following" | "taste";
 type SortType = "recent" | "rating" | "popular";
 
 export default function FeedPage() {
@@ -94,6 +94,33 @@ export default function FeedPage() {
     }
   }, []);
 
+  /* 취향 피드 — 단일 로드 */
+  const loadTaste = useCallback(async () => {
+    setLoading(true);
+    const token = localStorage.getItem("token");
+    const hasToken = !!token && token !== "undefined" && token !== "null";
+    if (!hasToken) { setReviews([]); setLoading(false); return; }
+    try {
+      const res = await fetch(`${BASE}/api/reviews/feed/taste`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.status === 401) {
+        localStorage.removeItem("token");
+        setLoggedIn(false);
+        setReviews([]);
+      } else if (res.ok) {
+        const json = await res.json();
+        setReviews(json.data ?? []);
+      } else {
+        setReviews([]);
+      }
+    } catch {
+      setReviews([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   /* 탭 또는 정렬 바뀔 때 — 상태 초기화 후 첫 페이지 로드 */
   useEffect(() => {
     setReviews([]);
@@ -101,10 +128,12 @@ export default function FeedPage() {
     setHasMore(true);
     if (tab === "all") {
       loadAllPage(0, sort);
-    } else {
+    } else if (tab === "following") {
       loadFollowing();
+    } else {
+      loadTaste();
     }
-  }, [tab, sort, loadAllPage, loadFollowing]);
+  }, [tab, sort, loadAllPage, loadFollowing, loadTaste]);
 
   /* page 증가 시 추가 로드 (전체 탭만) */
   useEffect(() => {
@@ -145,12 +174,13 @@ export default function FeedPage() {
         </Link>
       </div>
 
-      {/* 탭: 전체 / 팔로잉 */}
+      {/* 탭: 전체 / 팔로잉 / 취향 */}
       <div className="flex gap-1 mb-6 bg-cream-200 rounded-xl p-1">
         {(
           [
             { value: "all", label: "📚 전체" },
             { value: "following", label: "❤️ 팔로잉" },
+            { value: "taste", label: "✨ 취향" },
           ] as const
         ).map(({ value, label }) => (
           <button
@@ -191,20 +221,31 @@ export default function FeedPage() {
         <div className="text-center py-12 text-brown-400">불러오는 중...</div>
       )}
 
-      {/* 팔로잉 탭 — 미로그인 안내 */}
-      {!loading && tab === "following" && !loggedIn && (
+      {/* 취향/팔로잉 탭 — 미로그인 안내 */}
+      {!loading && (tab === "following" || tab === "taste") && !loggedIn && (
         <div className="text-center py-16 text-brown-400">
           <p className="text-4xl mb-3">🔒</p>
           <p className="font-medium text-brown-600 mb-1">
-            팔로잉 피드는 로그인 후 이용할 수 있어요
+            로그인 후 이용할 수 있어요
           </p>
-          <p className="text-sm mb-6">팔로우한 사람들의 독후감만 모아볼 수 있어요</p>
+          <p className="text-sm mb-6">
+            {tab === "taste" ? "취향이 비슷한 독자들의 독후감을 모아볼 수 있어요" : "팔로우한 사람들의 독후감만 모아볼 수 있어요"}
+          </p>
           <Link
             href="/auth/login"
             className="inline-block px-6 py-2.5 bg-brown-600 text-white rounded-full text-sm font-medium hover:bg-brown-700 transition-colors"
           >
             로그인하기
           </Link>
+        </div>
+      )}
+
+      {/* 취향 탭 — 로그인했지만 추천 없음 */}
+      {!loading && tab === "taste" && loggedIn && reviews.length === 0 && (
+        <div className="text-center py-16 text-brown-400">
+          <p className="text-4xl mb-3">✨</p>
+          <p className="font-medium text-brown-600 mb-1">아직 추천할 독자가 없어요</p>
+          <p className="text-sm">책을 더 읽고 독후감을 남기면 취향이 맞는 독자를 찾아드려요</p>
         </div>
       )}
 

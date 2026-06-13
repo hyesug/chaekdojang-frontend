@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import ReviewCard, { type Review } from "../components/ReviewCard";
@@ -64,6 +64,11 @@ export default function ProfilePage() {
   const [lifeBookSearching, setLifeBookSearching] = useState(false);
   const [showLifeBookSearch, setShowLifeBookSearch] = useState(false);
   const [recommendations, setRecommendations] = useState<RecommendedUser[]>([]);
+  const [reviewSearchInput, setReviewSearchInput] = useState("");
+  const [reviewPage, setReviewPage] = useState(0);
+  const [reviewHasMore, setReviewHasMore] = useState(false);
+  const [reviewLoadingMore, setReviewLoadingMore] = useState(false);
+  const reviewSearchRef = useRef<string>("");
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -94,7 +99,7 @@ export default function ProfilePage() {
           bio: data.bio ?? "",
           profileImage: data.profileImage ?? "",
         });
-        loadReviews(data.id, token);
+        loadReviews(token, 0, "");
         loadStats(token);
         loadRecommendations(token);
       }
@@ -133,18 +138,42 @@ export default function ProfilePage() {
     }
   }
 
-  async function loadReviews(userId: number, token: string) {
+  async function loadReviews(token: string, page: number, q: string) {
+    if (page === 0) setReviews([]);
+    else setReviewLoadingMore(true);
     try {
-      const res = await fetch(`${BASE}/api/users/${userId}/reviews`, {
+      const params = new URLSearchParams({ page: String(page), size: "10" });
+      if (q.trim()) params.set("q", q.trim());
+      const res = await fetch(`${BASE}/api/users/me/reviews?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
         const json = await res.json();
-        setReviews(json.data ?? []);
+        const content: Review[] = json.data?.content ?? [];
+        const last: boolean = json.data?.last ?? true;
+        setReviews((prev) => page === 0 ? content : [...prev, ...content]);
+        setReviewHasMore(!last);
+        setReviewPage(page);
       }
     } catch {
       /* 무시 */
+    } finally {
+      setReviewLoadingMore(false);
     }
+  }
+
+  function handleReviewSearch(e: React.FormEvent) {
+    e.preventDefault();
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    reviewSearchRef.current = reviewSearchInput;
+    loadReviews(token, 0, reviewSearchInput);
+  }
+
+  function handleLoadMore() {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    loadReviews(token, reviewPage + 1, reviewSearchRef.current);
   }
 
   async function searchLifeBook(q: string) {
@@ -592,24 +621,70 @@ export default function ProfilePage() {
       )}
 
       {/* 내 독후감 목록 */}
-      <h2 className="font-serif text-lg font-bold text-brown-800 mb-4">내 독후감</h2>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="font-serif text-lg font-bold text-brown-800">내 독후감</h2>
+      </div>
+
+      {/* 검색 */}
+      <form onSubmit={handleReviewSearch} className="flex gap-2 mb-4">
+        <input
+          value={reviewSearchInput}
+          onChange={(e) => setReviewSearchInput(e.target.value)}
+          placeholder="책 제목 또는 내용 검색"
+          className="flex-1 px-3 py-2 text-sm rounded-xl border border-cream-300 bg-white focus:outline-none focus:border-brown-400 transition"
+        />
+        <button
+          type="submit"
+          className="px-3 py-2 text-sm bg-brown-600 text-white rounded-xl hover:bg-brown-700 transition-colors"
+        >
+          검색
+        </button>
+        {reviewSearchRef.current && (
+          <button
+            type="button"
+            onClick={() => {
+              setReviewSearchInput("");
+              reviewSearchRef.current = "";
+              const token = localStorage.getItem("token");
+              if (token) loadReviews(token, 0, "");
+            }}
+            className="px-3 py-2 text-sm border border-cream-300 text-brown-400 rounded-xl hover:bg-cream-50 transition-colors"
+          >
+            초기화
+          </button>
+        )}
+      </form>
+
       {reviews.length === 0 ? (
         <div className="text-center py-12 text-brown-400">
           <p className="text-4xl mb-3">📖</p>
-          <p>아직 독후감이 없어요</p>
-          <Link
-            href="/write"
-            className="inline-block mt-4 text-sm text-brown-500 underline underline-offset-2"
-          >
-            첫 독후감 쓰기
-          </Link>
+          <p>{reviewSearchRef.current ? `"${reviewSearchRef.current}" 검색 결과가 없어요` : "아직 독후감이 없어요"}</p>
+          {!reviewSearchRef.current && (
+            <Link
+              href="/write"
+              className="inline-block mt-4 text-sm text-brown-500 underline underline-offset-2"
+            >
+              첫 독후감 쓰기
+            </Link>
+          )}
         </div>
       ) : (
-        <div className="flex flex-col gap-4">
-          {reviews.map((post) => (
-            <ReviewCard key={post.id} post={post} />
-          ))}
-        </div>
+        <>
+          <div className="flex flex-col gap-4">
+            {reviews.map((post) => (
+              <ReviewCard key={post.id} post={post} />
+            ))}
+          </div>
+          {reviewHasMore && (
+            <button
+              onClick={handleLoadMore}
+              disabled={reviewLoadingMore}
+              className="w-full mt-4 py-3 text-sm text-brown-500 border border-cream-300 rounded-xl hover:bg-cream-50 transition-colors disabled:opacity-50"
+            >
+              {reviewLoadingMore ? "불러오는 중..." : "더보기"}
+            </button>
+          )}
+        </>
       )}
     </div>
   );

@@ -44,10 +44,12 @@ export default function CustomerSupportPage() {
         setSuccess(true);
         setTitle(""); setContent("");
       } else {
-        setError("오류가 발생했어요. 다시 시도해주세요.");
+        const body = await res.json().catch(() => null);
+        const msg = body?.message ?? body?.error ?? null;
+        setError(msg ? `오류: ${msg} (${res.status})` : `오류가 발생했어요. (HTTP ${res.status})`);
       }
-    } catch {
-      setError("네트워크 오류가 발생했어요.");
+    } catch (err) {
+      setError(`네트워크 오류가 발생했어요. (${err instanceof Error ? err.message : "unknown"})`);
     } finally {
       setLoading(false);
     }

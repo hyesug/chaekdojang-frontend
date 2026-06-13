@@ -17,16 +17,18 @@ const nanumMyeongjo = Nanum_Myeongjo({
   display: "swap",
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.chaekdojang.com";
+
 export const metadata: Metadata = {
-  metadataBase: new URL("https://www.chaekingam.com"),
+  metadataBase: new URL(siteUrl),
   title: {
-    default: "책인감 - 독후감 쓰고 책 취향을 나누는 독서 SNS",
-    template: "%s | 책인감",
+    default: "책도장 - 독후감 쓰고 책 취향을 나누는 독서 SNS",
+    template: "%s | 책도장",
   },
   description:
-    "책인감은 책을 읽고 난 감상을 기록하고, 다른 사람의 독후감을 보며 책 취향을 나눌 수 있는 독서 SNS입니다.",
+    "책도장은 책을 읽고 난 감상을 기록하고, 다른 사람의 독후감을 보며 책 취향을 나눌 수 있는 독서 SNS입니다.",
   keywords: [
-    "책인감",
+    "책도장",
     "독서 SNS",
     "독후감",
     "독서 기록",
@@ -41,15 +43,15 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "ko_KR",
-    url: "https://www.chaekingam.com",
-    siteName: "책인감",
-    title: "책인감 - 독후감 쓰고 책 취향을 나누는 독서 SNS",
+    url: siteUrl,
+    siteName: "책도장",
+    title: "책도장 - 독후감 쓰고 책 취향을 나누는 독서 SNS",
     description:
       "책을 읽고 난 감상을 기록하고, 다른 사람의 독후감을 보며 책 취향을 나누는 독서 SNS입니다.",
   },
   twitter: {
     card: "summary",
-    title: "책인감 - 독후감 쓰고 책 취향을 나누는 독서 SNS",
+    title: "책도장 - 독후감 쓰고 책 취향을 나누는 독서 SNS",
     description:
       "책을 읽고 난 감상을 기록하고, 다른 사람의 독후감을 보며 책 취향을 나누는 독서 SNS입니다.",
   },
@@ -76,9 +78,9 @@ export default function RootLayout({
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: "책인감",
-    alternateName: "Chaekingam",
-    url: "https://www.chaekingam.com",
+    name: "책도장",
+    alternateName: "Chaekdojang",
+    url: siteUrl,
     description:
       "책을 읽고 난 감상을 기록하고, 다른 사람의 독후감을 보며 책 취향을 나누는 독서 SNS입니다.",
     inLanguage: "ko-KR",
@@ -95,7 +97,7 @@ export default function RootLayout({
         <Header />
         <main className="flex-1">{children}</main>
         <footer className="py-8 text-center text-sm text-brown-400 border-t border-cream-200">
-          © 2026 책인감 — 책과 함께하는 일상
+          © 2026 책도장 — 책과 함께하는 일상
         </footer>
       </body>
     </html>

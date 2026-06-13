@@ -63,7 +63,7 @@ export default function SetupNicknamePage() {
         <div className="text-center mb-8">
           <p className="text-3xl mb-3">📚</p>
           <h1 className="text-xl font-bold text-brown-800">닉네임을 설정해주세요</h1>
-          <p className="text-sm text-brown-400 mt-1">책인감에서 사용할 이름이에요</p>
+          <p className="text-sm text-brown-400 mt-1">책도장에서 사용할 이름이에요</p>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">

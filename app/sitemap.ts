@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const siteUrl = "https://www.chaekingam.com";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.chaekdojang.com";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();

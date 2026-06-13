@@ -3,7 +3,7 @@
 /* 다크모드를 class 방식으로 변경 → .dark 클래스가 없으면 절대 발동 안 함 */
 @variant dark (&:is(.dark *));
 
-/* 책인감 디자인 토큰: 따뜻한 크림·브라운 계열 */
+/* 책도장 디자인 토큰: 따뜻한 크림·브라운 계열 */
 :root {
   color-scheme: light;        /* 브라우저 기본 다크모드 UI 방지 */
   --font-sans-kr: '';

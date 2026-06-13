@@ -22,7 +22,7 @@ export default function Header() {
           href="/"
           className="font-serif text-2xl font-bold text-brown-700 tracking-tight flex-none"
         >
-          책인감
+          책도장
         </Link>
 
         {/* 데스크탑 내비게이션 — flex-1로 남은 공간 차지, 내부에서 가운데 정렬 */}

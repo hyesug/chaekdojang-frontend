@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { API_BASE } from "../lib/api";
@@ -23,7 +23,7 @@ export default function AdminPage() {
   const [reviewTotalPages, setReviewTotalPages] = useState(1);
   const [reviewAuthorQ, setReviewAuthorQ] = useState("");
   const [reviewTitleQ, setReviewTitleQ] = useState("");
-  const appliedSearch = useRef({ author: "", title: "" });
+  const [appliedSearch, setAppliedSearch] = useState({ author: "", title: "" });
 
   function getToken() {
     if (typeof window === "undefined") return null;
@@ -73,7 +73,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (tab === "reviews") {
-      appliedSearch.current = { author: "", title: "" };
+      setAppliedSearch({ author: "", title: "" });
       setReviewAuthorQ("");
       setReviewTitleQ("");
       loadReviews(0, "", "");
@@ -99,12 +99,12 @@ export default function AdminPage() {
     await fetch(`${API_BASE}/api/admin/reviews/${reviewId}/hidden`, {
       method: "PATCH", headers: h, body: JSON.stringify({ hidden }),
     });
-    loadReviews(reviewPage, appliedSearch.current.author, appliedSearch.current.title);
+    loadReviews(reviewPage, appliedSearch.author, appliedSearch.title);
   }
 
   function handleReviewSearch(e: React.FormEvent) {
     e.preventDefault();
-    appliedSearch.current = { author: reviewAuthorQ, title: reviewTitleQ };
+    setAppliedSearch({ author: reviewAuthorQ, title: reviewTitleQ });
     loadReviews(0, reviewAuthorQ, reviewTitleQ);
   }
 
@@ -214,10 +214,10 @@ export default function AdminPage() {
               className="flex-1 px-3 py-2 text-sm rounded-xl border border-cream-300 bg-white focus:outline-none focus:border-brown-400 transition"
             />
             <button type="submit" className="px-4 py-2 text-sm bg-brown-600 text-white rounded-xl hover:bg-brown-700 transition-colors">검색</button>
-            {(appliedSearch.current.author || appliedSearch.current.title) && (
+            {(appliedSearch.author || appliedSearch.title) && (
               <button type="button" onClick={() => {
                 setReviewAuthorQ(""); setReviewTitleQ("");
-                appliedSearch.current = { author: "", title: "" };
+                setAppliedSearch({ author: "", title: "" });
                 loadReviews(0, "", "");
               }} className="px-3 py-2 text-sm border border-cream-300 text-brown-400 rounded-xl hover:bg-cream-50 transition-colors">초기화</button>
             )}
@@ -263,13 +263,13 @@ export default function AdminPage() {
           {reviewTotalPages > 1 && (
             <div className="flex items-center justify-center gap-2">
               <button
-                onClick={() => loadReviews(reviewPage - 1, appliedSearch.current.author, appliedSearch.current.title)}
+                onClick={() => loadReviews(reviewPage - 1, appliedSearch.author, appliedSearch.title)}
                 disabled={reviewPage === 0}
                 className="px-3 py-1.5 text-sm border border-cream-300 rounded-lg text-brown-500 hover:bg-cream-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >← 이전</button>
               <span className="text-sm text-brown-400">{reviewPage + 1} / {reviewTotalPages}</span>
               <button
-                onClick={() => loadReviews(reviewPage + 1, appliedSearch.current.author, appliedSearch.current.title)}
+                onClick={() => loadReviews(reviewPage + 1, appliedSearch.author, appliedSearch.title)}
                 disabled={reviewPage >= reviewTotalPages - 1}
                 className="px-3 py-1.5 text-sm border border-cream-300 rounded-lg text-brown-500 hover:bg-cream-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >다음 →</button>

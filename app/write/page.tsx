@@ -152,9 +152,9 @@ function WriteContent() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
+    <div className="max-w-2xl mx-auto px-4 py-6 sm:py-8 pb-28 sm:pb-8">
       {/* 페이지 헤더 */}
-      <div className="flex items-center gap-4 mb-8">
+      <div className="flex items-center gap-4 mb-5">
         <Link href="/" className="text-sm text-brown-400 hover:text-brown-600 transition-colors">
           ← 피드로
         </Link>
@@ -163,7 +163,7 @@ function WriteContent() {
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         {/* STEP 1: 책 검색 */}
-        <section className="bg-white rounded-2xl border border-cream-200 p-6 shadow-sm">
+        <section className="bg-white rounded-lg border border-cream-200 p-5 sm:p-6 shadow-sm">
           <h2 className="font-serif text-lg font-bold text-brown-700 mb-4">
             1. 어떤 책을 읽었나요?
           </h2>
@@ -193,7 +193,7 @@ function WriteContent() {
           ) : (
             <>
               {/* 검색 입력 */}
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="text"
                   value={query}
@@ -244,7 +244,7 @@ function WriteContent() {
         </section>
 
         {/* STEP 2: 별점 */}
-        <section className="bg-white rounded-2xl border border-cream-200 p-6 shadow-sm">
+        <section className="bg-white rounded-lg border border-cream-200 p-5 sm:p-6 shadow-sm">
           <h2 className="font-serif text-lg font-bold text-brown-700 mb-4">
             2. 별점을 매겨주세요
           </h2>
@@ -252,7 +252,7 @@ function WriteContent() {
         </section>
 
         {/* STEP 3: 독후감 본문 */}
-        <section className="bg-white rounded-2xl border border-cream-200 p-6 shadow-sm">
+        <section className="bg-white rounded-lg border border-cream-200 p-5 sm:p-6 shadow-sm">
           <h2 className="font-serif text-lg font-bold text-brown-700 mb-4">
             3. 독후감을 남겨주세요
           </h2>
@@ -260,8 +260,8 @@ function WriteContent() {
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="이 책을 읽고 어떤 생각이 드셨나요? 기억에 남는 문장, 감상, 추천 이유 등을 자유롭게 적어주세요."
-            rows={8}
-            className="w-full px-4 py-3 rounded-xl border border-cream-300 text-sm text-brown-800 bg-cream-50 placeholder:text-brown-300 focus:outline-none focus:border-brown-400 focus:ring-2 focus:ring-brown-100 transition resize-none leading-relaxed"
+            rows={10}
+            className="w-full min-h-[42vh] sm:min-h-0 px-4 py-3 rounded-xl border border-cream-300 text-base sm:text-sm text-brown-800 bg-cream-50 placeholder:text-brown-300 focus:outline-none focus:border-brown-400 focus:ring-2 focus:ring-brown-100 transition resize-none leading-relaxed"
           />
           <p className="mt-1.5 text-xs text-brown-300 text-right">{content.length}자</p>
         </section>
@@ -273,10 +273,20 @@ function WriteContent() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full py-3 bg-brown-600 text-white rounded-xl font-medium hover:bg-brown-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="hidden sm:block w-full py-3 bg-brown-600 text-white rounded-xl font-medium hover:bg-brown-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {submitting ? "저장 중..." : "독후감 올리기"}
         </button>
+
+        <div className="fixed left-0 right-0 bottom-0 z-40 bg-white/95 backdrop-blur border-t border-cream-200 px-4 py-3 sm:hidden">
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full py-3 bg-brown-700 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {submitting ? "저장 중..." : "독후감 올리기"}
+          </button>
+        </div>
       </form>
     </div>
   );

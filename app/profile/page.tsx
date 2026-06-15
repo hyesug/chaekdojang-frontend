@@ -38,6 +38,11 @@ type UserProfile = {
   reviewCount: number;
   followerCount: number;
   followingCount: number;
+  librarySummary: {
+    readingCount: number;
+    finishedCount: number;
+    wishlistCount: number;
+  };
   lifeBook: LifeBook | null;
 };
 
@@ -338,6 +343,30 @@ export default function ProfilePage() {
                 <p className="text-xs text-brown-400 mt-0.5">팔로잉</p>
               </button>
             </div>
+
+            <div className="grid grid-cols-3 gap-2 mt-5">
+              {[
+                { label: "읽는 중", count: profile.librarySummary?.readingCount ?? 0, href: "/library?status=READING" },
+                { label: "완독", count: profile.librarySummary?.finishedCount ?? 0, href: "/library?status=FINISHED" },
+                { label: "읽고 싶어요", count: profile.librarySummary?.wishlistCount ?? 0, href: "/library?status=WISHLIST" },
+              ].map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="rounded-lg border border-cream-200 bg-cream-50 px-3 py-3 text-center hover:border-brown-200 hover:bg-white transition-colors"
+                >
+                  <p className="text-xl font-bold text-brown-800">{item.count}</p>
+                  <p className="text-xs text-brown-400 mt-0.5">{item.label}</p>
+                </Link>
+              ))}
+            </div>
+
+            <Link
+              href={`/u/${encodeURIComponent(profile.nickname)}`}
+              className="mt-4 block rounded-lg border border-dashed border-brown-200 bg-cream-50 px-4 py-3 text-sm text-brown-600 hover:bg-white transition-colors"
+            >
+              공유 프로필: /u/{profile.nickname}
+            </Link>
           </>
         ) : (
           <form onSubmit={handleSave} className="flex flex-col gap-4">
@@ -520,12 +549,23 @@ export default function ProfilePage() {
         >
           📚 내 서재
         </Link>
+        <Link
+          href="/stats"
+          className="flex-1 py-3 rounded-2xl border border-cream-200 bg-white text-center text-sm text-brown-600 hover:bg-cream-50 hover:shadow-sm transition-all"
+        >
+          📊 독서 통계
+        </Link>
       </div>
 
-      {/* 독서 통계 */}
+      {/* 독서 통계 요약 */}
       {stats && (stats.totalFinished > 0 || stats.genres.length > 0) && (
         <div className="bg-white rounded-2xl border border-cream-200 p-5 mb-6">
-          <h2 className="font-serif text-base font-bold text-brown-800 mb-4">📊 독서 기록</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-serif text-base font-bold text-brown-800">📊 독서 기록</h2>
+            <Link href="/calendar" className="text-xs text-brown-400 hover:text-brown-600">
+              월별 캘린더
+            </Link>
+          </div>
 
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div className="text-center bg-cream-50 rounded-xl p-3">
@@ -540,48 +580,16 @@ export default function ProfilePage() {
             )}
           </div>
 
-          {/* 월별 독서량 */}
-          {stats.monthly.length > 0 && (
-            <div className="mb-3">
-              <p className="text-xs text-brown-500 font-medium mb-2">월별 독서량</p>
-              <div className="flex items-end gap-1 h-16">
-                {stats.monthly.slice(0, 6).reverse().map((m) => {
-                  const maxCount = Math.max(...stats.monthly.map((x) => x.count));
-                  const heightPct = maxCount > 0 ? (m.count / maxCount) * 100 : 0;
-                  return (
-                    <div key={`${m.year}-${m.month}`} className="flex-1 flex flex-col items-center gap-0.5">
-                      <span className="text-xs text-brown-500 font-medium">{m.count}</span>
-                      <div
-                        className="w-full bg-brown-400 rounded-t"
-                        style={{ height: `${Math.max(heightPct * 0.6, 4)}px` }}
-                      />
-                      <span className="text-xs text-brown-300">{m.month}월</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* 장르 분포 */}
+          {/* 장르 요약 */}
           {stats.genres.length > 0 && (
             <div>
               <p className="text-xs text-brown-500 font-medium mb-2">선호 장르</p>
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-wrap gap-2">
                 {stats.genres.slice(0, 4).map((g) => {
-                  const maxCount = stats.genres[0].count;
-                  const pct = maxCount > 0 ? Math.round((g.count / maxCount) * 100) : 0;
                   return (
-                    <div key={g.genre} className="flex items-center gap-2">
-                      <span className="text-xs text-brown-600 w-20 truncate flex-shrink-0">{g.genre}</span>
-                      <div className="flex-1 bg-cream-200 rounded-full h-2">
-                        <div
-                          className="bg-brown-500 h-2 rounded-full transition-all"
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                      <span className="text-xs text-brown-400 flex-shrink-0">{g.count}권</span>
-                    </div>
+                    <span key={g.genre} className="px-3 py-1 rounded-full bg-cream-100 text-xs text-brown-600">
+                      {g.genre} {g.count}권
+                    </span>
                   );
                 })}
               </div>

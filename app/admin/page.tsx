@@ -9,14 +9,34 @@ interface User { id: number; nickname: string; email: string; role: string; crea
 interface Review { id: number; authorNickname: string; bookTitle: string; content: string; rating: number; hidden: boolean; createdAt: string; }
 interface BookStat { bookId: number; title: string; author: string; reviewCount: number; }
 interface Inquiry { id: number; title: string; authorName: string; createdAt: string; }
+interface AccessLog { id: number; ip: string; method: string; uri: string; status: number; elapsedMs: number; createdAt: string; }
+interface MetricEvent {
+  id: number;
+  userId: number | null;
+  nickname: string | null;
+  eventType: string;
+  sessionId: string;
+  path: string;
+  referrer: string | null;
+  durationMs: number;
+  device: string | null;
+  ip: string | null;
+  createdAt: string;
+}
 
 export default function AdminPage() {
   const router = useRouter();
-  const [tab, setTab] = useState<"users" | "reviews" | "inquiries">("users");
+  const [tab, setTab] = useState<"users" | "reviews" | "inquiries" | "access" | "metrics">("users");
   const [users, setUsers] = useState<User[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [bookStats, setBookStats] = useState<BookStat[]>([]);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
+  const [accessLogs, setAccessLogs] = useState<AccessLog[]>([]);
+  const [accessPage, setAccessPage] = useState(0);
+  const [accessTotalPages, setAccessTotalPages] = useState(1);
+  const [metricEvents, setMetricEvents] = useState<MetricEvent[]>([]);
+  const [metricPage, setMetricPage] = useState(0);
+  const [metricTotalPages, setMetricTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
   const [unauthorized, setUnauthorized] = useState(false);
   const [reviewPage, setReviewPage] = useState(0);
@@ -42,12 +62,44 @@ export default function AdminPage() {
         if (r.status === 403) { setUnauthorized(true); return; }
         const j = await r.json();
         setUsers(j.data?.content ?? []);
-      } else {
+      } else if (tab === "inquiries") {
         const r = await fetch(`${API_BASE}/api/admin/inquiries?size=50`, { headers: h });
         if (r.status === 403) { setUnauthorized(true); return; }
         const j = await r.json();
         setInquiries(j.data?.content ?? []);
       }
+    } finally { setLoading(false); }
+  }
+
+  async function loadAccessLogs(page: number) {
+    const token = getToken();
+    if (!token) { router.replace("/auth/login"); return; }
+    setLoading(true);
+    try {
+      const r = await fetch(`${API_BASE}/api/admin/access-logs?page=${page}&size=50`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (r.status === 403) { setUnauthorized(true); return; }
+      const j = await r.json();
+      setAccessLogs(j.data?.content ?? []);
+      setAccessTotalPages(j.data?.totalPages ?? 1);
+      setAccessPage(page);
+    } finally { setLoading(false); }
+  }
+
+  async function loadMetricEvents(page: number) {
+    const token = getToken();
+    if (!token) { router.replace("/auth/login"); return; }
+    setLoading(true);
+    try {
+      const r = await fetch(`${API_BASE}/api/admin/metrics?page=${page}&size=50`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (r.status === 403) { setUnauthorized(true); return; }
+      const j = await r.json();
+      setMetricEvents(j.data?.content ?? []);
+      setMetricTotalPages(j.data?.totalPages ?? 1);
+      setMetricPage(page);
     } finally { setLoading(false); }
   }
 
@@ -77,6 +129,10 @@ export default function AdminPage() {
       setReviewAuthorQ("");
       setReviewTitleQ("");
       loadReviews(0, "", "");
+    } else if (tab === "access") {
+      loadAccessLogs(0);
+    } else if (tab === "metrics") {
+      loadMetricEvents(0);
     } else {
       load();
     }
@@ -117,9 +173,11 @@ export default function AdminPage() {
   );
 
   const tabs = [
-    { key: "users", label: "👥 회원 관리" },
-    { key: "reviews", label: "📖 독후감 관리" },
-    { key: "inquiries", label: "💬 문의 관리" },
+    { key: "users", label: "👥 회원" },
+    { key: "reviews", label: "📖 독후감" },
+    { key: "inquiries", label: "💬 문의" },
+    { key: "access", label: "🔍 접속 기록" },
+    { key: "metrics", label: "📈 지표 로그" },
   ] as const;
 
   return (
@@ -292,6 +350,133 @@ export default function AdminPage() {
             </Link>
           ))}
           {inquiries.length === 0 && <p className="text-center text-brown-300 py-8">문의가 없어요</p>}
+        </div>
+      )}
+
+      {/* 접속 기록 */}
+      {!loading && tab === "access" && (
+        <div className="flex flex-col gap-4">
+          <div className="bg-white rounded-2xl shadow-sm border border-cream-200 overflow-x-auto">
+            <table className="w-full text-sm min-w-[640px]">
+              <thead className="bg-cream-100">
+                <tr>
+                  <th className="text-left px-4 py-3 text-brown-600 font-medium whitespace-nowrap">시간</th>
+                  <th className="text-left px-4 py-3 text-brown-600 font-medium">IP</th>
+                  <th className="text-left px-4 py-3 text-brown-600 font-medium">메서드</th>
+                  <th className="text-left px-4 py-3 text-brown-600 font-medium">URI</th>
+                  <th className="px-4 py-3 text-brown-600 font-medium text-center">상태</th>
+                  <th className="px-4 py-3 text-brown-600 font-medium text-right">처리시간</th>
+                </tr>
+              </thead>
+              <tbody>
+                {accessLogs.map((a) => (
+                  <tr key={a.id} className="border-t border-cream-100 hover:bg-cream-50">
+                    <td className="px-4 py-2.5 text-brown-400 whitespace-nowrap text-xs">
+                      {new Date(a.createdAt).toLocaleString("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                    </td>
+                    <td className="px-4 py-2.5 text-brown-500 font-mono text-xs">{a.ip}</td>
+                    <td className="px-4 py-2.5">
+                      <span className={`px-1.5 py-0.5 rounded text-xs font-mono font-medium ${
+                        a.method === "GET" ? "bg-green-50 text-green-600" :
+                        a.method === "POST" ? "bg-blue-50 text-blue-600" :
+                        a.method === "PATCH" || a.method === "PUT" ? "bg-yellow-50 text-yellow-600" :
+                        a.method === "DELETE" ? "bg-red-50 text-red-500" : "bg-cream-100 text-brown-400"
+                      }`}>{a.method}</span>
+                    </td>
+                    <td className="px-4 py-2.5 text-brown-600 font-mono text-xs max-w-xs truncate">{a.uri}</td>
+                    <td className="px-4 py-2.5 text-center">
+                      <span className={`text-xs font-medium ${
+                        a.status < 300 ? "text-green-500" :
+                        a.status < 400 ? "text-blue-400" :
+                        a.status < 500 ? "text-yellow-500" : "text-red-500"
+                      }`}>{a.status}</span>
+                    </td>
+                    <td className="px-4 py-2.5 text-right text-brown-400 text-xs">{a.elapsedMs}ms</td>
+                  </tr>
+                ))}
+                {accessLogs.length === 0 && (
+                  <tr><td colSpan={6} className="text-center py-8 text-brown-300">기록이 없어요</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {accessTotalPages > 1 && (
+            <div className="flex items-center justify-center gap-2">
+              <button
+                onClick={() => loadAccessLogs(accessPage - 1)}
+                disabled={accessPage === 0}
+                className="px-3 py-1.5 text-sm border border-cream-300 rounded-lg text-brown-500 hover:bg-cream-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >← 이전</button>
+              <span className="text-sm text-brown-400">{accessPage + 1} / {accessTotalPages}</span>
+              <button
+                onClick={() => loadAccessLogs(accessPage + 1)}
+                disabled={accessPage >= accessTotalPages - 1}
+                className="px-3 py-1.5 text-sm border border-cream-300 rounded-lg text-brown-500 hover:bg-cream-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >다음 →</button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 지표 로그 */}
+      {!loading && tab === "metrics" && (
+        <div className="flex flex-col gap-4">
+          <div className="bg-white rounded-2xl shadow-sm border border-cream-200 overflow-x-auto">
+            <table className="w-full text-sm min-w-[760px]">
+              <thead className="bg-cream-100">
+                <tr>
+                  <th className="text-left px-4 py-3 text-brown-600 font-medium whitespace-nowrap">시간</th>
+                  <th className="text-left px-4 py-3 text-brown-600 font-medium">이벤트</th>
+                  <th className="text-left px-4 py-3 text-brown-600 font-medium">사용자</th>
+                  <th className="text-left px-4 py-3 text-brown-600 font-medium">경로</th>
+                  <th className="text-left px-4 py-3 text-brown-600 font-medium">기기</th>
+                  <th className="px-4 py-3 text-brown-600 font-medium text-right">체류</th>
+                </tr>
+              </thead>
+              <tbody>
+                {metricEvents.map((event) => (
+                  <tr key={event.id} className="border-t border-cream-100 hover:bg-cream-50">
+                    <td className="px-4 py-2.5 text-brown-400 whitespace-nowrap text-xs">
+                      {new Date(event.createdAt).toLocaleString("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <span className={`px-1.5 py-0.5 rounded text-xs font-mono font-medium ${
+                        event.eventType === "page_view" ? "bg-blue-50 text-blue-600" :
+                        event.eventType === "heartbeat" ? "bg-green-50 text-green-600" :
+                        "bg-cream-100 text-brown-500"
+                      }`}>{event.eventType}</span>
+                    </td>
+                    <td className="px-4 py-2.5 text-brown-500 text-xs">{event.nickname ?? "비회원"}</td>
+                    <td className="px-4 py-2.5 text-brown-600 font-mono text-xs max-w-xs truncate">{event.path}</td>
+                    <td className="px-4 py-2.5 text-brown-400 text-xs">{event.device ?? "-"}</td>
+                    <td className="px-4 py-2.5 text-right text-brown-400 text-xs">
+                      {event.durationMs > 0 ? `${Math.round(event.durationMs / 1000)}초` : "-"}
+                    </td>
+                  </tr>
+                ))}
+                {metricEvents.length === 0 && (
+                  <tr><td colSpan={6} className="text-center py-8 text-brown-300">지표 로그가 없어요</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {metricTotalPages > 1 && (
+            <div className="flex items-center justify-center gap-2">
+              <button
+                onClick={() => loadMetricEvents(metricPage - 1)}
+                disabled={metricPage === 0}
+                className="px-3 py-1.5 text-sm border border-cream-300 rounded-lg text-brown-500 hover:bg-cream-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >← 이전</button>
+              <span className="text-sm text-brown-400">{metricPage + 1} / {metricTotalPages}</span>
+              <button
+                onClick={() => loadMetricEvents(metricPage + 1)}
+                disabled={metricPage >= metricTotalPages - 1}
+                className="px-3 py-1.5 text-sm border border-cream-300 rounded-lg text-brown-500 hover:bg-cream-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >다음 →</button>
+            </div>
+          )}
         </div>
       )}
     </div>

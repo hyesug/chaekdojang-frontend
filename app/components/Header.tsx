@@ -8,6 +8,7 @@ const navLinks = [
   { href: "/", label: "피드" },
   { href: "/search", label: "검색" },
   { href: "/library", label: "서재" },
+  { href: "/stats", label: "통계" },
   { href: "/write", label: "독후감 쓰기" },
   { href: "/cs", label: "고객센터" },
   // { href: "/subscription", label: "프리미엄" }, // 추후 오픈 예정
@@ -20,8 +21,9 @@ export default function Header() {
         {/* 로고 */}
         <Link
           href="/"
-          className="font-serif text-2xl font-bold text-brown-700 tracking-tight flex-none"
+          className="font-serif text-2xl font-bold text-brown-700 tracking-tight flex-none inline-flex items-center gap-2"
         >
+          <span className="stamp-mark text-[11px] leading-none">冊</span>
           책도장
         </Link>
 

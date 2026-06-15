@@ -41,3 +41,39 @@ body {
   background-color: #FAF6EF;
   color: #2A1810;
 }
+
+.stamp-mark {
+  width: 2.1rem;
+  height: 2.1rem;
+  border: 2px solid #8B1E1E;
+  border-radius: 999px;
+  color: #8B1E1E;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  transform: rotate(-9deg);
+}
+
+.stamp-card {
+  position: relative;
+}
+
+.stamp-card::after {
+  content: "책도장";
+  position: absolute;
+  right: 1rem;
+  top: 1rem;
+  width: 3.5rem;
+  height: 3.5rem;
+  border: 2px solid rgba(139, 30, 30, 0.22);
+  border-radius: 999px;
+  color: rgba(139, 30, 30, 0.32);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 800;
+  transform: rotate(-12deg);
+  pointer-events: none;
+}

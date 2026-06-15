@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
-// EC2 백엔드 주소 (서버 측 환경변수 — NEXT_PUBLIC 불필요)
-const BACKEND_URL = process.env.BACKEND_URL ?? "http://52.79.196.7:8080";
+// 서버 측 rewrite 대상. 로컬 개발에서는 로컬 백엔드를 기본값으로 사용한다.
+const BACKEND_URL =
+  process.env.BACKEND_URL ??
+  (process.env.NODE_ENV === "development" ? "http://localhost:8080" : "http://52.79.196.7:8080");
 
 const nextConfig: NextConfig = {
   images: {

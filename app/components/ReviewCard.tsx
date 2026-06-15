@@ -26,6 +26,7 @@ type Comment = {
 };
 
 const BASE = API_BASE;
+const SHARE_COPY = "책도장: 읽은 책에 나만의 도장을 찍는 독서 기록 SNS.";
 
 const COVER_COLORS = [
   "#8B6048", "#6E7A4A", "#4A6E7A", "#7A4A6E", "#6E4A7A", "#4A7A6E",
@@ -507,9 +508,7 @@ export default function ReviewCard({ post }: { post: Review }) {
   }
 
   async function handleCopyLink() {
-    const url = post.book?.id
-      ? `${window.location.origin}/books/${post.book.id}`
-      : window.location.href;
+    const url = `${window.location.origin}/reviews/${post.id}`;
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
@@ -549,7 +548,7 @@ export default function ReviewCard({ post }: { post: Review }) {
 
   return (
     <>
-      <article className="bg-white rounded-2xl border border-cream-200 p-5 hover:shadow-md transition-shadow">
+      <article className="stamp-card bg-white rounded-lg border border-cream-200 p-5 hover:shadow-md transition-shadow overflow-hidden">
         <div className="flex gap-4">
           {/* 책 표지 */}
           {post.book?.thumbnail ? (
@@ -666,9 +665,9 @@ export default function ReviewCard({ post }: { post: Review }) {
         </div>
 
         {/* 본문 */}
-        <button
-          onClick={() => setShowDetail(true)}
-          className="mt-3 text-left w-full group"
+        <Link
+          href={`/reviews/${post.id}`}
+          className="mt-3 text-left w-full group block"
         >
           <p className="text-sm text-brown-600 leading-relaxed line-clamp-3 group-hover:text-brown-800 transition-colors">
             {displayContent}
@@ -676,7 +675,7 @@ export default function ReviewCard({ post }: { post: Review }) {
           <span className="text-xs text-brown-300 group-hover:text-brown-500 transition-colors mt-1 inline-block">
             더 보기
           </span>
-        </button>
+        </Link>
 
         {/* 번역 결과 */}
         {translatedContent && (
@@ -800,10 +799,8 @@ export default function ReviewCard({ post }: { post: Review }) {
               <p className="text-xs text-brown-400 mb-4 truncate">{post.book.title}</p>
             )}
             {(() => {
-              const shareUrl = post.book?.id
-                ? `${window.location.origin}/books/${post.book.id}`
-                : window.location.href;
-              const shareText = `${post.book?.title ?? "독후감"} 📚`;
+              const shareUrl = `${window.location.origin}/reviews/${post.id}`;
+              const shareText = `${SHARE_COPY} ${post.book?.title ?? "독후감"}`;
               return (
                 <div className="flex flex-col gap-2">
                   {/* 링크 복사 */}

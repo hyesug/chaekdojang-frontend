@@ -38,6 +38,10 @@ export default function LibraryPage() {
   const [loggedIn, setLoggedIn] = useState(true);
 
   useEffect(() => {
+    const status = new URLSearchParams(window.location.search).get("status") as LibraryStatus | null;
+    if (status === "READING" || status === "FINISHED" || status === "WISHLIST") {
+      setActiveTab(status);
+    }
     fetchLibrary();
   }, []);
 

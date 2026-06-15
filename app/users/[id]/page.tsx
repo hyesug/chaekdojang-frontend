@@ -23,6 +23,11 @@ type UserProfile = {
   reviewCount: number;
   followerCount: number;
   followingCount: number;
+  librarySummary: {
+    readingCount: number;
+    finishedCount: number;
+    wishlistCount: number;
+  };
   isFollowing?: boolean;
   lifeBook: LifeBook | null;
 };
@@ -207,6 +212,19 @@ export default function UserProfilePage() {
             <p className="font-bold text-brown-800 text-xl">{profile.followingCount}</p>
             <p className="text-xs text-brown-400 mt-0.5">팔로잉</p>
           </button>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 mt-5">
+          {[
+            { label: "읽는 중", count: profile.librarySummary?.readingCount ?? 0 },
+            { label: "완독", count: profile.librarySummary?.finishedCount ?? 0 },
+            { label: "읽고 싶어요", count: profile.librarySummary?.wishlistCount ?? 0 },
+          ].map((item) => (
+            <div key={item.label} className="rounded-lg border border-cream-200 bg-cream-50 px-3 py-3 text-center">
+              <p className="text-xl font-bold text-brown-800">{item.count}</p>
+              <p className="text-xs text-brown-400 mt-0.5">{item.label}</p>
+            </div>
+          ))}
         </div>
       </div>
 

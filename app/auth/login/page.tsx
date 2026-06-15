@@ -1,14 +1,33 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { OAUTH_BASE } from "../../lib/api";
 
 const BACKEND = OAUTH_BASE;
 
 function LoginContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const hasError = searchParams.get("error") === "oauth_failed";
+  const [isLocal, setIsLocal] = useState(false);
+
+  useEffect(() => {
+    setIsLocal(window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+  }, []);
+
+  async function handleDevLogin() {
+    const res = await fetch("/api/dev/login", { method: "POST" });
+    if (!res.ok) return;
+    const json = await res.json();
+    const token = json.data?.token ?? json.token;
+    if (!token) return;
+    localStorage.setItem("token", token);
+    window.dispatchEvent(new Event("auth-change"));
+    router.push("/");
+    router.refresh();
+  }
 
   return (
     <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center px-4 py-12">
@@ -46,6 +65,15 @@ function LoginContent() {
             <GoogleIcon />
             구글로 로그인
           </a>
+          {isLocal && (
+            <button
+              type="button"
+              onClick={handleDevLogin}
+              className="w-full py-3 rounded-xl text-sm font-medium bg-cream-100 text-brown-700 hover:bg-cream-200 transition"
+            >
+              로컬 개발용 로그인
+            </button>
+          )}
         </div>
       </div>
     </div>

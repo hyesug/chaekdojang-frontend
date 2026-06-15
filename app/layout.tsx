@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Noto_Sans_KR, Nanum_Myeongjo } from "next/font/google";
 import "./globals.css";
 import Header from "./components/Header";
+import AnalyticsTracker from "./components/AnalyticsTracker";
+import { shareText } from "./lib/serverApi";
 
 const notoSansKR = Noto_Sans_KR({
   subsets: ["latin"],
@@ -26,7 +28,7 @@ export const metadata: Metadata = {
     template: "%s | 책도장",
   },
   description:
-    "책도장은 책을 읽고 난 감상을 기록하고, 다른 사람의 독후감을 보며 책 취향을 나눌 수 있는 독서 SNS입니다.",
+    shareText(),
   keywords: [
     "책도장",
     "독서 SNS",
@@ -46,14 +48,12 @@ export const metadata: Metadata = {
     url: siteUrl,
     siteName: "책도장",
     title: "책도장 - 독후감 쓰고 책 취향을 나누는 독서 SNS",
-    description:
-      "책을 읽고 난 감상을 기록하고, 다른 사람의 독후감을 보며 책 취향을 나누는 독서 SNS입니다.",
+    description: shareText(),
   },
   twitter: {
     card: "summary",
     title: "책도장 - 독후감 쓰고 책 취향을 나누는 독서 SNS",
-    description:
-      "책을 읽고 난 감상을 기록하고, 다른 사람의 독후감을 보며 책 취향을 나누는 독서 SNS입니다.",
+    description: shareText(),
   },
   robots: {
     index: true,
@@ -81,8 +81,7 @@ export default function RootLayout({
     name: "책도장",
     alternateName: "Chaekdojang",
     url: siteUrl,
-    description:
-      "책을 읽고 난 감상을 기록하고, 다른 사람의 독후감을 보며 책 취향을 나누는 독서 SNS입니다.",
+    description: shareText(),
     inLanguage: "ko-KR",
   };
 
@@ -94,6 +93,7 @@ export default function RootLayout({
           suppressHydrationWarning
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+        <AnalyticsTracker />
         <Header />
         <main className="flex-1">{children}</main>
         <footer className="py-8 text-center text-sm text-brown-400 border-t border-cream-200">

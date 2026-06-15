@@ -254,6 +254,13 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
         <div className="flex items-center justify-between px-5 py-4 border-b border-cream-200 flex-shrink-0">
           <span className="font-serif font-bold text-brown-800 text-sm">독후감</span>
           <div className="flex items-center gap-3">
+            <Link
+              href={`/reviews/${reviewId}`}
+              onClick={onClose}
+              className="text-xs text-brown-400 hover:text-brown-700 transition-colors"
+            >
+              공개 페이지
+            </Link>
             {!loading && review && myId === review.author.id && !editing && (
               <button
                 onClick={() => { setEditContent(review.content); setEditRating(review.rating); setEditing(true); }}

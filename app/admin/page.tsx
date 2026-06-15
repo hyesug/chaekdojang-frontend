@@ -24,6 +24,14 @@ interface MetricEvent {
   createdAt: string;
 }
 
+function formatLogTime(value: string) {
+  const normalized = value.replace("T", " ");
+  const [, month, day, hour, minute, second] =
+    normalized.match(/^\d{4}-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})/) ?? [];
+  if (!month) return normalized;
+  return `${month}.${day} ${hour}:${minute}:${second}`;
+}
+
 export default function AdminPage() {
   const router = useRouter();
   const [tab, setTab] = useState<"users" | "reviews" | "inquiries" | "access" | "metrics">("users");
@@ -372,7 +380,7 @@ export default function AdminPage() {
                 {accessLogs.map((a) => (
                   <tr key={a.id} className="border-t border-cream-100 hover:bg-cream-50">
                     <td className="px-4 py-2.5 text-brown-400 whitespace-nowrap text-xs">
-                      {new Date(a.createdAt).toLocaleString("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                      {formatLogTime(a.createdAt)}
                     </td>
                     <td className="px-4 py-2.5 text-brown-500 font-mono text-xs">{a.ip}</td>
                     <td className="px-4 py-2.5">
@@ -438,7 +446,7 @@ export default function AdminPage() {
                 {metricEvents.map((event) => (
                   <tr key={event.id} className="border-t border-cream-100 hover:bg-cream-50">
                     <td className="px-4 py-2.5 text-brown-400 whitespace-nowrap text-xs">
-                      {new Date(event.createdAt).toLocaleString("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                      {formatLogTime(event.createdAt)}
                     </td>
                     <td className="px-4 py-2.5">
                       <span className={`px-1.5 py-0.5 rounded text-xs font-mono font-medium ${

@@ -32,6 +32,65 @@ function formatLogTime(value: string) {
   return `${month}.${day} ${hour}:${minute}:${second}`;
 }
 
+function normalizePath(value: string) {
+  const path = value.split("?")[0].split("#")[0];
+  return path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
+}
+
+function getRouteLabel(value: string) {
+  const path = normalizePath(value);
+  const labels: Record<string, string> = {
+    "/": "홈 피드",
+    "/search": "책 검색",
+    "/library": "내 서재",
+    "/stats": "독서 통계",
+    "/write": "독후감 작성",
+    "/cs": "고객센터",
+    "/admin": "관리자 페이지",
+    "/admin/access-logs": "관리자 > 접속 기록",
+    "/admin/metrics": "관리자 > 지표 로그",
+    "/profile": "내 프로필",
+    "/bookmarks": "북마크",
+    "/notifications": "알림",
+    "/explore": "둘러보기",
+    "/auth/login": "로그인",
+    "/auth/register": "회원가입",
+    "/auth/callback": "소셜 로그인 처리",
+    "/setup-nickname": "닉네임 설정",
+    "/privacy": "개인정보처리방침",
+    "/terms": "이용약관",
+    "/account-deletion": "계정 삭제 안내",
+    "/dojangdan": "도장단",
+    "/for-authors": "작가 안내",
+    "/api/dev/login": "로컬 개발용 로그인",
+    "/api/metrics/events": "사용 지표 수집",
+    "/api/admin/users": "관리자 > 회원 목록 조회",
+    "/api/admin/reviews": "관리자 > 독후감 목록 조회",
+    "/api/admin/reviews/stats": "관리자 > 책별 독후감 통계",
+    "/api/admin/inquiries": "관리자 > 문의 목록 조회",
+    "/api/admin/access-logs": "관리자 > 접속 기록 조회",
+    "/api/admin/metrics": "관리자 > 지표 로그 조회",
+    "/api/users/me": "내 계정 정보 확인",
+  };
+
+  if (labels[path]) return labels[path];
+  if (/^\/reviews\/\d+$/.test(path)) return "독후감 상세";
+  if (/^\/books\/\d+$/.test(path)) return "책 상세";
+  if (/^\/chat\/\d+$/.test(path)) return "책 채팅";
+  if (/^\/users\/\d+$/.test(path)) return "사용자 프로필";
+  if (/^\/u\/[^/]+$/.test(path)) return "사용자 프로필";
+  if (/^\/admin\/inquiries\/\d+$/.test(path)) return "관리자 > 문의 상세";
+  if (path.startsWith("/api/")) return "서비스 요청";
+  return "기타 페이지";
+}
+
+function getMetricEventLabel(eventType: string) {
+  if (eventType === "page_view") return "페이지 방문";
+  if (eventType === "heartbeat") return "체류 확인";
+  if (eventType === "session_end") return "방문 종료";
+  return eventType;
+}
+
 export default function AdminPage() {
   const router = useRouter();
   const [tab, setTab] = useState<"users" | "reviews" | "inquiries" | "access" | "metrics">("users");
@@ -218,7 +277,16 @@ export default function AdminPage() {
             </thead>
             <tbody>
               {users.map((u) => (
-                <tr key={u.id} className="border-t border-cream-100">
+                <tr
+                  key={u.id}
+                  tabIndex={0}
+                  role="link"
+                  onClick={() => router.push(`/users/${u.id}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") router.push(`/users/${u.id}`);
+                  }}
+                  className="border-t border-cream-100 cursor-pointer hover:bg-cream-50 focus:outline-none focus:bg-cream-50"
+                >
                   <td className="px-4 py-3 text-brown-800">{u.nickname}</td>
                   <td className="px-4 py-3 text-brown-500">{u.email ?? "-"}</td>
                   <td className="px-4 py-3">
@@ -232,7 +300,10 @@ export default function AdminPage() {
                   <td className="px-4 py-3">
                     {u.role !== "SUPER_ADMIN" && (
                       <button
-                        onClick={() => setRole(u.id, u.role === "ADMIN" ? "USER" : "ADMIN")}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setRole(u.id, u.role === "ADMIN" ? "USER" : "ADMIN");
+                        }}
                         className={`px-3 py-1 text-xs rounded-lg ${u.role === "ADMIN" ? "bg-cream-200 text-brown-500 hover:bg-cream-300" : "bg-blue-50 text-blue-600 hover:bg-blue-100"}`}>
                         {u.role === "ADMIN" ? "권한 해제" : "관리자 지정"}
                       </button>
@@ -371,7 +442,7 @@ export default function AdminPage() {
                   <th className="text-left px-4 py-3 text-brown-600 font-medium whitespace-nowrap">시간</th>
                   <th className="text-left px-4 py-3 text-brown-600 font-medium">IP</th>
                   <th className="text-left px-4 py-3 text-brown-600 font-medium">메서드</th>
-                  <th className="text-left px-4 py-3 text-brown-600 font-medium">URI</th>
+                  <th className="text-left px-4 py-3 text-brown-600 font-medium">메뉴/기능</th>
                   <th className="px-4 py-3 text-brown-600 font-medium text-center">상태</th>
                   <th className="px-4 py-3 text-brown-600 font-medium text-right">처리시간</th>
                 </tr>
@@ -391,7 +462,9 @@ export default function AdminPage() {
                         a.method === "DELETE" ? "bg-red-50 text-red-500" : "bg-cream-100 text-brown-400"
                       }`}>{a.method}</span>
                     </td>
-                    <td className="px-4 py-2.5 text-brown-600 font-mono text-xs max-w-xs truncate">{a.uri}</td>
+                    <td className="px-4 py-2.5 text-brown-600 text-xs max-w-xs truncate" title={a.uri}>
+                      {getRouteLabel(a.uri)}
+                    </td>
                     <td className="px-4 py-2.5 text-center">
                       <span className={`text-xs font-medium ${
                         a.status < 300 ? "text-green-500" :
@@ -437,7 +510,7 @@ export default function AdminPage() {
                   <th className="text-left px-4 py-3 text-brown-600 font-medium whitespace-nowrap">시간</th>
                   <th className="text-left px-4 py-3 text-brown-600 font-medium">이벤트</th>
                   <th className="text-left px-4 py-3 text-brown-600 font-medium">사용자</th>
-                  <th className="text-left px-4 py-3 text-brown-600 font-medium">경로</th>
+                  <th className="text-left px-4 py-3 text-brown-600 font-medium">메뉴</th>
                   <th className="text-left px-4 py-3 text-brown-600 font-medium">기기</th>
                   <th className="px-4 py-3 text-brown-600 font-medium text-right">체류</th>
                 </tr>
@@ -453,10 +526,12 @@ export default function AdminPage() {
                         event.eventType === "page_view" ? "bg-blue-50 text-blue-600" :
                         event.eventType === "heartbeat" ? "bg-green-50 text-green-600" :
                         "bg-cream-100 text-brown-500"
-                      }`}>{event.eventType}</span>
+                      }`}>{getMetricEventLabel(event.eventType)}</span>
                     </td>
                     <td className="px-4 py-2.5 text-brown-500 text-xs">{event.nickname ?? "비회원"}</td>
-                    <td className="px-4 py-2.5 text-brown-600 font-mono text-xs max-w-xs truncate">{event.path}</td>
+                    <td className="px-4 py-2.5 text-brown-600 text-xs max-w-xs truncate" title={event.path}>
+                      {getRouteLabel(event.path)}
+                    </td>
                     <td className="px-4 py-2.5 text-brown-400 text-xs">{event.device ?? "-"}</td>
                     <td className="px-4 py-2.5 text-right text-brown-400 text-xs">
                       {event.durationMs > 0 ? `${Math.round(event.durationMs / 1000)}초` : "-"}

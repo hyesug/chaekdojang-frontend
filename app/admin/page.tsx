@@ -69,7 +69,6 @@ function getRouteLabel(value: string) {
     "/setup-nickname": "닉네임 설정",
     "/privacy": "개인정보처리방침",
     "/terms": "이용약관",
-    "/account-deletion": "계정 삭제 안내",
     "/dojangdan": "도장단",
     "/api/dev/login": "로컬 개발용 로그인",
     "/api/metrics/events": "사용 지표 수집",

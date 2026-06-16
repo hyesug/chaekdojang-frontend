@@ -10,7 +10,7 @@ import { buildSearchLinks } from "../lib/purchaseLinks";
 
 export type Review = {
   id: number;
-  author: { id?: number; nickname: string; profileImage: string | null };
+  author: { id?: number | null; nickname: string; profileImage: string | null };
   book?: { id?: number; title: string; author: string; thumbnail: string | null } | null;
   rating: number;
   content: string;
@@ -21,7 +21,7 @@ export type Review = {
 
 type Comment = {
   id: number;
-  author: { id: number; nickname: string; profileImage: string | null };
+  author: { id: number | null; nickname: string; profileImage: string | null };
   content: string;
   createdAt: string;
 };

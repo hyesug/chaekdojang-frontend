@@ -162,12 +162,16 @@ export default async function PublicReviewPage({ params }: Props) {
 
           <div className="px-5 sm:px-8 py-6">
             <div className="mb-6 flex items-center justify-between gap-3 text-sm">
-              <Link
-                href={`/users/${review.author.id}`}
-                className="font-semibold text-brown-700 hover:underline"
-              >
-                {review.author.nickname}
-              </Link>
+              {review.author.id != null ? (
+                <Link
+                  href={`/users/${review.author.id}`}
+                  className="font-semibold text-brown-700 hover:underline"
+                >
+                  {review.author.nickname}
+                </Link>
+              ) : (
+                <span className="font-semibold text-brown-700">{review.author.nickname}</span>
+              )}
               <time className="text-brown-300" dateTime={review.createdAt}>
                 {review.createdAt.slice(0, 10)}
               </time>

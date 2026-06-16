@@ -11,7 +11,7 @@ const API = API_BASE;
 
 interface Message {
   id: number;
-  senderId: number;
+  senderId: number | null;
   senderNickname: string;
   senderProfileImage: string;
   content: string;

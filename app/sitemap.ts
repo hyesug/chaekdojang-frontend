@@ -15,7 +15,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: "/dojangdan", changeFrequency: "monthly", priority: 0.6 },
     { path: "/privacy", changeFrequency: "yearly", priority: 0.2 },
     { path: "/terms", changeFrequency: "yearly", priority: 0.2 },
-    { path: "/account-deletion", changeFrequency: "yearly", priority: 0.2 },
     { path: "/cs", changeFrequency: "monthly", priority: 0.3 },
   ] satisfies Array<{
     path: string;

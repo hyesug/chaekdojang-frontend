@@ -10,6 +10,8 @@ import ProfileAvatar from "../components/ProfileAvatar";
 import { API_BASE } from "../lib/api";
 
 const BASE = API_BASE;
+const FEED_STATE_KEY = "chaekdojang:feed-state";
+const DELETE_CONFIRM_TEXT = "계정 삭제";
 
 type ReadingStats = {
   totalFinished: number;
@@ -75,6 +77,9 @@ export default function ProfilePage() {
   const [reviewPage, setReviewPage] = useState(0);
   const [reviewHasMore, setReviewHasMore] = useState(false);
   const [reviewLoadingMore, setReviewLoadingMore] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const reviewSearchRef = useRef<string>("");
 
   useEffect(() => {
@@ -270,6 +275,7 @@ export default function ProfilePage() {
       if (res.ok) {
         const json = await res.json();
         setProfile((prev) => (prev ? { ...prev, ...(json.data ?? json) } : prev));
+        sessionStorage.removeItem(FEED_STATE_KEY);
         setEditing(false);
       } else {
         const data = await res.json().catch(() => ({}));
@@ -279,6 +285,40 @@ export default function ProfilePage() {
       setSaveError("서버에 연결할 수 없습니다.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleDeleteAccount(e: React.FormEvent) {
+    e.preventDefault();
+    const token = localStorage.getItem("token");
+    if (!token || deleteConfirmText !== DELETE_CONFIRM_TEXT || deletingAccount) return;
+
+    setDeletingAccount(true);
+    setDeleteError("");
+    try {
+      const res = await fetch(`${BASE}/api/users/me`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.status === 401) {
+        localStorage.removeItem("token");
+        router.push("/auth/login");
+        return;
+      }
+      if (!res.ok) {
+        setDeleteError("계정 삭제에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+        return;
+      }
+
+      localStorage.removeItem("token");
+      sessionStorage.removeItem(FEED_STATE_KEY);
+      window.dispatchEvent(new Event("auth-change"));
+      router.replace("/?accountDeleted=true");
+      router.refresh();
+    } catch {
+      setDeleteError("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setDeletingAccount(false);
     }
   }
 
@@ -560,6 +600,39 @@ export default function ProfilePage() {
           📊 독서 통계
         </Link>
       </div>
+
+      <form
+        onSubmit={handleDeleteAccount}
+        className="mb-6 rounded-lg border border-red-100 bg-white p-5"
+      >
+        <h2 className="font-serif text-base font-bold text-red-700">계정 삭제</h2>
+        <p className="mt-2 text-sm leading-6 text-brown-500">
+          삭제하면 이메일, 닉네임, 프로필 이미지, 자기소개는 제거되거나 탈퇴 계정 값으로 바뀝니다.
+          서재, 팔로우, 알림, 북마크, 좋아요 같은 개인 활동 데이터는 정리되고, 공개 독후감과 댓글은 작성자만 탈퇴한 사용자로 표시됩니다.
+        </p>
+        <label className="mt-4 block text-sm text-brown-600" htmlFor="delete-confirm">
+          계속하려면 <span className="font-semibold text-red-700">{DELETE_CONFIRM_TEXT}</span>를 입력하세요.
+        </label>
+        <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+          <input
+            id="delete-confirm"
+            value={deleteConfirmText}
+            onChange={(e) => setDeleteConfirmText(e.target.value)}
+            className="flex-1 rounded-xl border border-red-100 bg-red-50 px-4 py-2.5 text-sm text-brown-800 placeholder:text-brown-300 focus:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-100"
+            placeholder={DELETE_CONFIRM_TEXT}
+          />
+          <button
+            type="submit"
+            disabled={deleteConfirmText !== DELETE_CONFIRM_TEXT || deletingAccount}
+            className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {deletingAccount ? "삭제 중..." : "계정 삭제"}
+          </button>
+        </div>
+        {deleteError && (
+          <p className="mt-3 rounded-xl bg-red-50 px-4 py-2.5 text-sm text-red-600">{deleteError}</p>
+        )}
+      </form>
 
       {/* 독서 통계 요약 */}
       {stats && (stats.totalFinished > 0 || stats.genres.length > 0) && (

@@ -8,7 +8,7 @@ export const SITE_URL = (
 
 export type ReviewDetail = {
   id: number;
-  author: { id: number; nickname: string; profileImage: string | null };
+  author: { id: number | null; nickname: string; profileImage: string | null };
   book: {
     id: number;
     isbn13?: string;

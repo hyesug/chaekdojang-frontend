@@ -10,7 +10,7 @@ const BASE = API_BASE;
 
 type ReviewDetail = {
   id: number;
-  author: { id: number; nickname: string; profileImage: string | null };
+  author: { id: number | null; nickname: string; profileImage: string | null };
   book: { id: number; title: string; author: string; thumbnail: string | null } | null;
   rating: number;
   content: string;
@@ -21,7 +21,7 @@ type ReviewDetail = {
 
 type Comment = {
   id: number;
-  author: { id: number; nickname: string; profileImage: string | null };
+  author: { id: number | null; nickname: string; profileImage: string | null };
   content: string;
   createdAt: string;
 };
@@ -302,14 +302,20 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
                 )}
                 <div className="flex items-center gap-2 mt-2">
                   <ProfileAvatar src={review.author.profileImage} name={review.author.nickname} size="xs" />
-                  <Link
-                    href={`/users/${review.author.id}`}
-                    onClick={onClose}
-                    className="text-xs font-semibold text-brown-600 hover:underline"
-                  >
-                    {review.author.nickname}
-                  </Link>
-                  {isLoggedIn && myId !== review.author.id && (
+                  {review.author.id != null ? (
+                    <Link
+                      href={`/users/${review.author.id}`}
+                      onClick={onClose}
+                      className="text-xs font-semibold text-brown-600 hover:underline"
+                    >
+                      {review.author.nickname}
+                    </Link>
+                  ) : (
+                    <span className="text-xs font-semibold text-brown-600">
+                      {review.author.nickname}
+                    </span>
+                  )}
+                  {isLoggedIn && review.author.id != null && myId !== review.author.id && (
                     <button
                       onClick={handleFollow}
                       disabled={followLoading}

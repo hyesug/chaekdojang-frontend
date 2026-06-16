@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "개인정보처리방침",
@@ -34,8 +33,18 @@ export default function PrivacyPage() {
         <section>
           <h2 className="font-serif text-xl font-bold text-brown-800 mb-2">보관과 삭제</h2>
           <p>
-            회원 탈퇴 또는 삭제 요청 시 원칙적으로 삭제합니다. 다만 법령상 보관이 필요하거나 공개 작성물의
-            정리 절차가 필요한 경우 일정 기간 보관될 수 있습니다.
+            회원 탈퇴 또는 삭제 요청 시 이메일, 닉네임, 프로필 이미지, 자기소개 등 계정 식별 정보는
+            삭제하거나 탈퇴 계정 값으로 변경합니다. 서재, 팔로우, 알림, 북마크, 좋아요, 소셜 로그인 연결처럼
+            사용자 개인에게 종속된 활동 데이터는 삭제합니다.
+          </p>
+          <p className="mt-2">
+            공개 독후감과 댓글은 서비스의 공개 게시물 맥락을 유지하기 위해 본문은 보존하되 작성자 정보는
+            “탈퇴한 사용자”로 익명화합니다. 사용자는 탈퇴 전에 본인이 작성한 독후감과 댓글을 직접 삭제할 수 있고,
+            탈퇴 후 별도 삭제 요청도 할 수 있습니다.
+          </p>
+          <p className="mt-2">
+            관계 법령에 따라 보관이 필요한 정보가 있는 경우에는 해당 법령에서 정한 기간 동안 분리 보관한 뒤,
+            목적 달성 또는 보관 기간 종료 시 복구되거나 재생되지 않도록 파기합니다.
           </p>
         </section>
         <section>
@@ -48,8 +57,8 @@ export default function PrivacyPage() {
         <section>
           <h2 className="font-serif text-xl font-bold text-brown-800 mb-2">이용자의 권리와 문의</h2>
           <p>
-            이용자는 개인정보 조회, 수정, 삭제, 탈퇴를 요청할 수 있습니다. 계정 삭제 안내는
-            {" "}<Link href="/account-deletion" className="underline">계정 삭제 안내</Link>에서 확인할 수 있습니다.
+            이용자는 개인정보 조회, 수정, 삭제, 탈퇴를 요청할 수 있습니다. 로그인한 사용자는 프로필 페이지에서
+            계정을 직접 삭제할 수 있으며, 추가 문의가 필요한 경우 고객센터를 통해 요청할 수 있습니다.
           </p>
         </section>
       </div>

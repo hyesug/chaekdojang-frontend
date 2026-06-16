@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import ReviewDetailModal from "./ReviewDetailModal";
+import ProfileAvatar from "./ProfileAvatar";
 import { API_BASE } from "../lib/api";
 import { buildSearchLinks } from "../lib/purchaseLinks";
 
@@ -26,7 +27,7 @@ type Comment = {
 };
 
 const BASE = API_BASE;
-const SHARE_COPY = "책도장: 읽은 책에 나만의 도장을 찍는 독서 기록 SNS.";
+const SHARE_COPY = "읽은 책에 나만의 감상을 찍다";
 
 const COVER_COLORS = [
   "#8B6048", "#6E7A4A", "#4A6E7A", "#7A4A6E", "#6E4A7A", "#4A7A6E",
@@ -203,6 +204,7 @@ function CommentModal({
           ) : (
             comments.map((c) => (
               <div key={c.id} className="flex items-start gap-2">
+                <ProfileAvatar src={c.author.profileImage} name={c.author.nickname} size="xs" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-2 mb-0.5">
                     <span className="text-xs font-semibold text-brown-600">
@@ -572,6 +574,7 @@ export default function ReviewCard({ post }: { post: Review }) {
             <div className="flex items-center justify-between mb-1">
               {/* 왼쪽: 작성자 + 팔로우 버튼 */}
               <div className="flex items-center gap-1.5 min-w-0">
+                <ProfileAvatar src={post.author.profileImage} name={post.author.nickname} size="xs" />
                 {post.author.id != null ? (
                   <Link
                     href={`/users/${post.author.id}`}

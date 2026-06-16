@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import ProfileAvatar from "./ProfileAvatar";
 import { API_BASE } from "../lib/api";
 
 const BASE = API_BASE;
@@ -300,6 +301,7 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
                   </>
                 )}
                 <div className="flex items-center gap-2 mt-2">
+                  <ProfileAvatar src={review.author.profileImage} name={review.author.nickname} size="xs" />
                   <Link
                     href={`/users/${review.author.id}`}
                     onClick={onClose}
@@ -385,6 +387,7 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
               ) : (
                 comments.map((c) => (
                   <div key={c.id} className="flex items-start gap-2">
+                    <ProfileAvatar src={c.author.profileImage} name={c.author.nickname} size="xs" />
                     <div className="flex-1 min-w-0">
                       <span className="text-xs font-semibold text-brown-600 mr-2">{c.author.nickname}</span>
                       <span className="text-xs text-brown-300 mr-2">{c.createdAt.slice(0, 10)}</span>

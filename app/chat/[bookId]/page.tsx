@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { API_BASE } from '../../lib/api';
+import ProfileAvatar from '../../components/ProfileAvatar';
 
 const API = API_BASE;
 
@@ -104,10 +105,11 @@ export default function ChatRoomPage() {
           return (
             <div key={msg.id} className={`flex gap-2 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
               {!isMine && (
-                <img
-                  src={msg.senderProfileImage || '/default-avatar.png'}
-                  alt={msg.senderNickname}
-                  className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                <ProfileAvatar
+                  src={msg.senderProfileImage}
+                  name={msg.senderNickname}
+                  size="xs"
+                  className="w-8 h-8"
                 />
               )}
               <div className={`max-w-[70%] ${isMine ? 'items-end' : 'items-start'} flex flex-col gap-1`}>

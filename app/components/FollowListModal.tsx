@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import ExpandableBio from "./ExpandableBio";
+import ProfileAvatar from "./ProfileAvatar";
 import { API_BASE } from "../lib/api";
 
 const BASE = API_BASE;
@@ -148,17 +150,7 @@ export default function FollowListModal({ userId, type, onClose }: Props) {
                       onClick={onClose}
                       className="flex items-center gap-3 flex-1 min-w-0"
                     >
-                      <div className="w-10 h-10 rounded-full bg-brown-200 flex-shrink-0 overflow-hidden flex items-center justify-center text-white font-bold text-sm">
-                        {u.profileImage ? (
-                          <img
-                            src={u.profileImage}
-                            alt={u.nickname}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <span>{u.nickname[0]}</span>
-                        )}
-                      </div>
+                      <ProfileAvatar src={u.profileImage} name={u.nickname} size="sm" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-brown-800 truncate">
                           {u.nickname}
@@ -166,9 +158,7 @@ export default function FollowListModal({ userId, type, onClose }: Props) {
                             <span className="ml-1.5 text-xs text-brown-400 font-normal">(나)</span>
                           )}
                         </p>
-                        {u.bio && (
-                          <p className="text-xs text-brown-400 truncate mt-0.5">{u.bio}</p>
-                        )}
+                        <ExpandableBio bio={u.bio} compact className="mt-0.5" />
                       </div>
                     </Link>
 

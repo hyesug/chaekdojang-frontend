@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import ReviewCard, { type Review } from "../components/ReviewCard";
+import ProfileAvatar from "../components/ProfileAvatar";
 import { API_BASE } from "../lib/api";
 
 const BASE = API_BASE;
@@ -180,17 +181,7 @@ export default function ExplorePage() {
                 className="flex-shrink-0 w-40 bg-white rounded-2xl border border-cream-200 p-3 flex flex-col items-center gap-2"
               >
                 <Link href={`/users/${user.id}`}>
-                  <div className="w-12 h-12 rounded-full bg-brown-200 overflow-hidden flex items-center justify-center text-white font-bold text-lg">
-                    {user.profileImage ? (
-                      <img
-                        src={user.profileImage}
-                        alt={user.nickname}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span>{user.nickname[0]}</span>
-                    )}
-                  </div>
+                  <ProfileAvatar src={user.profileImage} name={user.nickname} size="md" />
                 </Link>
                 <div className="text-center min-w-0 w-full">
                   <Link

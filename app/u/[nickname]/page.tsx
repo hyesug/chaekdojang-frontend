@@ -3,6 +3,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import ReviewCard, { type Review } from "../../components/ReviewCard";
+import ExpandableBio from "../../components/ExpandableBio";
+import ProfileAvatar from "../../components/ProfileAvatar";
 import { fetchApiData, shareText, SITE_URL } from "../../lib/serverApi";
 
 type UserProfile = {
@@ -76,16 +78,10 @@ export default async function NicknameProfilePage({ params }: Props) {
     <div className="max-w-2xl mx-auto px-4 py-8">
       <div className="bg-white rounded-lg border border-brown-100 p-6 shadow-sm mb-6">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-brown-200 overflow-hidden flex items-center justify-center text-white text-2xl font-bold flex-shrink-0">
-            {profile.profileImage ? (
-              <Image src={profile.profileImage} alt={profile.nickname} width={64} height={64} className="w-full h-full object-cover" />
-            ) : (
-              <span>{profile.nickname[0]}</span>
-            )}
-          </div>
+          <ProfileAvatar src={profile.profileImage} name={profile.nickname} size="lg" />
           <div className="min-w-0 flex-1">
             <h1 className="font-serif text-2xl font-bold text-brown-800 truncate">{profile.nickname}</h1>
-            <p className="text-sm text-brown-500 mt-1 line-clamp-2">{profile.bio || shareText()}</p>
+            <ExpandableBio bio={profile.bio || shareText()} className="mt-1" />
           </div>
         </div>
 

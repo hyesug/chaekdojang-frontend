@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import ReviewCard, { type Review } from "../components/ReviewCard";
 import FollowListModal from "../components/FollowListModal";
+import ExpandableBio, { MAX_BIO_LENGTH } from "../components/ExpandableBio";
+import ProfileAvatar from "../components/ProfileAvatar";
 import { API_BASE } from "../lib/api";
 
 const BASE = API_BASE;
@@ -246,8 +248,10 @@ export default function ProfilePage() {
     setSaving(true);
     setSaveError("");
     try {
-      const body: Record<string, string> = { nickname: editForm.nickname };
-      if (editForm.bio) body.bio = editForm.bio;
+      const body: Record<string, string> = {
+        nickname: editForm.nickname,
+        bio: editForm.bio.trim(),
+      };
       if (editForm.profileImage) body.profileImage = editForm.profileImage;
 
       const res = await fetch(`${BASE}/api/users/me`, {
@@ -301,18 +305,10 @@ export default function ProfilePage() {
         {!editing ? (
           <>
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-brown-200 flex-shrink-0 overflow-hidden flex items-center justify-center text-white text-2xl font-bold">
-                {profile.profileImage ? (
-                  <img src={profile.profileImage} alt={profile.nickname} className="w-full h-full object-cover" />
-                ) : (
-                  <span>{profile.nickname[0]}</span>
-                )}
-              </div>
+              <ProfileAvatar src={profile.profileImage} name={profile.nickname} size="lg" />
               <div className="flex-1 min-w-0">
                 <h1 className="font-serif text-xl font-bold text-brown-800 truncate">{profile.nickname}</h1>
-                {profile.bio && (
-                  <p className="text-sm text-brown-500 mt-1 line-clamp-2">{profile.bio}</p>
-                )}
+                <ExpandableBio bio={profile.bio} className="mt-1" />
               </div>
               <button
                 onClick={() => setEditing(true)}
@@ -390,24 +386,22 @@ export default function ProfilePage() {
               <textarea
                 id="p-bio"
                 value={editForm.bio}
+                maxLength={MAX_BIO_LENGTH}
                 onChange={(e) => setEditForm((f) => ({ ...f, bio: e.target.value }))}
                 placeholder="간단한 자기소개를 남겨보세요"
                 rows={3}
                 className="w-full px-4 py-2.5 rounded-xl border border-cream-300 text-sm text-brown-800 bg-cream-50 placeholder:text-brown-300 focus:outline-none focus:border-brown-400 focus:ring-2 focus:ring-brown-100 transition resize-none"
               />
+              <p className="mt-1 text-right text-xs text-brown-300">
+                {editForm.bio.length} / {MAX_BIO_LENGTH}
+              </p>
             </div>
             <div>
               <label className="block text-sm text-brown-600 mb-1.5">
                 프로필 이미지
               </label>
               <div className="flex items-center gap-3">
-                <div className="w-14 h-14 rounded-full bg-brown-200 flex-shrink-0 overflow-hidden flex items-center justify-center text-white font-bold">
-                  {editForm.profileImage ? (
-                    <img src={editForm.profileImage} alt="미리보기" className="w-full h-full object-cover" />
-                  ) : (
-                    <span>{editForm.nickname[0] ?? "?"}</span>
-                  )}
-                </div>
+                <ProfileAvatar src={editForm.profileImage} name={editForm.nickname || "책도장"} size="md" />
                 <label className={`flex-1 cursor-pointer px-4 py-2.5 rounded-xl border border-cream-300 text-sm text-center transition ${uploading ? "opacity-50 cursor-not-allowed" : "hover:border-brown-400 hover:bg-cream-50"}`}>
                   {uploading ? "업로드 중..." : "사진 변경"}
                   <input
@@ -610,16 +604,10 @@ export default function ProfilePage() {
                 href={`/users/${user.id}`}
                 className="flex items-center gap-3 hover:opacity-75 transition-opacity"
               >
-                <div className="w-10 h-10 rounded-full bg-brown-200 flex-shrink-0 overflow-hidden flex items-center justify-center text-white font-bold text-sm">
-                  {user.profileImage ? (
-                    <img src={user.profileImage} alt={user.nickname} className="w-full h-full object-cover" />
-                  ) : (
-                    <span>{user.nickname[0]}</span>
-                  )}
-                </div>
+                <ProfileAvatar src={user.profileImage} name={user.nickname} size="sm" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-brown-800 truncate">{user.nickname}</p>
-                  {user.bio && <p className="text-xs text-brown-400 truncate">{user.bio}</p>}
+                  <ExpandableBio bio={user.bio} compact />
                 </div>
                 <span className="text-brown-300 text-xs flex-shrink-0">›</span>
               </Link>

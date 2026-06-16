@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
+import ProfileAvatar from "../components/ProfileAvatar";
 import { API_BASE } from "../lib/api";
 import { buildSearchLinks } from "../lib/purchaseLinks";
 
@@ -352,13 +353,7 @@ function SearchContent() {
               href={`/users/${user.id}`}
               className="bg-white rounded-2xl border border-cream-200 p-4 flex items-center gap-3 hover:shadow-sm transition-shadow"
             >
-              <div className="w-11 h-11 rounded-full bg-brown-200 flex-shrink-0 overflow-hidden flex items-center justify-center text-white font-bold">
-                {user.profileImage ? (
-                  <img src={user.profileImage} alt={user.nickname} className="w-full h-full object-cover" />
-                ) : (
-                  <span>{user.nickname[0]}</span>
-                )}
-              </div>
+              <ProfileAvatar src={user.profileImage} name={user.nickname} size="sm" className="w-11 h-11" />
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-brown-800 truncate">{user.nickname}</p>
               </div>

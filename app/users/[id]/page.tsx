@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import ReviewCard, { type Review } from "../../components/ReviewCard";
 import FollowListModal from "../../components/FollowListModal";
+import ExpandableBio from "../../components/ExpandableBio";
+import ProfileAvatar from "../../components/ProfileAvatar";
 import { API_BASE } from "../../lib/api";
 
 const BASE = API_BASE;
@@ -157,24 +159,12 @@ export default function UserProfilePage() {
       {/* 프로필 카드 */}
       <div className="bg-white rounded-2xl border border-cream-200 p-6 shadow-sm mb-6">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-brown-200 flex-shrink-0 overflow-hidden flex items-center justify-center text-white text-2xl font-bold">
-            {profile.profileImage ? (
-              <img
-                src={profile.profileImage}
-                alt={profile.nickname}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <span>{profile.nickname[0]}</span>
-            )}
-          </div>
+          <ProfileAvatar src={profile.profileImage} name={profile.nickname} size="lg" />
           <div className="flex-1 min-w-0">
             <h1 className="font-serif text-xl font-bold text-brown-800 truncate">
               {profile.nickname}
             </h1>
-            {profile.bio && (
-              <p className="text-sm text-brown-500 mt-1 line-clamp-2">{profile.bio}</p>
-            )}
+            <ExpandableBio bio={profile.bio} className="mt-1" />
           </div>
           {/* 로그인한 경우에만 팔로우 버튼 표시 */}
           {isLoggedIn && (

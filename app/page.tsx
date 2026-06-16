@@ -2,18 +2,26 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import ReviewCard, { type Review } from "./components/ReviewCard";
 import { API_BASE } from "./lib/api";
 
 const BASE = API_BASE;
 const PAGE_SIZE = 10;
+const FEED_STATE_KEY = "chaekdojang:feed-state";
 
 type FeedTab = "all" | "following" | "taste";
 type SortType = "recent" | "rating" | "popular";
 
+type FeedState = {
+  tab: FeedTab;
+  sort: SortType;
+  page: number;
+  reviews: Review[];
+  hasMore: boolean;
+  scrollY: number;
+};
+
 export default function FeedPage() {
-  const router = useRouter();
   const [tab, setTab] = useState<FeedTab>("all");
   const [sort, setSort] = useState<SortType>("recent");
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -23,6 +31,49 @@ export default function FeedPage() {
   const [page, setPage] = useState(0);
   const [loggedIn, setLoggedIn] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const restoredRef = useRef(false);
+
+  useEffect(() => {
+    const raw = sessionStorage.getItem(FEED_STATE_KEY);
+    if (!raw) return;
+    try {
+      const saved = JSON.parse(raw) as FeedState;
+      if (!Array.isArray(saved.reviews) || saved.reviews.length === 0) return;
+      restoredRef.current = true;
+      setTab(saved.tab);
+      setSort(saved.sort);
+      setPage(saved.page);
+      setReviews(saved.reviews);
+      setHasMore(saved.hasMore);
+      setLoading(false);
+      requestAnimationFrame(() => window.scrollTo(0, saved.scrollY));
+    } catch {
+      sessionStorage.removeItem(FEED_STATE_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (loading || reviews.length === 0) return;
+    const save = () => {
+      const state: FeedState = {
+        tab,
+        sort,
+        page,
+        reviews,
+        hasMore,
+        scrollY: window.scrollY,
+      };
+      sessionStorage.setItem(FEED_STATE_KEY, JSON.stringify(state));
+    };
+    save();
+    window.addEventListener("pagehide", save);
+    window.addEventListener("beforeunload", save);
+    return () => {
+      save();
+      window.removeEventListener("pagehide", save);
+      window.removeEventListener("beforeunload", save);
+    };
+  }, [tab, sort, page, reviews, hasMore, loading]);
 
   /* 로그인 상태 동기화 */
   useEffect(() => {
@@ -123,9 +174,15 @@ export default function FeedPage() {
 
   /* 탭 또는 정렬 바뀔 때 — 상태 초기화 후 첫 페이지 로드 */
   useEffect(() => {
+    if (restoredRef.current) {
+      // 복원 직후 첫 실행은 건너뛰고, 다음 실제 탭/정렬 변경부터 정상 동작하도록 플래그를 내린다
+      restoredRef.current = false;
+      return;
+    }
     setReviews([]);
     setPage(0);
     setHasMore(true);
+    sessionStorage.removeItem(FEED_STATE_KEY);
     if (tab === "all") {
       loadAllPage(0, sort);
     } else if (tab === "following") {

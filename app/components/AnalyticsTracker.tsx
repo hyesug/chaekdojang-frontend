@@ -46,20 +46,22 @@ function sendMetric(eventType: string, path: string, durationMs = 0) {
 
 export default function AnalyticsTracker() {
   const pathname = usePathname();
-  const enteredAtRef = useRef(Date.now());
+  const enteredAtRef = useRef<number | null>(null);
   const lastPathRef = useRef(pathname);
   const mountedRef = useRef(false);
 
   useEffect(() => {
+    const now = Date.now();
     if (!mountedRef.current) {
       mountedRef.current = true;
+      enteredAtRef.current = now;
+      lastPathRef.current = pathname;
       sendMetric("page_view", pathname);
       return;
     }
 
     const previousPath = lastPathRef.current;
-    const now = Date.now();
-    sendMetric("session_end", previousPath, now - enteredAtRef.current);
+    sendMetric("session_end", previousPath, now - (enteredAtRef.current ?? now));
 
     enteredAtRef.current = now;
     lastPathRef.current = pathname;
@@ -68,12 +70,14 @@ export default function AnalyticsTracker() {
 
   useEffect(() => {
     const interval = window.setInterval(() => {
-      sendMetric("heartbeat", lastPathRef.current, Date.now() - enteredAtRef.current);
+      const now = Date.now();
+      sendMetric("heartbeat", lastPathRef.current, now - (enteredAtRef.current ?? now));
     }, 30000);
 
     const handleVisibility = () => {
       if (document.visibilityState === "hidden") {
-        sendMetric("session_end", lastPathRef.current, Date.now() - enteredAtRef.current);
+        const now = Date.now();
+        sendMetric("session_end", lastPathRef.current, now - (enteredAtRef.current ?? now));
       }
     };
 

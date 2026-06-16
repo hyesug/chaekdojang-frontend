@@ -108,8 +108,7 @@ export default function ChatRoomPage() {
                 <ProfileAvatar
                   src={msg.senderProfileImage}
                   name={msg.senderNickname}
-                  size="xs"
-                  className="w-8 h-8"
+                  size="sm"
                 />
               )}
               <div className={`max-w-[70%] ${isMine ? 'items-end' : 'items-start'} flex flex-col gap-1`}>

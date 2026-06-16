@@ -9,7 +9,17 @@ interface User { id: number; nickname: string; email: string; role: string; crea
 interface Review { id: number; authorNickname: string; bookTitle: string; content: string; rating: number; hidden: boolean; createdAt: string; }
 interface BookStat { bookId: number; title: string; author: string; reviewCount: number; }
 interface Inquiry { id: number; title: string; authorName: string; createdAt: string; }
-interface AccessLog { id: number; ip: string; method: string; uri: string; status: number; elapsedMs: number; createdAt: string; }
+interface AccessLog {
+  id: number;
+  ip: string;
+  matchedUserId: number | null;
+  matchedNickname: string | null;
+  method: string;
+  uri: string;
+  status: number;
+  elapsedMs: number;
+  createdAt: string;
+}
 interface MetricEvent {
   id: number;
   userId: number | null;
@@ -61,7 +71,6 @@ function getRouteLabel(value: string) {
     "/terms": "이용약관",
     "/account-deletion": "계정 삭제 안내",
     "/dojangdan": "도장단",
-    "/for-authors": "작가 안내",
     "/api/dev/login": "로컬 개발용 로그인",
     "/api/metrics/events": "사용 지표 수집",
     "/api/admin/users": "관리자 > 회원 목록 조회",
@@ -453,7 +462,15 @@ export default function AdminPage() {
                     <td className="px-4 py-2.5 text-brown-400 whitespace-nowrap text-xs">
                       {formatLogTime(a.createdAt)}
                     </td>
-                    <td className="px-4 py-2.5 text-brown-500 font-mono text-xs">{a.ip}</td>
+                    <td className="px-4 py-2.5 text-brown-500 text-xs">
+                      <div className="font-mono">{a.ip}</div>
+                      {a.matchedUserId && (
+                        <div className="mt-0.5 text-[11px] text-brown-300">
+                          사용자 #{a.matchedUserId}
+                          {a.matchedNickname ? ` · ${a.matchedNickname}` : ""}
+                        </div>
+                      )}
+                    </td>
                     <td className="px-4 py-2.5">
                       <span className={`px-1.5 py-0.5 rounded text-xs font-mono font-medium ${
                         a.method === "GET" ? "bg-green-50 text-green-600" :

@@ -3,15 +3,16 @@
 type Props = {
   src?: string | null;
   name: string;
-  size?: "xs" | "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "lg" | "xl";
   className?: string;
 };
 
 const sizeClass = {
   xs: "w-6 h-6 text-[9px]",
-  sm: "w-10 h-10 text-sm",
-  md: "w-14 h-14 text-lg",
-  lg: "w-16 h-16 text-xl",
+  sm: "w-8 h-8 text-xs",
+  md: "w-10 h-10 text-sm",
+  lg: "w-14 h-14 text-lg",
+  xl: "w-16 h-16 text-xl",
 };
 
 export default function ProfileAvatar({ src, name, size = "md", className = "" }: Props) {

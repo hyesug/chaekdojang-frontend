@@ -251,8 +251,8 @@ export default function ProfilePage() {
       const body: Record<string, string> = {
         nickname: editForm.nickname,
         bio: editForm.bio.trim(),
+        profileImage: editForm.profileImage.trim(),
       };
-      if (editForm.profileImage) body.profileImage = editForm.profileImage;
 
       const res = await fetch(`${BASE}/api/users/me`, {
         method: "PATCH",
@@ -402,6 +402,7 @@ export default function ProfilePage() {
               </label>
               <div className="flex items-center gap-3">
                 <ProfileAvatar src={editForm.profileImage} name={editForm.nickname || "책도장"} size="md" />
+                <div className="flex flex-1 flex-col gap-2 sm:flex-row">
                 <label className={`flex-1 cursor-pointer px-4 py-2.5 rounded-xl border border-cream-300 text-sm text-center transition ${uploading ? "opacity-50 cursor-not-allowed" : "hover:border-brown-400 hover:bg-cream-50"}`}>
                   {uploading ? "업로드 중..." : "사진 변경"}
                   <input
@@ -412,6 +413,15 @@ export default function ProfilePage() {
                     onChange={handleFileChange}
                   />
                 </label>
+                <button
+                  type="button"
+                  disabled={uploading || !editForm.profileImage}
+                  onClick={() => setEditForm((f) => ({ ...f, profileImage: "" }))}
+                  className="flex-1 rounded-xl border border-cream-300 px-4 py-2.5 text-sm text-brown-500 transition hover:border-brown-400 hover:bg-cream-50 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  기본이미지 쓰기
+                </button>
+                </div>
               </div>
             </div>
             {saveError && (

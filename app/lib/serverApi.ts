@@ -58,7 +58,7 @@ export function reviewTitle(review: ReviewDetail): string {
 
 export function reviewDescription(review: ReviewDetail): string {
   const clean = review.content.replace(/\s+/g, " ").trim();
-  return clean.length > 120 ? clean.slice(0, 120) : clean;
+  return clean.length > 120 ? `${clean.slice(0, 119)}…` : clean;
 }
 
 export function shareText(): string {

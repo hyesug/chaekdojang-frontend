@@ -353,7 +353,7 @@ function SearchContent() {
               href={`/users/${user.id}`}
               className="bg-white rounded-2xl border border-cream-200 p-4 flex items-center gap-3 hover:shadow-sm transition-shadow"
             >
-              <ProfileAvatar src={user.profileImage} name={user.nickname} size="sm" className="w-11 h-11" />
+              <ProfileAvatar src={user.profileImage} name={user.nickname} size="xl" />
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-brown-800 truncate">{user.nickname}</p>
               </div>

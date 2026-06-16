@@ -10,15 +10,14 @@ const navLinks = [
   { href: "/library", label: "서재" },
   { href: "/stats", label: "통계" },
   { href: "/write", label: "독후감 쓰기" },
+  { href: "/dojangdan", label: "도장단" },
   { href: "/cs", label: "고객센터" },
-  // { href: "/subscription", label: "프리미엄" }, // 추후 오픈 예정
 ];
 
 export default function Header() {
   return (
     <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-sm border-b border-cream-200">
-      <div className="max-w-3xl mx-auto px-4 h-16 flex items-center gap-4">
-        {/* 로고 */}
+      <div className="max-w-4xl mx-auto px-4 h-16 flex items-center gap-4">
         <Link
           href="/"
           className="font-serif text-2xl font-bold text-brown-700 tracking-tight flex-none inline-flex items-center gap-2"
@@ -27,8 +26,7 @@ export default function Header() {
           책도장
         </Link>
 
-        {/* 데스크탑 내비게이션 — flex-1로 남은 공간 차지, 내부에서 가운데 정렬 */}
-        <nav className="hidden md:flex flex-1 items-center justify-center gap-6">
+        <nav className="hidden md:flex flex-1 items-center justify-center gap-5">
           {navLinks.map(({ href, label }) => (
             <Link
               key={href}
@@ -40,14 +38,12 @@ export default function Header() {
           ))}
         </nav>
 
-        {/* 우측: 관리자 + 알림 + 로그인 버튼 */}
         <div className="hidden md:flex items-center gap-3 flex-none ml-auto">
           <AdminNavLink />
           <NotificationBell />
           <AuthButtons />
         </div>
 
-        {/* 모바일: 알림 + 햄버거 */}
         <div className="flex md:hidden items-center gap-2 flex-none ml-auto">
           <NotificationBell />
           <MobileMenu links={navLinks} />

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Noto_Sans_KR, Nanum_Myeongjo } from "next/font/google";
+import { Noto_Sans_KR, Noto_Serif_KR } from "next/font/google";
 import "./globals.css";
 import Header from "./components/Header";
 import AnalyticsTracker from "./components/AnalyticsTracker";
@@ -12,7 +12,7 @@ const notoSansKR = Noto_Sans_KR({
   display: "swap",
 });
 
-const nanumMyeongjo = Nanum_Myeongjo({
+const notoSerifKR = Noto_Serif_KR({
   subsets: ["latin"],
   weight: ["400", "700", "800"],
   variable: "--font-serif-kr",
@@ -24,7 +24,7 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.chaekdojang.com
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "책도장 - 독후감 쓰고 책 취향을 나누는 독서 SNS",
+    default: "책도장",
     template: "%s | 책도장",
   },
   description:
@@ -47,12 +47,12 @@ export const metadata: Metadata = {
     locale: "ko_KR",
     url: siteUrl,
     siteName: "책도장",
-    title: "책도장 - 독후감 쓰고 책 취향을 나누는 독서 SNS",
+    title: "책도장",
     description: shareText(),
   },
   twitter: {
     card: "summary",
-    title: "책도장 - 독후감 쓰고 책 취향을 나누는 독서 SNS",
+    title: "책도장",
     description: shareText(),
   },
   robots: {
@@ -86,7 +86,7 @@ export default function RootLayout({
   };
 
   return (
-    <html lang="ko" className={`${notoSansKR.variable} ${nanumMyeongjo.variable}`}>
+    <html lang="ko" className={`${notoSansKR.variable} ${notoSerifKR.variable}`}>
       <body className="min-h-screen flex flex-col bg-cream-100 text-brown-800">
         <script
           type="application/ld+json"
@@ -96,8 +96,13 @@ export default function RootLayout({
         <AnalyticsTracker />
         <Header />
         <main className="flex-1">{children}</main>
-        <footer className="py-8 text-center text-sm text-brown-400 border-t border-cream-200">
-          © 2026 책도장 — 책과 함께하는 일상
+        <footer className="px-4 py-8 text-center text-sm text-brown-400 border-t border-cream-200">
+          <p>2026 책도장. 읽은 책에 나만의 감상을 찍다</p>
+          <nav className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+            <a href="/privacy" className="hover:text-brown-600">개인정보처리방침</a>
+            <a href="/terms" className="hover:text-brown-600">이용약관</a>
+            <a href="/account-deletion" className="hover:text-brown-600">계정 삭제 안내</a>
+          </nav>
         </footer>
       </body>
     </html>

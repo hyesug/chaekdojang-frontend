@@ -53,15 +53,14 @@ export async function fetchApiData<T>(
 }
 
 export function reviewTitle(review: ReviewDetail): string {
-  const bookTitle = review.book?.title ?? "독후감";
-  return `${bookTitle} 독후감 - ${review.author.nickname}`;
+  return review.book?.title ? `${review.book.title} 독후감 - 책도장` : "독후감 - 책도장";
 }
 
 export function reviewDescription(review: ReviewDetail): string {
   const clean = review.content.replace(/\s+/g, " ").trim();
-  return clean.length > 110 ? `${clean.slice(0, 110)}...` : clean;
+  return clean.length > 120 ? clean.slice(0, 120) : clean;
 }
 
 export function shareText(): string {
-  return "책도장: 읽은 책에 나만의 도장을 찍는 독서 기록 SNS.";
+  return "읽은 책에 나만의 감상을 찍다";
 }

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="책도장 아이콘">
+  <rect width="512" height="512" fill="#FAF6EF"/>
+  <g transform="rotate(-9 256 256)">
+    <circle cx="256" cy="256" r="184" fill="none" stroke="#8B1E1E" stroke-width="34"/>
+    <text
+      x="256"
+      y="319"
+      text-anchor="middle"
+      font-family="Noto Serif KR, Nanum Myeongjo, Batang, serif"
+      font-size="198"
+      font-weight="800"
+      fill="#8B1E1E"
+    >冊</text>
+  </g>
+</svg>

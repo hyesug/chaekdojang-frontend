@@ -5,7 +5,7 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: "*",
-      allow: "/",
+      allow: ["/", "/reviews/", "/books/"],
       disallow: [
         "/admin",
         "/admin/",
@@ -24,6 +24,7 @@ export default function robots(): MetadataRoute.Robots {
         "/setup-nickname",
         "/subscription",
         "/write",
+        "/write/",
       ],
     },
     sitemap: `${SITE_URL}/sitemap.xml`,

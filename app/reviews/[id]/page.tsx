@@ -25,7 +25,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const review = await getReview(id);
   if (!review) {
     return {
-      title: "독후감을 찾을 수 없습니다",
+      title: "독후감 - 책도장",
+      description: shareText(),
       robots: { index: false, follow: false },
     };
   }
@@ -33,10 +34,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = reviewTitle(review);
   const description = reviewDescription(review) || shareText();
   const url = `${SITE_URL}/reviews/${review.id}`;
+  const keywords = review.book?.title
+    ? [`${review.book.title} 독후감`, `${review.book.title} 서평`, `${review.book.title} 감상문`]
+    : ["독후감", "서평", "감상문"];
 
   return {
     title,
     description,
+    keywords,
     alternates: { canonical: `/reviews/${review.id}` },
     openGraph: {
       type: "article",

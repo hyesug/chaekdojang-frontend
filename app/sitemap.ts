@@ -12,6 +12,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: "", changeFrequency: "daily", priority: 1 },
     { path: "/search", changeFrequency: "weekly", priority: 0.8 },
     { path: "/explore", changeFrequency: "weekly", priority: 0.7 },
+    { path: "/dojangdan", changeFrequency: "monthly", priority: 0.6 },
+    { path: "/for-authors", changeFrequency: "monthly", priority: 0.6 },
+    { path: "/privacy", changeFrequency: "yearly", priority: 0.2 },
+    { path: "/terms", changeFrequency: "yearly", priority: 0.2 },
+    { path: "/account-deletion", changeFrequency: "yearly", priority: 0.2 },
     { path: "/cs", changeFrequency: "monthly", priority: 0.3 },
   ] satisfies Array<{
     path: string;
@@ -38,5 +43,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     images: review.book?.thumbnail ? [review.book.thumbnail] : undefined,
   }));
 
-  return [...staticRoutes, ...reviewRoutes];
+  const books = new Map<number, NonNullable<ReviewDetail["book"]>>();
+  for (const review of reviewPage?.content ?? []) {
+    if (review.book) books.set(review.book.id, review.book);
+  }
+
+  const bookRoutes = Array.from(books.values()).map((book) => ({
+    url: `${SITE_URL}/books/${book.id}`,
+    lastModified: now,
+    changeFrequency: "weekly" as const,
+    priority: 0.5,
+    images: book.thumbnail ? [book.thumbnail] : undefined,
+  }));
+
+  return [...staticRoutes, ...reviewRoutes, ...bookRoutes];
 }

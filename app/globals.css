@@ -6,13 +6,11 @@
 /* 책도장 디자인 토큰: 따뜻한 크림·브라운 계열 */
 :root {
   color-scheme: light;        /* 브라우저 기본 다크모드 UI 방지 */
-  --font-sans-kr: '';
-  --font-serif-kr: '';
 }
 
 @theme inline {
-  --font-sans: var(--font-sans-kr), 'Apple SD Gothic Neo', system-ui, sans-serif;
-  --font-serif: var(--font-serif-kr), 'Apple Myungjo', Georgia, serif;
+  --font-sans: var(--font-sans-kr), sans-serif;
+  --font-serif: var(--font-serif-kr), serif;
 }
 
 /* Tailwind v4 커스텀 색상 — bg-cream-100, text-brown-600 등으로 사용 */

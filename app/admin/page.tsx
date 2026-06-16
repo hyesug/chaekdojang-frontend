@@ -34,6 +34,18 @@ interface MetricEvent {
   createdAt: string;
 }
 
+type AccessFilters = {
+  q: string;
+  method: string;
+  statusGroup: string;
+};
+
+type MetricFilters = {
+  q: string;
+  eventType: string;
+  userType: string;
+};
+
 function formatLogTime(value: string) {
   const normalized = value.replace("T", " ");
   const [, month, day, hour, minute, second] =
@@ -119,6 +131,14 @@ export default function AdminPage() {
   const [reviewAuthorQ, setReviewAuthorQ] = useState("");
   const [reviewTitleQ, setReviewTitleQ] = useState("");
   const [appliedSearch, setAppliedSearch] = useState({ author: "", title: "" });
+  const [accessQ, setAccessQ] = useState("");
+  const [accessMethod, setAccessMethod] = useState("");
+  const [accessStatusGroup, setAccessStatusGroup] = useState("");
+  const [appliedAccessFilters, setAppliedAccessFilters] = useState<AccessFilters>({ q: "", method: "", statusGroup: "" });
+  const [metricQ, setMetricQ] = useState("");
+  const [metricEventType, setMetricEventType] = useState("");
+  const [metricUserType, setMetricUserType] = useState("");
+  const [appliedMetricFilters, setAppliedMetricFilters] = useState<MetricFilters>({ q: "", eventType: "", userType: "" });
 
   function getToken() {
     if (typeof window === "undefined") return null;
@@ -146,12 +166,16 @@ export default function AdminPage() {
     } finally { setLoading(false); }
   }
 
-  async function loadAccessLogs(page: number) {
+  async function loadAccessLogs(page: number, filters: AccessFilters = appliedAccessFilters) {
     const token = getToken();
     if (!token) { router.replace("/auth/login"); return; }
     setLoading(true);
     try {
-      const r = await fetch(`${API_BASE}/api/admin/access-logs?page=${page}&size=50`, {
+      const params = new URLSearchParams({ page: String(page), size: "50" });
+      if (filters.q.trim()) params.set("q", filters.q.trim());
+      if (filters.method) params.set("method", filters.method);
+      if (filters.statusGroup) params.set("statusGroup", filters.statusGroup);
+      const r = await fetch(`${API_BASE}/api/admin/access-logs?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (r.status === 403) { setUnauthorized(true); return; }
@@ -162,12 +186,16 @@ export default function AdminPage() {
     } finally { setLoading(false); }
   }
 
-  async function loadMetricEvents(page: number) {
+  async function loadMetricEvents(page: number, filters: MetricFilters = appliedMetricFilters) {
     const token = getToken();
     if (!token) { router.replace("/auth/login"); return; }
     setLoading(true);
     try {
-      const r = await fetch(`${API_BASE}/api/admin/metrics?page=${page}&size=50`, {
+      const params = new URLSearchParams({ page: String(page), size: "50" });
+      if (filters.q.trim()) params.set("q", filters.q.trim());
+      if (filters.eventType) params.set("eventType", filters.eventType);
+      if (filters.userType) params.set("userType", filters.userType);
+      const r = await fetch(`${API_BASE}/api/admin/metrics?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (r.status === 403) { setUnauthorized(true); return; }
@@ -205,9 +233,19 @@ export default function AdminPage() {
       setReviewTitleQ("");
       loadReviews(0, "", "");
     } else if (tab === "access") {
-      loadAccessLogs(0);
+      setAccessQ("");
+      setAccessMethod("");
+      setAccessStatusGroup("");
+      const empty = { q: "", method: "", statusGroup: "" };
+      setAppliedAccessFilters(empty);
+      loadAccessLogs(0, empty);
     } else if (tab === "metrics") {
-      loadMetricEvents(0);
+      setMetricQ("");
+      setMetricEventType("");
+      setMetricUserType("");
+      const empty = { q: "", eventType: "", userType: "" };
+      setAppliedMetricFilters(empty);
+      loadMetricEvents(0, empty);
     } else {
       load();
     }
@@ -237,6 +275,38 @@ export default function AdminPage() {
     e.preventDefault();
     setAppliedSearch({ author: reviewAuthorQ, title: reviewTitleQ });
     loadReviews(0, reviewAuthorQ, reviewTitleQ);
+  }
+
+  function handleAccessSearch(e: React.FormEvent) {
+    e.preventDefault();
+    const filters = { q: accessQ, method: accessMethod, statusGroup: accessStatusGroup };
+    setAppliedAccessFilters(filters);
+    loadAccessLogs(0, filters);
+  }
+
+  function resetAccessFilters() {
+    const empty = { q: "", method: "", statusGroup: "" };
+    setAccessQ("");
+    setAccessMethod("");
+    setAccessStatusGroup("");
+    setAppliedAccessFilters(empty);
+    loadAccessLogs(0, empty);
+  }
+
+  function handleMetricSearch(e: React.FormEvent) {
+    e.preventDefault();
+    const filters = { q: metricQ, eventType: metricEventType, userType: metricUserType };
+    setAppliedMetricFilters(filters);
+    loadMetricEvents(0, filters);
+  }
+
+  function resetMetricFilters() {
+    const empty = { q: "", eventType: "", userType: "" };
+    setMetricQ("");
+    setMetricEventType("");
+    setMetricUserType("");
+    setAppliedMetricFilters(empty);
+    loadMetricEvents(0, empty);
   }
 
   if (unauthorized) return (
@@ -272,55 +342,108 @@ export default function AdminPage() {
 
       {/* 회원 관리 */}
       {!loading && tab === "users" && (
-        <div className="bg-white rounded-2xl shadow-sm border border-cream-200 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-cream-100">
-              <tr>
-                <th className="text-left px-4 py-3 text-brown-600 font-medium">닉네임</th>
-                <th className="text-left px-4 py-3 text-brown-600 font-medium">이메일</th>
-                <th className="text-left px-4 py-3 text-brown-600 font-medium">역할</th>
-                <th className="text-left px-4 py-3 text-brown-600 font-medium">가입일</th>
-                <th className="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((u) => (
-                <tr
-                  key={u.id}
-                  tabIndex={0}
-                  role="link"
-                  onClick={() => router.push(`/users/${u.id}`)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") router.push(`/users/${u.id}`);
-                  }}
-                  className="border-t border-cream-100 cursor-pointer hover:bg-cream-50 focus:outline-none focus:bg-cream-50"
-                >
-                  <td className="px-4 py-3 text-brown-800">{u.nickname}</td>
-                  <td className="px-4 py-3 text-brown-500">{u.email ?? "-"}</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                      u.role === "SUPER_ADMIN" ? "bg-red-100 text-red-600" :
-                      u.role === "ADMIN" ? "bg-blue-100 text-blue-600" : "bg-cream-200 text-brown-500"}`}>
-                      {u.role === "SUPER_ADMIN" ? "슈퍼관리자" : u.role === "ADMIN" ? "관리자" : "일반"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-brown-400">{new Date(u.createdAt).toLocaleDateString("ko-KR")}</td>
-                  <td className="px-4 py-3">
-                    {u.role !== "SUPER_ADMIN" && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setRole(u.id, u.role === "ADMIN" ? "USER" : "ADMIN");
-                        }}
-                        className={`px-3 py-1 text-xs rounded-lg ${u.role === "ADMIN" ? "bg-cream-200 text-brown-500 hover:bg-cream-300" : "bg-blue-50 text-blue-600 hover:bg-blue-100"}`}>
-                        {u.role === "ADMIN" ? "권한 해제" : "관리자 지정"}
-                      </button>
-                    )}
-                  </td>
+        <div>
+          <div className="hidden bg-white rounded-2xl shadow-sm border border-cream-200 overflow-hidden sm:block">
+            <table className="w-full text-sm">
+              <thead className="bg-cream-100">
+                <tr>
+                  <th className="text-left px-4 py-3 text-brown-600 font-medium">닉네임</th>
+                  <th className="text-left px-4 py-3 text-brown-600 font-medium">이메일</th>
+                  <th className="text-left px-4 py-3 text-brown-600 font-medium">역할</th>
+                  <th className="text-left px-4 py-3 text-brown-600 font-medium">가입일</th>
+                  <th className="px-4 py-3"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {users.map((u) => (
+                  <tr
+                    key={u.id}
+                    tabIndex={0}
+                    role="link"
+                    onClick={() => router.push(`/users/${u.id}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") router.push(`/users/${u.id}`);
+                    }}
+                    className="border-t border-cream-100 cursor-pointer hover:bg-cream-50 focus:outline-none focus:bg-cream-50"
+                  >
+                    <td className="px-4 py-3 text-brown-800">{u.nickname}</td>
+                    <td className="px-4 py-3 text-brown-500">{u.email ?? "-"}</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                        u.role === "SUPER_ADMIN" ? "bg-red-100 text-red-600" :
+                        u.role === "ADMIN" ? "bg-blue-100 text-blue-600" : "bg-cream-200 text-brown-500"}`}>
+                        {u.role === "SUPER_ADMIN" ? "슈퍼관리자" : u.role === "ADMIN" ? "관리자" : "일반"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-brown-400">{new Date(u.createdAt).toLocaleDateString("ko-KR")}</td>
+                    <td className="px-4 py-3">
+                      {u.role !== "SUPER_ADMIN" && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setRole(u.id, u.role === "ADMIN" ? "USER" : "ADMIN");
+                          }}
+                          className={`px-3 py-1 text-xs rounded-lg ${u.role === "ADMIN" ? "bg-cream-200 text-brown-500 hover:bg-cream-300" : "bg-blue-50 text-blue-600 hover:bg-blue-100"}`}>
+                          {u.role === "ADMIN" ? "권한 해제" : "관리자 지정"}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {users.length === 0 && (
+                  <tr><td colSpan={5} className="text-center py-8 text-brown-300">회원이 없어요</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:hidden">
+            {users.map((u) => (
+              <div
+                key={u.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => router.push(`/users/${u.id}`)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") router.push(`/users/${u.id}`);
+                }}
+                className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm focus:outline-none focus:ring-2 focus:ring-brown-100"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-brown-800">{u.nickname}</p>
+                    <p className="mt-1 break-all text-xs text-brown-400">{u.email ?? "-"}</p>
+                  </div>
+                  <span className={`flex-shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+                    u.role === "SUPER_ADMIN" ? "bg-red-100 text-red-600" :
+                    u.role === "ADMIN" ? "bg-blue-100 text-blue-600" : "bg-cream-200 text-brown-500"}`}>
+                    {u.role === "SUPER_ADMIN" ? "슈퍼관리자" : u.role === "ADMIN" ? "관리자" : "일반"}
+                  </span>
+                </div>
+                <div className="mt-4 flex items-center justify-between gap-3 border-t border-cream-100 pt-3">
+                  <span className="text-xs text-brown-400">
+                    가입일 {new Date(u.createdAt).toLocaleDateString("ko-KR")}
+                  </span>
+                  {u.role !== "SUPER_ADMIN" && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setRole(u.id, u.role === "ADMIN" ? "USER" : "ADMIN");
+                      }}
+                      className={`rounded-lg px-3 py-1.5 text-xs ${u.role === "ADMIN" ? "bg-cream-200 text-brown-500 hover:bg-cream-300" : "bg-blue-50 text-blue-600 hover:bg-blue-100"}`}
+                    >
+                      {u.role === "ADMIN" ? "권한 해제" : "관리자 지정"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+            {users.length === 0 && (
+              <p className="rounded-2xl border border-cream-200 bg-white py-8 text-center text-sm text-brown-300">
+                회원이 없어요
+              </p>
+            )}
+          </div>
         </div>
       )}
 
@@ -443,6 +566,48 @@ export default function AdminPage() {
       {/* 접속 기록 */}
       {!loading && tab === "access" && (
         <div className="flex flex-col gap-4">
+          <form onSubmit={handleAccessSearch} className="grid gap-2 rounded-2xl border border-cream-200 bg-white p-4 sm:grid-cols-[1fr_auto_auto_auto]">
+            <input
+              value={accessQ}
+              onChange={(e) => setAccessQ(e.target.value)}
+              placeholder="메뉴, API, IP 검색"
+              className="rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-800 focus:border-brown-400 focus:outline-none"
+            />
+            <select
+              value={accessMethod}
+              onChange={(e) => setAccessMethod(e.target.value)}
+              className="rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm text-brown-600 focus:border-brown-400 focus:outline-none"
+            >
+              <option value="">전체 메서드</option>
+              <option value="GET">GET</option>
+              <option value="POST">POST</option>
+              <option value="PATCH">PATCH</option>
+              <option value="PUT">PUT</option>
+              <option value="DELETE">DELETE</option>
+            </select>
+            <select
+              value={accessStatusGroup}
+              onChange={(e) => setAccessStatusGroup(e.target.value)}
+              className="rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm text-brown-600 focus:border-brown-400 focus:outline-none"
+            >
+              <option value="">전체 상태</option>
+              <option value="2xx">성공 2xx</option>
+              <option value="3xx">이동 3xx</option>
+              <option value="4xx">요청 오류 4xx</option>
+              <option value="5xx">서버 오류 5xx</option>
+            </select>
+            <div className="flex gap-2">
+              <button type="submit" className="flex-1 rounded-xl bg-brown-600 px-4 py-2 text-sm text-white hover:bg-brown-700">
+                필터
+              </button>
+              {(appliedAccessFilters.q || appliedAccessFilters.method || appliedAccessFilters.statusGroup) && (
+                <button type="button" onClick={resetAccessFilters} className="rounded-xl border border-cream-300 px-3 py-2 text-sm text-brown-400 hover:bg-cream-50">
+                  초기화
+                </button>
+              )}
+            </div>
+          </form>
+
           <div className="bg-white rounded-2xl shadow-sm border border-cream-200 overflow-x-auto">
             <table className="w-full text-sm min-w-[640px]">
               <thead className="bg-cream-100">
@@ -501,13 +666,13 @@ export default function AdminPage() {
           {accessTotalPages > 1 && (
             <div className="flex items-center justify-center gap-2">
               <button
-                onClick={() => loadAccessLogs(accessPage - 1)}
+                onClick={() => loadAccessLogs(accessPage - 1, appliedAccessFilters)}
                 disabled={accessPage === 0}
                 className="px-3 py-1.5 text-sm border border-cream-300 rounded-lg text-brown-500 hover:bg-cream-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >← 이전</button>
               <span className="text-sm text-brown-400">{accessPage + 1} / {accessTotalPages}</span>
               <button
-                onClick={() => loadAccessLogs(accessPage + 1)}
+                onClick={() => loadAccessLogs(accessPage + 1, appliedAccessFilters)}
                 disabled={accessPage >= accessTotalPages - 1}
                 className="px-3 py-1.5 text-sm border border-cream-300 rounded-lg text-brown-500 hover:bg-cream-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >다음 →</button>
@@ -519,6 +684,44 @@ export default function AdminPage() {
       {/* 지표 로그 */}
       {!loading && tab === "metrics" && (
         <div className="flex flex-col gap-4">
+          <form onSubmit={handleMetricSearch} className="grid gap-2 rounded-2xl border border-cream-200 bg-white p-4 sm:grid-cols-[1fr_auto_auto_auto]">
+            <input
+              value={metricQ}
+              onChange={(e) => setMetricQ(e.target.value)}
+              placeholder="메뉴, 사용자, 세션, IP 검색"
+              className="rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-800 focus:border-brown-400 focus:outline-none"
+            />
+            <select
+              value={metricEventType}
+              onChange={(e) => setMetricEventType(e.target.value)}
+              className="rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm text-brown-600 focus:border-brown-400 focus:outline-none"
+            >
+              <option value="">전체 이벤트</option>
+              <option value="page_view">페이지 방문</option>
+              <option value="heartbeat">체류 확인</option>
+              <option value="session_end">방문 종료</option>
+            </select>
+            <select
+              value={metricUserType}
+              onChange={(e) => setMetricUserType(e.target.value)}
+              className="rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm text-brown-600 focus:border-brown-400 focus:outline-none"
+            >
+              <option value="">전체 사용자</option>
+              <option value="member">회원</option>
+              <option value="guest">비회원</option>
+            </select>
+            <div className="flex gap-2">
+              <button type="submit" className="flex-1 rounded-xl bg-brown-600 px-4 py-2 text-sm text-white hover:bg-brown-700">
+                필터
+              </button>
+              {(appliedMetricFilters.q || appliedMetricFilters.eventType || appliedMetricFilters.userType) && (
+                <button type="button" onClick={resetMetricFilters} className="rounded-xl border border-cream-300 px-3 py-2 text-sm text-brown-400 hover:bg-cream-50">
+                  초기화
+                </button>
+              )}
+            </div>
+          </form>
+
           <div className="bg-white rounded-2xl shadow-sm border border-cream-200 overflow-x-auto">
             <table className="w-full text-sm min-w-[760px]">
               <thead className="bg-cream-100">
@@ -564,13 +767,13 @@ export default function AdminPage() {
           {metricTotalPages > 1 && (
             <div className="flex items-center justify-center gap-2">
               <button
-                onClick={() => loadMetricEvents(metricPage - 1)}
+                onClick={() => loadMetricEvents(metricPage - 1, appliedMetricFilters)}
                 disabled={metricPage === 0}
                 className="px-3 py-1.5 text-sm border border-cream-300 rounded-lg text-brown-500 hover:bg-cream-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >← 이전</button>
               <span className="text-sm text-brown-400">{metricPage + 1} / {metricTotalPages}</span>
               <button
-                onClick={() => loadMetricEvents(metricPage + 1)}
+                onClick={() => loadMetricEvents(metricPage + 1, appliedMetricFilters)}
                 disabled={metricPage >= metricTotalPages - 1}
                 className="px-3 py-1.5 text-sm border border-cream-300 rounded-lg text-brown-500 hover:bg-cream-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >다음 →</button>

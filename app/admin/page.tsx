@@ -946,7 +946,7 @@ export default function AdminPage() {
                       {getRouteLabel(event.uri)}
                     </td>
                     <td className="px-4 py-2.5 text-brown-500 text-xs font-mono">{event.exceptionType}</td>
-                    <td className="px-4 py-2.5 text-brown-600 text-xs max-w-sm truncate" title={event.message}>
+                    <td className="px-4 py-2.5 text-brown-600 text-xs max-w-xl whitespace-pre-wrap break-words" title={event.message}>
                       {event.message}
                     </td>
                     <td className="px-4 py-2.5 text-brown-400 text-xs">

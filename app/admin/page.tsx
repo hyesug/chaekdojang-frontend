@@ -105,10 +105,33 @@ function getRouteLabel(value: string) {
 }
 
 function getMetricEventLabel(eventType: string) {
-  if (eventType === "page_view") return "페이지 방문";
-  if (eventType === "heartbeat") return "체류 확인";
-  if (eventType === "session_end") return "방문 종료";
+  if (eventType === "page_view") return "페이지 열림";
+  if (eventType === "heartbeat") return "머무는 중";
+  if (eventType === "session_end") return "페이지 떠남";
   return eventType;
+}
+
+function getMethodLabel(method: string) {
+  if (method === "GET") return "조회";
+  if (method === "POST") return "등록";
+  if (method === "PATCH") return "수정";
+  if (method === "PUT") return "전체 수정";
+  if (method === "DELETE") return "삭제";
+  return method;
+}
+
+function getStatusLabel(status: number) {
+  if (status < 300) return `정상 (${status})`;
+  if (status < 400) return `이동 (${status})`;
+  if (status < 500) return `요청 문제 (${status})`;
+  return `서버 문제 (${status})`;
+}
+
+function getDeviceLabel(device: string | null) {
+  if (device === "mobile") return "휴대폰";
+  if (device === "tablet") return "태블릿";
+  if (device === "desktop") return "PC";
+  return device ?? "-";
 }
 
 export default function AdminPage() {
@@ -321,8 +344,8 @@ export default function AdminPage() {
     { key: "users", label: "👥 회원" },
     { key: "reviews", label: "📖 독후감" },
     { key: "inquiries", label: "💬 문의" },
-    { key: "access", label: "🔍 접속 기록" },
-    { key: "metrics", label: "📈 지표 로그" },
+    { key: "access", label: "🔍 기능 사용 기록" },
+    { key: "metrics", label: "📈 페이지 방문 기록" },
   ] as const;
 
   return (
@@ -570,7 +593,7 @@ export default function AdminPage() {
             <input
               value={accessQ}
               onChange={(e) => setAccessQ(e.target.value)}
-              placeholder="메뉴, API, IP 검색"
+              placeholder="메뉴, 기능, 접속 위치 검색"
               className="rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-800 focus:border-brown-400 focus:outline-none"
             />
             <select
@@ -578,27 +601,27 @@ export default function AdminPage() {
               onChange={(e) => setAccessMethod(e.target.value)}
               className="rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm text-brown-600 focus:border-brown-400 focus:outline-none"
             >
-              <option value="">전체 메서드</option>
-              <option value="GET">GET</option>
-              <option value="POST">POST</option>
-              <option value="PATCH">PATCH</option>
-              <option value="PUT">PUT</option>
-              <option value="DELETE">DELETE</option>
+              <option value="">전체 작업</option>
+              <option value="GET">조회</option>
+              <option value="POST">등록</option>
+              <option value="PATCH">수정</option>
+              <option value="PUT">전체 수정</option>
+              <option value="DELETE">삭제</option>
             </select>
             <select
               value={accessStatusGroup}
               onChange={(e) => setAccessStatusGroup(e.target.value)}
               className="rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm text-brown-600 focus:border-brown-400 focus:outline-none"
             >
-              <option value="">전체 상태</option>
-              <option value="2xx">성공 2xx</option>
-              <option value="3xx">이동 3xx</option>
-              <option value="4xx">요청 오류 4xx</option>
-              <option value="5xx">서버 오류 5xx</option>
+              <option value="">전체 결과</option>
+              <option value="2xx">정상 처리</option>
+              <option value="3xx">다른 곳으로 이동</option>
+              <option value="4xx">요청 문제</option>
+              <option value="5xx">서버 문제</option>
             </select>
             <div className="flex gap-2">
               <button type="submit" className="flex-1 rounded-xl bg-brown-600 px-4 py-2 text-sm text-white hover:bg-brown-700">
-                필터
+                검색
               </button>
               {(appliedAccessFilters.q || appliedAccessFilters.method || appliedAccessFilters.statusGroup) && (
                 <button type="button" onClick={resetAccessFilters} className="rounded-xl border border-cream-300 px-3 py-2 text-sm text-brown-400 hover:bg-cream-50">
@@ -613,11 +636,11 @@ export default function AdminPage() {
               <thead className="bg-cream-100">
                 <tr>
                   <th className="text-left px-4 py-3 text-brown-600 font-medium whitespace-nowrap">시간</th>
-                  <th className="text-left px-4 py-3 text-brown-600 font-medium">IP</th>
-                  <th className="text-left px-4 py-3 text-brown-600 font-medium">메서드</th>
+                  <th className="text-left px-4 py-3 text-brown-600 font-medium">접속 위치</th>
+                  <th className="text-left px-4 py-3 text-brown-600 font-medium">작업</th>
                   <th className="text-left px-4 py-3 text-brown-600 font-medium">메뉴/기능</th>
-                  <th className="px-4 py-3 text-brown-600 font-medium text-center">상태</th>
-                  <th className="px-4 py-3 text-brown-600 font-medium text-right">처리시간</th>
+                  <th className="px-4 py-3 text-brown-600 font-medium text-center">결과</th>
+                  <th className="px-4 py-3 text-brown-600 font-medium text-right">걸린 시간</th>
                 </tr>
               </thead>
               <tbody>
@@ -641,7 +664,7 @@ export default function AdminPage() {
                         a.method === "POST" ? "bg-blue-50 text-blue-600" :
                         a.method === "PATCH" || a.method === "PUT" ? "bg-yellow-50 text-yellow-600" :
                         a.method === "DELETE" ? "bg-red-50 text-red-500" : "bg-cream-100 text-brown-400"
-                      }`}>{a.method}</span>
+                      }`}>{getMethodLabel(a.method)}</span>
                     </td>
                     <td className="px-4 py-2.5 text-brown-600 text-xs max-w-xs truncate" title={a.uri}>
                       {getRouteLabel(a.uri)}
@@ -651,7 +674,7 @@ export default function AdminPage() {
                         a.status < 300 ? "text-green-500" :
                         a.status < 400 ? "text-blue-400" :
                         a.status < 500 ? "text-yellow-500" : "text-red-500"
-                      }`}>{a.status}</span>
+                      }`}>{getStatusLabel(a.status)}</span>
                     </td>
                     <td className="px-4 py-2.5 text-right text-brown-400 text-xs">{a.elapsedMs}ms</td>
                   </tr>
@@ -681,14 +704,14 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* 지표 로그 */}
+      {/* 페이지 방문 기록 */}
       {!loading && tab === "metrics" && (
         <div className="flex flex-col gap-4">
           <form onSubmit={handleMetricSearch} className="grid gap-2 rounded-2xl border border-cream-200 bg-white p-4 sm:grid-cols-[1fr_auto_auto_auto]">
             <input
               value={metricQ}
               onChange={(e) => setMetricQ(e.target.value)}
-              placeholder="메뉴, 사용자, 세션, IP 검색"
+              placeholder="메뉴, 사용자, 접속 위치 검색"
               className="rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-800 focus:border-brown-400 focus:outline-none"
             />
             <select
@@ -696,10 +719,10 @@ export default function AdminPage() {
               onChange={(e) => setMetricEventType(e.target.value)}
               className="rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm text-brown-600 focus:border-brown-400 focus:outline-none"
             >
-              <option value="">전체 이벤트</option>
-              <option value="page_view">페이지 방문</option>
-              <option value="heartbeat">체류 확인</option>
-              <option value="session_end">방문 종료</option>
+              <option value="">전체 방문 상태</option>
+              <option value="page_view">페이지 열림</option>
+              <option value="heartbeat">머무는 중</option>
+              <option value="session_end">페이지 떠남</option>
             </select>
             <select
               value={metricUserType}
@@ -712,7 +735,7 @@ export default function AdminPage() {
             </select>
             <div className="flex gap-2">
               <button type="submit" className="flex-1 rounded-xl bg-brown-600 px-4 py-2 text-sm text-white hover:bg-brown-700">
-                필터
+                검색
               </button>
               {(appliedMetricFilters.q || appliedMetricFilters.eventType || appliedMetricFilters.userType) && (
                 <button type="button" onClick={resetMetricFilters} className="rounded-xl border border-cream-300 px-3 py-2 text-sm text-brown-400 hover:bg-cream-50">
@@ -727,11 +750,11 @@ export default function AdminPage() {
               <thead className="bg-cream-100">
                 <tr>
                   <th className="text-left px-4 py-3 text-brown-600 font-medium whitespace-nowrap">시간</th>
-                  <th className="text-left px-4 py-3 text-brown-600 font-medium">이벤트</th>
+                  <th className="text-left px-4 py-3 text-brown-600 font-medium">방문 상태</th>
                   <th className="text-left px-4 py-3 text-brown-600 font-medium">사용자</th>
                   <th className="text-left px-4 py-3 text-brown-600 font-medium">메뉴</th>
                   <th className="text-left px-4 py-3 text-brown-600 font-medium">기기</th>
-                  <th className="px-4 py-3 text-brown-600 font-medium text-right">체류</th>
+                  <th className="px-4 py-3 text-brown-600 font-medium text-right">머문 시간</th>
                 </tr>
               </thead>
               <tbody>
@@ -751,7 +774,7 @@ export default function AdminPage() {
                     <td className="px-4 py-2.5 text-brown-600 text-xs max-w-xs truncate" title={event.path}>
                       {getRouteLabel(event.path)}
                     </td>
-                    <td className="px-4 py-2.5 text-brown-400 text-xs">{event.device ?? "-"}</td>
+                    <td className="px-4 py-2.5 text-brown-400 text-xs">{getDeviceLabel(event.device)}</td>
                     <td className="px-4 py-2.5 text-right text-brown-400 text-xs">
                       {event.durationMs > 0 ? `${Math.round(event.durationMs / 1000)}초` : "-"}
                     </td>

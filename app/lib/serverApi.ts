@@ -33,6 +33,7 @@ export type BookDetail = {
   thumbnail: string | null;
   source: string;
   category: string | null;
+  reviewCount: number;
 };
 
 export async function fetchApiData<T>(

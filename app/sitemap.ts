@@ -54,5 +54,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     images: book.thumbnail ? [book.thumbnail] : undefined,
   }));
 
-  return [...staticRoutes, ...reviewRoutes, ...bookRoutes];
+  const bookReviewRoutes = Array.from(books.values()).map((book) => ({
+    url: `${SITE_URL}/books/${book.id}/reviews`,
+    lastModified: now,
+    changeFrequency: "weekly" as const,
+    priority: 0.5,
+    images: book.thumbnail ? [book.thumbnail] : undefined,
+  }));
+
+  return [...staticRoutes, ...reviewRoutes, ...bookRoutes, ...bookReviewRoutes];
 }

@@ -33,6 +33,18 @@ interface MetricEvent {
   ip: string | null;
   createdAt: string;
 }
+interface ErrorLog {
+  id: number;
+  level: string;
+  method: string;
+  uri: string;
+  status: number;
+  exceptionType: string;
+  message: string;
+  ip: string | null;
+  userId: number | null;
+  createdAt: string;
+}
 
 type AccessFilters = {
   q: string;
@@ -44,6 +56,12 @@ type MetricFilters = {
   q: string;
   eventType: string;
   userType: string;
+};
+
+type ErrorFilters = {
+  q: string;
+  level: string;
+  statusGroup: string;
 };
 
 function formatLogTime(value: string) {
@@ -106,6 +124,7 @@ function getRouteLabel(value: string) {
 
 function getMetricEventLabel(eventType: string) {
   if (eventType === "page_view") return "페이지 열림";
+  if (eventType === "login_success") return "로그인 성공";
   if (eventType === "heartbeat") return "머무는 중";
   if (eventType === "session_end") return "페이지 떠남";
   return eventType;
@@ -136,7 +155,7 @@ function getDeviceLabel(device: string | null) {
 
 export default function AdminPage() {
   const router = useRouter();
-  const [tab, setTab] = useState<"users" | "reviews" | "inquiries" | "access" | "metrics">("users");
+  const [tab, setTab] = useState<"users" | "reviews" | "inquiries" | "access" | "metrics" | "errors">("users");
   const [users, setUsers] = useState<User[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [bookStats, setBookStats] = useState<BookStat[]>([]);
@@ -147,6 +166,9 @@ export default function AdminPage() {
   const [metricEvents, setMetricEvents] = useState<MetricEvent[]>([]);
   const [metricPage, setMetricPage] = useState(0);
   const [metricTotalPages, setMetricTotalPages] = useState(1);
+  const [errorLogs, setErrorLogs] = useState<ErrorLog[]>([]);
+  const [errorPage, setErrorPage] = useState(0);
+  const [errorTotalPages, setErrorTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
   const [unauthorized, setUnauthorized] = useState(false);
   const [reviewPage, setReviewPage] = useState(0);
@@ -162,6 +184,10 @@ export default function AdminPage() {
   const [metricEventType, setMetricEventType] = useState("");
   const [metricUserType, setMetricUserType] = useState("");
   const [appliedMetricFilters, setAppliedMetricFilters] = useState<MetricFilters>({ q: "", eventType: "", userType: "" });
+  const [errorQ, setErrorQ] = useState("");
+  const [errorLevel, setErrorLevel] = useState("");
+  const [errorStatusGroup, setErrorStatusGroup] = useState("");
+  const [appliedErrorFilters, setAppliedErrorFilters] = useState<ErrorFilters>({ q: "", level: "", statusGroup: "" });
 
   function getToken() {
     if (typeof window === "undefined") return null;
@@ -229,6 +255,26 @@ export default function AdminPage() {
     } finally { setLoading(false); }
   }
 
+  async function loadErrorLogs(page: number, filters: ErrorFilters = appliedErrorFilters) {
+    const token = getToken();
+    if (!token) { router.replace("/auth/login"); return; }
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ page: String(page), size: "50" });
+      if (filters.q.trim()) params.set("q", filters.q.trim());
+      if (filters.level) params.set("level", filters.level);
+      if (filters.statusGroup) params.set("statusGroup", filters.statusGroup);
+      const r = await fetch(`${API_BASE}/api/admin/error-logs?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (r.status === 403) { setUnauthorized(true); return; }
+      const j = await r.json();
+      setErrorLogs(j.data?.content ?? []);
+      setErrorTotalPages(j.data?.totalPages ?? 1);
+      setErrorPage(page);
+    } finally { setLoading(false); }
+  }
+
   async function loadReviews(page: number, author: string, title: string) {
     const token = getToken();
     if (!token) { router.replace("/auth/login"); return; }
@@ -269,6 +315,13 @@ export default function AdminPage() {
       const empty = { q: "", eventType: "", userType: "" };
       setAppliedMetricFilters(empty);
       loadMetricEvents(0, empty);
+    } else if (tab === "errors") {
+      setErrorQ("");
+      setErrorLevel("");
+      setErrorStatusGroup("");
+      const empty = { q: "", level: "", statusGroup: "" };
+      setAppliedErrorFilters(empty);
+      loadErrorLogs(0, empty);
     } else {
       load();
     }
@@ -332,6 +385,22 @@ export default function AdminPage() {
     loadMetricEvents(0, empty);
   }
 
+  function handleErrorSearch(e: React.FormEvent) {
+    e.preventDefault();
+    const filters = { q: errorQ, level: errorLevel, statusGroup: errorStatusGroup };
+    setAppliedErrorFilters(filters);
+    loadErrorLogs(0, filters);
+  }
+
+  function resetErrorFilters() {
+    const empty = { q: "", level: "", statusGroup: "" };
+    setErrorQ("");
+    setErrorLevel("");
+    setErrorStatusGroup("");
+    setAppliedErrorFilters(empty);
+    loadErrorLogs(0, empty);
+  }
+
   if (unauthorized) return (
     <div className="max-w-2xl mx-auto px-4 py-16 text-center">
       <p className="text-2xl mb-2">🔒</p>
@@ -346,6 +415,7 @@ export default function AdminPage() {
     { key: "inquiries", label: "💬 문의" },
     { key: "access", label: "🔍 기능 사용 기록" },
     { key: "metrics", label: "📈 페이지 방문 기록" },
+    { key: "errors", label: "🚨 오류 로그" },
   ] as const;
 
   return (
@@ -721,6 +791,7 @@ export default function AdminPage() {
             >
               <option value="">전체 방문 상태</option>
               <option value="page_view">페이지 열림</option>
+              <option value="login_success">로그인 성공</option>
               <option value="heartbeat">머무는 중</option>
               <option value="session_end">페이지 떠남</option>
             </select>
@@ -766,6 +837,7 @@ export default function AdminPage() {
                     <td className="px-4 py-2.5">
                       <span className={`px-1.5 py-0.5 rounded text-xs font-mono font-medium ${
                         event.eventType === "page_view" ? "bg-blue-50 text-blue-600" :
+                        event.eventType === "login_success" ? "bg-purple-50 text-purple-600" :
                         event.eventType === "heartbeat" ? "bg-green-50 text-green-600" :
                         "bg-cream-100 text-brown-500"
                       }`}>{getMetricEventLabel(event.eventType)}</span>
@@ -798,6 +870,109 @@ export default function AdminPage() {
               <button
                 onClick={() => loadMetricEvents(metricPage + 1, appliedMetricFilters)}
                 disabled={metricPage >= metricTotalPages - 1}
+                className="px-3 py-1.5 text-sm border border-cream-300 rounded-lg text-brown-500 hover:bg-cream-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >다음 →</button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 오류 로그 */}
+      {!loading && tab === "errors" && (
+        <div className="flex flex-col gap-4">
+          <form onSubmit={handleErrorSearch} className="grid gap-2 rounded-2xl border border-cream-200 bg-white p-4 sm:grid-cols-[1fr_auto_auto_auto]">
+            <input
+              value={errorQ}
+              onChange={(e) => setErrorQ(e.target.value)}
+              placeholder="주소, 예외명, 메시지, IP 검색"
+              className="rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-800 focus:border-brown-400 focus:outline-none"
+            />
+            <select
+              value={errorLevel}
+              onChange={(e) => setErrorLevel(e.target.value)}
+              className="rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm text-brown-600 focus:border-brown-400 focus:outline-none"
+            >
+              <option value="">전체 심각도</option>
+              <option value="ERROR">서버 오류</option>
+              <option value="WARN">요청 오류</option>
+            </select>
+            <select
+              value={errorStatusGroup}
+              onChange={(e) => setErrorStatusGroup(e.target.value)}
+              className="rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm text-brown-600 focus:border-brown-400 focus:outline-none"
+            >
+              <option value="">전체 결과</option>
+              <option value="4xx">요청 문제</option>
+              <option value="5xx">서버 문제</option>
+            </select>
+            <div className="flex gap-2">
+              <button type="submit" className="flex-1 rounded-xl bg-brown-600 px-4 py-2 text-sm text-white hover:bg-brown-700">
+                검색
+              </button>
+              {(appliedErrorFilters.q || appliedErrorFilters.level || appliedErrorFilters.statusGroup) && (
+                <button type="button" onClick={resetErrorFilters} className="rounded-xl border border-cream-300 px-3 py-2 text-sm text-brown-400 hover:bg-cream-50">
+                  초기화
+                </button>
+              )}
+            </div>
+          </form>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-cream-200 overflow-x-auto">
+            <table className="w-full text-sm min-w-[860px]">
+              <thead className="bg-cream-100">
+                <tr>
+                  <th className="text-left px-4 py-3 text-brown-600 font-medium whitespace-nowrap">시간</th>
+                  <th className="text-left px-4 py-3 text-brown-600 font-medium">심각도</th>
+                  <th className="text-left px-4 py-3 text-brown-600 font-medium">위치</th>
+                  <th className="text-left px-4 py-3 text-brown-600 font-medium">예외</th>
+                  <th className="text-left px-4 py-3 text-brown-600 font-medium">메시지</th>
+                  <th className="text-left px-4 py-3 text-brown-600 font-medium">사용자/IP</th>
+                </tr>
+              </thead>
+              <tbody>
+                {errorLogs.map((event) => (
+                  <tr key={event.id} className="border-t border-cream-100 hover:bg-cream-50">
+                    <td className="px-4 py-2.5 text-brown-400 whitespace-nowrap text-xs">
+                      {formatLogTime(event.createdAt)}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <span className={`px-1.5 py-0.5 rounded text-xs font-mono font-medium ${
+                        event.level === "ERROR" ? "bg-red-50 text-red-600" : "bg-yellow-50 text-yellow-600"
+                      }`}>
+                        {event.level === "ERROR" ? "서버 오류" : "요청 오류"} ({event.status})
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-brown-600 text-xs max-w-[180px] truncate" title={event.uri}>
+                      {getRouteLabel(event.uri)}
+                    </td>
+                    <td className="px-4 py-2.5 text-brown-500 text-xs font-mono">{event.exceptionType}</td>
+                    <td className="px-4 py-2.5 text-brown-600 text-xs max-w-sm truncate" title={event.message}>
+                      {event.message}
+                    </td>
+                    <td className="px-4 py-2.5 text-brown-400 text-xs">
+                      {event.userId ? `사용자 #${event.userId}` : "비회원"}
+                      {event.ip ? <div className="mt-0.5 font-mono">{event.ip}</div> : null}
+                    </td>
+                  </tr>
+                ))}
+                {errorLogs.length === 0 && (
+                  <tr><td colSpan={6} className="text-center py-8 text-brown-300">오류 로그가 없어요</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {errorTotalPages > 1 && (
+            <div className="flex items-center justify-center gap-2">
+              <button
+                onClick={() => loadErrorLogs(errorPage - 1, appliedErrorFilters)}
+                disabled={errorPage === 0}
+                className="px-3 py-1.5 text-sm border border-cream-300 rounded-lg text-brown-500 hover:bg-cream-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >← 이전</button>
+              <span className="text-sm text-brown-400">{errorPage + 1} / {errorTotalPages}</span>
+              <button
+                onClick={() => loadErrorLogs(errorPage + 1, appliedErrorFilters)}
+                disabled={errorPage >= errorTotalPages - 1}
                 className="px-3 py-1.5 text-sm border border-cream-300 rounded-lg text-brown-500 hover:bg-cream-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >다음 →</button>
             </div>

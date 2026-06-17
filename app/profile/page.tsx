@@ -77,6 +77,7 @@ export default function ProfilePage() {
   const [reviewPage, setReviewPage] = useState(0);
   const [reviewHasMore, setReviewHasMore] = useState(false);
   const [reviewLoadingMore, setReviewLoadingMore] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [deleteError, setDeleteError] = useState("");
@@ -322,6 +323,13 @@ export default function ProfilePage() {
     }
   }
 
+  function closeDeleteModal() {
+    if (deletingAccount) return;
+    setShowDeleteModal(false);
+    setDeleteConfirmText("");
+    setDeleteError("");
+  }
+
   if (loading) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center text-brown-400">
@@ -350,12 +358,20 @@ export default function ProfilePage() {
                 <h1 className="font-serif text-xl font-bold text-brown-800 truncate">{profile.nickname}</h1>
                 <ExpandableBio bio={profile.bio} className="mt-1" />
               </div>
-              <button
-                onClick={() => setEditing(true)}
-                className="px-4 py-2 text-sm border border-brown-300 text-brown-600 rounded-full hover:bg-cream-200 transition-colors flex-shrink-0"
-              >
-                프로필 수정
-              </button>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <button
+                  onClick={() => setEditing(true)}
+                  className="px-4 py-2 text-sm border border-brown-300 text-brown-600 rounded-full hover:bg-cream-200 transition-colors flex-shrink-0"
+                >
+                  프로필 수정
+                </button>
+                <button
+                  onClick={() => setShowDeleteModal(true)}
+                  className="px-4 py-2 text-sm border border-red-200 text-red-500 rounded-full hover:bg-red-50 transition-colors flex-shrink-0"
+                >
+                  계정 삭제
+                </button>
+              </div>
             </div>
 
             {/* 통계 */}
@@ -499,6 +515,57 @@ export default function ProfilePage() {
         />
       )}
 
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center px-4 sm:items-center">
+          <div className="absolute inset-0 bg-black/40" onClick={closeDeleteModal} />
+          <form
+            onSubmit={handleDeleteAccount}
+            className="relative z-10 w-full max-w-lg rounded-t-2xl border border-red-100 bg-white p-5 shadow-xl sm:rounded-2xl"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="font-serif text-lg font-bold text-red-700">계정 삭제</h2>
+                <p className="mt-2 text-sm leading-6 text-brown-500">
+                  삭제하면 이메일, 닉네임, 프로필 이미지, 자기소개는 제거되거나 탈퇴 계정 값으로 바뀝니다.
+                  서재, 팔로우, 알림, 북마크, 좋아요 같은 개인 활동 데이터는 정리되고, 공개 독후감과 댓글은 작성자만 탈퇴한 사용자로 표시됩니다.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeDeleteModal}
+                disabled={deletingAccount}
+                className="text-xl leading-none text-brown-300 hover:text-brown-600 disabled:opacity-40"
+                aria-label="닫기"
+              >
+                ×
+              </button>
+            </div>
+            <label className="mt-4 block text-sm text-brown-600" htmlFor="delete-confirm">
+              계속하려면 <span className="font-semibold text-red-700">{DELETE_CONFIRM_TEXT}</span>를 입력하세요.
+            </label>
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+              <input
+                id="delete-confirm"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                className="flex-1 rounded-xl border border-red-100 bg-red-50 px-4 py-2.5 text-sm text-brown-800 placeholder:text-brown-300 focus:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-100"
+                placeholder={DELETE_CONFIRM_TEXT}
+              />
+              <button
+                type="submit"
+                disabled={deleteConfirmText !== DELETE_CONFIRM_TEXT || deletingAccount}
+                className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {deletingAccount ? "삭제 중..." : "계정 삭제"}
+              </button>
+            </div>
+            {deleteError && (
+              <p className="mt-3 rounded-xl bg-red-50 px-4 py-2.5 text-sm text-red-600">{deleteError}</p>
+            )}
+          </form>
+        </div>
+      )}
+
       {/* 인생책 */}
       <div className="bg-white rounded-2xl border border-cream-200 p-5 mb-6">
         <div className="flex items-center justify-between mb-3">
@@ -600,39 +667,6 @@ export default function ProfilePage() {
           📊 독서 통계
         </Link>
       </div>
-
-      <form
-        onSubmit={handleDeleteAccount}
-        className="mb-6 rounded-lg border border-red-100 bg-white p-5"
-      >
-        <h2 className="font-serif text-base font-bold text-red-700">계정 삭제</h2>
-        <p className="mt-2 text-sm leading-6 text-brown-500">
-          삭제하면 이메일, 닉네임, 프로필 이미지, 자기소개는 제거되거나 탈퇴 계정 값으로 바뀝니다.
-          서재, 팔로우, 알림, 북마크, 좋아요 같은 개인 활동 데이터는 정리되고, 공개 독후감과 댓글은 작성자만 탈퇴한 사용자로 표시됩니다.
-        </p>
-        <label className="mt-4 block text-sm text-brown-600" htmlFor="delete-confirm">
-          계속하려면 <span className="font-semibold text-red-700">{DELETE_CONFIRM_TEXT}</span>를 입력하세요.
-        </label>
-        <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-          <input
-            id="delete-confirm"
-            value={deleteConfirmText}
-            onChange={(e) => setDeleteConfirmText(e.target.value)}
-            className="flex-1 rounded-xl border border-red-100 bg-red-50 px-4 py-2.5 text-sm text-brown-800 placeholder:text-brown-300 focus:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-100"
-            placeholder={DELETE_CONFIRM_TEXT}
-          />
-          <button
-            type="submit"
-            disabled={deleteConfirmText !== DELETE_CONFIRM_TEXT || deletingAccount}
-            className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {deletingAccount ? "삭제 중..." : "계정 삭제"}
-          </button>
-        </div>
-        {deleteError && (
-          <p className="mt-3 rounded-xl bg-red-50 px-4 py-2.5 text-sm text-red-600">{deleteError}</p>
-        )}
-      </form>
 
       {/* 독서 통계 요약 */}
       {stats && (stats.totalFinished > 0 || stats.genres.length > 0) && (

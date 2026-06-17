@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { OAUTH_BASE } from "../../lib/api";
+import { trackMetric } from "../../components/AnalyticsTracker";
 
 const BACKEND = OAUTH_BASE;
 
@@ -25,6 +26,7 @@ function LoginContent() {
     if (!token) return;
     localStorage.setItem("token", token);
     window.dispatchEvent(new Event("auth-change"));
+    trackMetric("login_success", "/auth/login");
     router.push("/");
     router.refresh();
   }

@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { trackMetric } from "../../components/AnalyticsTracker";
 
 // useSearchParams()는 Next.js에서 반드시 Suspense 안에 있어야 빌드가 통과됨
 function OAuthCallback() {
@@ -15,6 +16,7 @@ function OAuthCallback() {
     if (token) {
       localStorage.setItem("token", token);
       window.dispatchEvent(new Event("auth-change"));
+      trackMetric("login_success", "/auth/callback");
       const setup = searchParams.get("setup");
       router.replace(setup === "true" ? "/setup-nickname" : "/");
     } else if (error) {

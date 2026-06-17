@@ -20,11 +20,13 @@ function deviceType() {
   return "desktop";
 }
 
-function sendMetric(eventType: string, path: string, durationMs = 0) {
+export function trackMetric(eventType: string, path?: string, durationMs = 0) {
+  if (typeof window === "undefined") return;
+
   const body = JSON.stringify({
     eventType,
     sessionId: getSessionId(),
-    path,
+    path: path ?? window.location.pathname,
     referrer: document.referrer || null,
     durationMs,
     device: deviceType(),
@@ -56,28 +58,28 @@ export default function AnalyticsTracker() {
       mountedRef.current = true;
       enteredAtRef.current = now;
       lastPathRef.current = pathname;
-      sendMetric("page_view", pathname);
+      trackMetric("page_view", pathname);
       return;
     }
 
     const previousPath = lastPathRef.current;
-    sendMetric("session_end", previousPath, now - (enteredAtRef.current ?? now));
+    trackMetric("session_end", previousPath, now - (enteredAtRef.current ?? now));
 
     enteredAtRef.current = now;
     lastPathRef.current = pathname;
-    sendMetric("page_view", pathname);
+    trackMetric("page_view", pathname);
   }, [pathname]);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
       const now = Date.now();
-      sendMetric("heartbeat", lastPathRef.current, now - (enteredAtRef.current ?? now));
+      trackMetric("heartbeat", lastPathRef.current, now - (enteredAtRef.current ?? now));
     }, 30000);
 
     const handleVisibility = () => {
       if (document.visibilityState === "hidden") {
         const now = Date.now();
-        sendMetric("session_end", lastPathRef.current, now - (enteredAtRef.current ?? now));
+        trackMetric("session_end", lastPathRef.current, now - (enteredAtRef.current ?? now));
       }
     };
 

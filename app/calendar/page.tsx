@@ -38,6 +38,13 @@ function completedDay(item: LibraryItem) {
   return (item.completedAt ?? item.updatedAt).slice(0, 10);
 }
 
+function latestFinishedDay(items: LibraryItem[]) {
+  return items
+    .filter((item) => item.status === "FINISHED")
+    .map(completedDay)
+    .sort((a, b) => b.localeCompare(a))[0] ?? null;
+}
+
 function Cover({ item, compact = false }: { item: LibraryItem; compact?: boolean }) {
   const sizeClass = compact ? "w-8 h-11" : "w-12 h-16";
 
@@ -117,7 +124,13 @@ export default function CalendarPage() {
 
         if (libraryRes.ok) {
           const json = await libraryRes.json();
-          setItems(json.data ?? []);
+          const nextItems: LibraryItem[] = json.data ?? [];
+          const latestDay = latestFinishedDay(nextItems);
+          setItems(nextItems);
+          if (latestDay) {
+            setActiveMonth(latestDay.slice(0, 7));
+            setSelectedDay(latestDay);
+          }
         }
 
         if (reviewsRes.ok) {

@@ -1,5 +1,7 @@
 export const SERVER_API_BASE = (
-  process.env.BACKEND_URL ?? "http://52.79.196.7:8080"
+  process.env.BACKEND_URL ??
+  process.env.NEXT_PUBLIC_API_BASE_URL ??
+  "https://api.chaekdojang.com"
 ).replace(/\/$/, "");
 
 export const SITE_URL = (

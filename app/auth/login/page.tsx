@@ -12,6 +12,7 @@ function LoginContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const hasError = searchParams.get("error") === "oauth_failed";
+  const isSignup = searchParams.get("mode") === "signup";
   const [isLocal, setIsLocal] = useState(false);
 
   useEffect(() => {
@@ -35,8 +36,14 @@ function LoginContent() {
     <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="font-serif text-3xl font-bold text-brown-800 mb-2">로그인</h1>
-          <p className="text-sm text-brown-400">책도장에 오신 것을 환영합니다</p>
+          <h1 className="font-serif text-3xl font-bold text-brown-800 mb-2">
+            {isSignup ? "회원가입" : "로그인"}
+          </h1>
+          <p className="text-sm text-brown-400">
+            {isSignup
+              ? "소셜 계정으로 책도장을 시작합니다"
+              : "책도장에 오신 것을 환영합니다"}
+          </p>
         </div>
 
         {hasError && (
@@ -51,22 +58,27 @@ function LoginContent() {
             className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-medium bg-[#FEE500] text-[#3C1E1E] hover:brightness-95 transition"
           >
             <KakaoIcon />
-            카카오로 로그인
+            카카오로 {isSignup ? "시작하기" : "로그인"}
           </a>
           <a
             href={`${BACKEND}/oauth2/authorization/naver`}
             className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-medium bg-[#03C75A] text-white hover:brightness-95 transition"
           >
             <NaverIcon />
-            네이버로 로그인
+            네이버로 {isSignup ? "시작하기" : "로그인"}
           </a>
           <a
             href={`${BACKEND}/oauth2/authorization/google`}
             className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-medium bg-white text-brown-800 border border-cream-300 hover:bg-cream-50 transition"
           >
             <GoogleIcon />
-            구글로 로그인
+            구글로 {isSignup ? "시작하기" : "로그인"}
           </a>
+          {isSignup && (
+            <p className="text-xs leading-5 text-brown-400 text-center mt-1">
+              이미 해당 소셜 계정에 로그인되어 있으면 추가 입력 없이 이어질 수 있어요.
+            </p>
+          )}
           {isLocal && (
             <button
               type="button"

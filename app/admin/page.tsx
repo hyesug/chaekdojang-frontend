@@ -45,6 +45,16 @@ interface ErrorLog {
   userId: number | null;
   createdAt: string;
 }
+interface AdminAuditLog {
+  id: number;
+  actorId: number | null;
+  actorNickname: string | null;
+  action: string;
+  targetType: string;
+  targetId: number | null;
+  summary: string;
+  createdAt: string;
+}
 
 type AccessFilters = {
   q: string;
@@ -62,6 +72,12 @@ type ErrorFilters = {
   q: string;
   level: string;
   statusGroup: string;
+};
+
+type AuditFilters = {
+  q: string;
+  action: string;
+  targetType: string;
 };
 
 function formatLogTime(value: string) {
@@ -153,9 +169,24 @@ function getDeviceLabel(device: string | null) {
   return device ?? "-";
 }
 
+function getAuditActionLabel(action: string) {
+  if (action === "USER_ROLE_CHANGED") return "권한 변경";
+  if (action === "REVIEW_HIDDEN") return "독후감 숨김";
+  if (action === "REVIEW_UNHIDDEN") return "독후감 공개";
+  if (action === "INQUIRY_COMMENT_CREATED") return "문의 답변";
+  return action;
+}
+
+function getAuditTargetLabel(targetType: string) {
+  if (targetType === "USER") return "회원";
+  if (targetType === "REVIEW") return "독후감";
+  if (targetType === "INQUIRY") return "문의";
+  return targetType || "-";
+}
+
 export default function AdminPage() {
   const router = useRouter();
-  const [tab, setTab] = useState<"users" | "reviews" | "inquiries" | "access" | "metrics" | "errors">("users");
+  const [tab, setTab] = useState<"users" | "reviews" | "inquiries" | "access" | "metrics" | "errors" | "audit">("users");
   const [users, setUsers] = useState<User[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [bookStats, setBookStats] = useState<BookStat[]>([]);
@@ -169,6 +200,9 @@ export default function AdminPage() {
   const [errorLogs, setErrorLogs] = useState<ErrorLog[]>([]);
   const [errorPage, setErrorPage] = useState(0);
   const [errorTotalPages, setErrorTotalPages] = useState(1);
+  const [auditLogs, setAuditLogs] = useState<AdminAuditLog[]>([]);
+  const [auditPage, setAuditPage] = useState(0);
+  const [auditTotalPages, setAuditTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
   const [unauthorized, setUnauthorized] = useState(false);
   const [reviewPage, setReviewPage] = useState(0);
@@ -188,6 +222,10 @@ export default function AdminPage() {
   const [errorLevel, setErrorLevel] = useState("");
   const [errorStatusGroup, setErrorStatusGroup] = useState("");
   const [appliedErrorFilters, setAppliedErrorFilters] = useState<ErrorFilters>({ q: "", level: "", statusGroup: "" });
+  const [auditQ, setAuditQ] = useState("");
+  const [auditAction, setAuditAction] = useState("");
+  const [auditTargetType, setAuditTargetType] = useState("");
+  const [appliedAuditFilters, setAppliedAuditFilters] = useState<AuditFilters>({ q: "", action: "", targetType: "" });
 
   function getToken() {
     if (typeof window === "undefined") return null;
@@ -275,6 +313,26 @@ export default function AdminPage() {
     } finally { setLoading(false); }
   }
 
+  async function loadAuditLogs(page: number, filters: AuditFilters = appliedAuditFilters) {
+    const token = getToken();
+    if (!token) { router.replace("/auth/login"); return; }
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ page: String(page), size: "50" });
+      if (filters.q.trim()) params.set("q", filters.q.trim());
+      if (filters.action) params.set("action", filters.action);
+      if (filters.targetType) params.set("targetType", filters.targetType);
+      const r = await fetch(`${API_BASE}/api/admin/audit-logs?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (r.status === 403) { setUnauthorized(true); return; }
+      const j = await r.json();
+      setAuditLogs(j.data?.content ?? []);
+      setAuditTotalPages(j.data?.totalPages ?? 1);
+      setAuditPage(page);
+    } finally { setLoading(false); }
+  }
+
   async function loadReviews(page: number, author: string, title: string) {
     const token = getToken();
     if (!token) { router.replace("/auth/login"); return; }
@@ -322,6 +380,13 @@ export default function AdminPage() {
       const empty = { q: "", level: "", statusGroup: "" };
       setAppliedErrorFilters(empty);
       loadErrorLogs(0, empty);
+    } else if (tab === "audit") {
+      setAuditQ("");
+      setAuditAction("");
+      setAuditTargetType("");
+      const empty = { q: "", action: "", targetType: "" };
+      setAppliedAuditFilters(empty);
+      loadAuditLogs(0, empty);
     } else {
       load();
     }
@@ -401,6 +466,22 @@ export default function AdminPage() {
     loadErrorLogs(0, empty);
   }
 
+  function handleAuditSearch(e: React.FormEvent) {
+    e.preventDefault();
+    const filters = { q: auditQ, action: auditAction, targetType: auditTargetType };
+    setAppliedAuditFilters(filters);
+    loadAuditLogs(0, filters);
+  }
+
+  function resetAuditFilters() {
+    const empty = { q: "", action: "", targetType: "" };
+    setAuditQ("");
+    setAuditAction("");
+    setAuditTargetType("");
+    setAppliedAuditFilters(empty);
+    loadAuditLogs(0, empty);
+  }
+
   if (unauthorized) return (
     <div className="max-w-2xl mx-auto px-4 py-16 text-center">
       <p className="text-2xl mb-2">🔒</p>
@@ -416,6 +497,7 @@ export default function AdminPage() {
     { key: "access", label: "🔍 기능 사용 기록" },
     { key: "metrics", label: "📈 페이지 방문 기록" },
     { key: "errors", label: "🚨 오류 로그" },
+    { key: "audit", label: "🛡️ 감사 로그" },
   ] as const;
 
   return (
@@ -973,6 +1055,113 @@ export default function AdminPage() {
               <button
                 onClick={() => loadErrorLogs(errorPage + 1, appliedErrorFilters)}
                 disabled={errorPage >= errorTotalPages - 1}
+                className="px-3 py-1.5 text-sm border border-cream-300 rounded-lg text-brown-500 hover:bg-cream-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >다음 →</button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!loading && tab === "audit" && (
+        <div className="flex flex-col gap-4">
+          <form onSubmit={handleAuditSearch} className="grid gap-2 rounded-2xl border border-cream-200 bg-white p-4 sm:grid-cols-[1fr_auto_auto_auto]">
+            <input
+              value={auditQ}
+              onChange={(e) => setAuditQ(e.target.value)}
+              placeholder="관리자, 요약, 대상 ID 검색"
+              className="rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-800 focus:border-brown-400 focus:outline-none"
+            />
+            <select
+              value={auditAction}
+              onChange={(e) => setAuditAction(e.target.value)}
+              className="rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm text-brown-600 focus:border-brown-400 focus:outline-none"
+            >
+              <option value="">전체 작업</option>
+              <option value="USER_ROLE_CHANGED">권한 변경</option>
+              <option value="REVIEW_HIDDEN">독후감 숨김</option>
+              <option value="REVIEW_UNHIDDEN">독후감 공개</option>
+              <option value="INQUIRY_COMMENT_CREATED">문의 답변</option>
+            </select>
+            <select
+              value={auditTargetType}
+              onChange={(e) => setAuditTargetType(e.target.value)}
+              className="rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm text-brown-600 focus:border-brown-400 focus:outline-none"
+            >
+              <option value="">전체 대상</option>
+              <option value="USER">회원</option>
+              <option value="REVIEW">독후감</option>
+              <option value="INQUIRY">문의</option>
+            </select>
+            <div className="flex gap-2">
+              <button type="submit" className="flex-1 rounded-xl bg-brown-600 px-4 py-2 text-sm text-white hover:bg-brown-700">
+                검색
+              </button>
+              {(appliedAuditFilters.q || appliedAuditFilters.action || appliedAuditFilters.targetType) && (
+                <button type="button" onClick={resetAuditFilters} className="rounded-xl border border-cream-300 px-3 py-2 text-sm text-brown-400 hover:bg-cream-50">
+                  초기화
+                </button>
+              )}
+            </div>
+          </form>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-cream-200 overflow-x-auto">
+            <table className="w-full text-sm min-w-[860px]">
+              <thead className="bg-cream-100">
+                <tr>
+                  <th className="text-left px-4 py-3 text-brown-600 font-medium whitespace-nowrap">시간</th>
+                  <th className="text-left px-4 py-3 text-brown-600 font-medium">관리자</th>
+                  <th className="text-left px-4 py-3 text-brown-600 font-medium">작업</th>
+                  <th className="text-left px-4 py-3 text-brown-600 font-medium">대상</th>
+                  <th className="text-left px-4 py-3 text-brown-600 font-medium">내용</th>
+                </tr>
+              </thead>
+              <tbody>
+                {auditLogs.map((log) => (
+                  <tr key={log.id} className="border-t border-cream-100 hover:bg-cream-50">
+                    <td className="px-4 py-2.5 text-brown-400 whitespace-nowrap text-xs">
+                      {formatLogTime(log.createdAt)}
+                    </td>
+                    <td className="px-4 py-2.5 text-brown-500 text-xs">
+                      {log.actorNickname ?? "알 수 없음"}
+                      {log.actorId ? <div className="mt-0.5 font-mono text-[11px] text-brown-300">#{log.actorId}</div> : null}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                        log.action === "USER_ROLE_CHANGED" ? "bg-blue-50 text-blue-600" :
+                        log.action.startsWith("REVIEW_") ? "bg-yellow-50 text-yellow-600" :
+                        log.action === "INQUIRY_COMMENT_CREATED" ? "bg-green-50 text-green-600" :
+                        "bg-cream-100 text-brown-500"
+                      }`}>
+                        {getAuditActionLabel(log.action)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-brown-500 text-xs">
+                      {getAuditTargetLabel(log.targetType)}
+                      {log.targetId ? <div className="mt-0.5 font-mono text-[11px] text-brown-300">#{log.targetId}</div> : null}
+                    </td>
+                    <td className="px-4 py-2.5 text-brown-600 text-xs max-w-xl whitespace-pre-wrap break-words">
+                      {log.summary}
+                    </td>
+                  </tr>
+                ))}
+                {auditLogs.length === 0 && (
+                  <tr><td colSpan={5} className="text-center py-8 text-brown-300">감사 로그가 없어요</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {auditTotalPages > 1 && (
+            <div className="flex items-center justify-center gap-2">
+              <button
+                onClick={() => loadAuditLogs(auditPage - 1, appliedAuditFilters)}
+                disabled={auditPage === 0}
+                className="px-3 py-1.5 text-sm border border-cream-300 rounded-lg text-brown-500 hover:bg-cream-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >← 이전</button>
+              <span className="text-sm text-brown-400">{auditPage + 1} / {auditTotalPages}</span>
+              <button
+                onClick={() => loadAuditLogs(auditPage + 1, appliedAuditFilters)}
+                disabled={auditPage >= auditTotalPages - 1}
                 className="px-3 py-1.5 text-sm border border-cream-300 rounded-lg text-brown-500 hover:bg-cream-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >다음 →</button>
             </div>

@@ -18,6 +18,7 @@ const nextConfig: NextConfig = {
       { hostname: "search2.kakaocdn.net" },
       { hostname: "t1.daumcdn.net" },
       { hostname: "books.google.com" },
+      { hostname: "cdn.chaekdojang.com" },
     ],
   },
   async rewrites() {

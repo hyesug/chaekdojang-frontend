@@ -501,16 +501,18 @@ export default function AdminPage() {
   ] as const;
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-6xl mx-auto px-4 py-6 sm:py-8">
       <h1 className="text-2xl font-bold text-brown-800 mb-6">관리자 페이지</h1>
 
-      <div className="flex gap-1 mb-6 bg-cream-200 rounded-xl p-1">
+      <div className="-mx-4 mb-6 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+        <div className="flex min-w-max gap-1 rounded-xl bg-cream-200 p-1 sm:min-w-0">
         {tabs.map(({ key, label }) => (
           <button key={key} onClick={() => setTab(key)}
-            className={`flex-1 py-2 text-xs font-medium rounded-lg transition-colors ${tab === key ? "bg-white text-brown-800 shadow-sm" : "text-brown-400 hover:text-brown-600"}`}>
+            className={`min-h-10 shrink-0 rounded-lg px-3 py-2 text-xs font-medium whitespace-nowrap transition-colors sm:flex-1 sm:px-2 ${tab === key ? "bg-white text-brown-800 shadow-sm" : "text-brown-400 hover:text-brown-600"}`}>
             {label}
           </button>
         ))}
+        </div>
       </div>
 
       {loading && <p className="text-center text-brown-300 py-8">불러오는 중...</p>}
@@ -1104,8 +1106,55 @@ export default function AdminPage() {
             </div>
           </form>
 
-          <div className="bg-white rounded-2xl shadow-sm border border-cream-200 overflow-x-auto">
-            <table className="w-full text-sm min-w-[860px]">
+          <div className="flex flex-col gap-3 sm:hidden">
+            {auditLogs.map((log) => (
+              <div key={log.id} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs text-brown-400">{formatLogTime(log.createdAt)}</p>
+                    <p className="mt-1 text-sm font-semibold text-brown-800 break-words">
+                      {getAuditActionLabel(log.action)}
+                    </p>
+                  </div>
+                  <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-medium ${
+                    log.action === "USER_ROLE_CHANGED" ? "bg-blue-50 text-blue-600" :
+                    log.action.startsWith("REVIEW_") ? "bg-yellow-50 text-yellow-600" :
+                    log.action === "INQUIRY_COMMENT_CREATED" ? "bg-green-50 text-green-600" :
+                    "bg-cream-100 text-brown-500"
+                  }`}>
+                    {getAuditTargetLabel(log.targetType)}
+                  </span>
+                </div>
+                <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-brown-600">
+                  {log.summary}
+                </p>
+                <div className="mt-3 grid grid-cols-2 gap-2 border-t border-cream-100 pt-3 text-xs">
+                  <div className="min-w-0">
+                    <span className="text-brown-300">관리자</span>
+                    <p className="mt-1 truncate text-brown-500">
+                      {log.actorNickname ?? "알 수 없음"}
+                    </p>
+                    {log.actorId ? <p className="mt-0.5 font-mono text-[11px] text-brown-300">#{log.actorId}</p> : null}
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-brown-300">대상 ID</span>
+                    <p className="mt-1 font-mono text-brown-500">
+                      {log.targetId ? `#${log.targetId}` : "-"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {auditLogs.length === 0 && (
+              <div className="rounded-2xl border border-cream-200 bg-white px-4 py-8 text-center text-sm text-brown-300 shadow-sm">
+                감사 로그가 없어요
+              </div>
+            )}
+          </div>
+
+          <div className="hidden rounded-2xl border border-cream-200 bg-white shadow-sm sm:block">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[860px]">
               <thead className="bg-cream-100">
                 <tr>
                   <th className="text-left px-4 py-3 text-brown-600 font-medium whitespace-nowrap">시간</th>
@@ -1148,7 +1197,8 @@ export default function AdminPage() {
                   <tr><td colSpan={5} className="text-center py-8 text-brown-300">감사 로그가 없어요</td></tr>
                 )}
               </tbody>
-            </table>
+              </table>
+            </div>
           </div>
 
           {auditTotalPages > 1 && (

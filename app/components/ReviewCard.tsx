@@ -347,7 +347,15 @@ function EditModal({
 // ─────────────────────────────────────────────
 // 피드 카드
 // ─────────────────────────────────────────────
-export default function ReviewCard({ post, forceOwner = false }: { post: Review; forceOwner?: boolean }) {
+export default function ReviewCard({
+  post,
+  forceOwner = false,
+  onVisibilityChange,
+}: {
+  post: Review;
+  forceOwner?: boolean;
+  onVisibilityChange?: (review: Review) => void;
+}) {
   const coverColor = COVER_COLORS[post.id % COVER_COLORS.length];
   const router = useRouter();
   const myId = getMyUserId();
@@ -522,9 +530,14 @@ export default function ReviewCard({ post, forceOwner = false }: { post: Review;
       }
       const json = await res.json().catch(() => null);
       const savedHidden = json?.data?.hidden;
+      const updatedPost = {
+        ...post,
+        hidden: typeof savedHidden === "boolean" ? savedHidden : next,
+      };
       if (typeof savedHidden === "boolean") {
         setHidden(savedHidden);
       }
+      onVisibilityChange?.(updatedPost);
       sessionStorage.removeItem(FEED_STATE_KEY);
       sessionStorage.removeItem(PENDING_REVIEW_KEY);
     } finally {

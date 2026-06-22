@@ -244,7 +244,17 @@ export default function ExplorePage() {
         <>
           <div className="flex flex-col gap-4">
             {displayedReviews.map((review) => (
-              <ReviewCard key={review.id} post={review} />
+              <ReviewCard
+                key={review.id}
+                post={review}
+                onVisibilityChange={(updated) => {
+                  setReviews((prev) =>
+                    updated.hidden
+                      ? prev.filter((item) => item.id !== updated.id)
+                      : prev.map((item) => (item.id === updated.id ? updated : item))
+                  );
+                }}
+              />
             ))}
           </div>
 

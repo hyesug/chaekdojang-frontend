@@ -18,6 +18,7 @@ type MyReview = {
   id: number;
   book: { id?: number; title: string; author: string; thumbnail: string | null } | null;
   rating: number;
+  hidden?: boolean;
   createdAt: string;
 };
 
@@ -122,27 +123,39 @@ export default function CalendarPage() {
           return;
         }
 
-        if (libraryRes.ok) {
-          const json = await libraryRes.json();
-          const nextItems: LibraryItem[] = json.data ?? [];
-          const latestDay = latestFinishedDay(nextItems);
-          setItems(nextItems);
-          if (latestDay) {
-            setActiveMonth(latestDay.slice(0, 7));
-            setSelectedDay(latestDay);
-          }
-        }
-
+        let nextItems: LibraryItem[] = [];
         if (reviewsRes.ok) {
           const json = await reviewsRes.json();
           const reviews: MyReview[] = json.data?.content ?? [];
+          const visibleReviewedBookIds = new Set(
+            reviews
+              .filter((review) => !review.hidden && review.book?.id)
+              .map((review) => review.book?.id)
+          );
           const nextRatings = new Map<number, number>();
           reviews.forEach((review) => {
-            if (review.book?.id && !nextRatings.has(review.book.id)) {
+            if (!review.hidden && review.book?.id && !nextRatings.has(review.book.id)) {
               nextRatings.set(review.book.id, review.rating);
             }
           });
           setReviewRatings(nextRatings);
+
+          if (libraryRes.ok) {
+            const libraryJson = await libraryRes.json();
+            nextItems = (libraryJson.data ?? []).filter(
+              (item: LibraryItem) => item.status !== "FINISHED" || visibleReviewedBookIds.has(item.book.id)
+            );
+          }
+        } else if (libraryRes.ok) {
+          const libraryJson = await libraryRes.json();
+          nextItems = libraryJson.data ?? [];
+        }
+
+        const latestDay = latestFinishedDay(nextItems);
+        setItems(nextItems);
+        if (latestDay) {
+          setActiveMonth(latestDay.slice(0, 7));
+          setSelectedDay(latestDay);
         }
       } finally {
         setLoading(false);

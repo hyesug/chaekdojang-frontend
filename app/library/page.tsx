@@ -203,14 +203,14 @@ export default function LibraryPage() {
               className="bg-white rounded-2xl border border-cream-200 p-4 flex gap-4 hover:shadow-sm transition-shadow"
             >
               {/* 책 표지 */}
-              <Link href={`/books/${item.book.id}/reviews`} className="flex-shrink-0">
+              <Link href={`/books/${item.book.id}`} className="flex-shrink-0">
                 {item.book.thumbnail ? (
                   <Image
                     src={item.book.thumbnail}
                     alt={item.book.title}
                     width={52}
                     height={74}
-                    className="rounded shadow-sm object-cover"
+                    className="w-[52px] h-[74px] rounded shadow-sm object-contain bg-white"
                   />
                 ) : (
                   <div
@@ -229,7 +229,7 @@ export default function LibraryPage() {
               {/* 책 정보 */}
               <div className="flex-1 min-w-0">
                 <Link
-                  href={`/books/${item.book.id}/reviews`}
+                  href={`/books/${item.book.id}`}
                   className="font-serif font-bold text-brown-800 leading-snug hover:text-brown-600 hover:underline"
                 >
                   {item.book.title}

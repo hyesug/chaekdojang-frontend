@@ -388,6 +388,7 @@ export default function ReviewCard({ post }: { post: Review }) {
   const [showShare, setShowShare] = useState(false);
   const [copied, setCopied] = useState(false);
   const [instaCopied, setInstaCopied] = useState(false);
+  const canOpenHiddenDetail = hidden && isOwner;
 
   useEffect(() => {
     const token = getToken();
@@ -719,20 +720,35 @@ export default function ReviewCard({ post }: { post: Review }) {
         </div>
 
         {/* 본문 */}
-        <Link
-          href={hidden ? "#" : `/reviews/${post.id}`}
-          className="mt-3 text-left w-full group block"
-          onClick={(e) => {
-            if (hidden) e.preventDefault();
-          }}
-        >
-          <p className="text-sm text-brown-600 leading-relaxed line-clamp-3 group-hover:text-brown-800 transition-colors">
-            {displayContent}
-          </p>
-          <span className="text-xs text-brown-300 group-hover:text-brown-500 transition-colors mt-1 inline-block">
-            더 보기
-          </span>
-        </Link>
+        {canOpenHiddenDetail ? (
+          <button
+            type="button"
+            className="mt-3 text-left w-full group block"
+            onClick={() => setShowDetail(true)}
+          >
+            <p className="text-sm text-brown-600 leading-relaxed line-clamp-3 group-hover:text-brown-800 transition-colors">
+              {displayContent}
+            </p>
+            <span className="text-xs text-brown-300 group-hover:text-brown-500 transition-colors mt-1 inline-block">
+              더 보기
+            </span>
+          </button>
+        ) : (
+          <Link
+            href={hidden ? "#" : `/reviews/${post.id}`}
+            className="mt-3 text-left w-full group block"
+            onClick={(e) => {
+              if (hidden) e.preventDefault();
+            }}
+          >
+            <p className="text-sm text-brown-600 leading-relaxed line-clamp-3 group-hover:text-brown-800 transition-colors">
+              {displayContent}
+            </p>
+            <span className="text-xs text-brown-300 group-hover:text-brown-500 transition-colors mt-1 inline-block">
+              더 보기
+            </span>
+          </Link>
+        )}
 
         {/* 좋아요 / 댓글 버튼 */}
         <div className="flex items-center gap-5 mt-3 pt-3 border-t border-cream-100">

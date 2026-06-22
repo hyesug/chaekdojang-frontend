@@ -14,6 +14,7 @@ type ReviewDetail = {
   book: { id: number; title: string; author: string; thumbnail: string | null } | null;
   rating: number;
   content: string;
+  hidden?: boolean;
   likeCount: number;
   commentCount: number;
   createdAt: string;
@@ -105,14 +106,20 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
     async function load() {
       setLoading(true);
       try {
+        const token = getToken();
         const [reviewRes] = await Promise.all([
-          fetch(`${BASE}/api/reviews/${reviewId}`),
+          fetch(`${BASE}/api/reviews/${reviewId}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          }),
         ]);
         if (reviewRes.ok) {
           const json = await reviewRes.json();
           const data: ReviewDetail = json.data ?? json;
           setReview(data);
           setLikeCount(data.likeCount);
+          if (!data.hidden) {
+            loadComments();
+          }
         }
       } finally {
         setLoading(false);
@@ -128,9 +135,6 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
           .then((json) => { if (json !== null) setLiked(Boolean(json.data ?? json)); })
           .catch(() => {});
       }
-
-      // 댓글 로드
-      loadComments();
     }
     load();
   }, [reviewId]);

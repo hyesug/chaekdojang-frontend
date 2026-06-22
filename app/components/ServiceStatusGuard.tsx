@@ -20,7 +20,7 @@ export default function ServiceStatusGuard() {
 
     async function checkHealth() {
       try {
-        const res = await fetch("/api/system-health", {
+        const res = await fetch("/system-health", {
           cache: "no-store",
         });
         if (cancelled) return;

@@ -3,6 +3,7 @@ import { Noto_Sans_KR, Noto_Serif_KR } from "next/font/google";
 import "./globals.css";
 import Header from "./components/Header";
 import AnalyticsTracker from "./components/AnalyticsTracker";
+import ServiceStatusGuard from "./components/ServiceStatusGuard";
 import { shareText } from "./lib/serverApi";
 
 const notoSansKR = Noto_Sans_KR({
@@ -94,6 +95,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
         <AnalyticsTracker />
+        <ServiceStatusGuard />
         <Header />
         <main className="flex-1">{children}</main>
         <footer className="px-4 py-8 text-center text-sm text-brown-400 border-t border-cream-200">

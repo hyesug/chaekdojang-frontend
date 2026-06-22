@@ -163,7 +163,7 @@ export default function BookDetailClient({
             alt={book.title}
             width={80}
             height={112}
-            className="rounded shadow-md object-cover flex-shrink-0"
+            className="w-20 h-28 rounded shadow-md object-contain flex-shrink-0 bg-white"
           />
         ) : (
           <div className="w-20 h-28 rounded shadow-md flex-shrink-0 bg-brown-200 flex items-center justify-center text-white text-2xl font-bold">

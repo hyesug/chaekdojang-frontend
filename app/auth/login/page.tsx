@@ -14,6 +14,10 @@ function LoginContent() {
   const hasError = searchParams.get("error") === "oauth_failed";
   const isSignup = searchParams.get("mode") === "signup";
   const [isLocal, setIsLocal] = useState(false);
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
+  const socialButtonClass = ageConfirmed
+    ? ""
+    : "opacity-50 cursor-not-allowed pointer-events-none";
 
   useEffect(() => {
     setIsLocal(window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
@@ -53,23 +57,37 @@ function LoginContent() {
         )}
 
         <div className="bg-white rounded-2xl border border-cream-200 p-6 shadow-sm flex flex-col gap-3">
+          <label className="flex items-start gap-2 rounded-xl border border-cream-200 bg-cream-50 px-3 py-3 text-left">
+            <input
+              type="checkbox"
+              checked={ageConfirmed}
+              onChange={(e) => setAgeConfirmed(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-cream-300 accent-brown-600"
+            />
+            <span className="text-xs leading-5 text-brown-500">
+              만 14세 이상입니다. 만 14세 미만은 책도장에 가입하거나 서비스를 이용할 수 없습니다.
+            </span>
+          </label>
           <a
             href={`${BACKEND}/oauth2/authorization/kakao`}
-            className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-medium bg-[#FEE500] text-[#3C1E1E] hover:brightness-95 transition"
+            aria-disabled={!ageConfirmed}
+            className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-medium bg-[#FEE500] text-[#3C1E1E] hover:brightness-95 transition ${socialButtonClass}`}
           >
             <KakaoIcon />
             카카오로 {isSignup ? "시작하기" : "로그인"}
           </a>
           <a
             href={`${BACKEND}/oauth2/authorization/naver`}
-            className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-medium bg-[#03C75A] text-white hover:brightness-95 transition"
+            aria-disabled={!ageConfirmed}
+            className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-medium bg-[#03C75A] text-white hover:brightness-95 transition ${socialButtonClass}`}
           >
             <NaverIcon />
             네이버로 {isSignup ? "시작하기" : "로그인"}
           </a>
           <a
             href={`${BACKEND}/oauth2/authorization/google`}
-            className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-medium bg-white text-brown-800 border border-cream-300 hover:bg-cream-50 transition"
+            aria-disabled={!ageConfirmed}
+            className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-medium bg-white text-brown-800 border border-cream-300 hover:bg-cream-50 transition ${socialButtonClass}`}
           >
             <GoogleIcon />
             구글로 {isSignup ? "시작하기" : "로그인"}

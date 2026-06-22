@@ -5,6 +5,9 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { API_BASE } from "../lib/api";
 
+const FEED_STATE_KEY = "chaekdojang:feed-state";
+const PENDING_REVIEW_KEY = "chaekdojang:pending-review";
+
 type BookResult = {
   id: number;
   isbn13: string;
@@ -139,6 +142,12 @@ function WriteContent() {
         return;
       }
       if (res.ok) {
+        const json = await res.json().catch(() => null);
+        const createdReview = json?.data ?? json;
+        sessionStorage.removeItem(FEED_STATE_KEY);
+        if (createdReview?.id) {
+          sessionStorage.setItem(PENDING_REVIEW_KEY, JSON.stringify(createdReview));
+        }
         router.push("/");
       } else {
         const data = await res.json().catch(() => ({}));
@@ -153,6 +162,17 @@ function WriteContent() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 sm:py-8 pb-28 sm:pb-8">
+      {submitting && (
+        <div className="fixed inset-0 z-50 bg-white/80 backdrop-blur-sm flex items-center justify-center px-4">
+          <div className="w-full max-w-xs rounded-2xl border border-cream-200 bg-white p-6 text-center shadow-lg">
+            <div className="mx-auto mb-4 h-8 w-8 rounded-full border-2 border-brown-200 border-t-brown-600 animate-spin" />
+            <p className="font-serif text-lg font-bold text-brown-800">독후감 등록 중</p>
+            <p className="mt-2 text-sm text-brown-400">
+              저장이 끝나면 피드로 이동해요. 잠시만 기다려 주세요.
+            </p>
+          </div>
+        </div>
+      )}
       {/* 페이지 헤더 */}
       <div className="flex items-center gap-4 mb-5">
         <Link href="/" className="text-sm text-brown-400 hover:text-brown-600 transition-colors">

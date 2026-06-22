@@ -384,10 +384,6 @@ export default function ReviewCard({ post }: { post: Review }) {
   const [copied, setCopied] = useState(false);
   const [instaCopied, setInstaCopied] = useState(false);
 
-  // 번역
-  const [translatedContent, setTranslatedContent] = useState<string | null>(null);
-  const [translating, setTranslating] = useState(false);
-
   useEffect(() => {
     const token = getToken();
     if (!token) return;
@@ -680,14 +676,6 @@ export default function ReviewCard({ post }: { post: Review }) {
           </span>
         </Link>
 
-        {/* 번역 결과 */}
-        {translatedContent && (
-          <div className="mt-2 p-3 bg-blue-50 rounded-xl border border-blue-100">
-            <p className="text-xs text-blue-400 mb-1">번역 (영어)</p>
-            <p className="text-sm text-gray-700 leading-relaxed">{translatedContent}</p>
-          </div>
-        )}
-
         {/* 좋아요 / 댓글 버튼 */}
         <div className="flex items-center gap-5 mt-3 pt-3 border-t border-cream-100">
           <button
@@ -716,26 +704,6 @@ export default function ReviewCard({ post }: { post: Review }) {
           >
             <span className="text-base leading-none">💬</span>
             <span>{commentCount}</span>
-          </button>
-
-          {/* 번역 버튼 */}
-          <button
-            onClick={async () => {
-              if (translatedContent) { setTranslatedContent(null); return; }
-              setTranslating(true);
-              try {
-                const res = await fetch(`${BASE}/api/translate`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-                  body: JSON.stringify({ text: displayContent, targetLang: 'EN' }),
-                });
-                if (res.ok) { const d = await res.json(); setTranslatedContent(d.data?.translatedText); }
-              } finally { setTranslating(false); }
-            }}
-            className="flex items-center gap-1 text-sm text-brown-300 hover:text-brown-500 transition-colors"
-            aria-label="번역"
-          >
-            <span className="text-base leading-none">{translating ? '…' : translatedContent ? '원문' : '번역'}</span>
           </button>
 
           {/* 공유 버튼 */}

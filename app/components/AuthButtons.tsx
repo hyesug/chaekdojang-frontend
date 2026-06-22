@@ -9,6 +9,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { clearToken, getValidToken } from "../lib/auth";
 
 export default function AuthButtons() {
   const router = useRouter();
@@ -17,13 +18,7 @@ export default function AuthButtons() {
 
   useEffect(() => {
     function syncAuth() {
-      const token = localStorage.getItem("token");
-      if (!token || token === "undefined" || token === "null") {
-        localStorage.removeItem("token");
-        setLoggedIn(false);
-      } else {
-        setLoggedIn(true);
-      }
+      setLoggedIn(!!getValidToken());
     }
 
     setMounted(true);
@@ -35,7 +30,7 @@ export default function AuthButtons() {
   }, []);
 
   function logout() {
-    localStorage.removeItem("token");
+    clearToken();
     window.dispatchEvent(new Event("auth-change"));
     router.push("/");
     router.refresh(); // 서버 컴포넌트(피드 등)도 새로 불러오도록

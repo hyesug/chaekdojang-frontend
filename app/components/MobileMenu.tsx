@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AdminNavLink from "./AdminNavLink";
+import { clearToken, getValidToken } from "../lib/auth";
 
 type NavLink = { href: string; label: string };
 
@@ -14,13 +15,7 @@ export default function MobileMenu({ links }: { links: NavLink[] }) {
 
   useEffect(() => {
     function syncAuth() {
-      const token = localStorage.getItem("token");
-      if (!token || token === "undefined" || token === "null") {
-        localStorage.removeItem("token");
-        setLoggedIn(false);
-      } else {
-        setLoggedIn(true);
-      }
+      setLoggedIn(!!getValidToken());
     }
 
     syncAuth();
@@ -29,7 +24,7 @@ export default function MobileMenu({ links }: { links: NavLink[] }) {
   }, []);
 
   function logout() {
-    localStorage.removeItem("token");
+    clearToken();
     window.dispatchEvent(new Event("auth-change"));
     setOpen(false);
     router.push("/");

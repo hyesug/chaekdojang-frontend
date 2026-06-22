@@ -8,6 +8,7 @@ import FollowListModal from "../components/FollowListModal";
 import ExpandableBio, { MAX_BIO_LENGTH } from "../components/ExpandableBio";
 import ProfileAvatar from "../components/ProfileAvatar";
 import { API_BASE } from "../lib/api";
+import { clearToken, getValidToken } from "../lib/auth";
 
 const BASE = API_BASE;
 const FEED_STATE_KEY = "chaekdojang:feed-state";
@@ -84,8 +85,8 @@ export default function ProfilePage() {
   const reviewSearchRef = useRef<string>("");
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token || token === "undefined" || token === "null") {
+    const token = getValidToken();
+    if (!token) {
       router.push("/auth/login");
       return;
     }
@@ -99,7 +100,8 @@ export default function ProfilePage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.status === 401) {
-        localStorage.removeItem("token");
+        clearToken();
+        window.dispatchEvent(new Event("auth-change"));
         router.push("/auth/login");
         return;
       }
@@ -302,7 +304,8 @@ export default function ProfilePage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.status === 401) {
-        localStorage.removeItem("token");
+        clearToken();
+        window.dispatchEvent(new Event("auth-change"));
         router.push("/auth/login");
         return;
       }

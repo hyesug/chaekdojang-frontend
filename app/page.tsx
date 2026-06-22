@@ -8,6 +8,7 @@ import { API_BASE } from "./lib/api";
 const BASE = API_BASE;
 const PAGE_SIZE = 10;
 const FEED_STATE_KEY = "chaekdojang:feed-state";
+const PENDING_REVIEW_KEY = "chaekdojang:pending-review";
 
 type FeedTab = "all" | "following" | "taste";
 type SortType = "recent" | "rating" | "popular";
@@ -30,10 +31,31 @@ export default function FeedPage() {
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
   const [loggedIn, setLoggedIn] = useState(false);
+  const [createdNotice, setCreatedNotice] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const restoredRef = useRef(false);
+  const pendingReviewRef = useRef<Review | null>(null);
+
+  const mergePendingReview = useCallback((items: Review[], sortType: SortType) => {
+    const pending = pendingReviewRef.current;
+    if (!pending || sortType !== "recent") return items;
+    return [pending, ...items.filter((item) => item.id !== pending.id)];
+  }, []);
 
   useEffect(() => {
+    const pendingRaw = sessionStorage.getItem(PENDING_REVIEW_KEY);
+    if (pendingRaw) {
+      try {
+        pendingReviewRef.current = JSON.parse(pendingRaw) as Review;
+        setCreatedNotice(true);
+        sessionStorage.removeItem(FEED_STATE_KEY);
+        sessionStorage.removeItem(PENDING_REVIEW_KEY);
+      } catch {
+        sessionStorage.removeItem(PENDING_REVIEW_KEY);
+      }
+      return;
+    }
+
     const raw = sessionStorage.getItem(FEED_STATE_KEY);
     if (!raw) return;
     try {
@@ -50,7 +72,7 @@ export default function FeedPage() {
     } catch {
       sessionStorage.removeItem(FEED_STATE_KEY);
     }
-  }, []);
+  }, [mergePendingReview]);
 
   useEffect(() => {
     if (loading || reviews.length === 0) return;
@@ -102,7 +124,7 @@ export default function FeedPage() {
       const content: Review[] = json.data?.content ?? [];
       const last: boolean = json.data?.last ?? true;
       setReviews((prev) =>
-        pageNum === 0 ? content : [...prev, ...content]
+        pageNum === 0 ? mergePendingReview(content, sortType) : [...prev, ...content]
       );
       setHasMore(!last);
     } catch {
@@ -111,7 +133,7 @@ export default function FeedPage() {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, []);
+  }, [mergePendingReview]);
 
   /* 팔로잉 피드 — 단일 로드 */
   const loadFollowing = useCallback(async () => {
@@ -232,6 +254,12 @@ export default function FeedPage() {
       </div>
 
       {/* 탭: 전체 / 팔로잉 / 취향 */}
+      {createdNotice && (
+        <div className="mb-4 rounded-xl border border-green-100 bg-green-50 px-4 py-3 text-sm text-green-700">
+          독후감이 등록됐어요. 피드에 바로 반영했어요.
+        </div>
+      )}
+
       <div className="flex gap-1 mb-6 bg-cream-200 rounded-xl p-1">
         {(
           [

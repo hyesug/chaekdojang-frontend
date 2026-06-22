@@ -406,9 +406,13 @@ export default function AdminPage() {
     const token = getToken();
     if (!token) return;
     const h = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-    await fetch(`${API_BASE}/api/admin/reviews/${reviewId}/hidden`, {
+    const res = await fetch(`${API_BASE}/api/admin/reviews/${reviewId}/hidden`, {
       method: "PATCH", headers: h, body: JSON.stringify({ hidden }),
     });
+    if (!res.ok) {
+      console.error("독후감 공개 상태 변경 실패", await res.text());
+      return;
+    }
     loadReviews(reviewPage, appliedSearch.author, appliedSearch.title);
   }
 

@@ -48,6 +48,7 @@ export default function FeedPage() {
       try {
         pendingReviewRef.current = JSON.parse(pendingRaw) as Review;
         setCreatedNotice(true);
+        window.setTimeout(() => setCreatedNotice(false), 4000);
         sessionStorage.removeItem(FEED_STATE_KEY);
         sessionStorage.removeItem(PENDING_REVIEW_KEY);
       } catch {

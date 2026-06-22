@@ -29,6 +29,8 @@ type Comment = {
 
 const BASE = API_BASE;
 const SHARE_COPY = "읽은 책에 나만의 감상을 찍다";
+const FEED_STATE_KEY = "chaekdojang:feed-state";
+const PENDING_REVIEW_KEY = "chaekdojang:pending-review";
 
 const COVER_COLORS = [
   "#8B6048", "#6E7A4A", "#4A6E7A", "#7A4A6E", "#6E4A7A", "#4A7A6E",
@@ -515,7 +517,15 @@ export default function ReviewCard({ post }: { post: Review }) {
       }
       if (!res.ok) {
         setHidden(!next);
+        return;
       }
+      const json = await res.json().catch(() => null);
+      const savedHidden = json?.data?.hidden;
+      if (typeof savedHidden === "boolean") {
+        setHidden(savedHidden);
+      }
+      sessionStorage.removeItem(FEED_STATE_KEY);
+      sessionStorage.removeItem(PENDING_REVIEW_KEY);
     } finally {
       setVisibilitySaving(false);
     }

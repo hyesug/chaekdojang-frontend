@@ -391,13 +391,13 @@ function SearchContent() {
                     <Image
                       src={book.thumbnail}
                       alt={book.title}
-                      width={56}
-                      height={80}
-                      className="rounded shadow-sm object-cover flex-shrink-0"
+                      width={72}
+                      height={108}
+                      className="w-[72px] h-[108px] rounded shadow-sm object-contain flex-shrink-0 bg-white"
                     />
                   ) : (
                     <div
-                      className="w-14 h-20 rounded shadow-sm flex-shrink-0 flex items-center justify-center text-white text-xs font-bold"
+                      className="w-[72px] h-[108px] rounded shadow-sm flex-shrink-0 flex items-center justify-center text-white text-xs font-bold"
                       style={{ backgroundColor: COVER_COLORS[i % COVER_COLORS.length] }}
                     >
                       {book.title[0]}
@@ -496,7 +496,7 @@ function SearchContent() {
                               alt={edition.title}
                               width={40}
                               height={58}
-                              className="rounded object-cover flex-shrink-0"
+                              className="w-10 h-[58px] rounded object-contain flex-shrink-0 bg-white"
                             />
                           ) : (
                             <div

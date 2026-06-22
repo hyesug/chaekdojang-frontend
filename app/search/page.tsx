@@ -377,6 +377,8 @@ function SearchContent() {
             const workHref = `/books/work?title=${encodeURIComponent(group.workTitle)}&author=${encodeURIComponent(group.workAuthor)}`;
             const expanded = expandedGroups[group.key] ?? false;
             const representativeWriteHref = `/write?bookId=${book.id}&title=${encodeURIComponent(book.title)}&author=${encodeURIComponent(book.author)}&publisher=${encodeURIComponent(book.publisher)}${book.thumbnail ? `&thumbnail=${encodeURIComponent(book.thumbnail)}` : ""}`;
+            const representativeKey = book.isbn13 || String(book.id);
+            const representativeAddState = adding[representativeKey] ?? "idle";
 
             return (
               <div
@@ -438,6 +440,26 @@ function SearchContent() {
                         className="px-3 py-1.5 text-xs border border-brown-300 text-brown-600 rounded-full hover:border-brown-500 transition-colors"
                       >
                         {expanded ? "판본 접기" : "판본 보기"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => addToLibrary(book)}
+                        disabled={representativeAddState === "loading" || representativeAddState === "done"}
+                        className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
+                          representativeAddState === "done"
+                            ? "border-sage-500 text-sage-600 cursor-default"
+                            : representativeAddState === "error"
+                            ? "border-red-300 text-red-400"
+                            : "border-brown-300 text-brown-500 hover:border-brown-500 hover:text-brown-700"
+                        }`}
+                      >
+                        {representativeAddState === "done"
+                          ? "✓ 서재 추가됨"
+                          : representativeAddState === "loading"
+                          ? "추가 중..."
+                          : representativeAddState === "error"
+                          ? "실패 (다시)"
+                          : "+ 내 서재에 담기"}
                       </button>
                     </div>
 

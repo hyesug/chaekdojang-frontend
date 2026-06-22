@@ -788,7 +788,7 @@ export default function ProfilePage() {
         <>
           <div className="flex flex-col gap-4">
             {reviews.map((post) => (
-              <ReviewCard key={post.id} post={post} />
+              <ReviewCard key={post.id} post={post} forceOwner />
             ))}
           </div>
           {reviewHasMore && (

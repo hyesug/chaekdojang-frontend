@@ -347,13 +347,13 @@ function EditModal({
 // ─────────────────────────────────────────────
 // 피드 카드
 // ─────────────────────────────────────────────
-export default function ReviewCard({ post }: { post: Review }) {
+export default function ReviewCard({ post, forceOwner = false }: { post: Review; forceOwner?: boolean }) {
   const coverColor = COVER_COLORS[post.id % COVER_COLORS.length];
   const router = useRouter();
   const myId = getMyUserId();
 
   const isOwner =
-    myId !== null && post.author.id != null && myId === post.author.id;
+    forceOwner || (myId !== null && post.author.id != null && myId === post.author.id);
   const isOther =
     myId !== null && post.author.id != null && myId !== post.author.id;
 

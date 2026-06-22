@@ -53,11 +53,12 @@ type BookDetailClientProps = {
 
 export default function BookDetailClient({
   book,
-  reviews,
+  reviews: initialReviews,
   purchaseLinks,
 }: BookDetailClientProps) {
   const router = useRouter();
   const bookId = book.id;
+  const [reviews, setReviews] = useState<Review[]>(initialReviews);
   const [libraryState, setLibraryState] = useState<LibraryState>({
     inLibrary: false,
     status: null,
@@ -284,7 +285,17 @@ export default function BookDetailClient({
       ) : (
         <div className="flex flex-col gap-4">
           {reviews.map((review) => (
-            <ReviewCard key={review.id} post={review} />
+            <ReviewCard
+              key={review.id}
+              post={review}
+              onVisibilityChange={(updated) => {
+                setReviews((prev) =>
+                  updated.hidden
+                    ? prev.filter((item) => item.id !== updated.id)
+                    : prev.map((item) => (item.id === updated.id ? updated : item))
+                );
+              }}
+            />
           ))}
         </div>
       )}

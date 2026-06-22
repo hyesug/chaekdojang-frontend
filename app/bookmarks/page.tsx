@@ -46,7 +46,17 @@ export default function BookmarksPage() {
         <div className="flex flex-col gap-4">
           <p className="text-sm text-brown-400">{reviews.length}개의 독후감을 저장했어요</p>
           {reviews.map((review) => (
-            <ReviewCard key={review.id} post={review} />
+            <ReviewCard
+              key={review.id}
+              post={review}
+              onVisibilityChange={(updated) => {
+                setReviews((prev) =>
+                  updated.hidden
+                    ? prev.filter((item) => item.id !== updated.id)
+                    : prev.map((item) => (item.id === updated.id ? updated : item))
+                );
+              }}
+            />
           ))}
         </div>
       )}

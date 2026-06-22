@@ -259,7 +259,17 @@ export default function UserProfilePage() {
       ) : (
         <div className="flex flex-col gap-4">
           {reviews.map((post) => (
-            <ReviewCard key={post.id} post={post} />
+            <ReviewCard
+              key={post.id}
+              post={post}
+              onVisibilityChange={(updated) => {
+                setReviews((prev) =>
+                  updated.hidden
+                    ? prev.filter((item) => item.id !== updated.id)
+                    : prev.map((item) => (item.id === updated.id ? updated : item))
+                );
+              }}
+            />
           ))}
         </div>
       )}

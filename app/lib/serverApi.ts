@@ -20,6 +20,7 @@ export type ReviewDetail = {
   } | null;
   content: string;
   rating: number;
+  hidden?: boolean;
   likeCount: number;
   commentCount: number;
   createdAt: string;

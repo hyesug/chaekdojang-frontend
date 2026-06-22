@@ -195,30 +195,37 @@ export default function LibraryPage() {
               className="bg-white rounded-2xl border border-cream-200 p-4 flex gap-4 hover:shadow-sm transition-shadow"
             >
               {/* 책 표지 */}
-              {item.book.thumbnail ? (
-                <Image
-                  src={item.book.thumbnail}
-                  alt={item.book.title}
-                  width={52}
-                  height={74}
-                  className="rounded shadow-sm object-cover flex-shrink-0"
-                />
-              ) : (
-                <div
-                  className="w-13 h-18 rounded shadow-sm flex-shrink-0 flex items-center justify-center text-white text-xs font-bold"
-                  style={{
-                    width: 52,
-                    height: 74,
-                    backgroundColor: COVER_COLORS[i % COVER_COLORS.length],
-                  }}
-                >
-                  {item.book.title[0]}
-                </div>
-              )}
+              <Link href={`/books/${item.book.id}/reviews`} className="flex-shrink-0">
+                {item.book.thumbnail ? (
+                  <Image
+                    src={item.book.thumbnail}
+                    alt={item.book.title}
+                    width={52}
+                    height={74}
+                    className="rounded shadow-sm object-cover"
+                  />
+                ) : (
+                  <div
+                    className="w-13 h-18 rounded shadow-sm flex items-center justify-center text-white text-xs font-bold"
+                    style={{
+                      width: 52,
+                      height: 74,
+                      backgroundColor: COVER_COLORS[i % COVER_COLORS.length],
+                    }}
+                  >
+                    {item.book.title[0]}
+                  </div>
+                )}
+              </Link>
 
               {/* 책 정보 */}
               <div className="flex-1 min-w-0">
-                <p className="font-serif font-bold text-brown-800 leading-snug">{item.book.title}</p>
+                <Link
+                  href={`/books/${item.book.id}/reviews`}
+                  className="font-serif font-bold text-brown-800 leading-snug hover:text-brown-600 hover:underline"
+                >
+                  {item.book.title}
+                </Link>
                 <p className="text-sm text-brown-400 mt-0.5">{item.book.author}</p>
 
                 {/* 상태 변경 셀렉터 */}

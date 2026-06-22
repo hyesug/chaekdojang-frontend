@@ -14,6 +14,7 @@ export type Review = {
   book?: { id?: number; title: string; author: string; thumbnail: string | null } | null;
   rating: number;
   content: string;
+  hidden?: boolean;
   likeCount: number;
   commentCount: number;
   createdAt: string;
@@ -367,7 +368,9 @@ export default function ReviewCard({ post }: { post: Review }) {
   const [editing, setEditing] = useState(false);
   const [displayContent, setDisplayContent] = useState(post.content);
   const [displayRating, setDisplayRating] = useState(post.rating);
+  const [hidden, setHidden] = useState(Boolean(post.hidden));
   const [saving, setSaving] = useState(false);
+  const [visibilitySaving, setVisibilitySaving] = useState(false);
 
   // 팔로우
   const [following, setFollowing] = useState(false);
@@ -490,6 +493,34 @@ export default function ReviewCard({ post }: { post: Review }) {
     }
   }
 
+  async function handleVisibilityToggle() {
+    if (!isOwner || visibilitySaving) return;
+    const next = !hidden;
+    setHidden(next);
+    setVisibilitySaving(true);
+    try {
+      const res = await fetch(`${BASE}/api/reviews/${post.id}/hidden`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getToken()}`,
+        },
+        body: JSON.stringify({ hidden: next }),
+      });
+      if (res.status === 401) {
+        setHidden(!next);
+        localStorage.removeItem("token");
+        router.push("/auth/login");
+        return;
+      }
+      if (!res.ok) {
+        setHidden(!next);
+      }
+    } finally {
+      setVisibilitySaving(false);
+    }
+  }
+
   async function handleBookmark() {
     if (!getToken()) { router.push("/auth/login"); return; }
     const next = !bookmarked;
@@ -602,6 +633,20 @@ export default function ReviewCard({ post }: { post: Review }) {
               <div className="flex items-center gap-2 flex-shrink-0">
                 {isOwner && !editing && (
                   <>
+                    <span
+                      className={`text-xs rounded-full px-2 py-0.5 ${
+                        hidden ? "bg-red-50 text-red-500" : "bg-green-50 text-green-600"
+                      }`}
+                    >
+                      {hidden ? "비공개" : "공개"}
+                    </span>
+                    <button
+                      onClick={handleVisibilityToggle}
+                      disabled={visibilitySaving}
+                      className="text-xs text-brown-400 hover:text-brown-700 transition-colors disabled:opacity-50"
+                    >
+                      {hidden ? "공개로 전환" : "비공개로 전환"}
+                    </button>
                     <button
                       onClick={() => setEditing(true)}
                       className="text-xs text-brown-400 hover:text-brown-700 transition-colors"
@@ -665,8 +710,11 @@ export default function ReviewCard({ post }: { post: Review }) {
 
         {/* 본문 */}
         <Link
-          href={`/reviews/${post.id}`}
+          href={hidden ? "#" : `/reviews/${post.id}`}
           className="mt-3 text-left w-full group block"
+          onClick={(e) => {
+            if (hidden) e.preventDefault();
+          }}
         >
           <p className="text-sm text-brown-600 leading-relaxed line-clamp-3 group-hover:text-brown-800 transition-colors">
             {displayContent}

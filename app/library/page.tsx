@@ -138,14 +138,22 @@ export default function LibraryPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <h1 className="font-serif text-2xl font-bold text-brown-800">내 서재</h1>
-        <Link
-          href="/search"
-          className="px-4 py-2 text-sm border border-brown-300 text-brown-600 rounded-full hover:bg-cream-200 transition-colors"
-        >
-          + 책 추가
-        </Link>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Link
+            href="/calendar"
+            className="px-4 py-2 text-sm border border-brown-300 text-brown-600 rounded-full hover:bg-cream-200 transition-colors"
+          >
+            월별 캘린더
+          </Link>
+          <Link
+            href="/search"
+            className="px-4 py-2 text-sm border border-brown-300 text-brown-600 rounded-full hover:bg-cream-200 transition-colors"
+          >
+            + 책 추가
+          </Link>
+        </div>
       </div>
 
       {/* 탭 */}

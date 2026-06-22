@@ -207,7 +207,7 @@ export default function CalendarPage() {
           <h1 className="font-serif text-2xl font-bold text-brown-800">독서 캘린더</h1>
           <p className="text-xs text-brown-400 mt-1">완독한 날마다 책 표지가 남아요</p>
         </div>
-        <Link href="/stats" className="text-sm text-brown-500 hover:text-brown-700">통계</Link>
+        <Link href="/library" className="text-sm text-brown-500 hover:text-brown-700">내 서재</Link>
       </div>
 
       <div className="bg-[#fbf8f1] border border-cream-200 rounded-lg shadow-sm overflow-hidden">

@@ -664,10 +664,10 @@ export default function ProfilePage() {
           📚 내 서재
         </Link>
         <Link
-          href="/stats"
+          href="/calendar"
           className="flex-1 py-3 rounded-2xl border border-cream-200 bg-white text-center text-sm text-brown-600 hover:bg-cream-50 hover:shadow-sm transition-all"
         >
-          📊 독서 통계
+          월별 캘린더
         </Link>
       </div>
 

@@ -8,7 +8,6 @@ const navLinks = [
   { href: "/", label: "피드" },
   { href: "/search", label: "검색" },
   { href: "/library", label: "서재" },
-  { href: "/stats", label: "통계" },
   { href: "/write", label: "독후감 쓰기" },
   { href: "/dojangdan", label: "도장단" },
   { href: "/cs", label: "고객센터" },

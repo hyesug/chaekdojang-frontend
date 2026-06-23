@@ -73,8 +73,12 @@ export async function fetchApiData<T>(
   options: RequestInit & { next?: { revalidate?: number } } = {}
 ): Promise<T | null> {
   try {
+    const headers = new Headers(options.headers);
+    headers.set("X-Chaekdojang-Internal-Request", "web-ssr");
+
     const res = await fetch(`${SERVER_API_BASE}${path}`, {
       ...options,
+      headers,
       next: options.next ?? { revalidate: 300 },
     });
     if (!res.ok) return null;

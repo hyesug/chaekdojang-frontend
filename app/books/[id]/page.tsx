@@ -47,7 +47,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const url = bookUrl(book);
 
   return {
-    title,
+    title: { absolute: title },
     description,
     keywords: [
       `${book.title} 독후감`,

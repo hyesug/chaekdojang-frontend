@@ -1,25 +1,10 @@
 import type { Metadata } from "next";
-import { Noto_Sans_KR, Noto_Serif_KR } from "next/font/google";
 import "./globals.css";
 import Header from "./components/Header";
 import AnalyticsTracker from "./components/AnalyticsTracker";
 import GoogleAnalytics from "./components/GoogleAnalytics";
 import ServiceStatusGuard from "./components/ServiceStatusGuard";
 import { shareText } from "./lib/serverApi";
-
-const notoSansKR = Noto_Sans_KR({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "700"],
-  variable: "--font-sans-kr",
-  display: "swap",
-});
-
-const notoSerifKR = Noto_Serif_KR({
-  subsets: ["latin"],
-  weight: ["400", "700", "800"],
-  variable: "--font-serif-kr",
-  display: "swap",
-});
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.chaekdojang.com";
 
@@ -88,7 +73,7 @@ export default function RootLayout({
   };
 
   return (
-    <html lang="ko" className={`${notoSansKR.variable} ${notoSerifKR.variable}`}>
+    <html lang="ko">
       <body className="min-h-screen flex flex-col bg-cream-100 text-brown-800">
         <script
           type="application/ld+json"

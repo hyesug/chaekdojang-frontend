@@ -9,7 +9,7 @@ import { API_BASE } from "../lib/api";
 const BASE = API_BASE;
 const PAGE_SIZE = 10;
 
-type SortType = "recent" | "popular";
+type SortType = "recent" | "rating" | "popular";
 
 type RecommendedUser = {
   id: number;
@@ -27,16 +27,11 @@ function getToken(): string | null {
 export default function ExplorePage() {
   const [sort, setSort] = useState<SortType>("recent");
 
-  // 최신순: 무한 스크롤
   const [reviews, setReviews] = useState<Review[]>([]);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-
-  // 인기순: 전체 로드 후 클라이언트 정렬
-  const [allReviews, setAllReviews] = useState<Review[]>([]);
-  const [popularLoading, setPopularLoading] = useState(false);
 
   // 추천 독자
   const [recommendedUsers, setRecommendedUsers] = useState<RecommendedUser[]>([]);
@@ -80,12 +75,11 @@ export default function ExplorePage() {
     }
   }
 
-  // 최신순 — 페이지 단위 로드
-  const loadPage = useCallback(async (pageNum: number) => {
+  const loadPage = useCallback(async (pageNum: number, sortType: SortType) => {
     if (pageNum === 0) setLoading(true);
     else setLoadingMore(true);
     try {
-      const res = await fetch(`${BASE}/api/reviews?page=${pageNum}&size=${PAGE_SIZE}`);
+      const res = await fetch(`${BASE}/api/reviews?page=${pageNum}&size=${PAGE_SIZE}&sort=${sortType}`);
       if (!res.ok) return;
       const json = await res.json();
       const pageData = json.data;
@@ -101,48 +95,22 @@ export default function ExplorePage() {
     }
   }, []);
 
-  // 인기순 — 전체 로드
-  const loadPopular = useCallback(async () => {
-    if (allReviews.length > 0) return;
-    setPopularLoading(true);
-    try {
-      // 인기순은 전체를 한 번에 받아서 클라이언트에서 정렬. 최대 100개 요청
-      const res = await fetch(`${BASE}/api/reviews?page=0&size=100`);
-      if (res.ok) {
-        const json = await res.json();
-        // 백엔드가 Page 구조 반환: data.content 가 실제 배열
-        const data: Review[] = json.data?.content ?? [];
-        data.sort((a, b) => b.likeCount - a.likeCount);
-        setAllReviews(data);
-      }
-    } catch {
-      /* 무시 */
-    } finally {
-      setPopularLoading(false);
-    }
-  }, [allReviews.length]);
-
   // 탭 전환 시 처리
   useEffect(() => {
-    if (sort === "recent") {
-      setReviews([]);
-      setPage(0);
-      setHasMore(true);
-      loadPage(0);
-    } else {
-      loadPopular();
-    }
-  }, [sort]); // eslint-disable-line react-hooks/exhaustive-deps
+    setReviews([]);
+    setPage(0);
+    setHasMore(true);
+    loadPage(0, sort);
+  }, [sort, loadPage]);
 
   // 페이지 증가 시 추가 로드
   useEffect(() => {
     if (page === 0) return;
-    loadPage(page);
-  }, [page, loadPage]);
+    loadPage(page, sort);
+  }, [page, sort, loadPage]);
 
   // Intersection Observer — sentinel 요소가 보이면 다음 페이지 요청
   useEffect(() => {
-    if (sort !== "recent") return;
     const el = sentinelRef.current;
     if (!el) return;
 
@@ -156,10 +124,7 @@ export default function ExplorePage() {
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [sort, hasMore, loadingMore, loading]);
-
-  const displayedReviews = sort === "recent" ? reviews : allReviews;
-  const isLoading = sort === "recent" ? loading : popularLoading;
+  }, [hasMore, loadingMore, loading]);
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
@@ -216,6 +181,7 @@ export default function ExplorePage() {
         {(
           [
             { value: "recent", label: "🕐 최신순" },
+            { value: "rating", label: "⭐ 별점순" },
             { value: "popular", label: "🔥 인기순" },
           ] as const
         ).map(({ value, label }) => (
@@ -233,9 +199,9 @@ export default function ExplorePage() {
         ))}
       </div>
 
-      {isLoading ? (
+      {loading ? (
         <div className="text-center py-12 text-brown-400">불러오는 중...</div>
-      ) : displayedReviews.length === 0 ? (
+      ) : reviews.length === 0 ? (
         <div className="text-center py-20 text-brown-400">
           <p className="text-5xl mb-4">📖</p>
           <p>아직 독후감이 없어요</p>
@@ -243,7 +209,7 @@ export default function ExplorePage() {
       ) : (
         <>
           <div className="flex flex-col gap-4">
-            {displayedReviews.map((review) => (
+            {reviews.map((review) => (
               <ReviewCard
                 key={review.id}
                 post={review}
@@ -258,12 +224,9 @@ export default function ExplorePage() {
             ))}
           </div>
 
-          {/* 무한 스크롤 sentinel (최신순에서만) */}
-          {sort === "recent" && (
-            <div ref={sentinelRef} className="py-6 text-center text-sm text-brown-300">
-              {loadingMore ? "불러오는 중..." : hasMore ? "" : "마지막 독후감이에요"}
-            </div>
-          )}
+          <div ref={sentinelRef} className="py-6 text-center text-sm text-brown-300">
+            {loadingMore ? "불러오는 중..." : hasMore ? "" : "마지막 독후감이에요"}
+          </div>
         </>
       )}
     </div>

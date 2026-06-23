@@ -21,6 +21,7 @@ export type ReviewDetail = {
   content: string;
   rating: number;
   hidden?: boolean;
+  viewCount?: number;
   likeCount: number;
   commentCount: number;
   createdAt: string;
@@ -34,9 +35,37 @@ export type BookDetail = {
   author: string;
   publisher: string;
   thumbnail: string | null;
+  slug?: string | null;
   source: string;
   category: string | null;
   reviewCount: number;
+};
+
+export type PublicBookDetail = {
+  id: number;
+  isbn13?: string;
+  title: string;
+  author: string;
+  publisher?: string;
+  thumbnail: string | null;
+  slug: string | null;
+  description: string | null;
+  publishedYear: number | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  reviewCount: number;
+  readerCount: number;
+  updatedAt: string;
+  reviewExcerpts: Array<{
+    id: number;
+    authorNickname: string;
+    content: string;
+    rating: number;
+    likeCount: number;
+    commentCount: number;
+    createdAt: string;
+  }>;
+  sentenceExcerpts: string[];
 };
 
 export async function fetchApiData<T>(

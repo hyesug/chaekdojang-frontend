@@ -622,9 +622,9 @@ export default function ReviewCard({
 
           <div className="flex-1 min-w-0">
             {/* 작성자 + 팔로우 버튼 + 날짜/수정/삭제 */}
-            <div className="flex items-center justify-between mb-1">
+            <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1 mb-1">
               {/* 왼쪽: 작성자 + 팔로우 버튼 */}
-              <div className="flex items-center gap-1.5 min-w-0">
+              <div className="flex min-w-0 flex-1 items-center gap-1.5">
                 <ProfileAvatar src={post.author.profileImage} name={post.author.nickname} size="xs" />
                 {post.author.id != null ? (
                   <Link
@@ -654,7 +654,7 @@ export default function ReviewCard({
               </div>
 
               {/* 오른쪽: 수정/삭제(내 글일 때) + 날짜 */}
-              <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="flex max-w-full flex-shrink-0 flex-wrap items-center justify-end gap-x-2 gap-y-1">
                 {isOwner && !editing && (
                   <>
                     <span

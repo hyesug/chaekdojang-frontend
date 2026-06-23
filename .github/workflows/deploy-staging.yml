@@ -1,0 +1,47 @@
+name: Deploy staging frontend
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-staging-frontend
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      BACKEND_URL: https://staging-api.chaekdojang.com
+      NEXT_PUBLIC_API_BASE_URL: https://staging-api.chaekdojang.com
+      NEXT_PUBLIC_SITE_URL: https://staging.chaekdojang.com
+      NEXT_PUBLIC_GA_MEASUREMENT_ID: ${{ secrets.NEXT_PUBLIC_GA_MEASUREMENT_ID_STAGING }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Pull Vercel environment
+        run: npx vercel@latest pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build
+        run: npx vercel@latest build --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy preview
+        id: deploy
+        shell: bash
+        run: |
+          url=$(npx vercel@latest deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Alias staging domain
+        run: npx vercel@latest alias set "${{ steps.deploy.outputs.url }}" staging.chaekdojang.com --token=${{ secrets.VERCEL_TOKEN }}

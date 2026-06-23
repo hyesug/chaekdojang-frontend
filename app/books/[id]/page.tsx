@@ -2,21 +2,44 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import ReviewCard from "../../components/ReviewCard";
 import {
   fetchApiData,
   shareText,
   SITE_URL,
   type PublicBookDetail,
+  type ReviewDetail,
 } from "../../lib/serverApi";
+
+type SortType = "recent" | "popular" | "rating";
 
 type Props = {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ sort?: string }>;
 };
+
+const SORT_OPTIONS: Array<{ value: SortType; label: string }> = [
+  { value: "recent", label: "최신순" },
+  { value: "popular", label: "인기순" },
+  { value: "rating", label: "별점순" },
+];
 
 async function getPublicBook(slug: string) {
   return fetchApiData<PublicBookDetail>(`/api/books/public/${encodeURIComponent(slug)}`, {
     next: { revalidate: 600 },
   });
+}
+
+async function getBookReviews(bookId: number, sort: SortType) {
+  return (
+    (await fetchApiData<ReviewDetail[]>(`/api/books/${bookId}/reviews?sort=${sort}`, {
+      next: { revalidate: 300 },
+    })) ?? []
+  );
+}
+
+function normalizeSort(value?: string): SortType {
+  return value === "popular" || value === "rating" ? value : "recent";
 }
 
 function bookUrl(book: PublicBookDetail) {
@@ -27,8 +50,19 @@ function descriptionFor(book: PublicBookDetail) {
   return (
     book.seoDescription ||
     book.description ||
-    `${book.author}의 ${book.title} 독후감, 리뷰, 독서 기록과 인상 깊은 문장을 책도장에서 확인해보세요.`
+    `${book.author}의 ${book.title} 독후감, 리뷰, 독서 기록을 책도장에서 확인해보세요.`
   );
+}
+
+function writeHref(book: PublicBookDetail) {
+  const params = new URLSearchParams({
+    bookId: String(book.id),
+    title: book.title,
+    author: book.author,
+  });
+  if (book.publisher) params.set("publisher", book.publisher);
+  if (book.thumbnail) params.set("thumbnail", book.thumbnail);
+  return `/write?${params.toString()}`;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -77,172 +111,122 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-function Stars({ rating }: { rating: number }) {
-  return (
-    <span aria-label={`별점 ${rating}점`}>
-      <span className="text-amber-500">{"★".repeat(rating)}</span>
-      <span className="text-cream-300">{"★".repeat(5 - rating)}</span>
-    </span>
-  );
-}
-
-export default async function BookDetailPage({ params }: Props) {
+export default async function BookDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
+  const query = searchParams ? await searchParams : undefined;
+  const sort = normalizeSort(query?.sort);
   const book = await getPublicBook(id);
   if (!book) notFound();
 
-  const writeHref = `/write?bookId=${book.id}&title=${encodeURIComponent(book.title)}&author=${encodeURIComponent(book.author)}${book.publisher ? `&publisher=${encodeURIComponent(book.publisher)}` : ""}${book.thumbnail ? `&thumbnail=${encodeURIComponent(book.thumbnail)}` : ""}`;
-  const url = bookUrl(book);
-
+  const reviews = await getBookReviews(book.id, sort);
+  const canonicalUrl = bookUrl(book);
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "Book",
-    name: book.title,
-    author: book.author ? { "@type": "Person", name: book.author } : undefined,
-    publisher: book.publisher ? { "@type": "Organization", name: book.publisher } : undefined,
-    isbn: book.isbn13 || undefined,
-    image: book.thumbnail || undefined,
-    description: book.description || descriptionFor(book),
-    url,
-    aggregateRating: book.reviewCount > 0
-      ? {
-          "@type": "AggregateRating",
-          ratingValue:
-            book.reviewExcerpts.reduce((sum, review) => sum + review.rating, 0) /
-            Math.max(book.reviewExcerpts.length, 1),
-          reviewCount: book.reviewCount,
-          bestRating: 5,
-          worstRating: 1,
-        }
-      : undefined,
-    review: book.reviewExcerpts.map((review) => ({
-      "@type": "Review",
-      author: { "@type": "Person", name: review.authorNickname },
-      reviewBody: review.content,
-      reviewRating: {
-        "@type": "Rating",
-        ratingValue: review.rating,
-        bestRating: 5,
-        worstRating: 1,
-      },
-      datePublished: review.createdAt,
-      url: `${SITE_URL}/reviews/${review.id}`,
-    })),
+    "@type": "CollectionPage",
+    name: `${book.title} 독후감`,
+    description: descriptionFor(book),
+    url: canonicalUrl,
+    about: {
+      "@type": "Book",
+      name: book.title,
+      author: book.author ? { "@type": "Person", name: book.author } : undefined,
+      publisher: book.publisher ? { "@type": "Organization", name: book.publisher } : undefined,
+      image: book.thumbnail || undefined,
+      description: book.description || descriptionFor(book),
+    },
+    mainEntity: {
+      "@type": "ItemList",
+      itemListElement: reviews.map((review, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        url: `${SITE_URL}/reviews/${review.id}`,
+        name: `${book.title} 독후감`,
+      })),
+    },
   };
 
   return (
-    <div className="bg-cream-100">
+    <main className="mx-auto max-w-2xl px-4 py-8">
       <script
         type="application/ld+json"
         suppressHydrationWarning
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <article className="mx-auto max-w-3xl px-4 py-8 sm:py-12">
-        <div className="mb-5 flex items-center justify-between gap-3">
-          <Link href="/" className="text-sm text-brown-500 hover:text-brown-700">
-            책도장 피드
-          </Link>
-          <Link
-            href={writeHref}
-            className="rounded-full bg-brown-700 px-4 py-2 text-sm text-white hover:bg-brown-800"
-          >
-            내 독서 기록 남기기
-          </Link>
+      <section className="rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+        <div className="flex gap-4">
+          {book.thumbnail ? (
+            <Image
+              src={book.thumbnail}
+              alt={`${book.title} 책 표지`}
+              width={78}
+              height={112}
+              className="h-28 w-[78px] flex-shrink-0 rounded object-cover shadow-sm"
+              priority
+            />
+          ) : (
+            <div className="h-28 w-[78px] flex-shrink-0 rounded bg-cream-200" />
+          )}
+          <div className="min-w-0 flex-1">
+            <h1 className="font-serif text-2xl font-bold text-brown-900">{book.title}</h1>
+            <p className="mt-1 text-sm text-brown-600">{book.author}</p>
+            {book.publisher && <p className="text-sm text-brown-500">{book.publisher}</p>}
+            {book.description && (
+              <p className="mt-3 line-clamp-2 text-sm leading-6 text-brown-600">
+                {book.description}
+              </p>
+            )}
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <Link
+                href={writeHref(book)}
+                className="rounded-full bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800"
+              >
+                독후감 쓰기
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-8">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-serif text-xl font-bold text-brown-900">
+            이 책을 읽은 사람들의 독후감{" "}
+            <span className="font-sans text-base font-normal text-brown-400">{book.reviewCount}개</span>
+          </h2>
+          <div className="flex rounded-full border border-cream-200 bg-white p-1">
+            {SORT_OPTIONS.map((option) => {
+              const active = option.value === sort;
+              return (
+                <Link
+                  key={option.value}
+                  href={`/books/${book.slug || book.id}?sort=${option.value}`}
+                  className={`rounded-full px-3 py-1.5 text-sm transition ${
+                    active
+                      ? "bg-brown-700 font-semibold text-white"
+                      : "text-brown-500 hover:bg-cream-50 hover:text-brown-800"
+                  }`}
+                >
+                  {option.label}
+                </Link>
+              );
+            })}
+          </div>
         </div>
 
-        <header className="border-b border-cream-200 bg-white px-5 py-6 sm:px-8">
-          <div className="flex gap-5">
-            {book.thumbnail ? (
-              <Image
-                src={book.thumbnail}
-                alt={`${book.title} 책 표지`}
-                width={104}
-                height={150}
-                className="h-[150px] w-[104px] flex-shrink-0 rounded object-cover shadow-sm"
-                priority
-              />
-            ) : (
-              <div className="h-[150px] w-[104px] flex-shrink-0 rounded bg-brown-300" />
-            )}
-            <div className="min-w-0">
-              <p className="mb-1 text-xs text-brown-400">책 상세 공개 페이지</p>
-              <h1 className="font-serif text-3xl font-bold leading-tight text-brown-800">
-                {book.title}
-              </h1>
-              <p className="mt-2 text-sm text-brown-600">{book.author}</p>
-              {book.publisher && (
-                <p className="mt-1 text-xs text-brown-400">{book.publisher}</p>
-              )}
-              <p className="mt-4 text-sm text-brown-500">
-                {book.readerCount}명이 이 책에 기록을 남겼고, 공개 독후감 {book.reviewCount}개를 볼 수 있어요.
-              </p>
-            </div>
+        {reviews.length === 0 ? (
+          <div className="rounded-2xl border border-cream-200 bg-white py-16 text-center text-brown-400">
+            <p>아직 공개 독후감이 없어요.</p>
+            <p className="mt-1 text-sm">첫 번째 독서 기록을 남겨보세요.</p>
           </div>
-        </header>
-
-        <section className="bg-white px-5 py-6 sm:px-8">
-          <h2 className="font-serif text-xl font-bold text-brown-800">{book.title} 줄거리</h2>
-          <p className="mt-3 text-base leading-8 text-brown-700">
-            {book.description || descriptionFor(book)}
-          </p>
-        </section>
-
-        <section className="border-t border-cream-200 bg-white px-5 py-6 sm:px-8">
-          <h2 className="font-serif text-xl font-bold text-brown-800">{book.title} 독후감</h2>
-          {book.reviewExcerpts.length === 0 ? (
-            <p className="mt-3 text-sm leading-7 text-brown-500">
-              아직 공개 독후감이 없습니다. {book.title}을 읽었다면 첫 독서 기록을 남겨보세요.
-            </p>
-          ) : (
-            <div className="mt-4 space-y-5">
-              {book.reviewExcerpts.map((review) => (
-                <div key={review.id} className="border-b border-cream-100 pb-5 last:border-0 last:pb-0">
-                  <div className="mb-2 flex flex-wrap items-center gap-3 text-sm">
-                    <span className="font-semibold text-brown-700">{review.authorNickname}</span>
-                    <Stars rating={review.rating} />
-                    <time className="text-xs text-brown-300" dateTime={review.createdAt}>
-                      {review.createdAt.slice(0, 10)}
-                    </time>
-                  </div>
-                  <p className="line-clamp-4 whitespace-pre-wrap text-sm leading-7 text-brown-700">
-                    {review.content}
-                  </p>
-                  <Link href={`/reviews/${review.id}`} className="mt-2 inline-block text-xs text-brown-500 hover:underline">
-                    독후감 전체 보기
-                  </Link>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className="border-t border-cream-200 bg-white px-5 py-6 sm:px-8">
-          <h2 className="font-serif text-xl font-bold text-brown-800">{book.title} 인상 깊은 문장</h2>
-          <div className="mt-4 space-y-3">
-            {(book.sentenceExcerpts.length > 0 ? book.sentenceExcerpts : [`${book.title}에 대한 독서 기록과 문장 기록이 책도장에 쌓이고 있습니다.`]).map((sentence, index) => (
-              <blockquote key={`${sentence}-${index}`} className="border-l-4 border-brown-200 pl-4 text-sm leading-7 text-brown-600">
-                {sentence}
-              </blockquote>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {reviews.map((review) => (
+              <ReviewCard key={review.id} post={review} />
             ))}
           </div>
-        </section>
-
-        <section className="border-t border-cream-200 bg-white px-5 py-6 sm:px-8">
-          <h2 className="font-serif text-xl font-bold text-brown-800">
-            {book.title}을 읽은 사람들의 기록
-          </h2>
-          <p className="mt-3 text-sm leading-7 text-brown-600">
-            책도장에서는 {book.author}의 {book.title}을 읽은 사람들이 독후감, 리뷰, 독서 기록을 남기고 서로의 생각을 확인할 수 있습니다.
-          </p>
-          <Link
-            href={writeHref}
-            className="mt-5 inline-block rounded-full bg-brown-700 px-5 py-2.5 text-sm text-white hover:bg-brown-800"
-          >
-            내 독서 기록 남기기
-          </Link>
-        </section>
-      </article>
-    </div>
+        )}
+      </section>
+    </main>
   );
 }

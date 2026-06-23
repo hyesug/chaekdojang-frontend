@@ -5,6 +5,10 @@ type ReviewPage = {
   content: ReviewDetail[];
 };
 
+function encodeSegment(value: string | number | null | undefined) {
+  return encodeURIComponent(String(value ?? "").trim());
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
 
@@ -34,11 +38,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   });
 
   const reviewRoutes = (reviewPage?.content ?? []).map((review) => ({
-    url: `${SITE_URL}/reviews/${review.id}`,
+    url: `${SITE_URL}/reviews/${encodeSegment(review.id)}`,
     lastModified: review.updatedAt ? new Date(review.updatedAt) : now,
     changeFrequency: "weekly" as const,
     priority: 0.6,
-    images: review.book?.thumbnail ? [review.book.thumbnail] : undefined,
   }));
 
   const publicBooks = await fetchApiData<BookDetail[]>("/api/books/public", {
@@ -46,20 +49,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   });
 
   const bookRoutes = (publicBooks ?? []).map((book) => ({
-    url: `${SITE_URL}/books/${book.slug || book.id}`,
+    url: `${SITE_URL}/books/${encodeSegment(book.slug || book.id)}`,
     lastModified: now,
     changeFrequency: "weekly" as const,
     priority: 0.5,
-    images: book.thumbnail ? [book.thumbnail] : undefined,
   }));
 
-  const bookReviewRoutes = (publicBooks ?? []).map((book) => ({
-    url: `${SITE_URL}/books/${book.id}/reviews`,
-    lastModified: now,
-    changeFrequency: "weekly" as const,
-    priority: 0.5,
-    images: book.thumbnail ? [book.thumbnail] : undefined,
-  }));
-
-  return [...staticRoutes, ...reviewRoutes, ...bookRoutes, ...bookReviewRoutes];
+  return [...staticRoutes, ...reviewRoutes, ...bookRoutes];
 }

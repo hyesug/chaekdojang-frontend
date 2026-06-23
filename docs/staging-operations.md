@@ -24,6 +24,16 @@ Smoke test after deploying staging:
 WEB_BASE=https://staging.chaekdojang.com npm run smoke:prod
 ```
 
+Manual staging deployment:
+
+- GitHub Actions에서 `Deploy staging frontend` workflow를 수동 실행합니다.
+- 필요한 GitHub Secrets:
+  - `VERCEL_TOKEN`
+  - `VERCEL_ORG_ID`
+  - `VERCEL_PROJECT_ID`
+  - `NEXT_PUBLIC_GA_MEASUREMENT_ID_STAGING` (없으면 비워둬도 됨)
+- 실행하면 Vercel Preview를 만들고 `staging.chaekdojang.com` alias를 새 배포로 연결합니다.
+
 Production smoke test:
 
 ```bash

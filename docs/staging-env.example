@@ -1,3 +1,4 @@
 BACKEND_URL=https://staging-api.chaekdojang.com
 NEXT_PUBLIC_API_BASE_URL=https://staging-api.chaekdojang.com
 NEXT_PUBLIC_SITE_URL=https://staging.chaekdojang.com
+NEXT_PUBLIC_GA_MEASUREMENT_ID=G-BM572DG5WW

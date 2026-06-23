@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import ReviewCard, { type Review } from "../../components/ReviewCard";
+import ReviewViewTracker from "../../components/ReviewViewTracker";
 import {
   fetchApiData,
   reviewDescription,
@@ -113,6 +114,7 @@ export default async function PublicReviewPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,#fff8ea_0,#faf6ef_34%,#f2e4ce_100%)]">
+      <ReviewViewTracker reviewId={review.id} />
       <script
         type="application/ld+json"
         suppressHydrationWarning

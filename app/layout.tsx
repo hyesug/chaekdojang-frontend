@@ -3,6 +3,7 @@ import { Noto_Sans_KR, Noto_Serif_KR } from "next/font/google";
 import "./globals.css";
 import Header from "./components/Header";
 import AnalyticsTracker from "./components/AnalyticsTracker";
+import GoogleAnalytics from "./components/GoogleAnalytics";
 import ServiceStatusGuard from "./components/ServiceStatusGuard";
 import { shareText } from "./lib/serverApi";
 
@@ -94,6 +95,7 @@ export default function RootLayout({
           suppressHydrationWarning
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+        <GoogleAnalytics />
         <AnalyticsTracker />
         <ServiceStatusGuard />
         <Header />

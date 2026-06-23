@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import ProfileAvatar from "./ProfileAvatar";
+import ReviewViewTracker from "./ReviewViewTracker";
 import { API_BASE } from "../lib/api";
 
 const BASE = API_BASE;
@@ -252,6 +253,7 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      <ReviewViewTracker reviewId={reviewId} />
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
 
       <div className="relative z-10 w-full sm:max-w-xl bg-white rounded-t-2xl sm:rounded-2xl max-h-[92vh] flex flex-col shadow-xl overflow-hidden">

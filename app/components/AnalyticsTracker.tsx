@@ -22,11 +22,13 @@ function deviceType() {
 
 export function trackMetric(eventType: string, path?: string, durationMs = 0) {
   if (typeof window === "undefined") return;
+  const currentPath = path ?? window.location.pathname;
+  if (currentPath.startsWith("/admin")) return;
 
   const body = JSON.stringify({
     eventType,
     sessionId: getSessionId(),
-    path: path ?? window.location.pathname,
+    path: currentPath,
     referrer: document.referrer || null,
     durationMs,
     device: deviceType(),

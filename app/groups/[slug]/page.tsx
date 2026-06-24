@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { fetchApiData, SITE_URL } from "../../lib/serverApi";
 import GroupDetailClient from "./GroupDetailClient";
+import GroupManageClient from "./GroupManageClient";
 
 type ReadingGroupBook = {
   id: number;
@@ -94,6 +95,8 @@ export default async function GroupPage({ params }: Props) {
           </div>
         </div>
       </section>
+
+      <GroupManageClient slug={group.slug} manager={group.manager} member={group.member} books={group.books.map((book) => ({ id: book.id, title: book.title, bookId: book.bookId }))} />
 
       <section className="mt-8">
         <h2 className="font-serif text-xl font-bold text-brown-900">함께 읽는 책</h2>

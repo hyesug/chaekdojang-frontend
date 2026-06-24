@@ -161,6 +161,21 @@ type SecuritySummary = {
   lastAt: string;
 };
 
+type SecurityEvent = {
+  key: string;
+  severity: string;
+  source: "error" | "access";
+  type: string;
+  method: string;
+  uri: string;
+  status: number;
+  ip: string;
+  message: string;
+  exceptionType?: string;
+  count: number;
+  lastAt: string;
+};
+
 const tabs: Array<{ key: Tab; label: string }> = [
   { key: "dashboard", label: "📊 운영 현황" },
   { key: "users", label: "👥 회원" },
@@ -248,6 +263,23 @@ function getDeviceLabel(device: string | null) {
   if (device === "tablet") return "태블릿";
   if (device === "desktop") return "PC";
   return device ?? "-";
+}
+
+function formatDuration(ms: number) {
+  if (!ms || ms <= 0) return "-";
+  if (ms < 1000) return `${ms}ms`;
+  return `${Math.round(ms / 1000)}초`;
+}
+
+function actorLabel(event: MetricEvent) {
+  if (event.nickname) return event.nickname;
+  if (event.userId != null) return `회원 #${event.userId}`;
+  return "비회원";
+}
+
+function shortSession(value: string) {
+  if (!value) return "-";
+  return value.length > 8 ? value.slice(0, 8) : value;
 }
 
 function getAuditActionLabel(action: string) {
@@ -601,10 +633,74 @@ export default function AdminPage() {
     return text.includes(query.toLowerCase());
   });
 
-  const recentActions = visibleMetrics
+  const recentPageViews = visibleMetrics
+    .filter((event) => event.eventType === "page_view")
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+  const filteredPageViews = recentPageViews.filter((event) => {
+    const text = `${getRouteLabel(event.path)} ${event.path} ${event.nickname ?? ""} ${referrerLabel(event.referrer)} ${event.ip ?? ""}`.toLowerCase();
+    return text.includes(query.toLowerCase());
+  });
+
+  const filteredActions = visibleMetrics
     .filter((event) => !["heartbeat", "session_end"].includes(event.eventType))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, 30);
+    .filter((event) => {
+      const text = `${getMetricEventLabel(event.eventType)} ${event.nickname ?? ""} ${event.path} ${event.ip ?? ""}`.toLowerCase();
+      return text.includes(query.toLowerCase());
+    });
+
+  const securityEvents = useMemo(() => {
+    const map = new Map<string, SecurityEvent>();
+    visibleErrors.forEach((log) => {
+      const uri = normalizePath(log.uri);
+      const message = log.message || "(no message)";
+      const key = `error:${log.status}:${log.exceptionType}:${uri}:${message}:${log.ip ?? ""}`;
+      const previous = map.get(key);
+      const item: SecurityEvent = {
+        key,
+        severity: log.status >= 500 ? "오류" : "주의",
+        source: "error",
+        type: suspiciousType(log.uri, log.status),
+        method: log.method,
+        uri,
+        status: log.status,
+        ip: log.ip ?? "-",
+        message,
+        exceptionType: log.exceptionType,
+        count: (previous?.count ?? 0) + 1,
+        lastAt: previous && previous.lastAt > log.createdAt ? previous.lastAt : log.createdAt,
+      };
+      map.set(key, item);
+    });
+    visibleAccessLogs
+      .filter((log) => log.status >= 500 || suspiciousType(log.uri) !== "기타 이상 요청")
+      .forEach((log) => {
+        const uri = normalizePath(log.uri);
+        const key = `access:${log.status}:${log.method}:${uri}:${log.ip}`;
+        const previous = map.get(key);
+        const item: SecurityEvent = {
+          key,
+          severity: log.status >= 500 ? "오류" : "주의",
+          source: "access",
+          type: suspiciousType(log.uri, log.status),
+          method: log.method,
+          uri,
+          status: log.status,
+          ip: log.ip,
+          message: `HTTP ${log.status} 응답 · ${log.elapsedMs}ms`,
+          count: (previous?.count ?? 0) + 1,
+          lastAt: previous && previous.lastAt > log.createdAt ? previous.lastAt : log.createdAt,
+        };
+        map.set(key, item);
+      });
+    return Array.from(map.values()).sort((a, b) => b.lastAt.localeCompare(a.lastAt));
+  }, [visibleErrors, visibleAccessLogs]);
+
+  const filteredSecurityEvents = securityEvents.filter((item) => {
+    const text = `${item.type} ${item.method} ${item.uri} ${item.status} ${item.ip} ${item.exceptionType ?? ""} ${item.message}`.toLowerCase();
+    return text.includes(query.toLowerCase());
+  });
 
   const fallbackTodayVisitors = new Set(visibleMetrics.filter((event) => isToday(event.createdAt)).map(visitorKey)).size;
   const fallbackTodayPageViews = visibleMetrics.filter((event) => isToday(event.createdAt) && event.eventType === "page_view").length;
@@ -858,63 +954,81 @@ export default function AdminPage() {
           )}
 
           {tab === "pages" && (
-            <section className="rounded-2xl border border-cream-200 bg-white shadow-sm overflow-x-auto">
-              <table className="w-full min-w-[760px] text-sm">
-                <thead className="bg-cream-100 text-left text-brown-600">
-                  <tr><th className="px-4 py-3">페이지</th><th className="px-4 py-3 text-right">조회수</th><th className="px-4 py-3 text-right">방문자</th><th className="px-4 py-3">대표 유입</th><th className="px-4 py-3 text-right">평균 체류</th><th className="px-4 py-3">마지막 방문</th></tr>
-                </thead>
-                <tbody>
-                  {pageSummaries.filter((page) => `${page.label} ${page.path}`.toLowerCase().includes(query.toLowerCase())).map((page) => (
-                    <tr key={page.path} className="border-t border-cream-100 hover:bg-cream-50">
-                      <td className="px-4 py-3"><p className="font-medium text-brown-800">{page.label}</p><p className="text-xs text-brown-300">{page.path}</p></td>
-                      <td className="px-4 py-3 text-right font-semibold text-brown-700">{page.views}</td>
-                      <td className="px-4 py-3 text-right text-brown-500">{page.visitors.size}</td>
-                      <td className="px-4 py-3 text-brown-500">{topReferrer(page.referrers)}</td>
-                      <td className="px-4 py-3 text-right text-brown-500">{page.durationCount ? `${Math.round(page.durationSum / page.durationCount / 1000)}초` : "-"}</td>
-                      <td className="px-4 py-3 text-brown-400">{formatLogTime(page.lastAt)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <section className="space-y-3">
+              {filteredPageViews.slice(0, 120).map((event) => (
+                <div key={event.id} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full bg-cream-100 px-2 py-0.5 text-xs font-medium text-brown-600">페이지 조회</span>
+                        <p className="font-medium text-brown-900">{getRouteLabel(event.path)}</p>
+                      </div>
+                      <p className="mt-2 break-all font-mono text-xs text-brown-400">{normalizePath(event.path)}</p>
+                      <p className="mt-2 text-sm text-brown-500">
+                        {actorLabel(event)} · {getDeviceLabel(event.device)} · 유입 {referrerLabel(event.referrer)}
+                      </p>
+                    </div>
+                    <div className="shrink-0 text-left text-xs text-brown-300 sm:text-right">
+                      <p>{formatLogTime(event.createdAt)}</p>
+                      <p className="mt-1">세션 {shortSession(event.sessionId)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {filteredPageViews.length === 0 && <EmptyState>페이지 조회 기록이 없어요</EmptyState>}
             </section>
           )}
 
           {tab === "actions" && (
-            <section className="rounded-2xl border border-cream-200 bg-white shadow-sm overflow-x-auto">
-              <table className="w-full min-w-[720px] text-sm">
-                <thead className="bg-cream-100 text-left text-brown-600"><tr><th className="px-4 py-3">시간</th><th className="px-4 py-3">행동</th><th className="px-4 py-3">사용자</th><th className="px-4 py-3">위치</th><th className="px-4 py-3">기기</th></tr></thead>
-                <tbody>
-                  {recentActions
-                    .filter((event) => `${getMetricEventLabel(event.eventType)} ${event.nickname ?? ""} ${event.path}`.toLowerCase().includes(query.toLowerCase()))
-                    .map((event) => (
-                    <tr key={event.id} className="border-t border-cream-100 hover:bg-cream-50">
-                      <td className="px-4 py-3 text-brown-400">{formatLogTime(event.createdAt)}</td>
-                      <td className="px-4 py-3 text-brown-800">{getMetricEventLabel(event.eventType)}</td>
-                      <td className="px-4 py-3 text-brown-500">{event.nickname ?? "비회원"}</td>
-                      <td className="px-4 py-3"><p className="text-brown-700">{getRouteLabel(event.path)}</p><p className="text-xs text-brown-300">{normalizePath(event.path)}</p></td>
-                      <td className="px-4 py-3 text-brown-500">{getDeviceLabel(event.device)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <section className="space-y-3">
+              {filteredActions.slice(0, 120).map((event) => (
+                <div key={event.id} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="font-medium text-brown-900">{getMetricEventLabel(event.eventType)}</p>
+                      <p className="mt-1 text-sm text-brown-500">
+                        {actorLabel(event)} · {getDeviceLabel(event.device)} · {getRouteLabel(event.path)}
+                      </p>
+                      <p className="mt-2 break-all font-mono text-xs text-brown-400">{normalizePath(event.path)}</p>
+                      <p className="mt-2 text-xs text-brown-300">
+                        체류 {formatDuration(event.durationMs)} · 유입 {referrerLabel(event.referrer)}
+                      </p>
+                    </div>
+                    <div className="shrink-0 text-left text-xs text-brown-300 sm:text-right">
+                      <p>{formatLogTime(event.createdAt)}</p>
+                      <p className="mt-1">세션 {shortSession(event.sessionId)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {filteredActions.length === 0 && <EmptyState>사용자 행동 기록이 없어요</EmptyState>}
             </section>
           )}
 
           {tab === "security" && (
             <section className="space-y-3">
-              {securitySummaries.filter((item) => `${item.type} ${item.uri} ${item.ip}`.toLowerCase().includes(query.toLowerCase())).map((item) => (
+              {filteredSecurityEvents.slice(0, 120).map((item) => (
                 <div key={item.key} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2"><span className={`rounded-full px-2 py-0.5 text-xs ${item.severity === "오류" ? "bg-red-50 text-red-500" : "bg-yellow-50 text-yellow-600"}`}>{item.severity}</span><p className="font-medium text-brown-900">{item.type}</p></div>
-                      <p className="mt-2 truncate font-mono text-xs text-brown-400">{item.uri}</p>
-                      <p className="mt-1 text-xs text-brown-300">IP {item.ip} · 마지막 {formatLogTime(item.lastAt)}</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`rounded-full px-2 py-0.5 text-xs ${item.severity === "오류" ? "bg-red-50 text-red-500" : "bg-yellow-50 text-yellow-600"}`}>{item.severity}</span>
+                        <span className="rounded-full bg-cream-100 px-2 py-0.5 text-xs text-brown-500">{item.status}</span>
+                        <p className="font-medium text-brown-900">{item.type}</p>
+                      </div>
+                      <p className="mt-2 break-all font-mono text-xs text-brown-400">{item.method} {item.uri}</p>
+                      <p className="mt-2 text-sm leading-6 text-brown-700">
+                        {item.exceptionType ? `${item.exceptionType}: ` : ""}{item.message}
+                      </p>
+                      <p className="mt-2 text-xs text-brown-300">
+                        IP {item.ip} · {item.source === "error" ? "오류 로그" : "접근 로그"} · {formatLogTime(item.lastAt)}
+                      </p>
                     </div>
-                    <p className="shrink-0 text-lg font-bold text-brown-800">{item.count}회</p>
+                    {item.count > 1 && <p className="shrink-0 rounded-full bg-cream-100 px-3 py-1 text-xs font-semibold text-brown-600">중복 {item.count}회</p>}
                   </div>
                 </div>
               ))}
-              {securitySummaries.length === 0 && <EmptyState>보안·오류 이슈가 없어요</EmptyState>}
+              {filteredSecurityEvents.length === 0 && <EmptyState>보안·오류 이슈가 없어요</EmptyState>}
             </section>
           )}
 

@@ -260,19 +260,25 @@ export default function CalendarPage() {
                 {books.length > 0 && (
                   <div className="mt-1.5 flex flex-col items-center">
                     <div className="relative h-12 w-12">
-                      {previewBooks.map((item, bookIndex) => (
-                        <div
-                          key={item.id}
-                          className="absolute"
-                          style={{
-                            left: `${bookIndex * 14}px`,
-                            top: `${bookIndex * 3}px`,
-                            zIndex: bookIndex + 1,
-                          }}
-                        >
-                          <Cover item={item} compact />
+                      {previewBooks.length === 1 ? (
+                        <div className="absolute left-1/2 top-0 -translate-x-1/2">
+                          <Cover item={previewBooks[0]} compact />
                         </div>
-                      ))}
+                      ) : (
+                        previewBooks.map((item, bookIndex) => (
+                          <div
+                            key={item.id}
+                            className="absolute"
+                            style={{
+                              left: `${bookIndex * 14}px`,
+                              top: `${bookIndex * 3}px`,
+                              zIndex: bookIndex + 1,
+                            }}
+                          >
+                            <Cover item={item} compact />
+                          </div>
+                        ))
+                      )}
                       {books.length > 2 && (
                         <span className="absolute right-0 bottom-0 z-10 min-w-5 h-5 px-1 rounded-full bg-brown-700 text-white text-[10px] font-bold flex items-center justify-center">
                           +{books.length - 2}

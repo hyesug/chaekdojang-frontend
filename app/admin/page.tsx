@@ -1,14 +1,51 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import ReviewDetailModal from "../components/ReviewDetailModal";
 import { API_BASE } from "../lib/api";
 
-interface User { id: number; nickname: string; email: string; role: string; createdAt: string; }
-interface Review { id: number; authorNickname: string; bookTitle: string; content: string; rating: number; hidden: boolean; createdAt: string; }
-interface BookStat { bookId: number; title: string; author: string; reviewCount: number; }
-interface Inquiry { id: number; title: string; authorName: string; createdAt: string; }
+type Tab = "dashboard" | "users" | "reviews" | "inquiries" | "pages" | "actions" | "security" | "audit";
+
+interface PageResponse<T> {
+  content: T[];
+  totalPages?: number;
+  totalElements?: number;
+}
+
+interface User {
+  id: number;
+  nickname: string;
+  email: string | null;
+  role: string;
+  createdAt: string;
+}
+
+interface Review {
+  id: number;
+  authorNickname: string;
+  bookTitle: string;
+  content: string;
+  rating: number;
+  hidden: boolean;
+  createdAt: string;
+}
+
+interface BookStat {
+  bookId: number;
+  title: string;
+  author: string;
+  reviewCount: number;
+}
+
+interface Inquiry {
+  id: number;
+  title: string;
+  authorName: string;
+  createdAt: string;
+}
+
 interface AccessLog {
   id: number;
   ip: string;
@@ -20,6 +57,7 @@ interface AccessLog {
   elapsedMs: number;
   createdAt: string;
 }
+
 interface MetricEvent {
   id: number;
   userId: number | null;
@@ -33,6 +71,7 @@ interface MetricEvent {
   ip: string | null;
   createdAt: string;
 }
+
 interface ErrorLog {
   id: number;
   level: string;
@@ -45,6 +84,7 @@ interface ErrorLog {
   userId: number | null;
   createdAt: string;
 }
+
 interface AdminAuditLog {
   id: number;
   actorId: number | null;
@@ -56,40 +96,119 @@ interface AdminAuditLog {
   createdAt: string;
 }
 
-type AccessFilters = {
-  q: string;
-  method: string;
-  statusGroup: string;
-};
+interface DashboardSummary {
+  todayVisitors: number;
+  todayPageViews: number;
+  todayReviews: number;
+  todayUsers: number;
+  todayServerErrors: number;
+  todaySuspiciousRequests: number;
+}
 
-type MetricFilters = {
-  q: string;
+interface AggregatedPage {
+  path: string;
+  label: string;
+  views: number;
+  visitors: number;
+  avgDurationSeconds: number;
+  topReferrer: string;
+  lastAt: string;
+}
+
+interface AggregatedAction {
   eventType: string;
-  userType: string;
+  label: string;
+  count: number;
+  visitors: number;
+  lastAt: string;
+}
+
+interface AggregatedSecurity {
+  severity: string;
+  type: string;
+  uri: string;
+  count: number;
+  ip: string;
+  lastAt: string;
+}
+
+type PageSummary = {
+  path: string;
+  label: string;
+  views: number;
+  visitors: Set<string>;
+  durationSum: number;
+  durationCount: number;
+  referrers: Map<string, number>;
+  lastAt: string;
 };
 
-type ErrorFilters = {
-  q: string;
-  level: string;
-  statusGroup: string;
+type ActionSummary = {
+  eventType: string;
+  label: string;
+  count: number;
+  visitors: Set<string>;
+  lastAt: string;
 };
 
-type AuditFilters = {
-  q: string;
-  action: string;
-  targetType: string;
+type SecuritySummary = {
+  key: string;
+  severity: string;
+  type: string;
+  uri: string;
+  count: number;
+  ip: string;
+  lastAt: string;
 };
+
+type SecurityEvent = {
+  key: string;
+  severity: string;
+  source: "error" | "access";
+  type: string;
+  method: string;
+  uri: string;
+  status: number;
+  ip: string;
+  message: string;
+  exceptionType?: string;
+  count: number;
+  lastAt: string;
+};
+
+const tabs: Array<{ key: Tab; label: string }> = [
+  { key: "dashboard", label: "📊 운영 현황" },
+  { key: "users", label: "👥 회원" },
+  { key: "reviews", label: "📖 독후감" },
+  { key: "inquiries", label: "💬 문의" },
+  { key: "pages", label: "🧭 유입/페이지" },
+  { key: "actions", label: "⚡ 사용자 행동" },
+  { key: "security", label: "🛡️ 보안·오류" },
+  { key: "audit", label: "🧾 관리자 이력" },
+];
 
 function formatLogTime(value: string) {
-  const normalized = value.replace("T", " ");
-  const [, month, day, hour, minute, second] =
-    normalized.match(/^\d{4}-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})/) ?? [];
-  if (!month) return normalized;
-  return `${month}.${day} ${hour}:${minute}:${second}`;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value.replace("T", " ");
+  return date.toLocaleString("ko-KR", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function isToday(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+  const now = new Date();
+  return date.getFullYear() === now.getFullYear()
+    && date.getMonth() === now.getMonth()
+    && date.getDate() === now.getDate();
 }
 
 function normalizePath(value: string) {
-  const path = value.split("?")[0].split("#")[0];
+  const path = value.split("?")[0].split("#")[0] || "/";
   return path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
 }
 
@@ -99,12 +218,10 @@ function getRouteLabel(value: string) {
     "/": "홈 피드",
     "/search": "책 검색",
     "/library": "내 서재",
+    "/calendar": "독서 캘린더",
     "/stats": "독서 통계",
     "/write": "독후감 작성",
     "/cs": "고객센터",
-    "/admin": "관리자 페이지",
-    "/admin/access-logs": "관리자 > 접속 기록",
-    "/admin/metrics": "관리자 > 지표 로그",
     "/profile": "내 프로필",
     "/bookmarks": "북마크",
     "/notifications": "알림",
@@ -116,50 +233,29 @@ function getRouteLabel(value: string) {
     "/privacy": "개인정보처리방침",
     "/terms": "이용약관",
     "/dojangdan": "도장단",
-    "/api/dev/login": "로컬 개발용 로그인",
-    "/api/metrics/events": "사용 지표 수집",
-    "/api/admin/users": "관리자 > 회원 목록 조회",
-    "/api/admin/reviews": "관리자 > 독후감 목록 조회",
-    "/api/admin/reviews/stats": "관리자 > 책별 독후감 통계",
-    "/api/admin/inquiries": "관리자 > 문의 목록 조회",
-    "/api/admin/access-logs": "관리자 > 접속 기록 조회",
-    "/api/admin/metrics": "관리자 > 지표 로그 조회",
-    "/api/users/me": "내 계정 정보 확인",
   };
-
   if (labels[path]) return labels[path];
   if (/^\/reviews\/\d+$/.test(path)) return "독후감 상세";
-  if (/^\/books\/\d+$/.test(path)) return "책 상세";
-  if (/^\/chat\/\d+$/.test(path)) return "책 채팅";
-  if (/^\/users\/\d+$/.test(path)) return "사용자 프로필";
-  if (/^\/u\/[^/]+$/.test(path)) return "사용자 프로필";
-  if (/^\/admin\/inquiries\/\d+$/.test(path)) return "관리자 > 문의 상세";
-  if (path.startsWith("/api/")) return "서비스 요청";
+  if (/^\/books\/[^/]+$/.test(path)) return "책 상세";
+  if (/^\/books\/[^/]+\/reviews$/.test(path)) return "책별 독후감 모음";
+  if (/^\/users\/\d+$/.test(path) || /^\/u\/[^/]+$/.test(path)) return "사용자 프로필";
+  if (path.startsWith("/admin")) return "관리자 페이지";
+  if (path.startsWith("/api/admin")) return "관리자 API";
+  if (path.startsWith("/api/metrics")) return "지표 수집";
+  if (path.startsWith("/api/")) return "서비스 API";
   return "기타 페이지";
 }
 
 function getMetricEventLabel(eventType: string) {
-  if (eventType === "page_view") return "페이지 열림";
+  if (eventType === "page_view") return "페이지 조회";
   if (eventType === "login_success") return "로그인 성공";
-  if (eventType === "heartbeat") return "머무는 중";
-  if (eventType === "session_end") return "페이지 떠남";
+  if (eventType === "review_write_click") return "독후감 작성 클릭";
+  if (eventType === "review_created") return "독후감 등록";
+  if (eventType === "book_search") return "책 검색";
+  if (eventType === "share_click") return "공유 클릭";
+  if (eventType === "heartbeat") return "체류 신호";
+  if (eventType === "session_end") return "페이지 이탈";
   return eventType;
-}
-
-function getMethodLabel(method: string) {
-  if (method === "GET") return "조회";
-  if (method === "POST") return "등록";
-  if (method === "PATCH") return "수정";
-  if (method === "PUT") return "전체 수정";
-  if (method === "DELETE") return "삭제";
-  return method;
-}
-
-function getStatusLabel(status: number) {
-  if (status < 300) return `정상 (${status})`;
-  if (status < 400) return `이동 (${status})`;
-  if (status < 500) return `요청 문제 (${status})`;
-  return `서버 문제 (${status})`;
 }
 
 function getDeviceLabel(device: string | null) {
@@ -167,6 +263,23 @@ function getDeviceLabel(device: string | null) {
   if (device === "tablet") return "태블릿";
   if (device === "desktop") return "PC";
   return device ?? "-";
+}
+
+function formatDuration(ms: number) {
+  if (!ms || ms <= 0) return "-";
+  if (ms < 1000) return `${ms}ms`;
+  return `${Math.round(ms / 1000)}초`;
+}
+
+function actorLabel(event: MetricEvent) {
+  if (event.nickname) return event.nickname;
+  if (event.userId != null) return `회원 #${event.userId}`;
+  return "비회원";
+}
+
+function shortSession(value: string) {
+  if (!value) return "-";
+  return value.length > 8 ? value.slice(0, 8) : value;
 }
 
 function getAuditActionLabel(action: string) {
@@ -184,1044 +297,763 @@ function getAuditTargetLabel(targetType: string) {
   return targetType || "-";
 }
 
+function visitorKey(event: MetricEvent) {
+  return event.userId != null ? `u:${event.userId}` : event.sessionId || event.ip || `event:${event.id}`;
+}
+
+function referrerLabel(referrer: string | null) {
+  if (!referrer) return "직접 방문";
+  try {
+    const host = new URL(referrer).hostname.replace(/^www\./, "");
+    if (host.includes("brunch")) return "브런치";
+    if (host.includes("google")) return "구글";
+    if (host.includes("naver")) return "네이버";
+    if (host.includes("instagram")) return "인스타그램";
+    if (host.includes("chaekdojang")) return "책도장 내부";
+    return host;
+  } catch {
+    return referrer;
+  }
+}
+
+function topReferrer(referrers: Map<string, number>) {
+  const [first] = Array.from(referrers.entries()).sort((a, b) => b[1] - a[1]);
+  return first?.[0] ?? "-";
+}
+
+function suspiciousType(uri: string, status?: number) {
+  const path = uri.toLowerCase();
+  if (path.includes(".env")) return "환경파일 스캔";
+  if (path.includes(".git")) return "Git 저장소 스캔";
+  if (path.includes("php") || path.includes("wp-")) return "PHP/워드프레스 스캔";
+  if (path.includes("swagger") || path.includes("api-docs")) return "API 문서 접근";
+  if (path.includes("..") || path.includes("%2e")) return "경로 조작 시도";
+  if (status && status >= 500) return "서버 오류";
+  if (status && status >= 400) return "요청 오류";
+  return "기타 이상 요청";
+}
+
+function StatCard({ label, value, helper }: { label: string; value: string | number; helper?: string }) {
+  return (
+    <div className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+      <p className="text-xs font-medium text-brown-400">{label}</p>
+      <p className="mt-1 text-2xl font-bold text-brown-900">{value}</p>
+      {helper && <p className="mt-1 text-xs text-brown-300">{helper}</p>}
+    </div>
+  );
+}
+
+function EmptyState({ children }: { children: string }) {
+  return <div className="rounded-2xl border border-cream-200 bg-white py-12 text-center text-sm text-brown-300">{children}</div>;
+}
+
 export default function AdminPage() {
   const router = useRouter();
-  const [tab, setTab] = useState<"users" | "reviews" | "inquiries" | "access" | "metrics" | "errors" | "audit">("users");
+  const [tab, setTab] = useState<Tab>("dashboard");
   const [users, setUsers] = useState<User[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [bookStats, setBookStats] = useState<BookStat[]>([]);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [accessLogs, setAccessLogs] = useState<AccessLog[]>([]);
-  const [accessPage, setAccessPage] = useState(0);
-  const [accessTotalPages, setAccessTotalPages] = useState(1);
   const [metricEvents, setMetricEvents] = useState<MetricEvent[]>([]);
-  const [metricPage, setMetricPage] = useState(0);
-  const [metricTotalPages, setMetricTotalPages] = useState(1);
   const [errorLogs, setErrorLogs] = useState<ErrorLog[]>([]);
-  const [errorPage, setErrorPage] = useState(0);
-  const [errorTotalPages, setErrorTotalPages] = useState(1);
   const [auditLogs, setAuditLogs] = useState<AdminAuditLog[]>([]);
-  const [auditPage, setAuditPage] = useState(0);
-  const [auditTotalPages, setAuditTotalPages] = useState(1);
-  const [loading, setLoading] = useState(false);
+  const [dashboardSummary, setDashboardSummary] = useState<DashboardSummary | null>(null);
+  const [aggregatedPages, setAggregatedPages] = useState<AggregatedPage[]>([]);
+  const [aggregatedActions, setAggregatedActions] = useState<AggregatedAction[]>([]);
+  const [aggregatedSecurity, setAggregatedSecurity] = useState<AggregatedSecurity[]>([]);
+  const [loading, setLoading] = useState(true);
   const [unauthorized, setUnauthorized] = useState(false);
-  const [reviewPage, setReviewPage] = useState(0);
-  const [reviewTotalPages, setReviewTotalPages] = useState(1);
-  const [reviewAuthorQ, setReviewAuthorQ] = useState("");
-  const [reviewTitleQ, setReviewTitleQ] = useState("");
-  const [appliedSearch, setAppliedSearch] = useState({ author: "", title: "" });
-  const [accessQ, setAccessQ] = useState("");
-  const [accessMethod, setAccessMethod] = useState("");
-  const [accessStatusGroup, setAccessStatusGroup] = useState("");
-  const [appliedAccessFilters, setAppliedAccessFilters] = useState<AccessFilters>({ q: "", method: "", statusGroup: "" });
-  const [metricQ, setMetricQ] = useState("");
-  const [metricEventType, setMetricEventType] = useState("");
-  const [metricUserType, setMetricUserType] = useState("");
-  const [appliedMetricFilters, setAppliedMetricFilters] = useState<MetricFilters>({ q: "", eventType: "", userType: "" });
-  const [errorQ, setErrorQ] = useState("");
-  const [errorLevel, setErrorLevel] = useState("");
-  const [errorStatusGroup, setErrorStatusGroup] = useState("");
-  const [appliedErrorFilters, setAppliedErrorFilters] = useState<ErrorFilters>({ q: "", level: "", statusGroup: "" });
-  const [auditQ, setAuditQ] = useState("");
-  const [auditAction, setAuditAction] = useState("");
-  const [auditTargetType, setAuditTargetType] = useState("");
-  const [appliedAuditFilters, setAppliedAuditFilters] = useState<AuditFilters>({ q: "", action: "", targetType: "" });
+  const [query, setQuery] = useState("");
+  const [selectedReviewId, setSelectedReviewId] = useState<number | null>(null);
 
   function getToken() {
     if (typeof window === "undefined") return null;
-    const t = localStorage.getItem("token");
-    return !t || t === "undefined" || t === "null" ? null : t;
+    const token = localStorage.getItem("token");
+    return !token || token === "undefined" || token === "null" ? null : token;
   }
 
-  async function load() {
+  async function fetchAdmin<T>(path: string): Promise<T | null> {
     const token = getToken();
-    if (!token) { router.replace("/auth/login"); return; }
-    const h = { Authorization: `Bearer ${token}` };
-    setLoading(true);
-    try {
-      if (tab === "users") {
-        const r = await fetch(`${API_BASE}/api/admin/users?size=50`, { headers: h });
-        if (r.status === 403) { setUnauthorized(true); return; }
-        const j = await r.json();
-        setUsers(j.data?.content ?? []);
-      } else if (tab === "inquiries") {
-        const r = await fetch(`${API_BASE}/api/admin/inquiries?size=50`, { headers: h });
-        if (r.status === 403) { setUnauthorized(true); return; }
-        const j = await r.json();
-        setInquiries(j.data?.content ?? []);
-      }
-    } finally { setLoading(false); }
+    if (!token) {
+      router.replace("/auth/login");
+      return null;
+    }
+    const res = await fetch(`${API_BASE}${path}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.status === 401) {
+      localStorage.removeItem("token");
+      router.replace("/auth/login");
+      return null;
+    }
+    if (res.status === 403) {
+      setUnauthorized(true);
+      return null;
+    }
+    if (!res.ok) return null;
+    const json = await res.json();
+    return (json.data ?? json) as T;
   }
 
-  async function loadAccessLogs(page: number, filters: AccessFilters = appliedAccessFilters) {
-    const token = getToken();
-    if (!token) { router.replace("/auth/login"); return; }
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({ page: String(page), size: "50" });
-      if (filters.q.trim()) params.set("q", filters.q.trim());
-      if (filters.method) params.set("method", filters.method);
-      if (filters.statusGroup) params.set("statusGroup", filters.statusGroup);
-      const r = await fetch(`${API_BASE}/api/admin/access-logs?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (r.status === 403) { setUnauthorized(true); return; }
-      const j = await r.json();
-      setAccessLogs(j.data?.content ?? []);
-      setAccessTotalPages(j.data?.totalPages ?? 1);
-      setAccessPage(page);
-    } finally { setLoading(false); }
+  async function fetchPage<T>(path: string) {
+    const data = await fetchAdmin<PageResponse<T>>(path);
+    return data?.content ?? [];
   }
 
-  async function loadMetricEvents(page: number, filters: MetricFilters = appliedMetricFilters) {
-    const token = getToken();
-    if (!token) { router.replace("/auth/login"); return; }
+  async function loadAll() {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page: String(page), size: "50" });
-      if (filters.q.trim()) params.set("q", filters.q.trim());
-      if (filters.eventType) params.set("eventType", filters.eventType);
-      if (filters.userType) params.set("userType", filters.userType);
-      const r = await fetch(`${API_BASE}/api/admin/metrics?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (r.status === 403) { setUnauthorized(true); return; }
-      const j = await r.json();
-      setMetricEvents(j.data?.content ?? []);
-      setMetricTotalPages(j.data?.totalPages ?? 1);
-      setMetricPage(page);
-    } finally { setLoading(false); }
-  }
-
-  async function loadErrorLogs(page: number, filters: ErrorFilters = appliedErrorFilters) {
-    const token = getToken();
-    if (!token) { router.replace("/auth/login"); return; }
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({ page: String(page), size: "50" });
-      if (filters.q.trim()) params.set("q", filters.q.trim());
-      if (filters.level) params.set("level", filters.level);
-      if (filters.statusGroup) params.set("statusGroup", filters.statusGroup);
-      const r = await fetch(`${API_BASE}/api/admin/error-logs?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (r.status === 403) { setUnauthorized(true); return; }
-      const j = await r.json();
-      setErrorLogs(j.data?.content ?? []);
-      setErrorTotalPages(j.data?.totalPages ?? 1);
-      setErrorPage(page);
-    } finally { setLoading(false); }
-  }
-
-  async function loadAuditLogs(page: number, filters: AuditFilters = appliedAuditFilters) {
-    const token = getToken();
-    if (!token) { router.replace("/auth/login"); return; }
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({ page: String(page), size: "50" });
-      if (filters.q.trim()) params.set("q", filters.q.trim());
-      if (filters.action) params.set("action", filters.action);
-      if (filters.targetType) params.set("targetType", filters.targetType);
-      const r = await fetch(`${API_BASE}/api/admin/audit-logs?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (r.status === 403) { setUnauthorized(true); return; }
-      const j = await r.json();
-      setAuditLogs(j.data?.content ?? []);
-      setAuditTotalPages(j.data?.totalPages ?? 1);
-      setAuditPage(page);
-    } finally { setLoading(false); }
-  }
-
-  async function loadReviews(page: number, author: string, title: string) {
-    const token = getToken();
-    if (!token) { router.replace("/auth/login"); return; }
-    const h = { Authorization: `Bearer ${token}` };
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({ page: String(page), size: "20" });
-      if (author) params.set("author", author);
-      if (title) params.set("title", title);
-      const [rv, st] = await Promise.all([
-        fetch(`${API_BASE}/api/admin/reviews?${params}`, { headers: h }).then((r) => r.json()),
-        fetch(`${API_BASE}/api/admin/reviews/stats`, { headers: h }).then((r) => r.json()),
+      const [
+        nextUsers,
+        nextReviews,
+        nextStats,
+        nextInquiries,
+        nextAccess,
+        nextMetrics,
+        nextErrors,
+        nextAudit,
+        nextDashboard,
+        nextPages,
+        nextActions,
+        nextSecurity,
+      ] = await Promise.all([
+        fetchPage<User>("/api/admin/users?size=200"),
+        fetchPage<Review>("/api/admin/reviews?size=100"),
+        fetchAdmin<BookStat[]>("/api/admin/reviews/stats"),
+        fetchPage<Inquiry>("/api/admin/inquiries?size=100"),
+        fetchPage<AccessLog>("/api/admin/access-logs?size=300"),
+        fetchPage<MetricEvent>("/api/admin/metrics?size=500"),
+        fetchPage<ErrorLog>("/api/admin/error-logs?size=200"),
+        fetchPage<AdminAuditLog>("/api/admin/audit-logs?size=100"),
+        fetchAdmin<DashboardSummary>("/api/admin/dashboard/summary"),
+        fetchAdmin<AggregatedPage[]>("/api/admin/analytics/pages"),
+        fetchAdmin<AggregatedAction[]>("/api/admin/analytics/actions"),
+        fetchAdmin<AggregatedSecurity[]>("/api/admin/security/summary"),
       ]);
-      setReviews(rv.data?.content ?? []);
-      setReviewTotalPages(rv.data?.totalPages ?? 1);
-      setReviewPage(page);
-      setBookStats(st.data ?? []);
-    } finally { setLoading(false); }
+      setUsers(nextUsers);
+      setReviews(nextReviews);
+      setBookStats(nextStats ?? []);
+      setInquiries(nextInquiries);
+      setAccessLogs(nextAccess);
+      setMetricEvents(nextMetrics);
+      setErrorLogs(nextErrors);
+      setAuditLogs(nextAudit);
+      setDashboardSummary(nextDashboard);
+      setAggregatedPages(nextPages ?? []);
+      setAggregatedActions(nextActions ?? []);
+      setAggregatedSecurity(nextSecurity ?? []);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
-    if (tab === "reviews") {
-      setAppliedSearch({ author: "", title: "" });
-      setReviewAuthorQ("");
-      setReviewTitleQ("");
-      loadReviews(0, "", "");
-    } else if (tab === "access") {
-      setAccessQ("");
-      setAccessMethod("");
-      setAccessStatusGroup("");
-      const empty = { q: "", method: "", statusGroup: "" };
-      setAppliedAccessFilters(empty);
-      loadAccessLogs(0, empty);
-    } else if (tab === "metrics") {
-      setMetricQ("");
-      setMetricEventType("");
-      setMetricUserType("");
-      const empty = { q: "", eventType: "", userType: "" };
-      setAppliedMetricFilters(empty);
-      loadMetricEvents(0, empty);
-    } else if (tab === "errors") {
-      setErrorQ("");
-      setErrorLevel("");
-      setErrorStatusGroup("");
-      const empty = { q: "", level: "", statusGroup: "" };
-      setAppliedErrorFilters(empty);
-      loadErrorLogs(0, empty);
-    } else if (tab === "audit") {
-      setAuditQ("");
-      setAuditAction("");
-      setAuditTargetType("");
-      const empty = { q: "", action: "", targetType: "" };
-      setAppliedAuditFilters(empty);
-      loadAuditLogs(0, empty);
-    } else {
-      load();
-    }
-  }, [tab]);
+    loadAll();
+  }, []);
+
+  const adminIds = useMemo(
+    () => new Set(users.filter((user) => user.role === "ADMIN" || user.role === "SUPER_ADMIN").map((user) => user.id)),
+    [users]
+  );
+
+  const adminNicknames = useMemo(
+    () => new Set(users.filter((user) => user.role === "ADMIN" || user.role === "SUPER_ADMIN").map((user) => user.nickname).filter(Boolean)),
+    [users]
+  );
+
+  const visibleMetrics = useMemo(
+    () => metricEvents.filter((event) => {
+      if (event.userId != null && adminIds.has(event.userId)) return false;
+      if (event.nickname && adminNicknames.has(event.nickname)) return false;
+      const path = normalizePath(event.path);
+      return !path.startsWith("/admin") && !path.startsWith("/api/admin");
+    }),
+    [metricEvents, adminIds, adminNicknames]
+  );
+
+  const visibleAccessLogs = useMemo(
+    () => accessLogs.filter((log) => {
+      if (log.matchedUserId != null && adminIds.has(log.matchedUserId)) return false;
+      if (log.matchedNickname && adminNicknames.has(log.matchedNickname)) return false;
+      const path = normalizePath(log.uri);
+      return !path.startsWith("/admin") && !path.startsWith("/api/admin");
+    }),
+    [accessLogs, adminIds, adminNicknames]
+  );
+
+  const visibleErrors = useMemo(
+    () => errorLogs.filter((log) => {
+      if (log.userId != null && adminIds.has(log.userId)) return false;
+      const path = normalizePath(log.uri);
+      return !path.startsWith("/admin") && !path.startsWith("/api/admin");
+    }),
+    [errorLogs, adminIds]
+  );
+
+  const rawPageSummaries = useMemo(() => {
+    const map = new Map<string, PageSummary>();
+    visibleMetrics.forEach((event) => {
+      const path = normalizePath(event.path);
+      if (event.eventType !== "page_view" && event.durationMs <= 0) return;
+      const item = map.get(path) ?? {
+        path,
+        label: getRouteLabel(path),
+        views: 0,
+        visitors: new Set<string>(),
+        durationSum: 0,
+        durationCount: 0,
+        referrers: new Map<string, number>(),
+        lastAt: event.createdAt,
+      };
+      if (event.eventType === "page_view") item.views += 1;
+      item.visitors.add(visitorKey(event));
+      if (event.durationMs > 0) {
+        item.durationSum += event.durationMs;
+        item.durationCount += 1;
+      }
+      const referrer = referrerLabel(event.referrer);
+      item.referrers.set(referrer, (item.referrers.get(referrer) ?? 0) + 1);
+      if (event.createdAt > item.lastAt) item.lastAt = event.createdAt;
+      map.set(path, item);
+    });
+    return Array.from(map.values()).sort((a, b) => b.lastAt.localeCompare(a.lastAt) || b.views - a.views);
+  }, [visibleMetrics]);
+
+  const rawActionSummaries = useMemo(() => {
+    const map = new Map<string, ActionSummary>();
+    visibleMetrics
+      .filter((event) => !["heartbeat", "session_end"].includes(event.eventType))
+      .forEach((event) => {
+        const item = map.get(event.eventType) ?? {
+          eventType: event.eventType,
+          label: getMetricEventLabel(event.eventType),
+          count: 0,
+          visitors: new Set<string>(),
+          lastAt: event.createdAt,
+        };
+        item.count += 1;
+        item.visitors.add(visitorKey(event));
+        if (event.createdAt > item.lastAt) item.lastAt = event.createdAt;
+        map.set(event.eventType, item);
+      });
+    return Array.from(map.values()).sort((a, b) => b.lastAt.localeCompare(a.lastAt) || b.count - a.count);
+  }, [visibleMetrics]);
+
+  const rawSecuritySummaries = useMemo(() => {
+    const map = new Map<string, SecuritySummary>();
+    visibleErrors.forEach((error) => {
+      const type = suspiciousType(error.uri, error.status);
+      const key = `error:${type}:${normalizePath(error.uri)}:${error.ip ?? ""}`;
+      const item = map.get(key) ?? {
+        key,
+        severity: error.status >= 500 ? "오류" : "주의",
+        type,
+        uri: normalizePath(error.uri),
+        count: 0,
+        ip: error.ip ?? "-",
+        lastAt: error.createdAt,
+      };
+      item.count += 1;
+      if (error.createdAt > item.lastAt) item.lastAt = error.createdAt;
+      map.set(key, item);
+    });
+    visibleAccessLogs
+      .filter((log) => log.status >= 400 || suspiciousType(log.uri) !== "기타 이상 요청")
+      .forEach((log) => {
+        const type = suspiciousType(log.uri, log.status);
+        if (type === "요청 오류" && log.status < 500) return;
+        const key = `access:${type}:${normalizePath(log.uri)}:${log.ip}`;
+        const item = map.get(key) ?? {
+          key,
+          severity: log.status >= 500 ? "오류" : "주의",
+          type,
+          uri: normalizePath(log.uri),
+          count: 0,
+          ip: log.ip,
+          lastAt: log.createdAt,
+        };
+        item.count += 1;
+        if (log.createdAt > item.lastAt) item.lastAt = log.createdAt;
+        map.set(key, item);
+      });
+    return Array.from(map.values()).sort((a, b) => b.count - a.count || b.lastAt.localeCompare(a.lastAt));
+  }, [visibleErrors, visibleAccessLogs]);
+
+  const pageSummaries = useMemo(() => {
+    if (aggregatedPages.length === 0) return rawPageSummaries;
+    return aggregatedPages.map((page) => ({
+      path: page.path,
+      label: page.label,
+      views: page.views,
+      visitors: new Set(Array.from({ length: page.visitors }, (_, index) => String(index))),
+      durationSum: page.avgDurationSeconds * 1000,
+      durationCount: page.avgDurationSeconds > 0 ? 1 : 0,
+      referrers: new Map([[page.topReferrer || "-", 1]]),
+      lastAt: page.lastAt,
+    })).sort((a, b) => b.lastAt.localeCompare(a.lastAt) || b.views - a.views);
+  }, [aggregatedPages, rawPageSummaries]);
+
+  const actionSummaries = useMemo(() => {
+    if (aggregatedActions.length === 0) return rawActionSummaries;
+    return aggregatedActions.map((action) => ({
+      eventType: action.eventType,
+      label: action.label,
+      count: action.count,
+      visitors: new Set(Array.from({ length: action.visitors }, (_, index) => String(index))),
+      lastAt: action.lastAt,
+    }));
+  }, [aggregatedActions, rawActionSummaries]);
+
+  const securitySummaries = useMemo(() => {
+    if (aggregatedSecurity.length === 0) return rawSecuritySummaries;
+    return aggregatedSecurity.map((item) => ({
+      key: `${item.type}:${item.uri}:${item.ip}`,
+      severity: item.severity,
+      type: item.type,
+      uri: item.uri,
+      count: item.count,
+      ip: item.ip,
+      lastAt: item.lastAt,
+    }));
+  }, [aggregatedSecurity, rawSecuritySummaries]);
+
+  const filteredUsers = users.filter((user) => {
+    const text = `${user.nickname} ${user.email ?? ""} ${user.role}`.toLowerCase();
+    return text.includes(query.toLowerCase());
+  });
+
+  const filteredReviews = reviews.filter((review) => {
+    const text = `${review.authorNickname} ${review.bookTitle} ${review.content}`.toLowerCase();
+    return text.includes(query.toLowerCase());
+  });
+
+  const filteredInquiries = inquiries.filter((inquiry) => {
+    const text = `${inquiry.title} ${inquiry.authorName}`.toLowerCase();
+    return text.includes(query.toLowerCase());
+  });
+
+  const recentPageViews = visibleMetrics
+    .filter((event) => event.eventType === "page_view")
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+  const filteredPageViews = recentPageViews.filter((event) => {
+    const text = `${getRouteLabel(event.path)} ${event.path} ${event.nickname ?? ""} ${referrerLabel(event.referrer)} ${event.ip ?? ""}`.toLowerCase();
+    return text.includes(query.toLowerCase());
+  });
+
+  const filteredActions = visibleMetrics
+    .filter((event) => !["heartbeat", "session_end"].includes(event.eventType))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .filter((event) => {
+      const text = `${getMetricEventLabel(event.eventType)} ${event.nickname ?? ""} ${event.path} ${event.ip ?? ""}`.toLowerCase();
+      return text.includes(query.toLowerCase());
+    });
+
+  const securityEvents = useMemo(() => {
+    const map = new Map<string, SecurityEvent>();
+    visibleErrors.forEach((log) => {
+      const uri = normalizePath(log.uri);
+      const message = log.message || "(no message)";
+      const key = `error:${log.status}:${log.exceptionType}:${uri}:${message}:${log.ip ?? ""}`;
+      const previous = map.get(key);
+      const item: SecurityEvent = {
+        key,
+        severity: log.status >= 500 ? "오류" : "주의",
+        source: "error",
+        type: suspiciousType(log.uri, log.status),
+        method: log.method,
+        uri,
+        status: log.status,
+        ip: log.ip ?? "-",
+        message,
+        exceptionType: log.exceptionType,
+        count: (previous?.count ?? 0) + 1,
+        lastAt: previous && previous.lastAt > log.createdAt ? previous.lastAt : log.createdAt,
+      };
+      map.set(key, item);
+    });
+    visibleAccessLogs
+      .filter((log) => log.status >= 500 || suspiciousType(log.uri) !== "기타 이상 요청")
+      .forEach((log) => {
+        const uri = normalizePath(log.uri);
+        const key = `access:${log.status}:${log.method}:${uri}:${log.ip}`;
+        const previous = map.get(key);
+        const item: SecurityEvent = {
+          key,
+          severity: log.status >= 500 ? "오류" : "주의",
+          source: "access",
+          type: suspiciousType(log.uri, log.status),
+          method: log.method,
+          uri,
+          status: log.status,
+          ip: log.ip,
+          message: `HTTP ${log.status} 응답 · ${log.elapsedMs}ms`,
+          count: (previous?.count ?? 0) + 1,
+          lastAt: previous && previous.lastAt > log.createdAt ? previous.lastAt : log.createdAt,
+        };
+        map.set(key, item);
+      });
+    return Array.from(map.values()).sort((a, b) => b.lastAt.localeCompare(a.lastAt));
+  }, [visibleErrors, visibleAccessLogs]);
+
+  const filteredSecurityEvents = securityEvents.filter((item) => {
+    const text = `${item.type} ${item.method} ${item.uri} ${item.status} ${item.ip} ${item.exceptionType ?? ""} ${item.message}`.toLowerCase();
+    return text.includes(query.toLowerCase());
+  });
+
+  const fallbackTodayVisitors = new Set(visibleMetrics.filter((event) => isToday(event.createdAt)).map(visitorKey)).size;
+  const fallbackTodayPageViews = visibleMetrics.filter((event) => isToday(event.createdAt) && event.eventType === "page_view").length;
+  const fallbackTodayReviews = reviews.filter((review) => isToday(review.createdAt)).length;
+  const fallbackTodayUsers = users.filter((user) => isToday(user.createdAt)).length;
+  const fallbackTodayErrors = visibleErrors.filter((error) => isToday(error.createdAt) && error.status >= 500).length;
+  const fallbackTodaySecurity = securitySummaries.filter((item) => isToday(item.lastAt)).reduce((sum, item) => sum + item.count, 0);
+  const todayVisitors = dashboardSummary?.todayVisitors ?? fallbackTodayVisitors;
+  const todayPageViews = dashboardSummary?.todayPageViews ?? fallbackTodayPageViews;
+  const todayReviews = dashboardSummary?.todayReviews ?? fallbackTodayReviews;
+  const todayUsers = dashboardSummary?.todayUsers ?? fallbackTodayUsers;
+  const todayErrors = dashboardSummary?.todayServerErrors ?? fallbackTodayErrors;
+  const todaySecurity = dashboardSummary?.todaySuspiciousRequests ?? fallbackTodaySecurity;
 
   async function setRole(userId: number, role: string) {
     const token = getToken();
     if (!token) return;
-    const h = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
     await fetch(`${API_BASE}/api/admin/users/${userId}/role`, {
-      method: "PATCH", headers: h, body: JSON.stringify({ role }),
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ role }),
     });
-    load();
+    loadAll();
   }
 
   async function toggleHidden(reviewId: number, hidden: boolean) {
     const token = getToken();
     if (!token) return;
-    const h = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-    const res = await fetch(`${API_BASE}/api/admin/reviews/${reviewId}/hidden`, {
-      method: "PATCH", headers: h, body: JSON.stringify({ hidden }),
+    await fetch(`${API_BASE}/api/admin/reviews/${reviewId}/hidden`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ hidden }),
     });
-    if (!res.ok) {
-      console.error("독후감 공개 상태 변경 실패", await res.text());
-      return;
-    }
-    loadReviews(reviewPage, appliedSearch.author, appliedSearch.title);
+    loadAll();
   }
 
-  function handleReviewSearch(e: React.FormEvent) {
-    e.preventDefault();
-    setAppliedSearch({ author: reviewAuthorQ, title: reviewTitleQ });
-    loadReviews(0, reviewAuthorQ, reviewTitleQ);
+  function reviewHrefForBook(book: BookStat) {
+    const review = reviews.find((item) => item.bookTitle === book.title);
+    return review ? `/reviews/${review.id}` : `/books/${book.bookId}/reviews`;
   }
 
-  function handleAccessSearch(e: React.FormEvent) {
-    e.preventDefault();
-    const filters = { q: accessQ, method: accessMethod, statusGroup: accessStatusGroup };
-    setAppliedAccessFilters(filters);
-    loadAccessLogs(0, filters);
+  if (unauthorized) {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-16 text-center">
+        <p className="text-2xl mb-2">🔒</p>
+        <p className="font-medium text-brown-600">관리자만 접근할 수 있어요</p>
+        <button onClick={() => router.back()} className="mt-4 text-sm text-brown-400 underline">돌아가기</button>
+      </div>
+    );
   }
-
-  function resetAccessFilters() {
-    const empty = { q: "", method: "", statusGroup: "" };
-    setAccessQ("");
-    setAccessMethod("");
-    setAccessStatusGroup("");
-    setAppliedAccessFilters(empty);
-    loadAccessLogs(0, empty);
-  }
-
-  function handleMetricSearch(e: React.FormEvent) {
-    e.preventDefault();
-    const filters = { q: metricQ, eventType: metricEventType, userType: metricUserType };
-    setAppliedMetricFilters(filters);
-    loadMetricEvents(0, filters);
-  }
-
-  function resetMetricFilters() {
-    const empty = { q: "", eventType: "", userType: "" };
-    setMetricQ("");
-    setMetricEventType("");
-    setMetricUserType("");
-    setAppliedMetricFilters(empty);
-    loadMetricEvents(0, empty);
-  }
-
-  function handleErrorSearch(e: React.FormEvent) {
-    e.preventDefault();
-    const filters = { q: errorQ, level: errorLevel, statusGroup: errorStatusGroup };
-    setAppliedErrorFilters(filters);
-    loadErrorLogs(0, filters);
-  }
-
-  function resetErrorFilters() {
-    const empty = { q: "", level: "", statusGroup: "" };
-    setErrorQ("");
-    setErrorLevel("");
-    setErrorStatusGroup("");
-    setAppliedErrorFilters(empty);
-    loadErrorLogs(0, empty);
-  }
-
-  function handleAuditSearch(e: React.FormEvent) {
-    e.preventDefault();
-    const filters = { q: auditQ, action: auditAction, targetType: auditTargetType };
-    setAppliedAuditFilters(filters);
-    loadAuditLogs(0, filters);
-  }
-
-  function resetAuditFilters() {
-    const empty = { q: "", action: "", targetType: "" };
-    setAuditQ("");
-    setAuditAction("");
-    setAuditTargetType("");
-    setAppliedAuditFilters(empty);
-    loadAuditLogs(0, empty);
-  }
-
-  if (unauthorized) return (
-    <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-      <p className="text-2xl mb-2">🔒</p>
-      <p className="text-brown-600 font-medium">관리자만 접근할 수 있어요</p>
-      <button onClick={() => router.back()} className="mt-4 text-sm text-brown-400 underline">돌아가기</button>
-    </div>
-  );
-
-  const tabs = [
-    { key: "users", label: "👥 회원" },
-    { key: "reviews", label: "📖 독후감" },
-    { key: "inquiries", label: "💬 문의" },
-    { key: "access", label: "🔍 기능 사용 기록" },
-    { key: "metrics", label: "📈 페이지 방문 기록" },
-    { key: "errors", label: "🚨 오류 로그" },
-    { key: "audit", label: "🛡️ 감사 로그" },
-  ] as const;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 sm:py-8">
-      <h1 className="text-2xl font-bold text-brown-800 mb-6">관리자 페이지</h1>
+    <main className="mx-auto max-w-6xl px-4 py-6 sm:py-8">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-brown-900">관리자 페이지</h1>
+          <p className="mt-1 text-sm text-brown-400">관리자 활동은 분석 화면에서 제외하고 실제 사용자 흐름만 보여줍니다.</p>
+        </div>
+        <button
+          onClick={loadAll}
+          className="rounded-xl border border-cream-300 bg-white px-4 py-2 text-sm text-brown-600 hover:bg-cream-50"
+        >
+          새로고침
+        </button>
+      </div>
 
       <div className="-mx-4 mb-6 overflow-x-auto px-4 sm:mx-0 sm:px-0">
         <div className="flex min-w-max gap-1 rounded-xl bg-cream-200 p-1 sm:min-w-0">
-        {tabs.map(({ key, label }) => (
-          <button key={key} onClick={() => setTab(key)}
-            className={`min-h-10 shrink-0 rounded-lg px-3 py-2 text-xs font-medium whitespace-nowrap transition-colors sm:flex-1 sm:px-2 ${tab === key ? "bg-white text-brown-800 shadow-sm" : "text-brown-400 hover:text-brown-600"}`}>
-            {label}
-          </button>
-        ))}
+          {tabs.map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => {
+                setTab(key);
+                setQuery("");
+              }}
+              className={`min-h-10 shrink-0 rounded-lg px-3 py-2 text-xs font-medium whitespace-nowrap transition-colors sm:flex-1 sm:px-2 ${
+                tab === key ? "bg-white text-brown-900 shadow-sm" : "text-brown-500 hover:text-brown-700"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {loading && <p className="text-center text-brown-300 py-8">불러오는 중...</p>}
-
-      {/* 회원 관리 */}
-      {!loading && tab === "users" && (
-        <div>
-          <div className="hidden bg-white rounded-2xl shadow-sm border border-cream-200 overflow-hidden sm:block">
-            <table className="w-full text-sm">
-              <thead className="bg-cream-100">
-                <tr>
-                  <th className="text-left px-4 py-3 text-brown-600 font-medium">닉네임</th>
-                  <th className="text-left px-4 py-3 text-brown-600 font-medium">이메일</th>
-                  <th className="text-left px-4 py-3 text-brown-600 font-medium">역할</th>
-                  <th className="text-left px-4 py-3 text-brown-600 font-medium">가입일</th>
-                  <th className="px-4 py-3"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((u) => (
-                  <tr
-                    key={u.id}
-                    tabIndex={0}
-                    role="link"
-                    onClick={() => router.push(`/users/${u.id}`)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") router.push(`/users/${u.id}`);
-                    }}
-                    className="border-t border-cream-100 cursor-pointer hover:bg-cream-50 focus:outline-none focus:bg-cream-50"
-                  >
-                    <td className="px-4 py-3 text-brown-800">{u.nickname}</td>
-                    <td className="px-4 py-3 text-brown-500">{u.email ?? "-"}</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        u.role === "SUPER_ADMIN" ? "bg-red-100 text-red-600" :
-                        u.role === "ADMIN" ? "bg-blue-100 text-blue-600" : "bg-cream-200 text-brown-500"}`}>
-                        {u.role === "SUPER_ADMIN" ? "슈퍼관리자" : u.role === "ADMIN" ? "관리자" : "일반"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-brown-400">{new Date(u.createdAt).toLocaleDateString("ko-KR")}</td>
-                    <td className="px-4 py-3">
-                      {u.role !== "SUPER_ADMIN" && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setRole(u.id, u.role === "ADMIN" ? "USER" : "ADMIN");
-                          }}
-                          className={`px-3 py-1 text-xs rounded-lg ${u.role === "ADMIN" ? "bg-cream-200 text-brown-500 hover:bg-cream-300" : "bg-blue-50 text-blue-600 hover:bg-blue-100"}`}>
-                          {u.role === "ADMIN" ? "권한 해제" : "관리자 지정"}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {users.length === 0 && (
-                  <tr><td colSpan={5} className="text-center py-8 text-brown-300">회원이 없어요</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="flex flex-col gap-3 sm:hidden">
-            {users.map((u) => (
-              <div
-                key={u.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => router.push(`/users/${u.id}`)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") router.push(`/users/${u.id}`);
-                }}
-                className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm focus:outline-none focus:ring-2 focus:ring-brown-100"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-brown-800">{u.nickname}</p>
-                    <p className="mt-1 break-all text-xs text-brown-400">{u.email ?? "-"}</p>
-                  </div>
-                  <span className={`flex-shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
-                    u.role === "SUPER_ADMIN" ? "bg-red-100 text-red-600" :
-                    u.role === "ADMIN" ? "bg-blue-100 text-blue-600" : "bg-cream-200 text-brown-500"}`}>
-                    {u.role === "SUPER_ADMIN" ? "슈퍼관리자" : u.role === "ADMIN" ? "관리자" : "일반"}
-                  </span>
-                </div>
-                <div className="mt-4 flex items-center justify-between gap-3 border-t border-cream-100 pt-3">
-                  <span className="text-xs text-brown-400">
-                    가입일 {new Date(u.createdAt).toLocaleDateString("ko-KR")}
-                  </span>
-                  {u.role !== "SUPER_ADMIN" && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setRole(u.id, u.role === "ADMIN" ? "USER" : "ADMIN");
-                      }}
-                      className={`rounded-lg px-3 py-1.5 text-xs ${u.role === "ADMIN" ? "bg-cream-200 text-brown-500 hover:bg-cream-300" : "bg-blue-50 text-blue-600 hover:bg-blue-100"}`}
-                    >
-                      {u.role === "ADMIN" ? "권한 해제" : "관리자 지정"}
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-            {users.length === 0 && (
-              <p className="rounded-2xl border border-cream-200 bg-white py-8 text-center text-sm text-brown-300">
-                회원이 없어요
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* 독후감 관리 */}
-      {!loading && tab === "reviews" && (
-        <div className="flex flex-col gap-6">
-          {bookStats.length > 0 && (
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-cream-200">
-              <h2 className="text-sm font-bold text-brown-700 mb-4">📊 책별 독후감 통계 (Top 10)</h2>
-              <div className="flex flex-col gap-2">
-                {bookStats.slice(0, 10).map((s, i) => (
-                  <div key={s.bookId} className="flex items-center gap-3">
-                    <span className="text-xs text-brown-400 w-4">{i + 1}</span>
-                    <div className="flex-1">
-                      <p className="text-sm text-brown-800">{s.title}</p>
-                      <p className="text-xs text-brown-400">{s.author}</p>
-                    </div>
-                    <span className="text-sm font-bold text-brown-600">{s.reviewCount}개</span>
-                  </div>
-                ))}
-              </div>
+      {loading ? (
+        <p className="py-12 text-center text-brown-300">불러오는 중...</p>
+      ) : (
+        <div className="space-y-5">
+          {tab !== "dashboard" && (
+            <div className="rounded-2xl border border-cream-200 bg-white p-4">
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="현재 탭에서 검색"
+                className="w-full rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-800 focus:border-brown-400 focus:outline-none"
+              />
             </div>
           )}
-          {/* 검색 */}
-          <form onSubmit={handleReviewSearch} className="flex gap-2">
-            <input
-              value={reviewAuthorQ}
-              onChange={(e) => setReviewAuthorQ(e.target.value)}
-              placeholder="작성자 닉네임"
-              className="flex-1 px-3 py-2 text-sm rounded-xl border border-cream-300 bg-white focus:outline-none focus:border-brown-400 transition"
-            />
-            <input
-              value={reviewTitleQ}
-              onChange={(e) => setReviewTitleQ(e.target.value)}
-              placeholder="책 제목"
-              className="flex-1 px-3 py-2 text-sm rounded-xl border border-cream-300 bg-white focus:outline-none focus:border-brown-400 transition"
-            />
-            <button type="submit" className="px-4 py-2 text-sm bg-brown-600 text-white rounded-xl hover:bg-brown-700 transition-colors">검색</button>
-            {(appliedSearch.author || appliedSearch.title) && (
-              <button type="button" onClick={() => {
-                setReviewAuthorQ(""); setReviewTitleQ("");
-                setAppliedSearch({ author: "", title: "" });
-                loadReviews(0, "", "");
-              }} className="px-3 py-2 text-sm border border-cream-300 text-brown-400 rounded-xl hover:bg-cream-50 transition-colors">초기화</button>
-            )}
-          </form>
 
-          <div className="bg-white rounded-2xl shadow-sm border border-cream-200 overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-cream-100">
-                <tr>
-                  <th className="text-left px-4 py-3 text-brown-600 font-medium">작성자</th>
-                  <th className="text-left px-4 py-3 text-brown-600 font-medium">책</th>
-                  <th className="text-left px-4 py-3 text-brown-600 font-medium">내용</th>
-                  <th className="px-4 py-3 text-brown-600 font-medium">상태</th>
-                  <th className="px-4 py-3"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {reviews.map((r) => (
-                  <tr key={r.id} className={`border-t border-cream-100 ${r.hidden ? "opacity-50" : ""}`}>
-                    <td className="px-4 py-3 text-brown-800">{r.authorNickname}</td>
-                    <td className="px-4 py-3 text-brown-500">{r.bookTitle ?? "-"}</td>
-                    <td className="px-4 py-3 text-brown-600 max-w-xs truncate">{r.content}</td>
-                    <td className="px-4 py-3 text-center">
-                      {r.hidden ? <span className="text-xs text-red-400">비공개</span> : <span className="text-xs text-green-500">공개</span>}
-                    </td>
-                    <td className="px-4 py-3">
-                      <button
-                        onClick={() => toggleHidden(r.id, !r.hidden)}
-                        className={`px-3 py-1 text-xs rounded-lg ${r.hidden ? "bg-green-50 text-green-600 hover:bg-green-100" : "bg-red-50 text-red-500 hover:bg-red-100"}`}>
-                        {r.hidden ? "공개" : "비공개"}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {reviews.length === 0 && (
-                  <tr><td colSpan={5} className="text-center py-8 text-brown-300">검색 결과가 없어요</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* 페이징 */}
-          {reviewTotalPages > 1 && (
-            <div className="flex items-center justify-center gap-2">
-              <button
-                onClick={() => loadReviews(reviewPage - 1, appliedSearch.author, appliedSearch.title)}
-                disabled={reviewPage === 0}
-                className="px-3 py-1.5 text-sm border border-cream-300 rounded-lg text-brown-500 hover:bg-cream-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >← 이전</button>
-              <span className="text-sm text-brown-400">{reviewPage + 1} / {reviewTotalPages}</span>
-              <button
-                onClick={() => loadReviews(reviewPage + 1, appliedSearch.author, appliedSearch.title)}
-                disabled={reviewPage >= reviewTotalPages - 1}
-                className="px-3 py-1.5 text-sm border border-cream-300 rounded-lg text-brown-500 hover:bg-cream-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >다음 →</button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* 문의 관리 */}
-      {!loading && tab === "inquiries" && (
-        <div className="flex flex-col gap-3">
-          {inquiries.map((q) => (
-            <Link key={q.id} href={`/admin/inquiries/${q.id}`}
-              className="bg-white rounded-2xl p-4 shadow-sm border border-cream-200 hover:border-brown-300 transition-colors flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-brown-800">{q.title}</p>
-                <p className="text-xs text-brown-400 mt-0.5">{q.authorName} · {new Date(q.createdAt).toLocaleDateString("ko-KR")}</p>
+          {tab === "dashboard" && (
+            <>
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
+                <StatCard label="오늘 방문자" value={todayVisitors} helper="관리자 제외" />
+                <StatCard label="오늘 페이지뷰" value={todayPageViews} />
+                <StatCard label="오늘 독후감" value={todayReviews} />
+                <StatCard label="오늘 가입" value={todayUsers} />
+                <StatCard label="서버 오류" value={todayErrors} helper="오늘 5xx" />
+                <StatCard label="의심 요청" value={todaySecurity} helper="스캔/오류 묶음" />
               </div>
-              <span className="text-xs text-brown-400">→</span>
-            </Link>
-          ))}
-          {inquiries.length === 0 && <p className="text-center text-brown-300 py-8">문의가 없어요</p>}
-        </div>
-      )}
 
-      {/* 접속 기록 */}
-      {!loading && tab === "access" && (
-        <div className="flex flex-col gap-4">
-          <form onSubmit={handleAccessSearch} className="grid gap-2 rounded-2xl border border-cream-200 bg-white p-4 sm:grid-cols-[1fr_auto_auto_auto]">
-            <input
-              value={accessQ}
-              onChange={(e) => setAccessQ(e.target.value)}
-              placeholder="메뉴, 기능, 접속 위치 검색"
-              className="rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-800 focus:border-brown-400 focus:outline-none"
-            />
-            <select
-              value={accessMethod}
-              onChange={(e) => setAccessMethod(e.target.value)}
-              className="rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm text-brown-600 focus:border-brown-400 focus:outline-none"
-            >
-              <option value="">전체 작업</option>
-              <option value="GET">조회</option>
-              <option value="POST">등록</option>
-              <option value="PATCH">수정</option>
-              <option value="PUT">전체 수정</option>
-              <option value="DELETE">삭제</option>
-            </select>
-            <select
-              value={accessStatusGroup}
-              onChange={(e) => setAccessStatusGroup(e.target.value)}
-              className="rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm text-brown-600 focus:border-brown-400 focus:outline-none"
-            >
-              <option value="">전체 결과</option>
-              <option value="2xx">정상 처리</option>
-              <option value="3xx">다른 곳으로 이동</option>
-              <option value="4xx">요청 문제</option>
-              <option value="5xx">서버 문제</option>
-            </select>
-            <div className="flex gap-2">
-              <button type="submit" className="flex-1 rounded-xl bg-brown-600 px-4 py-2 text-sm text-white hover:bg-brown-700">
-                검색
-              </button>
-              {(appliedAccessFilters.q || appliedAccessFilters.method || appliedAccessFilters.statusGroup) && (
-                <button type="button" onClick={resetAccessFilters} className="rounded-xl border border-cream-300 px-3 py-2 text-sm text-brown-400 hover:bg-cream-50">
-                  초기화
-                </button>
-              )}
-            </div>
-          </form>
-
-          <div className="bg-white rounded-2xl shadow-sm border border-cream-200 overflow-x-auto">
-            <table className="w-full text-sm min-w-[640px]">
-              <thead className="bg-cream-100">
-                <tr>
-                  <th className="text-left px-4 py-3 text-brown-600 font-medium whitespace-nowrap">시간</th>
-                  <th className="text-left px-4 py-3 text-brown-600 font-medium">접속 위치</th>
-                  <th className="text-left px-4 py-3 text-brown-600 font-medium">작업</th>
-                  <th className="text-left px-4 py-3 text-brown-600 font-medium">메뉴/기능</th>
-                  <th className="px-4 py-3 text-brown-600 font-medium text-center">결과</th>
-                  <th className="px-4 py-3 text-brown-600 font-medium text-right">걸린 시간</th>
-                </tr>
-              </thead>
-              <tbody>
-                {accessLogs.map((a) => (
-                  <tr key={a.id} className="border-t border-cream-100 hover:bg-cream-50">
-                    <td className="px-4 py-2.5 text-brown-400 whitespace-nowrap text-xs">
-                      {formatLogTime(a.createdAt)}
-                    </td>
-                    <td className="px-4 py-2.5 text-brown-500 text-xs">
-                      <div className="font-mono">{a.ip}</div>
-                      {a.matchedUserId && (
-                        <div className="mt-0.5 text-[11px] text-brown-300">
-                          사용자 #{a.matchedUserId}
-                          {a.matchedNickname ? ` · ${a.matchedNickname}` : ""}
+              <div className="grid gap-4 lg:grid-cols-2">
+                <section className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+                  <h2 className="font-serif text-lg font-bold text-brown-900">인기 페이지</h2>
+                  <div className="mt-3 space-y-3">
+                    {pageSummaries.slice(0, 6).map((page) => (
+                      <div key={page.path} className="rounded-xl bg-cream-50 p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="font-medium text-brown-800">{page.label}</p>
+                            <p className="truncate text-xs text-brown-300">{page.path}</p>
+                          </div>
+                          <p className="shrink-0 text-sm font-bold text-brown-700">{page.views}회</p>
                         </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <span className={`px-1.5 py-0.5 rounded text-xs font-mono font-medium ${
-                        a.method === "GET" ? "bg-green-50 text-green-600" :
-                        a.method === "POST" ? "bg-blue-50 text-blue-600" :
-                        a.method === "PATCH" || a.method === "PUT" ? "bg-yellow-50 text-yellow-600" :
-                        a.method === "DELETE" ? "bg-red-50 text-red-500" : "bg-cream-100 text-brown-400"
-                      }`}>{getMethodLabel(a.method)}</span>
-                    </td>
-                    <td className="px-4 py-2.5 text-brown-600 text-xs max-w-xs truncate" title={a.uri}>
-                      {getRouteLabel(a.uri)}
-                    </td>
-                    <td className="px-4 py-2.5 text-center">
-                      <span className={`text-xs font-medium ${
-                        a.status < 300 ? "text-green-500" :
-                        a.status < 400 ? "text-blue-400" :
-                        a.status < 500 ? "text-yellow-500" : "text-red-500"
-                      }`}>{getStatusLabel(a.status)}</span>
-                    </td>
-                    <td className="px-4 py-2.5 text-right text-brown-400 text-xs">{a.elapsedMs}ms</td>
-                  </tr>
-                ))}
-                {accessLogs.length === 0 && (
-                  <tr><td colSpan={6} className="text-center py-8 text-brown-300">기록이 없어요</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {accessTotalPages > 1 && (
-            <div className="flex items-center justify-center gap-2">
-              <button
-                onClick={() => loadAccessLogs(accessPage - 1, appliedAccessFilters)}
-                disabled={accessPage === 0}
-                className="px-3 py-1.5 text-sm border border-cream-300 rounded-lg text-brown-500 hover:bg-cream-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >← 이전</button>
-              <span className="text-sm text-brown-400">{accessPage + 1} / {accessTotalPages}</span>
-              <button
-                onClick={() => loadAccessLogs(accessPage + 1, appliedAccessFilters)}
-                disabled={accessPage >= accessTotalPages - 1}
-                className="px-3 py-1.5 text-sm border border-cream-300 rounded-lg text-brown-500 hover:bg-cream-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >다음 →</button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* 페이지 방문 기록 */}
-      {!loading && tab === "metrics" && (
-        <div className="flex flex-col gap-4">
-          <form onSubmit={handleMetricSearch} className="grid gap-2 rounded-2xl border border-cream-200 bg-white p-4 sm:grid-cols-[1fr_auto_auto_auto]">
-            <input
-              value={metricQ}
-              onChange={(e) => setMetricQ(e.target.value)}
-              placeholder="메뉴, 사용자, 접속 위치 검색"
-              className="rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-800 focus:border-brown-400 focus:outline-none"
-            />
-            <select
-              value={metricEventType}
-              onChange={(e) => setMetricEventType(e.target.value)}
-              className="rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm text-brown-600 focus:border-brown-400 focus:outline-none"
-            >
-              <option value="">전체 방문 상태</option>
-              <option value="page_view">페이지 열림</option>
-              <option value="login_success">로그인 성공</option>
-              <option value="heartbeat">머무는 중</option>
-              <option value="session_end">페이지 떠남</option>
-            </select>
-            <select
-              value={metricUserType}
-              onChange={(e) => setMetricUserType(e.target.value)}
-              className="rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm text-brown-600 focus:border-brown-400 focus:outline-none"
-            >
-              <option value="">전체 사용자</option>
-              <option value="member">회원</option>
-              <option value="guest">비회원</option>
-            </select>
-            <div className="flex gap-2">
-              <button type="submit" className="flex-1 rounded-xl bg-brown-600 px-4 py-2 text-sm text-white hover:bg-brown-700">
-                검색
-              </button>
-              {(appliedMetricFilters.q || appliedMetricFilters.eventType || appliedMetricFilters.userType) && (
-                <button type="button" onClick={resetMetricFilters} className="rounded-xl border border-cream-300 px-3 py-2 text-sm text-brown-400 hover:bg-cream-50">
-                  초기화
-                </button>
-              )}
-            </div>
-          </form>
-
-          <div className="bg-white rounded-2xl shadow-sm border border-cream-200 overflow-x-auto">
-            <table className="w-full text-sm min-w-[760px]">
-              <thead className="bg-cream-100">
-                <tr>
-                  <th className="text-left px-4 py-3 text-brown-600 font-medium whitespace-nowrap">시간</th>
-                  <th className="text-left px-4 py-3 text-brown-600 font-medium">방문 상태</th>
-                  <th className="text-left px-4 py-3 text-brown-600 font-medium">사용자</th>
-                  <th className="text-left px-4 py-3 text-brown-600 font-medium">메뉴</th>
-                  <th className="text-left px-4 py-3 text-brown-600 font-medium">기기</th>
-                  <th className="px-4 py-3 text-brown-600 font-medium text-right">머문 시간</th>
-                </tr>
-              </thead>
-              <tbody>
-                {metricEvents.map((event) => (
-                  <tr key={event.id} className="border-t border-cream-100 hover:bg-cream-50">
-                    <td className="px-4 py-2.5 text-brown-400 whitespace-nowrap text-xs">
-                      {formatLogTime(event.createdAt)}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <span className={`px-1.5 py-0.5 rounded text-xs font-mono font-medium ${
-                        event.eventType === "page_view" ? "bg-blue-50 text-blue-600" :
-                        event.eventType === "login_success" ? "bg-purple-50 text-purple-600" :
-                        event.eventType === "heartbeat" ? "bg-green-50 text-green-600" :
-                        "bg-cream-100 text-brown-500"
-                      }`}>{getMetricEventLabel(event.eventType)}</span>
-                    </td>
-                    <td className="px-4 py-2.5 text-brown-500 text-xs">{event.nickname ?? "비회원"}</td>
-                    <td className="px-4 py-2.5 text-brown-600 text-xs max-w-xs truncate" title={event.path}>
-                      {getRouteLabel(event.path)}
-                    </td>
-                    <td className="px-4 py-2.5 text-brown-400 text-xs">{getDeviceLabel(event.device)}</td>
-                    <td className="px-4 py-2.5 text-right text-brown-400 text-xs">
-                      {event.durationMs > 0 ? `${Math.round(event.durationMs / 1000)}초` : "-"}
-                    </td>
-                  </tr>
-                ))}
-                {metricEvents.length === 0 && (
-                  <tr><td colSpan={6} className="text-center py-8 text-brown-300">지표 로그가 없어요</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {metricTotalPages > 1 && (
-            <div className="flex items-center justify-center gap-2">
-              <button
-                onClick={() => loadMetricEvents(metricPage - 1, appliedMetricFilters)}
-                disabled={metricPage === 0}
-                className="px-3 py-1.5 text-sm border border-cream-300 rounded-lg text-brown-500 hover:bg-cream-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >← 이전</button>
-              <span className="text-sm text-brown-400">{metricPage + 1} / {metricTotalPages}</span>
-              <button
-                onClick={() => loadMetricEvents(metricPage + 1, appliedMetricFilters)}
-                disabled={metricPage >= metricTotalPages - 1}
-                className="px-3 py-1.5 text-sm border border-cream-300 rounded-lg text-brown-500 hover:bg-cream-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >다음 →</button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* 오류 로그 */}
-      {!loading && tab === "errors" && (
-        <div className="flex flex-col gap-4">
-          <form onSubmit={handleErrorSearch} className="grid gap-2 rounded-2xl border border-cream-200 bg-white p-4 sm:grid-cols-[1fr_auto_auto_auto]">
-            <input
-              value={errorQ}
-              onChange={(e) => setErrorQ(e.target.value)}
-              placeholder="주소, 예외명, 메시지, IP 검색"
-              className="rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-800 focus:border-brown-400 focus:outline-none"
-            />
-            <select
-              value={errorLevel}
-              onChange={(e) => setErrorLevel(e.target.value)}
-              className="rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm text-brown-600 focus:border-brown-400 focus:outline-none"
-            >
-              <option value="">전체 심각도</option>
-              <option value="ERROR">서버 오류</option>
-              <option value="WARN">요청 오류</option>
-            </select>
-            <select
-              value={errorStatusGroup}
-              onChange={(e) => setErrorStatusGroup(e.target.value)}
-              className="rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm text-brown-600 focus:border-brown-400 focus:outline-none"
-            >
-              <option value="">전체 결과</option>
-              <option value="4xx">요청 문제</option>
-              <option value="5xx">서버 문제</option>
-            </select>
-            <div className="flex gap-2">
-              <button type="submit" className="flex-1 rounded-xl bg-brown-600 px-4 py-2 text-sm text-white hover:bg-brown-700">
-                검색
-              </button>
-              {(appliedErrorFilters.q || appliedErrorFilters.level || appliedErrorFilters.statusGroup) && (
-                <button type="button" onClick={resetErrorFilters} className="rounded-xl border border-cream-300 px-3 py-2 text-sm text-brown-400 hover:bg-cream-50">
-                  초기화
-                </button>
-              )}
-            </div>
-          </form>
-
-          <div className="bg-white rounded-2xl shadow-sm border border-cream-200 overflow-x-auto">
-            <table className="w-full text-sm min-w-[860px]">
-              <thead className="bg-cream-100">
-                <tr>
-                  <th className="text-left px-4 py-3 text-brown-600 font-medium whitespace-nowrap">시간</th>
-                  <th className="text-left px-4 py-3 text-brown-600 font-medium">심각도</th>
-                  <th className="text-left px-4 py-3 text-brown-600 font-medium">위치</th>
-                  <th className="text-left px-4 py-3 text-brown-600 font-medium">예외</th>
-                  <th className="text-left px-4 py-3 text-brown-600 font-medium">메시지</th>
-                  <th className="text-left px-4 py-3 text-brown-600 font-medium">사용자/IP</th>
-                </tr>
-              </thead>
-              <tbody>
-                {errorLogs.map((event) => (
-                  <tr key={event.id} className="border-t border-cream-100 hover:bg-cream-50">
-                    <td className="px-4 py-2.5 text-brown-400 whitespace-nowrap text-xs">
-                      {formatLogTime(event.createdAt)}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <span className={`px-1.5 py-0.5 rounded text-xs font-mono font-medium ${
-                        event.level === "ERROR" ? "bg-red-50 text-red-600" : "bg-yellow-50 text-yellow-600"
-                      }`}>
-                        {event.level === "ERROR" ? "서버 오류" : "요청 오류"} ({event.status})
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 text-brown-600 text-xs max-w-[180px] truncate" title={event.uri}>
-                      {getRouteLabel(event.uri)}
-                    </td>
-                    <td className="px-4 py-2.5 text-brown-500 text-xs font-mono">{event.exceptionType}</td>
-                    <td className="px-4 py-2.5 text-brown-600 text-xs max-w-xl whitespace-pre-wrap break-words" title={event.message}>
-                      {event.message}
-                    </td>
-                    <td className="px-4 py-2.5 text-brown-400 text-xs">
-                      {event.userId ? `사용자 #${event.userId}` : "비회원"}
-                      {event.ip ? <div className="mt-0.5 font-mono">{event.ip}</div> : null}
-                    </td>
-                  </tr>
-                ))}
-                {errorLogs.length === 0 && (
-                  <tr><td colSpan={6} className="text-center py-8 text-brown-300">오류 로그가 없어요</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {errorTotalPages > 1 && (
-            <div className="flex items-center justify-center gap-2">
-              <button
-                onClick={() => loadErrorLogs(errorPage - 1, appliedErrorFilters)}
-                disabled={errorPage === 0}
-                className="px-3 py-1.5 text-sm border border-cream-300 rounded-lg text-brown-500 hover:bg-cream-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >← 이전</button>
-              <span className="text-sm text-brown-400">{errorPage + 1} / {errorTotalPages}</span>
-              <button
-                onClick={() => loadErrorLogs(errorPage + 1, appliedErrorFilters)}
-                disabled={errorPage >= errorTotalPages - 1}
-                className="px-3 py-1.5 text-sm border border-cream-300 rounded-lg text-brown-500 hover:bg-cream-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >다음 →</button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {!loading && tab === "audit" && (
-        <div className="flex flex-col gap-4">
-          <form onSubmit={handleAuditSearch} className="grid gap-2 rounded-2xl border border-cream-200 bg-white p-4 sm:grid-cols-[1fr_auto_auto_auto]">
-            <input
-              value={auditQ}
-              onChange={(e) => setAuditQ(e.target.value)}
-              placeholder="관리자, 요약, 대상 ID 검색"
-              className="rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-800 focus:border-brown-400 focus:outline-none"
-            />
-            <select
-              value={auditAction}
-              onChange={(e) => setAuditAction(e.target.value)}
-              className="rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm text-brown-600 focus:border-brown-400 focus:outline-none"
-            >
-              <option value="">전체 작업</option>
-              <option value="USER_ROLE_CHANGED">권한 변경</option>
-              <option value="REVIEW_HIDDEN">독후감 숨김</option>
-              <option value="REVIEW_UNHIDDEN">독후감 공개</option>
-              <option value="INQUIRY_COMMENT_CREATED">문의 답변</option>
-            </select>
-            <select
-              value={auditTargetType}
-              onChange={(e) => setAuditTargetType(e.target.value)}
-              className="rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm text-brown-600 focus:border-brown-400 focus:outline-none"
-            >
-              <option value="">전체 대상</option>
-              <option value="USER">회원</option>
-              <option value="REVIEW">독후감</option>
-              <option value="INQUIRY">문의</option>
-            </select>
-            <div className="flex gap-2">
-              <button type="submit" className="flex-1 rounded-xl bg-brown-600 px-4 py-2 text-sm text-white hover:bg-brown-700">
-                검색
-              </button>
-              {(appliedAuditFilters.q || appliedAuditFilters.action || appliedAuditFilters.targetType) && (
-                <button type="button" onClick={resetAuditFilters} className="rounded-xl border border-cream-300 px-3 py-2 text-sm text-brown-400 hover:bg-cream-50">
-                  초기화
-                </button>
-              )}
-            </div>
-          </form>
-
-          <div className="flex flex-col gap-3 sm:hidden">
-            {auditLogs.map((log) => (
-              <div key={log.id} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-xs text-brown-400">{formatLogTime(log.createdAt)}</p>
-                    <p className="mt-1 text-sm font-semibold text-brown-800 break-words">
-                      {getAuditActionLabel(log.action)}
-                    </p>
+                        <p className="mt-2 text-xs text-brown-400">방문자 {page.visitors.size}명 · 유입 {topReferrer(page.referrers)} · 마지막 {formatLogTime(page.lastAt)}</p>
+                      </div>
+                    ))}
+                    {pageSummaries.length === 0 && <p className="py-6 text-center text-sm text-brown-300">방문 데이터가 없어요</p>}
                   </div>
-                  <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-medium ${
-                    log.action === "USER_ROLE_CHANGED" ? "bg-blue-50 text-blue-600" :
-                    log.action.startsWith("REVIEW_") ? "bg-yellow-50 text-yellow-600" :
-                    log.action === "INQUIRY_COMMENT_CREATED" ? "bg-green-50 text-green-600" :
-                    "bg-cream-100 text-brown-500"
-                  }`}>
-                    {getAuditTargetLabel(log.targetType)}
-                  </span>
-                </div>
-                <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-brown-600">
-                  {log.summary}
-                </p>
-                <div className="mt-3 grid grid-cols-2 gap-2 border-t border-cream-100 pt-3 text-xs">
-                  <div className="min-w-0">
-                    <span className="text-brown-300">관리자</span>
-                    <p className="mt-1 truncate text-brown-500">
-                      {log.actorNickname ?? "알 수 없음"}
-                    </p>
-                    {log.actorId ? <p className="mt-0.5 font-mono text-[11px] text-brown-300">#{log.actorId}</p> : null}
+                </section>
+
+                <section className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+                  <h2 className="font-serif text-lg font-bold text-brown-900">사용자 행동</h2>
+                  <div className="mt-3 space-y-3">
+                    {actionSummaries.slice(0, 6).map((action) => (
+                      <div key={action.eventType} className="flex items-center justify-between rounded-xl bg-cream-50 p-3">
+                        <div>
+                          <p className="font-medium text-brown-800">{action.label}</p>
+                          <p className="text-xs text-brown-400">사용자 {action.visitors.size}명 · 마지막 {formatLogTime(action.lastAt)}</p>
+                        </div>
+                        <p className="text-sm font-bold text-brown-700">{action.count}회</p>
+                      </div>
+                    ))}
+                    {actionSummaries.length === 0 && <p className="py-6 text-center text-sm text-brown-300">행동 데이터가 없어요</p>}
                   </div>
-                  <div className="min-w-0">
-                    <span className="text-brown-300">대상 ID</span>
-                    <p className="mt-1 font-mono text-brown-500">
-                      {log.targetId ? `#${log.targetId}` : "-"}
-                    </p>
-                  </div>
-                </div>
+                </section>
               </div>
-            ))}
-            {auditLogs.length === 0 && (
-              <div className="rounded-2xl border border-cream-200 bg-white px-4 py-8 text-center text-sm text-brown-300 shadow-sm">
-                감사 로그가 없어요
-              </div>
-            )}
-          </div>
 
-          <div className="hidden rounded-2xl border border-cream-200 bg-white shadow-sm sm:block">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm min-w-[860px]">
-              <thead className="bg-cream-100">
-                <tr>
-                  <th className="text-left px-4 py-3 text-brown-600 font-medium whitespace-nowrap">시간</th>
-                  <th className="text-left px-4 py-3 text-brown-600 font-medium">관리자</th>
-                  <th className="text-left px-4 py-3 text-brown-600 font-medium">작업</th>
-                  <th className="text-left px-4 py-3 text-brown-600 font-medium">대상</th>
-                  <th className="text-left px-4 py-3 text-brown-600 font-medium">내용</th>
-                </tr>
-              </thead>
-              <tbody>
-                {auditLogs.map((log) => (
-                  <tr key={log.id} className="border-t border-cream-100 hover:bg-cream-50">
-                    <td className="px-4 py-2.5 text-brown-400 whitespace-nowrap text-xs">
-                      {formatLogTime(log.createdAt)}
-                    </td>
-                    <td className="px-4 py-2.5 text-brown-500 text-xs">
-                      {log.actorNickname ?? "알 수 없음"}
-                      {log.actorId ? <div className="mt-0.5 font-mono text-[11px] text-brown-300">#{log.actorId}</div> : null}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
-                        log.action === "USER_ROLE_CHANGED" ? "bg-blue-50 text-blue-600" :
-                        log.action.startsWith("REVIEW_") ? "bg-yellow-50 text-yellow-600" :
-                        log.action === "INQUIRY_COMMENT_CREATED" ? "bg-green-50 text-green-600" :
-                        "bg-cream-100 text-brown-500"
-                      }`}>
-                        {getAuditActionLabel(log.action)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 text-brown-500 text-xs">
-                      {getAuditTargetLabel(log.targetType)}
-                      {log.targetId ? <div className="mt-0.5 font-mono text-[11px] text-brown-300">#{log.targetId}</div> : null}
-                    </td>
-                    <td className="px-4 py-2.5 text-brown-600 text-xs max-w-xl whitespace-pre-wrap break-words">
-                      {log.summary}
-                    </td>
-                  </tr>
-                ))}
-                {auditLogs.length === 0 && (
-                  <tr><td colSpan={5} className="text-center py-8 text-brown-300">감사 로그가 없어요</td></tr>
-                )}
-              </tbody>
+              <div className="grid gap-4 lg:grid-cols-2">
+                <section className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+                  <h2 className="font-serif text-lg font-bold text-brown-900">책별 독후감 TOP 5</h2>
+                  <div className="mt-3 space-y-2">
+                    {bookStats.slice(0, 5).map((book) => (
+                      <Link
+                        key={book.bookId}
+                        href={reviewHrefForBook(book)}
+                        className="block rounded-xl bg-cream-50 p-3 hover:bg-cream-100"
+                      >
+                        <div className="flex justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate font-medium text-brown-800">{book.title}</p>
+                            <p className="text-xs text-brown-400">{book.author}</p>
+                          </div>
+                          <p className="shrink-0 text-sm font-bold text-brown-700">{book.reviewCount}개</p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+                  <h2 className="font-serif text-lg font-bold text-brown-900">보안·오류 요약</h2>
+                  <div className="mt-3 space-y-2">
+                    {securitySummaries.slice(0, 5).map((item) => (
+                      <div key={item.key} className="rounded-xl bg-cream-50 p-3">
+                        <div className="flex justify-between gap-3">
+                          <p className="font-medium text-brown-800">{item.type}</p>
+                          <p className="text-sm font-bold text-brown-700">{item.count}회</p>
+                        </div>
+                        <p className="mt-1 truncate text-xs text-brown-400">{item.uri} · {item.ip} · {formatLogTime(item.lastAt)}</p>
+                      </div>
+                    ))}
+                    {securitySummaries.length === 0 && <p className="py-6 text-center text-sm text-brown-300">보안·오류 이슈가 없어요</p>}
+                  </div>
+                </section>
+              </div>
+            </>
+          )}
+
+          {tab === "users" && (
+            <section className="rounded-2xl border border-cream-200 bg-white shadow-sm overflow-x-auto">
+              <table className="w-full min-w-[720px] text-sm">
+                <thead className="bg-cream-100 text-left text-brown-600">
+                  <tr><th className="px-4 py-3">닉네임</th><th className="px-4 py-3">이메일</th><th className="px-4 py-3">역할</th><th className="px-4 py-3">가입일</th><th className="px-4 py-3"></th></tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.map((user) => (
+                    <tr key={user.id} className="border-t border-cream-100 hover:bg-cream-50">
+                      <td className="px-4 py-3 font-medium text-brown-800">{user.nickname}</td>
+                      <td className="px-4 py-3 text-brown-500">{user.email ?? "-"}</td>
+                      <td className="px-4 py-3"><span className="rounded-full bg-cream-100 px-2 py-0.5 text-xs text-brown-600">{user.role}</span></td>
+                      <td className="px-4 py-3 text-brown-400">{new Date(user.createdAt).toLocaleDateString("ko-KR")}</td>
+                      <td className="px-4 py-3 text-right">
+                        {user.role !== "SUPER_ADMIN" && (
+                          <button onClick={() => setRole(user.id, user.role === "ADMIN" ? "USER" : "ADMIN")} className="rounded-lg border border-cream-300 px-3 py-1 text-xs text-brown-500 hover:bg-cream-50">
+                            {user.role === "ADMIN" ? "권한 해제" : "관리자 지정"}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
               </table>
-            </div>
-          </div>
+            </section>
+          )}
 
-          {auditTotalPages > 1 && (
-            <div className="flex items-center justify-center gap-2">
-              <button
-                onClick={() => loadAuditLogs(auditPage - 1, appliedAuditFilters)}
-                disabled={auditPage === 0}
-                className="px-3 py-1.5 text-sm border border-cream-300 rounded-lg text-brown-500 hover:bg-cream-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >← 이전</button>
-              <span className="text-sm text-brown-400">{auditPage + 1} / {auditTotalPages}</span>
-              <button
-                onClick={() => loadAuditLogs(auditPage + 1, appliedAuditFilters)}
-                disabled={auditPage >= auditTotalPages - 1}
-                className="px-3 py-1.5 text-sm border border-cream-300 rounded-lg text-brown-500 hover:bg-cream-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >다음 →</button>
-            </div>
+          {tab === "reviews" && (
+            <section className="space-y-3">
+              {filteredReviews.map((review) => (
+                <div key={review.id} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedReviewId(review.id)}
+                      className="min-w-0 flex-1 rounded-xl text-left hover:bg-cream-50"
+                    >
+                      <p className="font-serif text-lg font-bold text-brown-900">{review.bookTitle}</p>
+                      <p className="mt-1 text-sm text-brown-500">{review.authorNickname} · ★ {review.rating} · {formatLogTime(review.createdAt)}</p>
+                      <p className="mt-2 line-clamp-2 text-sm leading-6 text-brown-600">{review.content}</p>
+                    </button>
+                    <button onClick={() => toggleHidden(review.id, !review.hidden)} className={`shrink-0 rounded-lg px-3 py-1.5 text-xs ${review.hidden ? "bg-green-50 text-green-600" : "bg-red-50 text-red-500"}`}>
+                      {review.hidden ? "공개로 전환" : "비공개로 전환"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {filteredReviews.length === 0 && <EmptyState>독후감이 없어요</EmptyState>}
+            </section>
+          )}
+
+          {tab === "inquiries" && (
+            <section className="space-y-3">
+              {filteredInquiries.map((inquiry) => (
+                <Link key={inquiry.id} href={`/admin/inquiries/${inquiry.id}`} className="block rounded-2xl border border-cream-200 bg-white p-4 shadow-sm hover:bg-cream-50">
+                  <p className="font-medium text-brown-900">{inquiry.title}</p>
+                  <p className="mt-1 text-sm text-brown-400">{inquiry.authorName} · {formatLogTime(inquiry.createdAt)}</p>
+                </Link>
+              ))}
+              {filteredInquiries.length === 0 && <EmptyState>문의가 없어요</EmptyState>}
+            </section>
+          )}
+
+          {tab === "pages" && (
+            <section className="space-y-3">
+              {filteredPageViews.slice(0, 120).map((event) => (
+                <div key={event.id} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full bg-cream-100 px-2 py-0.5 text-xs font-medium text-brown-600">페이지 조회</span>
+                        <p className="font-medium text-brown-900">{getRouteLabel(event.path)}</p>
+                      </div>
+                      <p className="mt-2 break-all font-mono text-xs text-brown-400">{normalizePath(event.path)}</p>
+                      <p className="mt-2 text-sm text-brown-500">
+                        {actorLabel(event)} · {getDeviceLabel(event.device)} · 유입 {referrerLabel(event.referrer)}
+                      </p>
+                    </div>
+                    <div className="shrink-0 text-left text-xs text-brown-300 sm:text-right">
+                      <p>{formatLogTime(event.createdAt)}</p>
+                      <p className="mt-1">세션 {shortSession(event.sessionId)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {filteredPageViews.length === 0 && <EmptyState>페이지 조회 기록이 없어요</EmptyState>}
+            </section>
+          )}
+
+          {tab === "actions" && (
+            <section className="space-y-3">
+              {filteredActions.slice(0, 120).map((event) => (
+                <div key={event.id} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="font-medium text-brown-900">{getMetricEventLabel(event.eventType)}</p>
+                      <p className="mt-1 text-sm text-brown-500">
+                        {actorLabel(event)} · {getDeviceLabel(event.device)} · {getRouteLabel(event.path)}
+                      </p>
+                      <p className="mt-2 break-all font-mono text-xs text-brown-400">{normalizePath(event.path)}</p>
+                      <p className="mt-2 text-xs text-brown-300">
+                        체류 {formatDuration(event.durationMs)} · 유입 {referrerLabel(event.referrer)}
+                      </p>
+                    </div>
+                    <div className="shrink-0 text-left text-xs text-brown-300 sm:text-right">
+                      <p>{formatLogTime(event.createdAt)}</p>
+                      <p className="mt-1">세션 {shortSession(event.sessionId)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {filteredActions.length === 0 && <EmptyState>사용자 행동 기록이 없어요</EmptyState>}
+            </section>
+          )}
+
+          {tab === "security" && (
+            <section className="space-y-3">
+              {filteredSecurityEvents.slice(0, 120).map((item) => (
+                <div key={item.key} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`rounded-full px-2 py-0.5 text-xs ${item.severity === "오류" ? "bg-red-50 text-red-500" : "bg-yellow-50 text-yellow-600"}`}>{item.severity}</span>
+                        <span className="rounded-full bg-cream-100 px-2 py-0.5 text-xs text-brown-500">{item.status}</span>
+                        <p className="font-medium text-brown-900">{item.type}</p>
+                      </div>
+                      <p className="mt-2 break-all font-mono text-xs text-brown-400">{item.method} {item.uri}</p>
+                      <p className="mt-2 text-sm leading-6 text-brown-700">
+                        {item.exceptionType ? `${item.exceptionType}: ` : ""}{item.message}
+                      </p>
+                      <p className="mt-2 text-xs text-brown-300">
+                        IP {item.ip} · {item.source === "error" ? "오류 로그" : "접근 로그"} · {formatLogTime(item.lastAt)}
+                      </p>
+                    </div>
+                    {item.count > 1 && <p className="shrink-0 rounded-full bg-cream-100 px-3 py-1 text-xs font-semibold text-brown-600">중복 {item.count}회</p>}
+                  </div>
+                </div>
+              ))}
+              {filteredSecurityEvents.length === 0 && <EmptyState>보안·오류 이슈가 없어요</EmptyState>}
+            </section>
+          )}
+
+          {tab === "audit" && (
+            <section className="space-y-3">
+              {auditLogs.filter((log) => `${log.actorNickname ?? ""} ${log.action} ${log.targetType} ${log.summary}`.toLowerCase().includes(query.toLowerCase())).map((log) => (
+                <div key={log.id} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="font-medium text-brown-900">{getAuditActionLabel(log.action)}</p>
+                      <p className="mt-1 text-sm text-brown-500">{getAuditTargetLabel(log.targetType)} {log.targetId ? `#${log.targetId}` : ""}</p>
+                      <p className="mt-2 text-sm text-brown-400">{log.summary}</p>
+                    </div>
+                    <p className="shrink-0 text-xs text-brown-300">{log.actorNickname ?? "관리자"} · {formatLogTime(log.createdAt)}</p>
+                  </div>
+                </div>
+              ))}
+              {auditLogs.length === 0 && <EmptyState>관리자 이력이 없어요</EmptyState>}
+            </section>
           )}
         </div>
       )}
-    </div>
+      {selectedReviewId != null && (
+        <ReviewDetailModal reviewId={selectedReviewId} onClose={() => setSelectedReviewId(null)} />
+      )}
+    </main>
   );
 }

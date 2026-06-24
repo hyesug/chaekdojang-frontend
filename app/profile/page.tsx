@@ -57,6 +57,40 @@ type EditForm = {
   profileImage: string;
 };
 
+type OfficialProfileType = "AUTHOR" | "PUBLISHER" | "BOOKSTORE";
+type OfficialProfileApplicationStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+type OfficialProfileApplication = {
+  id: number;
+  type: OfficialProfileType;
+  displayName: string;
+  status: OfficialProfileApplicationStatus;
+  reviewNote: string | null;
+  profileSlug: string | null;
+  createdAt: string;
+};
+
+type OfficialProfileApplicationForm = {
+  type: OfficialProfileType;
+  displayName: string;
+  bio: string;
+  officialUrl: string;
+  contactEmail: string;
+  proofUrl: string;
+};
+
+const OFFICIAL_PROFILE_TYPE_LABELS: Record<OfficialProfileType, string> = {
+  AUTHOR: "작가",
+  PUBLISHER: "출판사",
+  BOOKSTORE: "서점",
+};
+
+const APPLICATION_STATUS_LABELS: Record<OfficialProfileApplicationStatus, string> = {
+  PENDING: "검토 중",
+  APPROVED: "승인됨",
+  REJECTED: "반려됨",
+};
+
 export default function ProfilePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -82,6 +116,18 @@ export default function ProfilePage() {
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [officialApplications, setOfficialApplications] = useState<OfficialProfileApplication[]>([]);
+  const [showOfficialForm, setShowOfficialForm] = useState(false);
+  const [officialForm, setOfficialForm] = useState<OfficialProfileApplicationForm>({
+    type: "AUTHOR",
+    displayName: "",
+    bio: "",
+    officialUrl: "",
+    contactEmail: "",
+    proofUrl: "",
+  });
+  const [officialSubmitting, setOfficialSubmitting] = useState(false);
+  const [officialMessage, setOfficialMessage] = useState("");
   const reviewSearchRef = useRef<string>("");
 
   useEffect(() => {
@@ -117,11 +163,26 @@ export default function ProfilePage() {
         loadReviews(token, 0, "");
         loadStats(token);
         loadRecommendations(token);
+        loadOfficialApplications(token);
       }
     } catch {
       /* 서버 미연결 시 무시 */
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadOfficialApplications(token: string) {
+    try {
+      const res = await fetch(`${BASE}/api/profile-applications/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setOfficialApplications(json.data ?? []);
+      }
+    } catch {
+      /* 무시 */
     }
   }
 
@@ -331,6 +392,55 @@ export default function ProfilePage() {
     setShowDeleteModal(false);
     setDeleteConfirmText("");
     setDeleteError("");
+  }
+
+  async function handleOfficialApply(e: React.FormEvent) {
+    e.preventDefault();
+    const token = localStorage.getItem("token");
+    if (!token || officialSubmitting) return;
+    setOfficialSubmitting(true);
+    setOfficialMessage("");
+    try {
+      const res = await fetch(`${BASE}/api/profile-applications`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          type: officialForm.type,
+          displayName: officialForm.displayName.trim(),
+          bio: officialForm.bio.trim(),
+          officialUrl: officialForm.officialUrl.trim(),
+          contactEmail: officialForm.contactEmail.trim(),
+          proofUrl: officialForm.proofUrl.trim(),
+        }),
+      });
+      if (res.status === 401) {
+        clearToken();
+        router.push("/auth/login");
+        return;
+      }
+      if (!res.ok) {
+        setOfficialMessage("신청을 저장하지 못했습니다. 입력값을 확인해 주세요.");
+        return;
+      }
+      setOfficialForm({
+        type: "AUTHOR",
+        displayName: "",
+        bio: "",
+        officialUrl: "",
+        contactEmail: "",
+        proofUrl: "",
+      });
+      setShowOfficialForm(false);
+      setOfficialMessage("신청이 접수되었습니다. 관리자가 확인한 뒤 프로필을 열어드릴게요.");
+      await loadOfficialApplications(token);
+    } catch {
+      setOfficialMessage("서버에 연결할 수 없습니다.");
+    } finally {
+      setOfficialSubmitting(false);
+    }
   }
 
   if (loading) {
@@ -646,6 +756,132 @@ export default function ProfilePage() {
           !showLifeBookSearch && (
             <p className="text-sm text-brown-300 text-center py-2">아직 선택한 인생책이 없어요</p>
           )
+        )}
+      </div>
+
+      <div className="bg-white rounded-2xl border border-cream-200 p-5 mb-6">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="font-serif text-base font-bold text-brown-800">공식 프로필</h2>
+            <p className="mt-1 text-xs text-brown-400">작가, 출판사, 서점 프로필을 신청할 수 있어요.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowOfficialForm((value) => !value)}
+            className="shrink-0 rounded-full border border-brown-300 px-3 py-1.5 text-xs text-brown-600 hover:bg-cream-100"
+          >
+            {showOfficialForm ? "닫기" : "신청하기"}
+          </button>
+        </div>
+
+        {officialMessage && (
+          <p className="mt-3 rounded-xl bg-cream-50 px-3 py-2 text-sm text-brown-600">{officialMessage}</p>
+        )}
+
+        {officialApplications.length > 0 && (
+          <div className="mt-4 space-y-2">
+            {officialApplications.slice(0, 3).map((application) => (
+              <div key={application.id} className="rounded-xl border border-cream-200 px-3 py-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-brown-800">{application.displayName}</p>
+                    <p className="text-xs text-brown-400">
+                      {OFFICIAL_PROFILE_TYPE_LABELS[application.type]} · {APPLICATION_STATUS_LABELS[application.status]}
+                    </p>
+                  </div>
+                  {application.profileSlug && (
+                    <Link
+                      href={`/profiles/${application.profileSlug}`}
+                      className="shrink-0 text-xs text-brown-500 underline underline-offset-2"
+                    >
+                      보기
+                    </Link>
+                  )}
+                </div>
+                {application.reviewNote && (
+                  <p className="mt-2 text-xs text-brown-400">{application.reviewNote}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {showOfficialForm && (
+          <form onSubmit={handleOfficialApply} className="mt-4 space-y-3">
+            <div>
+              <label className="mb-1 block text-xs text-brown-500" htmlFor="official-type">신청 유형</label>
+              <select
+                id="official-type"
+                value={officialForm.type}
+                onChange={(e) => setOfficialForm((form) => ({ ...form, type: e.target.value as OfficialProfileType }))}
+                className="w-full rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-800 focus:border-brown-400 focus:outline-none"
+              >
+                <option value="AUTHOR">작가</option>
+                <option value="PUBLISHER">출판사</option>
+                <option value="BOOKSTORE">서점</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-brown-500" htmlFor="official-display-name">표시 이름</label>
+              <input
+                id="official-display-name"
+                required
+                value={officialForm.displayName}
+                onChange={(e) => setOfficialForm((form) => ({ ...form, displayName: e.target.value }))}
+                className="w-full rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-800 focus:border-brown-400 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-brown-500" htmlFor="official-bio">소개글</label>
+              <textarea
+                id="official-bio"
+                value={officialForm.bio}
+                onChange={(e) => setOfficialForm((form) => ({ ...form, bio: e.target.value }))}
+                rows={3}
+                className="w-full resize-none rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-800 focus:border-brown-400 focus:outline-none"
+              />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs text-brown-500" htmlFor="official-url">공식 링크</label>
+                <input
+                  id="official-url"
+                  value={officialForm.officialUrl}
+                  onChange={(e) => setOfficialForm((form) => ({ ...form, officialUrl: e.target.value }))}
+                  placeholder="홈페이지, 인스타, 브런치 등"
+                  className="w-full rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-800 focus:border-brown-400 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-brown-500" htmlFor="official-email">연락 이메일</label>
+                <input
+                  id="official-email"
+                  type="email"
+                  required
+                  value={officialForm.contactEmail}
+                  onChange={(e) => setOfficialForm((form) => ({ ...form, contactEmail: e.target.value }))}
+                  className="w-full rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-800 focus:border-brown-400 focus:outline-none"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-brown-500" htmlFor="official-proof">증빙 링크</label>
+              <input
+                id="official-proof"
+                value={officialForm.proofUrl}
+                onChange={(e) => setOfficialForm((form) => ({ ...form, proofUrl: e.target.value }))}
+                placeholder="출판사 페이지, 작가 소개, 텀블벅 프로젝트 등"
+                className="w-full rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-800 focus:border-brown-400 focus:outline-none"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={officialSubmitting}
+              className="w-full rounded-xl bg-brown-600 py-2.5 text-sm font-medium text-white hover:bg-brown-700 disabled:opacity-50"
+            >
+              {officialSubmitting ? "신청 중..." : "신청 접수"}
+            </button>
+          </form>
         )}
       </div>
 

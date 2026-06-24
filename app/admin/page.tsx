@@ -6,7 +6,7 @@ import Link from "next/link";
 import ReviewDetailModal from "../components/ReviewDetailModal";
 import { API_BASE } from "../lib/api";
 
-type Tab = "dashboard" | "users" | "reviews" | "inquiries" | "pages" | "actions" | "security" | "audit";
+type Tab = "dashboard" | "users" | "reviews" | "inquiries" | "officialProfiles" | "pages" | "actions" | "security" | "audit";
 
 interface PageResponse<T> {
   content: T[];
@@ -44,6 +44,49 @@ interface Inquiry {
   title: string;
   authorName: string;
   createdAt: string;
+}
+
+type OfficialProfileType = "AUTHOR" | "PUBLISHER" | "BOOKSTORE";
+type OfficialProfileApplicationStatus = "PENDING" | "APPROVED" | "REJECTED";
+type OfficialProfileStatus = "DRAFT" | "ACTIVE" | "HIDDEN";
+
+interface OfficialProfileApplication {
+  id: number;
+  applicantId: number;
+  applicantNickname: string;
+  type: OfficialProfileType;
+  displayName: string;
+  bio: string | null;
+  officialUrl: string | null;
+  contactEmail: string;
+  proofUrl: string | null;
+  status: OfficialProfileApplicationStatus;
+  reviewNote: string | null;
+  profileSlug: string | null;
+  createdAt: string;
+}
+
+interface OfficialProfileBook {
+  id: number;
+  title: string;
+  author: string;
+  publisher: string | null;
+  thumbnail: string | null;
+  reviewCount: number;
+}
+
+interface OfficialProfile {
+  id: number;
+  type: OfficialProfileType;
+  displayName: string;
+  slug: string;
+  bio: string | null;
+  officialUrl: string | null;
+  contactEmail: string | null;
+  status: OfficialProfileStatus;
+  verified: boolean;
+  featured: boolean;
+  books: OfficialProfileBook[];
 }
 
 interface AccessLog {
@@ -181,6 +224,7 @@ const tabs: Array<{ key: Tab; label: string }> = [
   { key: "users", label: "👥 회원" },
   { key: "reviews", label: "📖 독후감" },
   { key: "inquiries", label: "💬 문의" },
+  { key: "officialProfiles", label: "공식 프로필" },
   { key: "pages", label: "🧭 유입/페이지" },
   { key: "actions", label: "⚡ 사용자 행동" },
   { key: "security", label: "🛡️ 보안·오류" },
@@ -287,6 +331,11 @@ function getAuditActionLabel(action: string) {
   if (action === "REVIEW_HIDDEN") return "독후감 숨김";
   if (action === "REVIEW_UNHIDDEN") return "독후감 공개";
   if (action === "INQUIRY_COMMENT_CREATED") return "문의 답변";
+  if (action === "OFFICIAL_PROFILE_APPROVED") return "공식 프로필 승인";
+  if (action === "OFFICIAL_PROFILE_REJECTED") return "공식 프로필 반려";
+  if (action === "OFFICIAL_PROFILE_UPDATED") return "공식 프로필 수정";
+  if (action === "OFFICIAL_PROFILE_BOOK_ADDED") return "공식 프로필 책 연결";
+  if (action === "OFFICIAL_PROFILE_BOOK_REMOVED") return "공식 프로필 책 해제";
   return action;
 }
 
@@ -294,8 +343,28 @@ function getAuditTargetLabel(targetType: string) {
   if (targetType === "USER") return "회원";
   if (targetType === "REVIEW") return "독후감";
   if (targetType === "INQUIRY") return "문의";
+  if (targetType === "OFFICIAL_PROFILE") return "공식 프로필";
+  if (targetType === "OFFICIAL_PROFILE_APPLICATION") return "공식 프로필 신청";
   return targetType || "-";
 }
+
+const officialProfileTypeLabels: Record<OfficialProfileType, string> = {
+  AUTHOR: "작가",
+  PUBLISHER: "출판사",
+  BOOKSTORE: "서점",
+};
+
+const officialApplicationStatusLabels: Record<OfficialProfileApplicationStatus, string> = {
+  PENDING: "검토 중",
+  APPROVED: "승인됨",
+  REJECTED: "반려됨",
+};
+
+const officialProfileStatusLabels: Record<OfficialProfileStatus, string> = {
+  DRAFT: "초안",
+  ACTIVE: "공개",
+  HIDDEN: "숨김",
+};
 
 function visitorKey(event: MetricEvent) {
   return event.userId != null ? `u:${event.userId}` : event.sessionId || event.ip || `event:${event.id}`;
@@ -354,6 +423,8 @@ export default function AdminPage() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [bookStats, setBookStats] = useState<BookStat[]>([]);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
+  const [officialApplications, setOfficialApplications] = useState<OfficialProfileApplication[]>([]);
+  const [officialProfiles, setOfficialProfiles] = useState<OfficialProfile[]>([]);
   const [accessLogs, setAccessLogs] = useState<AccessLog[]>([]);
   const [metricEvents, setMetricEvents] = useState<MetricEvent[]>([]);
   const [errorLogs, setErrorLogs] = useState<ErrorLog[]>([]);
@@ -366,6 +437,7 @@ export default function AdminPage() {
   const [unauthorized, setUnauthorized] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedReviewId, setSelectedReviewId] = useState<number | null>(null);
+  const [bookIdByProfile, setBookIdByProfile] = useState<Record<number, string>>({});
 
   function getToken() {
     if (typeof window === "undefined") return null;
@@ -409,6 +481,8 @@ export default function AdminPage() {
         nextReviews,
         nextStats,
         nextInquiries,
+        nextOfficialApplications,
+        nextOfficialProfiles,
         nextAccess,
         nextMetrics,
         nextErrors,
@@ -422,6 +496,8 @@ export default function AdminPage() {
         fetchPage<Review>("/api/admin/reviews?size=100"),
         fetchAdmin<BookStat[]>("/api/admin/reviews/stats"),
         fetchPage<Inquiry>("/api/admin/inquiries?size=100"),
+        fetchPage<OfficialProfileApplication>("/api/admin/profile-applications?size=100"),
+        fetchAdmin<OfficialProfile[]>("/api/admin/profiles"),
         fetchPage<AccessLog>("/api/admin/access-logs?size=300"),
         fetchPage<MetricEvent>("/api/admin/metrics?size=500"),
         fetchPage<ErrorLog>("/api/admin/error-logs?size=200"),
@@ -435,6 +511,8 @@ export default function AdminPage() {
       setReviews(nextReviews);
       setBookStats(nextStats ?? []);
       setInquiries(nextInquiries);
+      setOfficialApplications(nextOfficialApplications);
+      setOfficialProfiles(nextOfficialProfiles ?? []);
       setAccessLogs(nextAccess);
       setMetricEvents(nextMetrics);
       setErrorLogs(nextErrors);
@@ -633,6 +711,16 @@ export default function AdminPage() {
     return text.includes(query.toLowerCase());
   });
 
+  const filteredOfficialApplications = officialApplications.filter((application) => {
+    const text = `${application.displayName} ${application.applicantNickname} ${application.contactEmail} ${application.status}`.toLowerCase();
+    return text.includes(query.toLowerCase());
+  });
+
+  const filteredOfficialProfiles = officialProfiles.filter((profile) => {
+    const text = `${profile.displayName} ${profile.slug} ${profile.status} ${profile.books.map((book) => book.title).join(" ")}`.toLowerCase();
+    return text.includes(query.toLowerCase());
+  });
+
   const recentPageViews = visibleMetrics
     .filter((event) => event.eventType === "page_view")
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -733,6 +821,40 @@ export default function AdminPage() {
       method: "PATCH",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ hidden }),
+    });
+    loadAll();
+  }
+
+  async function reviewOfficialApplication(applicationId: number, action: "approve" | "reject") {
+    const token = getToken();
+    if (!token) return;
+    await fetch(`${API_BASE}/api/admin/profile-applications/${applicationId}/${action}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ reviewNote: action === "approve" ? "승인되었습니다." : "반려되었습니다." }),
+    });
+    loadAll();
+  }
+
+  async function addOfficialProfileBook(profileId: number) {
+    const token = getToken();
+    const bookId = Number(bookIdByProfile[profileId]);
+    if (!token || !Number.isFinite(bookId) || bookId <= 0) return;
+    await fetch(`${API_BASE}/api/admin/profiles/${profileId}/books`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ bookId }),
+    });
+    setBookIdByProfile((prev) => ({ ...prev, [profileId]: "" }));
+    loadAll();
+  }
+
+  async function removeOfficialProfileBook(profileId: number, bookId: number) {
+    const token = getToken();
+    if (!token) return;
+    await fetch(`${API_BASE}/api/admin/profiles/${profileId}/books/${bookId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
     });
     loadAll();
   }
@@ -950,6 +1072,139 @@ export default function AdminPage() {
                 </Link>
               ))}
               {filteredInquiries.length === 0 && <EmptyState>문의가 없어요</EmptyState>}
+            </section>
+          )}
+
+          {tab === "officialProfiles" && (
+            <section className="space-y-5">
+              <div>
+                <h2 className="mb-3 font-serif text-lg font-bold text-brown-900">신청 목록</h2>
+                <div className="space-y-3">
+                  {filteredOfficialApplications.map((application) => (
+                    <div key={application.id} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-cream-100 px-2 py-0.5 text-xs text-brown-600">
+                              {officialProfileTypeLabels[application.type]}
+                            </span>
+                            <span className={`rounded-full px-2 py-0.5 text-xs ${
+                              application.status === "APPROVED"
+                                ? "bg-green-50 text-green-600"
+                                : application.status === "REJECTED"
+                                ? "bg-red-50 text-red-500"
+                                : "bg-yellow-50 text-yellow-600"
+                            }`}>
+                              {officialApplicationStatusLabels[application.status]}
+                            </span>
+                          </div>
+                          <p className="mt-2 font-serif text-lg font-bold text-brown-900">{application.displayName}</p>
+                          <p className="mt-1 text-sm text-brown-500">
+                            신청자 {application.applicantNickname} · {application.contactEmail} · {formatLogTime(application.createdAt)}
+                          </p>
+                          {application.bio && <p className="mt-2 line-clamp-2 text-sm leading-6 text-brown-600">{application.bio}</p>}
+                          <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                            {application.officialUrl && (
+                              <a href={application.officialUrl} target="_blank" rel="noopener noreferrer" className="text-brown-500 underline underline-offset-2">
+                                공식 링크
+                              </a>
+                            )}
+                            {application.proofUrl && (
+                              <a href={application.proofUrl} target="_blank" rel="noopener noreferrer" className="text-brown-500 underline underline-offset-2">
+                                증빙 링크
+                              </a>
+                            )}
+                            {application.profileSlug && (
+                              <Link href={`/profiles/${application.profileSlug}`} className="text-brown-500 underline underline-offset-2">
+                                공개 프로필
+                              </Link>
+                            )}
+                          </div>
+                        </div>
+                        {application.status === "PENDING" && (
+                          <div className="flex shrink-0 gap-2">
+                            <button
+                              onClick={() => reviewOfficialApplication(application.id, "approve")}
+                              className="rounded-lg bg-green-50 px-3 py-1.5 text-xs text-green-600 hover:bg-green-100"
+                            >
+                              승인
+                            </button>
+                            <button
+                              onClick={() => reviewOfficialApplication(application.id, "reject")}
+                              className="rounded-lg bg-red-50 px-3 py-1.5 text-xs text-red-500 hover:bg-red-100"
+                            >
+                              반려
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {filteredOfficialApplications.length === 0 && <EmptyState>공식 프로필 신청이 없어요</EmptyState>}
+                </div>
+              </div>
+
+              <div>
+                <h2 className="mb-3 font-serif text-lg font-bold text-brown-900">공식 프로필</h2>
+                <div className="space-y-3">
+                  {filteredOfficialProfiles.map((profile) => (
+                    <div key={profile.id} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-cream-100 px-2 py-0.5 text-xs text-brown-600">
+                              {officialProfileTypeLabels[profile.type]}
+                            </span>
+                            <span className="rounded-full bg-cream-100 px-2 py-0.5 text-xs text-brown-500">
+                              {officialProfileStatusLabels[profile.status]}
+                            </span>
+                            {profile.verified && <span className="rounded-full bg-green-50 px-2 py-0.5 text-xs text-green-600">인증</span>}
+                            {profile.featured && <span className="rounded-full bg-yellow-50 px-2 py-0.5 text-xs text-yellow-600">상단</span>}
+                          </div>
+                          <p className="mt-2 font-serif text-lg font-bold text-brown-900">{profile.displayName}</p>
+                          <Link href={`/profiles/${profile.slug}`} className="mt-1 inline-block text-xs text-brown-400 underline underline-offset-2">
+                            /profiles/{profile.slug}
+                          </Link>
+                        </div>
+                        <div className="flex shrink-0 gap-2">
+                          <input
+                            value={bookIdByProfile[profile.id] ?? ""}
+                            onChange={(event) => setBookIdByProfile((prev) => ({ ...prev, [profile.id]: event.target.value }))}
+                            placeholder="책 ID"
+                            className="w-24 rounded-lg border border-cream-300 px-3 py-1.5 text-xs text-brown-800 focus:border-brown-400 focus:outline-none"
+                          />
+                          <button
+                            onClick={() => addOfficialProfileBook(profile.id)}
+                            className="rounded-lg border border-cream-300 px-3 py-1.5 text-xs text-brown-600 hover:bg-cream-50"
+                          >
+                            책 연결
+                          </button>
+                        </div>
+                      </div>
+                      <div className="mt-3 space-y-2">
+                        {profile.books.map((book) => (
+                          <div key={book.id} className="flex items-center justify-between gap-3 rounded-xl bg-cream-50 px-3 py-2">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium text-brown-800">{book.title}</p>
+                              <p className="text-xs text-brown-400">{book.author} · 독후감 {book.reviewCount}개 · 책 ID {book.id}</p>
+                            </div>
+                            <button
+                              onClick={() => removeOfficialProfileBook(profile.id, book.id)}
+                              className="shrink-0 text-xs text-red-400 hover:text-red-600"
+                            >
+                              해제
+                            </button>
+                          </div>
+                        ))}
+                        {profile.books.length === 0 && (
+                          <p className="rounded-xl bg-cream-50 px-3 py-3 text-sm text-brown-300">연결된 책이 없어요</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {filteredOfficialProfiles.length === 0 && <EmptyState>공식 프로필이 없어요</EmptyState>}
+                </div>
+              </div>
             </section>
           )}
 

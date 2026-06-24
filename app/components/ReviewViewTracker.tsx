@@ -15,7 +15,7 @@ export default function ReviewViewTracker({ reviewId }: { reviewId: number }) {
     viewed.add(id);
     sessionStorage.setItem(VIEWED_KEY, JSON.stringify(Array.from(viewed).slice(-200)));
 
-    fetch(`${API_BASE}/api/reviews/${reviewId}/view`, {
+    fetch(`${API_BASE}/api/reviews/${reviewId}/clicks`, {
       method: "POST",
       keepalive: true,
     }).catch(() => {});

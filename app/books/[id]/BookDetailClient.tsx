@@ -154,6 +154,14 @@ export default function BookDetailClient({
     KYOBO: "교보문고에서 보기",
   };
 
+  function recordPurchaseLinkClick(linkId: number | null) {
+    if (linkId == null) return;
+    fetch(`${BASE}/api/books/purchase-links/${linkId}/clicks`, {
+      method: "POST",
+      keepalive: true,
+    }).catch(() => {});
+  }
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       {/* 책 정보 카드 */}
@@ -194,6 +202,7 @@ export default function BookDetailClient({
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs text-brown-400 hover:text-brown-600 hover:underline transition-colors"
+                  onClick={() => recordPurchaseLinkClick(link.id)}
                 >
                   {providerLabels[link.provider]} →
                 </a>

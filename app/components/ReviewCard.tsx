@@ -622,7 +622,7 @@ export default function ReviewCard({
 
           <div className="flex-1 min-w-0">
             {/* 작성자 + 팔로우 버튼 + 날짜/수정/삭제 */}
-            <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1 mb-1">
+            <div className="flex items-start justify-between gap-3 mb-1">
               {/* 왼쪽: 작성자 + 팔로우 버튼 */}
               <div className="flex min-w-0 flex-1 items-center gap-1.5">
                 <ProfileAvatar src={post.author.profileImage} name={post.author.nickname} size="xs" />
@@ -654,22 +654,20 @@ export default function ReviewCard({
               </div>
 
               {/* 오른쪽: 수정/삭제(내 글일 때) + 날짜 */}
-              <div className="flex max-w-full flex-shrink-0 flex-wrap items-center justify-end gap-x-2 gap-y-1">
+              <div className="flex flex-shrink-0 items-center justify-end gap-2 whitespace-nowrap">
                 {isOwner && !editing && (
                   <>
-                    <span
-                      className={`text-xs rounded-full px-2 py-0.5 ${
-                        hidden ? "bg-red-50 text-red-500" : "bg-green-50 text-green-600"
-                      }`}
-                    >
-                      {hidden ? "비공개" : "공개"}
-                    </span>
                     <button
                       onClick={handleVisibilityToggle}
                       disabled={visibilitySaving}
-                      className="text-xs text-brown-400 hover:text-brown-700 transition-colors disabled:opacity-50"
+                      className={`text-xs rounded-full px-2 py-0.5 transition-colors disabled:opacity-50 ${
+                        hidden
+                          ? "bg-red-50 text-red-500 hover:bg-red-100"
+                          : "bg-green-50 text-green-600 hover:bg-green-100"
+                      }`}
+                      title={hidden ? "누르면 공개로 바뀝니다" : "누르면 비공개로 바뀝니다"}
                     >
-                      {hidden ? "공개로 전환" : "비공개로 전환"}
+                      {visibilitySaving ? "저장 중" : hidden ? "비공개" : "공개"}
                     </button>
                     <button
                       onClick={() => setEditing(true)}

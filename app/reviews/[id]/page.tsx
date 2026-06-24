@@ -187,7 +187,7 @@ export default async function PublicReviewPage({ params }: Props) {
               <span>좋아요 {review.likeCount}</span>
               <span>댓글 {review.commentCount}</span>
               {review.book?.id && (
-                <Link href={`/books/${review.book.id}`} className="ml-auto text-brown-600 hover:underline">
+                <Link href={`/books/${review.book.id}/reviews`} className="ml-auto text-brown-600 hover:underline">
                   이 책의 다른 독후감 보기
                 </Link>
               )}

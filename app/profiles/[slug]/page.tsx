@@ -216,7 +216,7 @@ export default async function OfficialProfilePage({ params }: Props) {
                   </div>
                 </div>
                 <Link
-                  href={`/books/${book.id}/reviews`}
+                  href={`/books/${book.id}`}
                   className="mt-3 block rounded-lg bg-cream-100 px-3 py-2 text-center text-sm text-brown-700 hover:bg-cream-200"
                 >
                   독후감 {book.reviewCount}개 보기

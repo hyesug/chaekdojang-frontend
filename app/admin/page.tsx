@@ -224,7 +224,7 @@ const tabs: Array<{ key: Tab; label: string }> = [
   { key: "users", label: "👥 회원" },
   { key: "reviews", label: "📖 독후감" },
   { key: "inquiries", label: "💬 문의" },
-  { key: "officialProfiles", label: "공식 프로필" },
+  { key: "officialProfiles", label: "🏷️ 공식 프로필" },
   { key: "pages", label: "🧭 유입/페이지" },
   { key: "actions", label: "⚡ 사용자 행동" },
   { key: "security", label: "🛡️ 보안·오류" },

@@ -2,14 +2,14 @@
 
 /*
  * 헤더의 로그인/회원가입 버튼 영역.
- * localStorage는 브라우저에서만 읽을 수 있어서 Server Component인 Header에서 직접 쓸 수 없다.
+ * 쿠키 기반 로그인 상태는 브라우저에서 세션 API로 확인한다.
  * 그래서 이 부분만 'use client' Client Component로 분리한다.
  */
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { clearToken, getValidToken } from "../lib/auth";
+import { isAuthenticated, logout as logoutSession } from "../lib/auth";
 
 export default function AuthButtons() {
   const router = useRouter();
@@ -17,8 +17,8 @@ export default function AuthButtons() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    function syncAuth() {
-      setLoggedIn(!!getValidToken());
+    async function syncAuth() {
+      setLoggedIn(await isAuthenticated());
     }
 
     setMounted(true);
@@ -29,8 +29,8 @@ export default function AuthButtons() {
     return () => window.removeEventListener("auth-change", syncAuth);
   }, []);
 
-  function logout() {
-    clearToken();
+  async function logout() {
+    await logoutSession();
     window.dispatchEvent(new Event("auth-change"));
     router.push("/");
     router.refresh(); // 서버 컴포넌트(피드 등)도 새로 불러오도록

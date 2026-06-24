@@ -12,17 +12,18 @@ function OAuthCallback() {
   useEffect(() => {
     const token = searchParams.get("token");
     const error = searchParams.get("error");
+    const setup = searchParams.get("setup");
 
     if (token) {
-      localStorage.setItem("token", token);
       window.dispatchEvent(new Event("auth-change"));
       trackMetric("login_success", "/auth/callback");
-      const setup = searchParams.get("setup");
       router.replace(setup === "true" ? "/setup-nickname" : "/");
     } else if (error) {
       router.replace("/auth/login?error=oauth_failed");
     } else {
-      router.replace("/auth/login");
+      window.dispatchEvent(new Event("auth-change"));
+      trackMetric("login_success", "/auth/callback");
+      router.replace(setup === "true" ? "/setup-nickname" : "/");
     }
   }, [router, searchParams]);
 

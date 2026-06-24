@@ -7,7 +7,7 @@ import { API_BASE } from "../lib/api";
 
 const BASE = API_BASE;
 
-type NotificationType = "LIKE" | "COMMENT" | "FOLLOW";
+type NotificationType = "LIKE" | "COMMENT" | "FOLLOW" | "SAME_BOOK_REVIEW";
 
 type Notification = {
   id: number;
@@ -22,7 +22,7 @@ type Notification = {
 
 function getToken(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem("token");
+  return "cookie-session";
 }
 
 function typeIcon(type: NotificationType) {
@@ -30,6 +30,7 @@ function typeIcon(type: NotificationType) {
     case "LIKE": return "♥";
     case "COMMENT": return "💬";
     case "FOLLOW": return "👤";
+    case "SAME_BOOK_REVIEW": return "📚";
   }
 }
 

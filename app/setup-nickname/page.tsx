@@ -3,11 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { API_BASE } from "../lib/api";
+import { authFetch } from "../lib/auth";
 
-async function deleteAccount(token: string) {
-  await fetch(`${API_BASE}/api/users/me`, {
+async function deleteAccount() {
+  await authFetch(`${API_BASE}/api/users/me`, {
     method: "DELETE",
-    headers: { Authorization: `Bearer ${token}` },
   });
 }
 
@@ -32,19 +32,17 @@ export default function SetupNicknamePage() {
     setLoading(true);
     setError("");
 
-    const token = localStorage.getItem("token");
     try {
-      const res = await fetch(`${API_BASE}/api/users/me`, {
+      const res = await authFetch(`${API_BASE}/api/users/me`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ nickname: trimmed }),
       });
 
       if (res.ok) {
-        router.replace("/");
+        router.replace("/onboarding");
       } else if (res.status === 409) {
         setError("이미 사용 중인 닉네임이에요.");
       } else {
@@ -90,9 +88,7 @@ export default function SetupNicknamePage() {
           <button
             type="button"
             onClick={async () => {
-              const token = localStorage.getItem("token");
-              if (token) await deleteAccount(token);
-              localStorage.removeItem("token");
+              await deleteAccount();
               router.replace("/auth/login");
             }}
             className="w-full py-3 text-sm text-brown-400 hover:text-brown-600 transition-colors"

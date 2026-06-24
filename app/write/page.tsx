@@ -4,9 +4,11 @@ import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { API_BASE } from "../lib/api";
+import { authFetch } from "../lib/auth";
 
 const FEED_STATE_KEY = "chaekdojang:feed-state";
 const PENDING_REVIEW_KEY = "chaekdojang:pending-review";
+const REVIEW_DRAFT_KEY = "chaekdojang:review-draft";
 
 type BookResult = {
   id: number;
@@ -85,10 +87,30 @@ function WriteContent() {
   /* 독후감 상태 */
   const [rating, setRating] = useState(0);
   const [content, setContent] = useState("");
+  const [draftRestored, setDraftRestored] = useState(false);
 
   /* 제출 상태 */
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const raw = localStorage.getItem(REVIEW_DRAFT_KEY);
+    if (!raw) return;
+    try {
+      const draft = JSON.parse(raw) as { selectedBook?: BookResult | null; rating?: number; content?: string };
+      if (draft.selectedBook) setSelectedBook(draft.selectedBook);
+      if (typeof draft.rating === "number") setRating(draft.rating);
+      if (typeof draft.content === "string") setContent(draft.content);
+      setDraftRestored(true);
+    } catch {
+      localStorage.removeItem(REVIEW_DRAFT_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!selectedBook && rating === 0 && !content.trim()) return;
+    localStorage.setItem(REVIEW_DRAFT_KEY, JSON.stringify({ selectedBook, rating, content }));
+  }, [selectedBook, rating, content]);
 
   async function searchBooks() {
     if (!query.trim()) return;
@@ -120,30 +142,24 @@ function WriteContent() {
     setSubmitting(true);
     setError("");
 
-    const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/auth/login");
-      return;
-    }
-
     try {
-      const res = await fetch(`${API_BASE}/api/reviews`, {
+      const res = await authFetch(`${API_BASE}/api/reviews`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ bookId: selectedBook.id, rating, content }),
       });
 
       if (res.status === 401) {
-        localStorage.removeItem("token");
+        
         router.push("/auth/login");
         return;
       }
       if (res.ok) {
         const json = await res.json().catch(() => null);
         const createdReview = json?.data ?? json;
+        localStorage.removeItem(REVIEW_DRAFT_KEY);
         sessionStorage.removeItem(FEED_STATE_KEY);
         if (createdReview?.id) {
           sessionStorage.setItem(PENDING_REVIEW_KEY, JSON.stringify(createdReview));
@@ -180,6 +196,12 @@ function WriteContent() {
         </Link>
         <h1 className="font-serif text-2xl font-bold text-brown-800">독후감 쓰기</h1>
       </div>
+
+      {draftRestored && (
+        <p className="mb-4 rounded-xl border border-cream-200 bg-cream-50 px-4 py-3 text-sm text-brown-500">
+          이전에 쓰던 독후감을 불러왔어요.
+        </p>
+      )}
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         {/* STEP 1: 책 검색 */}

@@ -12,7 +12,7 @@ export default function InquiryDetailPage({ params }: { params: Promise<{ id: st
   const router = useRouter();
   const searchParams = useSearchParams();
   const guestEmail = searchParams.get("email") ?? "";
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const token: string | null = typeof window !== "undefined" ? "cookie-session" : null;
   const isLoggedIn = !!token && token !== "undefined" && token !== "null";
 
   const [inquiry, setInquiry] = useState<InquiryDetail | null>(null);

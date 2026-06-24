@@ -13,7 +13,7 @@ export default function BookmarksPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token: string | null = "cookie-session";
     if (!token || token === "undefined" || token === "null") {
       router.push("/auth/login");
       return;

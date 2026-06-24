@@ -23,7 +23,7 @@ export default function CustomerSupportPage() {
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
-    const t = localStorage.getItem("token");
+    const t: string | null = "cookie-session";
     const valid = t && t !== "undefined" && t !== "null" ? t : null;
     setToken(valid);
   }, []);

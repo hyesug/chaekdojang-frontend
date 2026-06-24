@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { API_BASE } from '../../lib/api';
+import { authFetch, isAuthenticated } from '../../lib/auth';
 import ProfileAvatar from '../../components/ProfileAvatar';
 
 const API = API_BASE;
@@ -18,10 +19,6 @@ interface Message {
   createdAt: string;
 }
 
-function getToken() {
-  return typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-}
-
 export default function ChatRoomPage() {
   const { bookId } = useParams<{ bookId: string }>();
   const router = useRouter();
@@ -33,40 +30,35 @@ export default function ChatRoomPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const token = getToken();
-    if (!token) { router.push('/auth/login'); return; }
+    let mounted = true;
+    isAuthenticated().then((ok) => {
+      if (!ok) { router.push('/auth/login'); return; }
 
-    // 내 정보 가져오기
-    fetch(`${API}/api/users/me`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json()).then(d => setMyId(d.data?.id));
+      authFetch(`${API}/api/users/me`)
+        .then(r => r.json()).then(d => { if (mounted) setMyId(d.data?.id); });
 
-    // 책 정보 가져오기
-    fetch(`${API}/api/books/${bookId}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json()).then(d => setBookTitle(d.data?.title || '채팅방'));
+      fetch(`${API}/api/books/${bookId}`)
+        .then(r => r.json()).then(d => { if (mounted) setBookTitle(d.data?.title || '채팅방'); });
 
-    // 채팅방 입장 + 이전 메시지 로드
-    fetch(`${API}/api/chat/${bookId}/join`, {
-      method: 'POST', headers: { Authorization: `Bearer ${token}` }
-    }).then(() =>
-      fetch(`${API}/api/chat/${bookId}/messages`, { headers: { Authorization: `Bearer ${token}` } })
-        .then(r => r.json()).then(d => setMessages(d.data || []))
-    );
+      authFetch(`${API}/api/chat/${bookId}/join`, { method: 'POST' }).then(() =>
+        authFetch(`${API}/api/chat/${bookId}/messages`)
+          .then(r => r.json()).then(d => { if (mounted) setMessages(d.data || []); })
+      );
 
-    // WebSocket 연결
-    const client = new Client({
-      webSocketFactory: () => new SockJS(`${API}/ws`),
-      connectHeaders: { Authorization: `Bearer ${token}` },
-      onConnect: () => {
-        client.subscribe(`/topic/chat/${bookId}`, (msg) => {
-          const newMsg: Message = JSON.parse(msg.body);
-          setMessages(prev => [...prev, newMsg]);
-        });
-      },
+      const client = new Client({
+        webSocketFactory: () => new SockJS(`${API}/ws`),
+        onConnect: () => {
+          client.subscribe(`/topic/chat/${bookId}`, (msg) => {
+            const newMsg: Message = JSON.parse(msg.body);
+            setMessages(prev => [...prev, newMsg]);
+          });
+        },
+      });
+      client.activate();
+      clientRef.current = client;
     });
-    client.activate();
-    clientRef.current = client;
 
-    return () => { client.deactivate(); };
+    return () => { mounted = false; clientRef.current?.deactivate(); };
   }, [bookId]);
 
   useEffect(() => {
@@ -86,6 +78,23 @@ export default function ChatRoomPage() {
   const handleKey = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   };
+
+  async function reportMessage(messageId: number) {
+    const reason = window.prompt('신고 사유를 입력해주세요.');
+    if (!reason || reason.trim().length < 5) return;
+    await authFetch(`${API}/api/chat/messages/${messageId}/reports`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason: reason.trim() }),
+    });
+  }
+
+  async function blockUser(userId: number | null) {
+    if (!userId) return;
+    if (!window.confirm('이 사용자의 채팅 메시지를 차단할까요?')) return;
+    const res = await authFetch(`${API}/api/chat/blocks/${userId}`, { method: 'POST' });
+    if (res.ok) setMessages(prev => prev.filter(msg => msg.senderId !== userId));
+  }
 
   return (
     <div className="flex flex-col h-screen bg-white max-w-2xl mx-auto">
@@ -119,6 +128,12 @@ export default function ChatRoomPage() {
                 <p className="text-xs text-gray-400">
                   {new Date(msg.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
                 </p>
+                {!isMine && (
+                  <div className="flex gap-2 text-[11px] text-gray-300">
+                    <button type="button" onClick={() => reportMessage(msg.id)} className="hover:text-red-400">신고</button>
+                    <button type="button" onClick={() => blockUser(msg.senderId)} className="hover:text-gray-500">차단</button>
+                  </div>
+                )}
               </div>
             </div>
           );

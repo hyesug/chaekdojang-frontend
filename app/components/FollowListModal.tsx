@@ -24,7 +24,7 @@ type Props = {
 
 function getToken(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem("token");
+  return "cookie-session";
 }
 
 function getMyUserId(): number | null {
@@ -98,7 +98,7 @@ export default function FollowListModal({ userId, type, onClose }: Props) {
       });
       if (res.status === 401) {
         setFollowingMap((prev) => ({ ...prev, [targetId]: !next }));
-        localStorage.removeItem("token");
+        
         router.push("/auth/login");
       } else if (!res.ok) {
         setFollowingMap((prev) => ({ ...prev, [targetId]: !next }));

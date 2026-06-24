@@ -1,34 +1,47 @@
 export function getValidToken(): string | null {
   if (typeof window === "undefined") return null;
-
-  const token = localStorage.getItem("token");
-  if (!token || token === "undefined" || token === "null" || isExpiredJwt(token)) {
-    clearToken();
-    return null;
-  }
-
-  return token;
+  return "cookie-session";
 }
 
 export function clearToken() {
-  if (typeof window === "undefined") return;
-  localStorage.removeItem("token");
+  // 이전 버전에서 저장했던 JWT를 정리하기 위한 호환 함수.
 }
 
-function isExpiredJwt(token: string) {
+export async function logout() {
   try {
-    const [, payload] = token.split(".");
-    if (!payload) return true;
-
-    const normalizedPayload = payload
-      .replace(/-/g, "+")
-      .replace(/_/g, "/")
-      .padEnd(Math.ceil(payload.length / 4) * 4, "=");
-    const decoded = JSON.parse(atob(normalizedPayload)) as { exp?: number };
-
-    if (!decoded.exp) return true;
-    return decoded.exp * 1000 <= Date.now();
+    await fetch("/api/auth/logout", { method: "POST" });
   } catch {
-    return true;
+    // 로컬 상태는 이미 비웠으므로 네트워크 실패는 무시한다.
   }
+}
+
+export async function isAuthenticated() {
+  try {
+    const res = await fetch("/api/auth/session", { cache: "no-store" });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.data?.authenticated) return true;
+    }
+    return await refreshSession();
+  } catch {
+    return false;
+  }
+}
+
+export async function refreshSession() {
+  try {
+    const res = await fetch("/api/auth/refresh", { method: "POST" });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+export async function authFetch(input: RequestInfo | URL, init: RequestInit = {}) {
+  const res = await fetch(input, init);
+  if (res.status !== 401) return res;
+
+  const refreshed = await refreshSession();
+  if (!refreshed) return res;
+  return fetch(input, init);
 }

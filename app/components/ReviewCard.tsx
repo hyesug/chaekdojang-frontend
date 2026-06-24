@@ -38,7 +38,7 @@ const COVER_COLORS = [
 
 function getToken(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem("token");
+  return "cookie-session";
 }
 
 function getMyUserId(): number | null {
@@ -148,7 +148,7 @@ function CommentModal({
         body: JSON.stringify({ content: trimmed }),
       });
       if (res.status === 401) {
-        localStorage.removeItem("token");
+        
         router.push("/auth/login");
         return;
       }
@@ -171,7 +171,7 @@ function CommentModal({
       }
     );
     if (res.status === 401) {
-      localStorage.removeItem("token");
+      
       router.push("/auth/login");
       return;
     }
@@ -455,7 +455,7 @@ export default function ReviewCard({
     if (res.status === 401) {
       setLiked(!next);
       setLikeCount((c) => c + (next ? -1 : 1));
-      localStorage.removeItem("token");
+      
       router.push("/auth/login");
       return;
     }
@@ -474,7 +474,7 @@ export default function ReviewCard({
     if (res.status === 204 || res.ok) {
       setDeleted(true);
     } else if (res.status === 401) {
-      localStorage.removeItem("token");
+      
       router.push("/auth/login");
     }
   }
@@ -496,7 +496,7 @@ export default function ReviewCard({
         setDisplayRating(rating);
         setEditing(false);
       } else if (res.status === 401) {
-        localStorage.removeItem("token");
+        
         router.push("/auth/login");
       }
     } finally {
@@ -520,7 +520,7 @@ export default function ReviewCard({
       });
       if (res.status === 401) {
         setHidden(!next);
-        localStorage.removeItem("token");
+        
         router.push("/auth/login");
         return;
       }
@@ -554,7 +554,7 @@ export default function ReviewCard({
       headers: { Authorization: `Bearer ${getToken()}` },
     });
     if (res.status === 401) {
-      setBookmarked(!next); localStorage.removeItem("token"); router.push("/auth/login");
+      setBookmarked(!next);  router.push("/auth/login");
     } else if (!res.ok) {
       setBookmarked(!next);
     }
@@ -587,7 +587,7 @@ export default function ReviewCard({
       });
       if (res.status === 401) {
         setFollowing(!next);
-        localStorage.removeItem("token");
+        
         router.push("/auth/login");
       } else if (!res.ok) {
         setFollowing(!next);

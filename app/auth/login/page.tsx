@@ -27,10 +27,7 @@ function LoginContent() {
   async function handleDevLogin() {
     const res = await fetch("/api/dev/login", { method: "POST" });
     if (!res.ok) return;
-    const json = await res.json();
-    const token = json.data?.token ?? json.token;
-    if (!token) return;
-    localStorage.setItem("token", token);
+    await res.json().catch(() => null);
     window.dispatchEvent(new Event("auth-change"));
     trackMetric("login_success", "/auth/login");
     router.push("/");

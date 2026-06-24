@@ -10,7 +10,7 @@ interface InquiryDetail { id: number; title: string; content: string; authorName
 export default function AdminInquiryDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: inquiryId } = use(params);
   const router = useRouter();
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const token: string | null = typeof window !== "undefined" ? "cookie-session" : null;
   const h = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
   const [inquiry, setInquiry] = useState<InquiryDetail | null>(null);

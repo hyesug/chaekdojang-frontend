@@ -48,7 +48,7 @@ export default function FeedPage() {
   /* 로그인 상태 동기화 */
   useEffect(() => {
     function syncAuth() {
-      const token = localStorage.getItem("token");
+      const token: string | null = "cookie-session";
       setLoggedIn(!!token && token !== "undefined" && token !== "null");
     }
     syncAuth();
@@ -86,7 +86,7 @@ export default function FeedPage() {
   /* 팔로잉 피드 — 단일 로드 */
   const loadFollowing = useCallback(async () => {
     setLoading(true);
-    const token = localStorage.getItem("token");
+    const token: string | null = "cookie-session";
     const hasToken = !!token && token !== "undefined" && token !== "null";
 
     if (!hasToken) {
@@ -99,7 +99,7 @@ export default function FeedPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.status === 401) {
-        localStorage.removeItem("token");
+        
         setLoggedIn(false);
         setReviews([]);
       } else if (res.ok) {
@@ -118,7 +118,7 @@ export default function FeedPage() {
   /* 취향 피드 — 단일 로드 */
   const loadTaste = useCallback(async () => {
     setLoading(true);
-    const token = localStorage.getItem("token");
+    const token: string | null = "cookie-session";
     const hasToken = !!token && token !== "undefined" && token !== "null";
     if (!hasToken) { setReviews([]); setLoading(false); return; }
     try {
@@ -126,7 +126,7 @@ export default function FeedPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.status === 401) {
-        localStorage.removeItem("token");
+        
         setLoggedIn(false);
         setReviews([]);
       } else if (res.ok) {

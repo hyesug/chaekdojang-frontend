@@ -36,7 +36,7 @@ type UserProfile = {
 
 function getToken(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem("token");
+  return "cookie-session";
 }
 
 function getMyUserId(): number | null {

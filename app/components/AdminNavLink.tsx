@@ -9,7 +9,7 @@ export default function AdminNavLink({ onClick }: { onClick?: () => void }) {
 
   useEffect(() => {
     const check = () => {
-      const token = localStorage.getItem("token");
+      const token: string | null = "cookie-session";
       if (!token || token === "undefined" || token === "null") { setIsAdmin(false); return; }
 
       fetch(`${API_BASE}/api/users/me`, {

@@ -452,7 +452,7 @@ export default function AdminPage() {
 
   function getToken() {
     if (typeof window === "undefined") return null;
-    const token = localStorage.getItem("token");
+    const token: string | null = "cookie-session";
     return !token || token === "undefined" || token === "null" ? null : token;
   }
 
@@ -466,7 +466,7 @@ export default function AdminPage() {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (res.status === 401) {
-      localStorage.removeItem("token");
+      
       router.replace("/auth/login");
       return null;
     }
@@ -817,10 +817,12 @@ export default function AdminPage() {
   async function setRole(userId: number, role: string) {
     const token = getToken();
     if (!token) return;
+    const reason = window.prompt(role === "ADMIN" ? "관리자 권한을 부여하는 사유를 입력해주세요." : "관리자 권한을 해제하는 사유를 입력해주세요.");
+    if (!reason || reason.trim().length < 5) return;
     await fetch(`${API_BASE}/api/admin/users/${userId}/role`, {
       method: "PATCH",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ role }),
+      body: JSON.stringify({ role, reason: reason.trim() }),
     });
     loadAll();
   }
@@ -828,10 +830,12 @@ export default function AdminPage() {
   async function toggleHidden(reviewId: number, hidden: boolean) {
     const token = getToken();
     if (!token) return;
+    const reason = window.prompt(hidden ? "독후감을 비공개로 전환하는 사유를 입력해주세요." : "독후감을 다시 공개하는 사유를 입력해주세요.");
+    if (!reason || reason.trim().length < 5) return;
     await fetch(`${API_BASE}/api/admin/reviews/${reviewId}/hidden`, {
       method: "PATCH",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ hidden }),
+      body: JSON.stringify({ hidden, reason: reason.trim() }),
     });
     loadAll();
   }
@@ -839,10 +843,12 @@ export default function AdminPage() {
   async function reviewOfficialApplication(applicationId: number, action: "approve" | "reject") {
     const token = getToken();
     if (!token) return;
+    const reason = window.prompt(action === "approve" ? "공식 프로필 신청을 승인하는 사유를 입력해주세요." : "공식 프로필 신청을 반려하는 사유를 입력해주세요.");
+    if (!reason || reason.trim().length < 5) return;
     await fetch(`${API_BASE}/api/admin/profile-applications/${applicationId}/${action}`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ reviewNote: action === "approve" ? "승인되었습니다." : "반려되었습니다." }),
+      body: JSON.stringify({ reviewNote: reason.trim() }),
     });
     loadAll();
   }

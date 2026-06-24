@@ -34,7 +34,7 @@ export function trackMetric(eventType: string, path?: string, durationMs = 0) {
     device: deviceType(),
   });
 
-  const token = localStorage.getItem("token");
+  const token: string | null = "cookie-session";
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (token && token !== "undefined" && token !== "null") {
     headers.Authorization = `Bearer ${token}`;

@@ -240,14 +240,14 @@ export default function ProfilePage() {
 
   function handleReviewSearch(e: React.FormEvent) {
     e.preventDefault();
-    const token = localStorage.getItem("token");
+    const token: string | null = "cookie-session";
     if (!token) return;
     reviewSearchRef.current = reviewSearchInput;
     loadReviews(token, 0, reviewSearchInput);
   }
 
   function handleLoadMore() {
-    const token = localStorage.getItem("token");
+    const token: string | null = "cookie-session";
     if (!token) return;
     loadReviews(token, reviewPage + 1, reviewSearchRef.current);
   }
@@ -269,7 +269,7 @@ export default function ProfilePage() {
   }
 
   async function selectLifeBook(book: LifeBook | null) {
-    const token = localStorage.getItem("token");
+    const token: string | null = "cookie-session";
     if (!token) return;
     await fetch(`${BASE}/api/users/me/life-book`, {
       method: "PATCH",
@@ -285,7 +285,7 @@ export default function ProfilePage() {
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const token = localStorage.getItem("token");
+    const token: string | null = "cookie-session";
     if (!token) return;
     setUploading(true);
     try {
@@ -312,7 +312,7 @@ export default function ProfilePage() {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    const token = localStorage.getItem("token");
+    const token: string | null = "cookie-session";
     if (!token) return;
     setSaving(true);
     setSaveError("");
@@ -332,7 +332,7 @@ export default function ProfilePage() {
         body: JSON.stringify(body),
       });
       if (res.status === 401) {
-        localStorage.removeItem("token");
+        
         router.push("/auth/login");
         return;
       }
@@ -354,7 +354,7 @@ export default function ProfilePage() {
 
   async function handleDeleteAccount(e: React.FormEvent) {
     e.preventDefault();
-    const token = localStorage.getItem("token");
+    const token: string | null = "cookie-session";
     if (!token || deleteConfirmText !== DELETE_CONFIRM_TEXT || deletingAccount) return;
 
     setDeletingAccount(true);
@@ -375,7 +375,7 @@ export default function ProfilePage() {
         return;
       }
 
-      localStorage.removeItem("token");
+      
       sessionStorage.removeItem(FEED_STATE_KEY);
       window.dispatchEvent(new Event("auth-change"));
       router.replace("/?accountDeleted=true");
@@ -396,7 +396,7 @@ export default function ProfilePage() {
 
   async function handleOfficialApply(e: React.FormEvent) {
     e.preventDefault();
-    const token = localStorage.getItem("token");
+    const token: string | null = "cookie-session";
     if (!token || officialSubmitting) return;
     setOfficialSubmitting(true);
     setOfficialMessage("");
@@ -997,7 +997,7 @@ export default function ProfilePage() {
             onClick={() => {
               setReviewSearchInput("");
               reviewSearchRef.current = "";
-              const token = localStorage.getItem("token");
+              const token: string | null = "cookie-session";
               if (token) loadReviews(token, 0, "");
             }}
             className="px-3 py-2 text-sm border border-cream-300 text-brown-400 rounded-xl hover:bg-cream-50 transition-colors"

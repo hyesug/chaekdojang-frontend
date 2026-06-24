@@ -26,7 +26,7 @@ export default function NotificationBell() {
   }, []);
 
   async function fetchUnreadCount() {
-    const token = localStorage.getItem("token");
+    const token: string | null = "cookie-session";
     if (!token || token === "undefined" || token === "null") {
       setUnread(0);
       return;

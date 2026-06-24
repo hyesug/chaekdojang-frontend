@@ -46,7 +46,7 @@ export default function LibraryPage() {
   }, []);
 
   async function fetchLibrary() {
-    const token = localStorage.getItem("token");
+    const token: string | null = "cookie-session";
     if (!token) {
       setLoggedIn(false);
       setLoading(false);
@@ -58,7 +58,7 @@ export default function LibraryPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.status === 401) {
-        localStorage.removeItem("token");
+        
         router.push("/auth/login");
         return;
       }
@@ -74,7 +74,7 @@ export default function LibraryPage() {
   }
 
   async function updateStatus(id: number, status: LibraryStatus) {
-    const token = localStorage.getItem("token");
+    const token: string | null = "cookie-session";
     if (!token) return;
 
     const res = await fetch(`${API_BASE}/api/library/${id}`, {
@@ -86,7 +86,7 @@ export default function LibraryPage() {
       body: JSON.stringify({ status }),
     });
     if (res.status === 401) {
-      localStorage.removeItem("token");
+      
       router.push("/auth/login");
       return;
     }
@@ -99,7 +99,7 @@ export default function LibraryPage() {
   }
 
   async function removeItem(id: number) {
-    const token = localStorage.getItem("token");
+    const token: string | null = "cookie-session";
     if (!token) return;
 
     const res = await fetch(`${API_BASE}/api/library/${id}`, {
@@ -107,7 +107,7 @@ export default function LibraryPage() {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (res.status === 401) {
-      localStorage.removeItem("token");
+      
       router.push("/auth/login");
       return;
     }

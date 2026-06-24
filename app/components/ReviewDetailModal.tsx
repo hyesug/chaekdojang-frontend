@@ -30,7 +30,7 @@ type Comment = {
 
 function getToken(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem("token");
+  return "cookie-session";
 }
 
 function getMyUserId(): number | null {
@@ -172,7 +172,7 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
     });
     if (res.status === 401) {
       setLiked(!next); setLikeCount((c) => c + (next ? -1 : 1));
-      localStorage.removeItem("token"); router.push("/auth/login");
+       router.push("/auth/login");
     } else if (!res.ok) {
       setLiked(!next); setLikeCount((c) => c + (next ? -1 : 1));
     }
@@ -190,7 +190,7 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
         headers: { Authorization: `Bearer ${getToken()}` },
       });
       if (res.status === 401) {
-        setFollowing(!next); localStorage.removeItem("token"); router.push("/auth/login");
+        setFollowing(!next);  router.push("/auth/login");
       } else if (!res.ok) {
         setFollowing(!next);
       }
@@ -212,7 +212,7 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
         body: JSON.stringify({ content: trimmed }),
       });
       if (res.status === 401) {
-        localStorage.removeItem("token"); router.push("/auth/login"); return;
+         router.push("/auth/login"); return;
       }
       if (res.ok) {
         setCommentText("");
@@ -236,7 +236,7 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
         setReview((prev) => prev ? { ...prev, content: editContent, rating: editRating } : prev);
         setEditing(false);
       } else if (res.status === 401) {
-        localStorage.removeItem("token"); router.push("/auth/login");
+         router.push("/auth/login");
       }
     } finally {
       setSaving(false);

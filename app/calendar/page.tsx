@@ -100,7 +100,7 @@ export default function CalendarPage() {
   const [selectedDay, setSelectedDay] = useState<string | null>(dayKey(new Date()));
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token: string | null = "cookie-session";
     if (!token) {
       router.push("/auth/login");
       return;
@@ -118,7 +118,7 @@ export default function CalendarPage() {
         ]);
 
         if (libraryRes.status === 401 || reviewsRes.status === 401) {
-          localStorage.removeItem("token");
+          
           router.push("/auth/login");
           return;
         }

@@ -217,7 +217,7 @@ function SearchContent() {
 
   async function addToLibrary(book: BookResult) {
     const key = book.isbn13 || String(book.id);
-    const token = localStorage.getItem("token");
+    const token: string | null = "cookie-session";
     if (!token) {
       router.push("/auth/login");
       return;
@@ -240,7 +240,7 @@ function SearchContent() {
         const json = await res.json().catch(() => ({}));
         console.error(`서재 담기 실패 [${res.status}]:`, json);
         if (res.status === 401) {
-          localStorage.removeItem("token");
+          
           router.push("/auth/login");
           return;
         }

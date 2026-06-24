@@ -10,19 +10,31 @@ declare global {
   }
 }
 
+const PRODUCTION_HOSTS = new Set(["www.chaekdojang.com", "chaekdojang.com"]);
+
+function isProductionHost() {
+  if (typeof window === "undefined") return false;
+  return PRODUCTION_HOSTS.has(window.location.hostname);
+}
+
+function isExcludedPath(pathname: string) {
+  return pathname.startsWith("/admin");
+}
+
 export default function GoogleAnalytics() {
   const pathname = usePathname();
   const measurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+  const shouldTrack = !!measurementId && isProductionHost() && !isExcludedPath(pathname);
 
   useEffect(() => {
-    if (!measurementId || pathname.startsWith("/admin")) return;
+    if (!shouldTrack) return;
     window.gtag?.("config", measurementId, {
       page_path: pathname,
       anonymize_ip: true,
     });
-  }, [measurementId, pathname]);
+  }, [measurementId, pathname, shouldTrack]);
 
-  if (!measurementId || pathname.startsWith("/admin")) {
+  if (!shouldTrack) {
     return null;
   }
 

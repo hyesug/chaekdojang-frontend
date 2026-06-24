@@ -392,6 +392,8 @@ export default function ReviewCard({
 
   // 북마크
   const [bookmarked, setBookmarked] = useState(false);
+  const [bookmarkSaving, setBookmarkSaving] = useState(false);
+  const [bookmarkFeedback, setBookmarkFeedback] = useState("");
 
   // 공유
   const [showShare, setShowShare] = useState(false);
@@ -548,16 +550,29 @@ export default function ReviewCard({
 
   async function handleBookmark() {
     if (!getToken()) { router.push("/auth/login"); return; }
+    if (bookmarkSaving) return;
     const next = !bookmarked;
     setBookmarked(next);
-    const res = await authFetch(`${BASE}/api/reviews/${post.id}/bookmark`, {
-      method: next ? "POST" : "DELETE",
-      headers: { Authorization: `Bearer ${getToken()}` },
-    });
-    if (res.status === 401) {
-      setBookmarked(!next);  router.push("/auth/login");
-    } else if (!res.ok) {
+    setBookmarkSaving(true);
+    setBookmarkFeedback(next ? "저장됨" : "해제됨");
+    try {
+      const res = await authFetch(`${BASE}/api/reviews/${post.id}/bookmark`, {
+        method: next ? "POST" : "DELETE",
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      if (res.status === 401) {
+        setBookmarked(!next);
+        router.push("/auth/login");
+      } else if (!res.ok) {
+        setBookmarked(!next);
+        setBookmarkFeedback("실패");
+      }
+    } catch {
       setBookmarked(!next);
+      setBookmarkFeedback("실패");
+    } finally {
+      setBookmarkSaving(false);
+      window.setTimeout(() => setBookmarkFeedback(""), 1600);
     }
   }
 
@@ -804,12 +819,19 @@ export default function ReviewCard({
           {/* 북마크 버튼 — 오른쪽 끝 */}
           <button
             onClick={handleBookmark}
-            className="ml-auto flex items-center gap-1 text-sm transition-colors group"
+            disabled={bookmarkSaving}
+            className={`ml-auto flex min-w-[88px] items-center justify-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-60 ${
+              bookmarked
+                ? "border-brown-500 bg-brown-50 text-brown-700"
+                : "border-cream-200 bg-white text-brown-300 hover:border-brown-300 hover:text-brown-500"
+            }`}
             aria-label={bookmarked ? "북마크 해제" : "북마크"}
+            aria-pressed={bookmarked}
           >
-            <span className={`text-base leading-none transition-colors ${bookmarked ? "text-brown-600" : "text-brown-200 group-hover:text-brown-400"}`}>
-              {bookmarked ? "🔖" : "🔖"}
+            <span className="text-sm leading-none">
+              {bookmarked ? "★" : "☆"}
             </span>
+            <span>{bookmarkFeedback || (bookmarked ? "저장됨" : "저장")}</span>
           </button>
         </div>
       </article>

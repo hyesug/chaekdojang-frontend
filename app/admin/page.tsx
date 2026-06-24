@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import ReviewDetailModal from "../components/ReviewDetailModal";
 import { API_BASE } from "../lib/api";
 
 type Tab = "dashboard" | "users" | "reviews" | "inquiries" | "pages" | "actions" | "security" | "audit";
@@ -332,6 +333,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [unauthorized, setUnauthorized] = useState(false);
   const [query, setQuery] = useState("");
+  const [selectedReviewId, setSelectedReviewId] = useState<number | null>(null);
 
   function getToken() {
     if (typeof window === "undefined") return null;
@@ -483,7 +485,7 @@ export default function AdminPage() {
       if (event.createdAt > item.lastAt) item.lastAt = event.createdAt;
       map.set(path, item);
     });
-    return Array.from(map.values()).sort((a, b) => b.views - a.views || b.lastAt.localeCompare(a.lastAt));
+    return Array.from(map.values()).sort((a, b) => b.lastAt.localeCompare(a.lastAt) || b.views - a.views);
   }, [visibleMetrics]);
 
   const rawActionSummaries = useMemo(() => {
@@ -557,7 +559,7 @@ export default function AdminPage() {
       durationCount: page.avgDurationSeconds > 0 ? 1 : 0,
       referrers: new Map([[page.topReferrer || "-", 1]]),
       lastAt: page.lastAt,
-    }));
+    })).sort((a, b) => b.lastAt.localeCompare(a.lastAt) || b.views - a.views);
   }, [aggregatedPages, rawPageSummaries]);
 
   const actionSummaries = useMemo(() => {
@@ -601,6 +603,7 @@ export default function AdminPage() {
 
   const recentActions = visibleMetrics
     .filter((event) => !["heartbeat", "session_end"].includes(event.eventType))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .slice(0, 30);
 
   const fallbackTodayVisitors = new Set(visibleMetrics.filter((event) => isToday(event.createdAt)).map(visitorKey)).size;
@@ -823,11 +826,15 @@ export default function AdminPage() {
               {filteredReviews.map((review) => (
                 <div key={review.id} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <Link href={`/reviews/${review.id}`} className="min-w-0 flex-1 rounded-xl hover:bg-cream-50">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedReviewId(review.id)}
+                      className="min-w-0 flex-1 rounded-xl text-left hover:bg-cream-50"
+                    >
                       <p className="font-serif text-lg font-bold text-brown-900">{review.bookTitle}</p>
                       <p className="mt-1 text-sm text-brown-500">{review.authorNickname} · ★ {review.rating} · {formatLogTime(review.createdAt)}</p>
                       <p className="mt-2 line-clamp-2 text-sm leading-6 text-brown-600">{review.content}</p>
-                    </Link>
+                    </button>
                     <button onClick={() => toggleHidden(review.id, !review.hidden)} className={`shrink-0 rounded-lg px-3 py-1.5 text-xs ${review.hidden ? "bg-green-50 text-green-600" : "bg-red-50 text-red-500"}`}>
                       {review.hidden ? "공개로 전환" : "비공개로 전환"}
                     </button>
@@ -873,32 +880,24 @@ export default function AdminPage() {
           )}
 
           {tab === "actions" && (
-            <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
-              <section className="space-y-3">
-                {actionSummaries.filter((action) => `${action.label} ${action.eventType}`.toLowerCase().includes(query.toLowerCase())).map((action) => (
-                  <div key={action.eventType} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
-                    <div className="flex justify-between gap-3"><p className="font-medium text-brown-900">{action.label}</p><p className="font-bold text-brown-700">{action.count}회</p></div>
-                    <p className="mt-1 text-xs text-brown-400">사용자 {action.visitors.size}명 · 마지막 {formatLogTime(action.lastAt)}</p>
-                  </div>
-                ))}
-              </section>
-              <section className="rounded-2xl border border-cream-200 bg-white shadow-sm overflow-x-auto">
-                <table className="w-full min-w-[720px] text-sm">
-                  <thead className="bg-cream-100 text-left text-brown-600"><tr><th className="px-4 py-3">시간</th><th className="px-4 py-3">행동</th><th className="px-4 py-3">사용자</th><th className="px-4 py-3">위치</th><th className="px-4 py-3">기기</th></tr></thead>
-                  <tbody>
-                    {recentActions.map((event) => (
-                      <tr key={event.id} className="border-t border-cream-100 hover:bg-cream-50">
-                        <td className="px-4 py-3 text-brown-400">{formatLogTime(event.createdAt)}</td>
-                        <td className="px-4 py-3 text-brown-800">{getMetricEventLabel(event.eventType)}</td>
-                        <td className="px-4 py-3 text-brown-500">{event.nickname ?? "비회원"}</td>
-                        <td className="px-4 py-3"><p className="text-brown-700">{getRouteLabel(event.path)}</p><p className="text-xs text-brown-300">{normalizePath(event.path)}</p></td>
-                        <td className="px-4 py-3 text-brown-500">{getDeviceLabel(event.device)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </section>
-            </div>
+            <section className="rounded-2xl border border-cream-200 bg-white shadow-sm overflow-x-auto">
+              <table className="w-full min-w-[720px] text-sm">
+                <thead className="bg-cream-100 text-left text-brown-600"><tr><th className="px-4 py-3">시간</th><th className="px-4 py-3">행동</th><th className="px-4 py-3">사용자</th><th className="px-4 py-3">위치</th><th className="px-4 py-3">기기</th></tr></thead>
+                <tbody>
+                  {recentActions
+                    .filter((event) => `${getMetricEventLabel(event.eventType)} ${event.nickname ?? ""} ${event.path}`.toLowerCase().includes(query.toLowerCase()))
+                    .map((event) => (
+                    <tr key={event.id} className="border-t border-cream-100 hover:bg-cream-50">
+                      <td className="px-4 py-3 text-brown-400">{formatLogTime(event.createdAt)}</td>
+                      <td className="px-4 py-3 text-brown-800">{getMetricEventLabel(event.eventType)}</td>
+                      <td className="px-4 py-3 text-brown-500">{event.nickname ?? "비회원"}</td>
+                      <td className="px-4 py-3"><p className="text-brown-700">{getRouteLabel(event.path)}</p><p className="text-xs text-brown-300">{normalizePath(event.path)}</p></td>
+                      <td className="px-4 py-3 text-brown-500">{getDeviceLabel(event.device)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
           )}
 
           {tab === "security" && (
@@ -937,6 +936,9 @@ export default function AdminPage() {
             </section>
           )}
         </div>
+      )}
+      {selectedReviewId != null && (
+        <ReviewDetailModal reviewId={selectedReviewId} onClose={() => setSelectedReviewId(null)} />
       )}
     </main>
   );

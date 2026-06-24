@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import ReviewDetailModal from "../components/ReviewDetailModal";
 import { API_BASE } from "../lib/api";
+import { authFetch, getValidToken } from "../lib/auth";
 
 type Tab = "dashboard" | "users" | "reviews" | "inquiries" | "officialProfiles" | "pages" | "actions" | "security" | "audit";
 
@@ -451,9 +452,7 @@ export default function AdminPage() {
   const [bookSearching, setBookSearching] = useState(false);
 
   function getToken() {
-    if (typeof window === "undefined") return null;
-    const token: string | null = "cookie-session";
-    return !token || token === "undefined" || token === "null" ? null : token;
+    return getValidToken();
   }
 
   async function fetchAdmin<T>(path: string): Promise<T | null> {
@@ -462,7 +461,7 @@ export default function AdminPage() {
       router.replace("/auth/login");
       return null;
     }
-    const res = await fetch(`${API_BASE}${path}`, {
+    const res = await authFetch(`${API_BASE}${path}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (res.status === 401) {
@@ -819,11 +818,13 @@ export default function AdminPage() {
     if (!token) return;
     const reason = window.prompt(role === "ADMIN" ? "관리자 권한을 부여하는 사유를 입력해주세요." : "관리자 권한을 해제하는 사유를 입력해주세요.");
     if (!reason || reason.trim().length < 5) return;
-    await fetch(`${API_BASE}/api/admin/users/${userId}/role`, {
+    const res = await authFetch(`${API_BASE}/api/admin/users/${userId}/role`, {
       method: "PATCH",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ role, reason: reason.trim() }),
     });
+    if (res.status === 401) { router.replace("/auth/login"); return; }
+    if (res.status === 403) { setUnauthorized(true); return; }
     loadAll();
   }
 
@@ -832,11 +833,13 @@ export default function AdminPage() {
     if (!token) return;
     const reason = window.prompt(hidden ? "독후감을 비공개로 전환하는 사유를 입력해주세요." : "독후감을 다시 공개하는 사유를 입력해주세요.");
     if (!reason || reason.trim().length < 5) return;
-    await fetch(`${API_BASE}/api/admin/reviews/${reviewId}/hidden`, {
+    const res = await authFetch(`${API_BASE}/api/admin/reviews/${reviewId}/hidden`, {
       method: "PATCH",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ hidden, reason: reason.trim() }),
     });
+    if (res.status === 401) { router.replace("/auth/login"); return; }
+    if (res.status === 403) { setUnauthorized(true); return; }
     loadAll();
   }
 
@@ -845,22 +848,26 @@ export default function AdminPage() {
     if (!token) return;
     const reason = window.prompt(action === "approve" ? "공식 프로필 신청을 승인하는 사유를 입력해주세요." : "공식 프로필 신청을 반려하는 사유를 입력해주세요.");
     if (!reason || reason.trim().length < 5) return;
-    await fetch(`${API_BASE}/api/admin/profile-applications/${applicationId}/${action}`, {
+    const res = await authFetch(`${API_BASE}/api/admin/profile-applications/${applicationId}/${action}`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ reviewNote: reason.trim() }),
     });
+    if (res.status === 401) { router.replace("/auth/login"); return; }
+    if (res.status === 403) { setUnauthorized(true); return; }
     loadAll();
   }
 
   async function addOfficialProfileBook(profileId: number, bookId: number) {
     const token = getToken();
     if (!token || !Number.isFinite(bookId) || bookId <= 0) return;
-    await fetch(`${API_BASE}/api/admin/profiles/${profileId}/books`, {
+    const res = await authFetch(`${API_BASE}/api/admin/profiles/${profileId}/books`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ bookId }),
     });
+    if (res.status === 401) { router.replace("/auth/login"); return; }
+    if (res.status === 403) { setUnauthorized(true); return; }
     setBookSearchProfile(null);
     setBookSearchQuery("");
     setBookSearchResults([]);
@@ -891,10 +898,12 @@ export default function AdminPage() {
   async function removeOfficialProfileBook(profileId: number, bookId: number) {
     const token = getToken();
     if (!token) return;
-    await fetch(`${API_BASE}/api/admin/profiles/${profileId}/books/${bookId}`, {
+    const res = await authFetch(`${API_BASE}/api/admin/profiles/${profileId}/books/${bookId}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
     });
+    if (res.status === 401) { router.replace("/auth/login"); return; }
+    if (res.status === 403) { setUnauthorized(true); return; }
     loadAll();
   }
 

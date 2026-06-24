@@ -3,24 +3,26 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { API_BASE } from "../lib/api";
+import { authFetch, getValidToken } from "../lib/auth";
 
 export default function AdminNavLink({ onClick }: { onClick?: () => void }) {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const check = () => {
-      const token: string | null = "cookie-session";
-      if (!token || token === "undefined" || token === "null") { setIsAdmin(false); return; }
+    const check = async () => {
+      const token = getValidToken();
+      if (!token) { setIsAdmin(false); return; }
 
-      fetch(`${API_BASE}/api/users/me`, {
+      const res = await authFetch(`${API_BASE}/api/users/me`, {
         headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((r) => r.json())
-        .then((j) => {
-          const role = j.data?.role ?? j.role;
-          setIsAdmin(role === "ADMIN" || role === "SUPER_ADMIN");
-        })
-        .catch(() => {});
+      });
+      if (!res.ok) {
+        setIsAdmin(false);
+        return;
+      }
+      const json = await res.json();
+      const role = json.data?.role ?? json.role;
+      setIsAdmin(role === "ADMIN" || role === "SUPER_ADMIN");
     };
 
     check();

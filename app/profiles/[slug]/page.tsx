@@ -45,7 +45,7 @@ const typeLabels: Record<OfficialProfileType, string> = {
 
 async function getProfile(slug: string) {
   return fetchApiData<OfficialProfile>(`/api/profiles/${encodeURIComponent(slug)}`, {
-    next: { revalidate: 300 },
+    cache: "no-store",
   });
 }
 

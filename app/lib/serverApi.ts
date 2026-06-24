@@ -79,7 +79,7 @@ export async function fetchApiData<T>(
     const res = await fetch(`${SERVER_API_BASE}${path}`, {
       ...options,
       headers,
-      next: options.next ?? { revalidate: 300 },
+      next: options.cache === "no-store" ? undefined : options.next ?? { revalidate: 300 },
     });
     if (!res.ok) return null;
     const json = await res.json();

@@ -95,6 +95,42 @@ interface AdminAuditLog {
   createdAt: string;
 }
 
+interface DashboardSummary {
+  todayVisitors: number;
+  todayPageViews: number;
+  todayReviews: number;
+  todayUsers: number;
+  todayServerErrors: number;
+  todaySuspiciousRequests: number;
+}
+
+interface AggregatedPage {
+  path: string;
+  label: string;
+  views: number;
+  visitors: number;
+  avgDurationSeconds: number;
+  topReferrer: string;
+  lastAt: string;
+}
+
+interface AggregatedAction {
+  eventType: string;
+  label: string;
+  count: number;
+  visitors: number;
+  lastAt: string;
+}
+
+interface AggregatedSecurity {
+  severity: string;
+  type: string;
+  uri: string;
+  count: number;
+  ip: string;
+  lastAt: string;
+}
+
 type PageSummary = {
   path: string;
   label: string;
@@ -289,6 +325,10 @@ export default function AdminPage() {
   const [metricEvents, setMetricEvents] = useState<MetricEvent[]>([]);
   const [errorLogs, setErrorLogs] = useState<ErrorLog[]>([]);
   const [auditLogs, setAuditLogs] = useState<AdminAuditLog[]>([]);
+  const [dashboardSummary, setDashboardSummary] = useState<DashboardSummary | null>(null);
+  const [aggregatedPages, setAggregatedPages] = useState<AggregatedPage[]>([]);
+  const [aggregatedActions, setAggregatedActions] = useState<AggregatedAction[]>([]);
+  const [aggregatedSecurity, setAggregatedSecurity] = useState<AggregatedSecurity[]>([]);
   const [loading, setLoading] = useState(true);
   const [unauthorized, setUnauthorized] = useState(false);
   const [query, setQuery] = useState("");
@@ -330,7 +370,20 @@ export default function AdminPage() {
   async function loadAll() {
     setLoading(true);
     try {
-      const [nextUsers, nextReviews, nextStats, nextInquiries, nextAccess, nextMetrics, nextErrors, nextAudit] = await Promise.all([
+      const [
+        nextUsers,
+        nextReviews,
+        nextStats,
+        nextInquiries,
+        nextAccess,
+        nextMetrics,
+        nextErrors,
+        nextAudit,
+        nextDashboard,
+        nextPages,
+        nextActions,
+        nextSecurity,
+      ] = await Promise.all([
         fetchPage<User>("/api/admin/users?size=200"),
         fetchPage<Review>("/api/admin/reviews?size=100"),
         fetchAdmin<BookStat[]>("/api/admin/reviews/stats"),
@@ -339,6 +392,10 @@ export default function AdminPage() {
         fetchPage<MetricEvent>("/api/admin/metrics?size=500"),
         fetchPage<ErrorLog>("/api/admin/error-logs?size=200"),
         fetchPage<AdminAuditLog>("/api/admin/audit-logs?size=100"),
+        fetchAdmin<DashboardSummary>("/api/admin/dashboard/summary"),
+        fetchAdmin<AggregatedPage[]>("/api/admin/analytics/pages"),
+        fetchAdmin<AggregatedAction[]>("/api/admin/analytics/actions"),
+        fetchAdmin<AggregatedSecurity[]>("/api/admin/security/summary"),
       ]);
       setUsers(nextUsers);
       setReviews(nextReviews);
@@ -348,6 +405,10 @@ export default function AdminPage() {
       setMetricEvents(nextMetrics);
       setErrorLogs(nextErrors);
       setAuditLogs(nextAudit);
+      setDashboardSummary(nextDashboard);
+      setAggregatedPages(nextPages ?? []);
+      setAggregatedActions(nextActions ?? []);
+      setAggregatedSecurity(nextSecurity ?? []);
     } finally {
       setLoading(false);
     }
@@ -396,7 +457,7 @@ export default function AdminPage() {
     [errorLogs, adminIds]
   );
 
-  const pageSummaries = useMemo(() => {
+  const rawPageSummaries = useMemo(() => {
     const map = new Map<string, PageSummary>();
     visibleMetrics.forEach((event) => {
       const path = normalizePath(event.path);
@@ -425,7 +486,7 @@ export default function AdminPage() {
     return Array.from(map.values()).sort((a, b) => b.views - a.views || b.lastAt.localeCompare(a.lastAt));
   }, [visibleMetrics]);
 
-  const actionSummaries = useMemo(() => {
+  const rawActionSummaries = useMemo(() => {
     const map = new Map<string, ActionSummary>();
     visibleMetrics
       .filter((event) => !["heartbeat", "session_end"].includes(event.eventType))
@@ -445,7 +506,7 @@ export default function AdminPage() {
     return Array.from(map.values()).sort((a, b) => b.count - a.count || b.lastAt.localeCompare(a.lastAt));
   }, [visibleMetrics]);
 
-  const securitySummaries = useMemo(() => {
+  const rawSecuritySummaries = useMemo(() => {
     const map = new Map<string, SecuritySummary>();
     visibleErrors.forEach((error) => {
       const type = suspiciousType(error.uri, error.status);
@@ -485,6 +546,44 @@ export default function AdminPage() {
     return Array.from(map.values()).sort((a, b) => b.count - a.count || b.lastAt.localeCompare(a.lastAt));
   }, [visibleErrors, visibleAccessLogs]);
 
+  const pageSummaries = useMemo(() => {
+    if (aggregatedPages.length === 0) return rawPageSummaries;
+    return aggregatedPages.map((page) => ({
+      path: page.path,
+      label: page.label,
+      views: page.views,
+      visitors: new Set(Array.from({ length: page.visitors }, (_, index) => String(index))),
+      durationSum: page.avgDurationSeconds * 1000,
+      durationCount: page.avgDurationSeconds > 0 ? 1 : 0,
+      referrers: new Map([[page.topReferrer || "-", 1]]),
+      lastAt: page.lastAt,
+    }));
+  }, [aggregatedPages, rawPageSummaries]);
+
+  const actionSummaries = useMemo(() => {
+    if (aggregatedActions.length === 0) return rawActionSummaries;
+    return aggregatedActions.map((action) => ({
+      eventType: action.eventType,
+      label: action.label,
+      count: action.count,
+      visitors: new Set(Array.from({ length: action.visitors }, (_, index) => String(index))),
+      lastAt: action.lastAt,
+    }));
+  }, [aggregatedActions, rawActionSummaries]);
+
+  const securitySummaries = useMemo(() => {
+    if (aggregatedSecurity.length === 0) return rawSecuritySummaries;
+    return aggregatedSecurity.map((item) => ({
+      key: `${item.type}:${item.uri}:${item.ip}`,
+      severity: item.severity,
+      type: item.type,
+      uri: item.uri,
+      count: item.count,
+      ip: item.ip,
+      lastAt: item.lastAt,
+    }));
+  }, [aggregatedSecurity, rawSecuritySummaries]);
+
   const filteredUsers = users.filter((user) => {
     const text = `${user.nickname} ${user.email ?? ""} ${user.role}`.toLowerCase();
     return text.includes(query.toLowerCase());
@@ -504,12 +603,18 @@ export default function AdminPage() {
     .filter((event) => !["heartbeat", "session_end"].includes(event.eventType))
     .slice(0, 30);
 
-  const todayVisitors = new Set(visibleMetrics.filter((event) => isToday(event.createdAt)).map(visitorKey)).size;
-  const todayPageViews = visibleMetrics.filter((event) => isToday(event.createdAt) && event.eventType === "page_view").length;
-  const todayReviews = reviews.filter((review) => isToday(review.createdAt)).length;
-  const todayUsers = users.filter((user) => isToday(user.createdAt)).length;
-  const todayErrors = visibleErrors.filter((error) => isToday(error.createdAt) && error.status >= 500).length;
-  const todaySecurity = securitySummaries.filter((item) => isToday(item.lastAt)).reduce((sum, item) => sum + item.count, 0);
+  const fallbackTodayVisitors = new Set(visibleMetrics.filter((event) => isToday(event.createdAt)).map(visitorKey)).size;
+  const fallbackTodayPageViews = visibleMetrics.filter((event) => isToday(event.createdAt) && event.eventType === "page_view").length;
+  const fallbackTodayReviews = reviews.filter((review) => isToday(review.createdAt)).length;
+  const fallbackTodayUsers = users.filter((user) => isToday(user.createdAt)).length;
+  const fallbackTodayErrors = visibleErrors.filter((error) => isToday(error.createdAt) && error.status >= 500).length;
+  const fallbackTodaySecurity = securitySummaries.filter((item) => isToday(item.lastAt)).reduce((sum, item) => sum + item.count, 0);
+  const todayVisitors = dashboardSummary?.todayVisitors ?? fallbackTodayVisitors;
+  const todayPageViews = dashboardSummary?.todayPageViews ?? fallbackTodayPageViews;
+  const todayReviews = dashboardSummary?.todayReviews ?? fallbackTodayReviews;
+  const todayUsers = dashboardSummary?.todayUsers ?? fallbackTodayUsers;
+  const todayErrors = dashboardSummary?.todayServerErrors ?? fallbackTodayErrors;
+  const todaySecurity = dashboardSummary?.todaySuspiciousRequests ?? fallbackTodaySecurity;
 
   async function setRole(userId: number, role: string) {
     const token = getToken();

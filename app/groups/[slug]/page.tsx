@@ -72,9 +72,9 @@ export default async function GroupPage({ params }: Props) {
       <section className="rounded-3xl border border-cream-200 bg-white p-6 shadow-sm">
         <div className="flex gap-4">
           {group.imageUrl ? (
-            <Image src={group.imageUrl} alt={group.name} width={88} height={88} className="h-22 w-22 rounded-2xl object-cover" />
+            <Image src={group.imageUrl} alt={group.name} width={88} height={88} className="h-20 w-20 rounded-2xl object-cover" />
           ) : (
-            <div className="flex h-22 w-22 shrink-0 items-center justify-center rounded-2xl bg-cream-200 text-2xl">📚</div>
+            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-cream-200 text-2xl">📚</div>
           )}
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">

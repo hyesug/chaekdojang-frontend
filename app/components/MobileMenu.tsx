@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AdminNavLink from "./AdminNavLink";
-import { getValidToken, logout as logoutSession } from "../lib/auth";
+import { isAuthenticated, logout as logoutSession } from "../lib/auth";
 
 type NavLink = { href: string; label: string };
 
@@ -14,8 +14,8 @@ export default function MobileMenu({ links }: { links: NavLink[] }) {
   const [loggedIn, setLoggedIn] = useState(false);
 
   useEffect(() => {
-    function syncAuth() {
-      setLoggedIn(!!getValidToken());
+    async function syncAuth() {
+      setLoggedIn(await isAuthenticated());
     }
 
     syncAuth();
@@ -24,6 +24,7 @@ export default function MobileMenu({ links }: { links: NavLink[] }) {
   }, []);
 
   async function logout() {
+    setLoggedIn(false);
     await logoutSession();
     window.dispatchEvent(new Event("auth-change"));
     setOpen(false);

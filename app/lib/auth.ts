@@ -8,8 +8,18 @@ export function clearToken() {
 }
 
 export async function logout() {
+  const logoutTargets = ["/api/auth/logout"];
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "");
+  if (apiBase) {
+    logoutTargets.push(`${apiBase}/api/auth/logout`);
+  }
+
   try {
-    await fetch("/api/auth/logout", { method: "POST" });
+    await Promise.allSettled(
+      [...new Set(logoutTargets)].map((url) =>
+        fetch(url, { method: "POST", credentials: "include" })
+      )
+    );
   } catch {
     // 로컬 상태는 이미 비웠으므로 네트워크 실패는 무시한다.
   }
@@ -17,7 +27,7 @@ export async function logout() {
 
 export async function isAuthenticated() {
   try {
-    const res = await fetch("/api/auth/session", { cache: "no-store" });
+    const res = await fetch("/api/auth/session", { cache: "no-store", credentials: "include" });
     if (res.ok) {
       const json = await res.json();
       if (json.data?.authenticated) return true;
@@ -30,7 +40,7 @@ export async function isAuthenticated() {
 
 export async function refreshSession() {
   try {
-    const res = await fetch("/api/auth/refresh", { method: "POST" });
+    const res = await fetch("/api/auth/refresh", { method: "POST", credentials: "include" });
     return res.ok;
   } catch {
     return false;
@@ -38,10 +48,11 @@ export async function refreshSession() {
 }
 
 export async function authFetch(input: RequestInfo | URL, init: RequestInit = {}) {
-  const res = await fetch(input, init);
+  const requestInit = { ...init, credentials: init.credentials ?? "include" } satisfies RequestInit;
+  const res = await fetch(input, requestInit);
   if (res.status !== 401) return res;
 
   const refreshed = await refreshSession();
   if (!refreshed) return res;
-  return fetch(input, init);
+  return fetch(input, requestInit);
 }

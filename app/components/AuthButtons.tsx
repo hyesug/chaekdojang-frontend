@@ -30,6 +30,7 @@ export default function AuthButtons() {
   }, []);
 
   async function logout() {
+    setLoggedIn(false);
     await logoutSession();
     window.dispatchEvent(new Event("auth-change"));
     router.push("/");

@@ -1,5 +1,17 @@
+const LOGGED_OUT_KEY = "chaekdojang:logged-out";
+
+function isLogoutBlocked() {
+  return typeof window !== "undefined" && sessionStorage.getItem(LOGGED_OUT_KEY) === "true";
+}
+
+export function markLoggedIn() {
+  if (typeof window === "undefined") return;
+  sessionStorage.removeItem(LOGGED_OUT_KEY);
+}
+
 export function getValidToken(): string | null {
   if (typeof window === "undefined") return null;
+  if (isLogoutBlocked()) return null;
   return "cookie-session";
 }
 
@@ -8,6 +20,10 @@ export function clearToken() {
 }
 
 export async function logout() {
+  if (typeof window !== "undefined") {
+    sessionStorage.setItem(LOGGED_OUT_KEY, "true");
+  }
+
   const logoutTargets = ["/api/auth/logout"];
   const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "");
   if (apiBase) {
@@ -26,6 +42,8 @@ export async function logout() {
 }
 
 export async function isAuthenticated() {
+  if (isLogoutBlocked()) return false;
+
   try {
     const res = await fetch("/api/auth/session", { cache: "no-store", credentials: "include" });
     if (res.ok) {
@@ -39,6 +57,8 @@ export async function isAuthenticated() {
 }
 
 export async function refreshSession() {
+  if (isLogoutBlocked()) return false;
+
   try {
     const res = await fetch("/api/auth/refresh", { method: "POST", credentials: "include" });
     return res.ok;
@@ -51,6 +71,8 @@ export async function authFetch(input: RequestInfo | URL, init: RequestInit = {}
   const requestInit = { ...init, credentials: init.credentials ?? "include" } satisfies RequestInit;
   const res = await fetch(input, requestInit);
   if (res.status !== 401) return res;
+
+  if (isLogoutBlocked()) return res;
 
   const refreshed = await refreshSession();
   if (!refreshed) return res;

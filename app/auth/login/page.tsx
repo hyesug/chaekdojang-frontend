@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { OAUTH_BASE } from "../../lib/api";
+import { markLoggedIn } from "../../lib/auth";
 import { trackMetric } from "../../components/AnalyticsTracker";
 
 const BACKEND = OAUTH_BASE;
@@ -28,6 +29,7 @@ function LoginContent() {
     const res = await fetch("/api/dev/login", { method: "POST" });
     if (!res.ok) return;
     await res.json().catch(() => null);
+    markLoggedIn();
     window.dispatchEvent(new Event("auth-change"));
     trackMetric("login_success", "/auth/login");
     router.push("/");

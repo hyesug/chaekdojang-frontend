@@ -89,6 +89,14 @@ interface OfficialProfile {
   books: OfficialProfileBook[];
 }
 
+interface BookSearchResult {
+  id: number;
+  title: string;
+  author: string;
+  publisher: string | null;
+  thumbnail: string | null;
+}
+
 interface AccessLog {
   id: number;
   ip: string;
@@ -437,7 +445,10 @@ export default function AdminPage() {
   const [unauthorized, setUnauthorized] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedReviewId, setSelectedReviewId] = useState<number | null>(null);
-  const [bookIdByProfile, setBookIdByProfile] = useState<Record<number, string>>({});
+  const [bookSearchProfile, setBookSearchProfile] = useState<OfficialProfile | null>(null);
+  const [bookSearchQuery, setBookSearchQuery] = useState("");
+  const [bookSearchResults, setBookSearchResults] = useState<BookSearchResult[]>([]);
+  const [bookSearching, setBookSearching] = useState(false);
 
   function getToken() {
     if (typeof window === "undefined") return null;
@@ -836,17 +847,39 @@ export default function AdminPage() {
     loadAll();
   }
 
-  async function addOfficialProfileBook(profileId: number) {
+  async function addOfficialProfileBook(profileId: number, bookId: number) {
     const token = getToken();
-    const bookId = Number(bookIdByProfile[profileId]);
     if (!token || !Number.isFinite(bookId) || bookId <= 0) return;
     await fetch(`${API_BASE}/api/admin/profiles/${profileId}/books`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ bookId }),
     });
-    setBookIdByProfile((prev) => ({ ...prev, [profileId]: "" }));
+    setBookSearchProfile(null);
+    setBookSearchQuery("");
+    setBookSearchResults([]);
     loadAll();
+  }
+
+  async function searchBooksForOfficialProfile(e?: React.FormEvent) {
+    e?.preventDefault();
+    if (!bookSearchQuery.trim() || bookSearching) return;
+    setBookSearching(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/books/search?q=${encodeURIComponent(bookSearchQuery.trim())}`);
+      if (!res.ok) return;
+      const json = await res.json();
+      setBookSearchResults((json.data ?? []).slice(0, 10));
+    } finally {
+      setBookSearching(false);
+    }
+  }
+
+  function closeBookSearchModal() {
+    if (bookSearching) return;
+    setBookSearchProfile(null);
+    setBookSearchQuery("");
+    setBookSearchResults([]);
   }
 
   async function removeOfficialProfileBook(profileId: number, bookId: number) {
@@ -1167,17 +1200,11 @@ export default function AdminPage() {
                           </Link>
                         </div>
                         <div className="flex shrink-0 gap-2">
-                          <input
-                            value={bookIdByProfile[profile.id] ?? ""}
-                            onChange={(event) => setBookIdByProfile((prev) => ({ ...prev, [profile.id]: event.target.value }))}
-                            placeholder="책 ID"
-                            className="w-24 rounded-lg border border-cream-300 px-3 py-1.5 text-xs text-brown-800 focus:border-brown-400 focus:outline-none"
-                          />
                           <button
-                            onClick={() => addOfficialProfileBook(profile.id)}
+                            onClick={() => setBookSearchProfile(profile)}
                             className="rounded-lg border border-cream-300 px-3 py-1.5 text-xs text-brown-600 hover:bg-cream-50"
                           >
-                            책 연결
+                            책 검색
                           </button>
                         </div>
                       </div>
@@ -1308,6 +1335,82 @@ export default function AdminPage() {
       )}
       {selectedReviewId != null && (
         <ReviewDetailModal reviewId={selectedReviewId} onClose={() => setSelectedReviewId(null)} />
+      )}
+      {bookSearchProfile && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center px-4 sm:items-center">
+          <div className="absolute inset-0 bg-black/40" onClick={closeBookSearchModal} />
+          <div className="relative z-10 w-full max-w-xl rounded-t-2xl border border-cream-200 bg-white p-5 shadow-xl sm:rounded-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="font-serif text-lg font-bold text-brown-900">책 연결</h2>
+                <p className="mt-1 text-sm text-brown-400">{bookSearchProfile.displayName} 프로필에 연결할 책을 검색하세요.</p>
+              </div>
+              <button
+                type="button"
+                onClick={closeBookSearchModal}
+                className="text-xl leading-none text-brown-300 hover:text-brown-600"
+                aria-label="닫기"
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={searchBooksForOfficialProfile} className="mt-4 flex gap-2">
+              <input
+                value={bookSearchQuery}
+                onChange={(event) => setBookSearchQuery(event.target.value)}
+                placeholder="책 제목, 저자, ISBN 검색"
+                className="min-w-0 flex-1 rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-800 focus:border-brown-400 focus:outline-none"
+                autoFocus
+              />
+              <button
+                type="submit"
+                disabled={bookSearching || !bookSearchQuery.trim()}
+                className="rounded-xl bg-brown-600 px-4 py-2 text-sm text-white hover:bg-brown-700 disabled:opacity-50"
+              >
+                {bookSearching ? "검색 중" : "검색"}
+              </button>
+            </form>
+
+            <div className="mt-4 max-h-[52vh] overflow-y-auto">
+              {bookSearchResults.length === 0 ? (
+                <p className="rounded-xl bg-cream-50 py-8 text-center text-sm text-brown-300">
+                  검색어를 입력하고 책을 찾아보세요.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {bookSearchResults.map((book) => {
+                    const alreadyLinked = bookSearchProfile.books.some((item) => item.id === book.id);
+                    return (
+                      <div key={book.id} className="flex items-center gap-3 rounded-xl border border-cream-200 px-3 py-2">
+                        {book.thumbnail ? (
+                          <img src={book.thumbnail} alt={book.title} className="h-14 w-10 shrink-0 rounded object-cover shadow-sm" />
+                        ) : (
+                          <div className="flex h-14 w-10 shrink-0 items-end justify-center rounded bg-brown-200 pb-1 text-xs font-bold text-white">
+                            {book.title[0]}
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-brown-800">{book.title}</p>
+                          <p className="truncate text-xs text-brown-400">{book.author}</p>
+                          {book.publisher && <p className="truncate text-xs text-brown-300">{book.publisher}</p>}
+                        </div>
+                        <button
+                          type="button"
+                          disabled={alreadyLinked}
+                          onClick={() => addOfficialProfileBook(bookSearchProfile.id, book.id)}
+                          className="shrink-0 rounded-lg border border-cream-300 px-3 py-1.5 text-xs text-brown-600 hover:bg-cream-50 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          {alreadyLinked ? "연결됨" : "연결"}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );

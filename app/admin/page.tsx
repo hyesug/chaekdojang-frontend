@@ -638,9 +638,9 @@ export default function AdminPage() {
     loadAll();
   }
 
-  function openBookReviews(bookTitle: string) {
-    setTab("reviews");
-    setQuery(bookTitle);
+  function reviewHrefForBook(book: BookStat) {
+    const review = reviews.find((item) => item.bookTitle === book.title);
+    return review ? `/reviews/${review.id}` : `/books/${book.bookId}/reviews`;
   }
 
   if (unauthorized) {
@@ -755,11 +755,10 @@ export default function AdminPage() {
                   <h2 className="font-serif text-lg font-bold text-brown-900">책별 독후감 TOP 5</h2>
                   <div className="mt-3 space-y-2">
                     {bookStats.slice(0, 5).map((book) => (
-                      <button
+                      <Link
                         key={book.bookId}
-                        type="button"
-                        onClick={() => openBookReviews(book.title)}
-                        className="block w-full rounded-xl bg-cream-50 p-3 text-left hover:bg-cream-100"
+                        href={reviewHrefForBook(book)}
+                        className="block rounded-xl bg-cream-50 p-3 hover:bg-cream-100"
                       >
                         <div className="flex justify-between gap-3">
                           <div className="min-w-0">
@@ -768,7 +767,7 @@ export default function AdminPage() {
                           </div>
                           <p className="shrink-0 text-sm font-bold text-brown-700">{book.reviewCount}개</p>
                         </div>
-                      </button>
+                      </Link>
                     ))}
                   </div>
                 </section>
@@ -824,11 +823,11 @@ export default function AdminPage() {
               {filteredReviews.map((review) => (
                 <div key={review.id} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0">
+                    <Link href={`/reviews/${review.id}`} className="min-w-0 flex-1 rounded-xl hover:bg-cream-50">
                       <p className="font-serif text-lg font-bold text-brown-900">{review.bookTitle}</p>
                       <p className="mt-1 text-sm text-brown-500">{review.authorNickname} · ★ {review.rating} · {formatLogTime(review.createdAt)}</p>
                       <p className="mt-2 line-clamp-2 text-sm leading-6 text-brown-600">{review.content}</p>
-                    </div>
+                    </Link>
                     <button onClick={() => toggleHidden(review.id, !review.hidden)} className={`shrink-0 rounded-lg px-3 py-1.5 text-xs ${review.hidden ? "bg-green-50 text-green-600" : "bg-red-50 text-red-500"}`}>
                       {review.hidden ? "공개로 전환" : "비공개로 전환"}
                     </button>

@@ -503,7 +503,7 @@ export default function AdminPage() {
         if (event.createdAt > item.lastAt) item.lastAt = event.createdAt;
         map.set(event.eventType, item);
       });
-    return Array.from(map.values()).sort((a, b) => b.count - a.count || b.lastAt.localeCompare(a.lastAt));
+    return Array.from(map.values()).sort((a, b) => b.lastAt.localeCompare(a.lastAt) || b.count - a.count);
   }, [visibleMetrics]);
 
   const rawSecuritySummaries = useMemo(() => {

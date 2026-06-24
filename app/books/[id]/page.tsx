@@ -197,10 +197,19 @@ export default async function BookDetailPage({ params, searchParams }: Props) {
           <div className="flex rounded-full border border-cream-200 bg-white p-1">
             {SORT_OPTIONS.map((option) => {
               const active = option.value === sort;
+              const sortParams = new URLSearchParams();
+              if (option.value !== "recent") {
+                sortParams.set("sort", option.value);
+              }
+              const href = sortParams.size > 0
+                ? `/books/${encodeURIComponent(id)}?${sortParams.toString()}`
+                : `/books/${encodeURIComponent(id)}`;
+
               return (
                 <Link
                   key={option.value}
-                  href={`/books/${book.slug || book.id}?sort=${option.value}`}
+                  href={href}
+                  scroll={false}
                   className={`rounded-full px-3 py-1.5 text-sm transition ${
                     active
                       ? "bg-brown-700 font-semibold text-white"

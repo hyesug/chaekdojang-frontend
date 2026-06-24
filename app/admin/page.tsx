@@ -638,6 +638,11 @@ export default function AdminPage() {
     loadAll();
   }
 
+  function openBookReviews(bookTitle: string) {
+    setTab("reviews");
+    setQuery(bookTitle);
+  }
+
   if (unauthorized) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-16 text-center">
@@ -750,7 +755,12 @@ export default function AdminPage() {
                   <h2 className="font-serif text-lg font-bold text-brown-900">책별 독후감 TOP 5</h2>
                   <div className="mt-3 space-y-2">
                     {bookStats.slice(0, 5).map((book) => (
-                      <div key={book.bookId} className="rounded-xl bg-cream-50 p-3">
+                      <button
+                        key={book.bookId}
+                        type="button"
+                        onClick={() => openBookReviews(book.title)}
+                        className="block w-full rounded-xl bg-cream-50 p-3 text-left hover:bg-cream-100"
+                      >
                         <div className="flex justify-between gap-3">
                           <div className="min-w-0">
                             <p className="truncate font-medium text-brown-800">{book.title}</p>
@@ -758,7 +768,7 @@ export default function AdminPage() {
                           </div>
                           <p className="shrink-0 text-sm font-bold text-brown-700">{book.reviewCount}개</p>
                         </div>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </section>

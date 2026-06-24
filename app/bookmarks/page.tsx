@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import ReviewCard, { type Review } from "../components/ReviewCard";
 import { API_BASE } from "../lib/api";
+import { authFetch, isAuthenticated } from "../lib/auth";
 
 const BASE = API_BASE;
 
@@ -13,21 +14,38 @@ export default function BookmarksPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token: string | null = "cookie-session";
-    if (!token || token === "undefined" || token === "null") {
-      router.push("/auth/login");
-      return;
+    let alive = true;
+
+    async function loadBookmarks() {
+      const authenticated = await isAuthenticated();
+      if (!alive) return;
+      if (!authenticated) {
+        router.push("/auth/login");
+        return;
+      }
+
+      try {
+        const res = await authFetch(`${BASE}/api/reviews/bookmarked`, {
+          headers: { Authorization: "Bearer cookie-session" },
+        });
+        if (!alive) return;
+        if (res.status === 401) {
+          router.push("/auth/login");
+          return;
+        }
+        if (res.ok) {
+          const json = await res.json();
+          setReviews(json.data ?? []);
+        }
+      } finally {
+        if (alive) setLoading(false);
+      }
     }
 
-    fetch(`${BASE}/api/reviews/bookmarked`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((json) => {
-        if (json) setReviews(json.data ?? []);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    loadBookmarks();
+    return () => {
+      alive = false;
+    };
   }, [router]);
 
   return (

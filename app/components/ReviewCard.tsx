@@ -6,6 +6,7 @@ import Link from "next/link";
 import ReviewDetailModal from "./ReviewDetailModal";
 import ProfileAvatar from "./ProfileAvatar";
 import { API_BASE } from "../lib/api";
+import { authFetch } from "../lib/auth";
 import { buildSearchLinks } from "../lib/purchaseLinks";
 
 export type Review = {
@@ -428,7 +429,7 @@ export default function ReviewCard({
   useEffect(() => {
     const token = getToken();
     if (!token) return;
-    fetch(`${BASE}/api/reviews/${post.id}/bookmark/status`, {
+    authFetch(`${BASE}/api/reviews/${post.id}/bookmark/status`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => (r.ok ? r.json() : null))
@@ -549,7 +550,7 @@ export default function ReviewCard({
     if (!getToken()) { router.push("/auth/login"); return; }
     const next = !bookmarked;
     setBookmarked(next);
-    const res = await fetch(`${BASE}/api/reviews/${post.id}/bookmark`, {
+    const res = await authFetch(`${BASE}/api/reviews/${post.id}/bookmark`, {
       method: next ? "POST" : "DELETE",
       headers: { Authorization: `Bearer ${getToken()}` },
     });

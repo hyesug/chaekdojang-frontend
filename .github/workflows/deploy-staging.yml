@@ -40,7 +40,7 @@ jobs:
         id: deploy
         shell: bash
         run: |
-          url=$(npx vercel@latest deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
+          url=$(npx vercel@latest deploy --prebuilt --archive=tgz --token=${{ secrets.VERCEL_TOKEN }})
           echo "url=$url" >> "$GITHUB_OUTPUT"
 
       - name: Alias staging domain

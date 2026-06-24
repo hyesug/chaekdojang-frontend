@@ -8,7 +8,7 @@ import FollowListModal from "../components/FollowListModal";
 import ExpandableBio, { MAX_BIO_LENGTH } from "../components/ExpandableBio";
 import ProfileAvatar from "../components/ProfileAvatar";
 import { API_BASE } from "../lib/api";
-import { clearToken, getValidToken } from "../lib/auth";
+import { authFetch, clearToken, getValidToken, logout } from "../lib/auth";
 
 const BASE = API_BASE;
 const FEED_STATE_KEY = "chaekdojang:feed-state";
@@ -354,13 +354,13 @@ export default function ProfilePage() {
 
   async function handleDeleteAccount(e: React.FormEvent) {
     e.preventDefault();
-    const token: string | null = "cookie-session";
+    const token = getValidToken();
     if (!token || deleteConfirmText !== DELETE_CONFIRM_TEXT || deletingAccount) return;
 
     setDeletingAccount(true);
     setDeleteError("");
     try {
-      const res = await fetch(`${BASE}/api/users/me`, {
+      const res = await authFetch(`${BASE}/api/users/me`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -375,7 +375,8 @@ export default function ProfilePage() {
         return;
       }
 
-      
+      await logout();
+      clearToken();
       sessionStorage.removeItem(FEED_STATE_KEY);
       window.dispatchEvent(new Event("auth-change"));
       router.replace("/?accountDeleted=true");

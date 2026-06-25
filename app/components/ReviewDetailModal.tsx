@@ -76,9 +76,10 @@ function EditableStars({ rating, onChange }: { rating: number; onChange: (r: num
 type Props = {
   reviewId: number;
   onClose: () => void;
+  onEngagementChange?: (counts: { likeCount: number; commentCount: number; liked?: boolean }) => void;
 };
 
-export default function ReviewDetailModal({ reviewId, onClose }: Props) {
+export default function ReviewDetailModal({ reviewId, onClose, onEngagementChange }: Props) {
   const router = useRouter();
   const myId = getMyUserId();
   const isLoggedIn = !!getToken();
@@ -108,13 +109,14 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
       setLoading(true);
       try {
         const [reviewRes] = await Promise.all([
-          fetch(`${BASE}/api/reviews/${reviewId}`),
+          fetch(`${BASE}/api/reviews/${reviewId}`, { cache: "no-store" }),
         ]);
         if (reviewRes.ok) {
           const json = await reviewRes.json();
           const data: ReviewDetail = json.data ?? json;
           setReview(data);
           setLikeCount(data.likeCount);
+          onEngagementChange?.({ likeCount: data.likeCount, commentCount: data.commentCount });
           if (!data.hidden) {
             loadComments();
           }
@@ -147,10 +149,12 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
   }, [review?.author.id, myId]);
 
   async function loadComments() {
-    const res = await fetch(`${BASE}/api/reviews/${reviewId}/comments`);
+    const res = await fetch(`${BASE}/api/reviews/${reviewId}/comments`, { cache: "no-store" });
     if (res.ok) {
       const json = await res.json();
-      setComments(json.data ?? json);
+      const nextComments = json.data ?? json;
+      setComments(nextComments);
+      onEngagementChange?.({ likeCount, commentCount: nextComments.length, liked });
     }
   }
 
@@ -167,6 +171,8 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
        router.push("/auth/login");
     } else if (!res.ok) {
       setLiked(!next); setLikeCount((c) => c + (next ? -1 : 1));
+    } else {
+      onEngagementChange?.({ likeCount: likeCount + (next ? 1 : -1), commentCount: comments.length, liked: next });
     }
   }
 
@@ -238,7 +244,13 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
     const res = await authFetch(`${BASE}/api/reviews/${reviewId}/comments/${commentId}`, {
       method: "DELETE",
     });
-    if (res.ok) setComments((prev) => prev.filter((c) => c.id !== commentId));
+    if (res.ok) {
+      setComments((prev) => {
+        const nextComments = prev.filter((c) => c.id !== commentId);
+        onEngagementChange?.({ likeCount, commentCount: nextComments.length, liked });
+        return nextComments;
+      });
+    }
   }
 
   return (
@@ -302,7 +314,7 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
                   <ProfileAvatar src={review.author.profileImage} name={review.author.nickname} size="xs" />
                   {review.author.id != null ? (
                     <Link
-                      href={`/users/${review.author.id}`}
+                      href={`/u/${encodeURIComponent(review.author.nickname)}`}
                       onClick={onClose}
                       className="text-xs font-semibold text-brown-600 hover:underline"
                     >

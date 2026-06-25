@@ -843,6 +843,11 @@ export default function ReviewCard({
         <ReviewDetailModal
           reviewId={post.id}
           onClose={() => setShowDetail(false)}
+          onEngagementChange={({ likeCount: nextLikeCount, commentCount: nextCommentCount, liked: nextLiked }) => {
+            setLikeCount(nextLikeCount);
+            setCommentCount(nextCommentCount);
+            if (typeof nextLiked === "boolean") setLiked(nextLiked);
+          }}
         />
       )}
 

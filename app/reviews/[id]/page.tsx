@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import ReviewEngagement from "../../components/ReviewEngagement";
 import ReviewCard, { type Review } from "../../components/ReviewCard";
 import ReviewViewTracker from "../../components/ReviewViewTracker";
 import {
@@ -18,7 +19,7 @@ type Props = {
 };
 
 async function getReview(id: string) {
-  return fetchApiData<ReviewDetail>(`/api/reviews/${id}`);
+  return fetchApiData<ReviewDetail>(`/api/reviews/${id}`, { cache: "no-store" });
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -166,7 +167,7 @@ export default async function PublicReviewPage({ params }: Props) {
             <div className="mb-6 flex items-center justify-between gap-3 text-sm">
               {review.author.id != null ? (
                 <Link
-                  href={`/users/${review.author.id}`}
+                  href={`/u/${encodeURIComponent(review.author.nickname)}`}
                   className="font-semibold text-brown-700 hover:underline"
                 >
                   {review.author.nickname}
@@ -183,15 +184,19 @@ export default async function PublicReviewPage({ params }: Props) {
               {review.content}
             </p>
 
-            <div className="mt-7 pt-5 border-t border-cream-200 flex flex-wrap items-center gap-3 text-sm text-brown-400">
-              <span>좋아요 {review.likeCount}</span>
-              <span>댓글 {review.commentCount}</span>
-              {review.book?.id && (
-                <Link href={`/books/${review.book.id}`} className="ml-auto text-brown-600 hover:underline">
+            <ReviewEngagement
+              reviewId={review.id}
+              initialLikeCount={review.likeCount}
+              initialCommentCount={review.commentCount}
+            />
+
+            {review.book?.id && (
+              <div className="mt-5 text-right text-sm">
+                <Link href={`/books/${review.book.id}`} className="text-brown-600 hover:underline">
                   이 책의 다른 독후감 보기
                 </Link>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
 

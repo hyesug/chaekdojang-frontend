@@ -39,7 +39,6 @@ export default function PublicProfileStats({
         >
           <p className="text-xl font-bold text-brown-800">{followerCount}</p>
           <p className="text-xs text-brown-500 mt-0.5">팔로워</p>
-          <p className="mt-1 text-[11px] font-medium text-brown-400 transition-colors group-hover:text-brown-700">보기 →</p>
         </button>
         <button
           type="button"
@@ -49,7 +48,6 @@ export default function PublicProfileStats({
         >
           <p className="text-xl font-bold text-brown-800">{followingCount}</p>
           <p className="text-xs text-brown-500 mt-0.5">팔로잉</p>
-          <p className="mt-1 text-[11px] font-medium text-brown-400 transition-colors group-hover:text-brown-700">보기 →</p>
         </button>
       </div>
 

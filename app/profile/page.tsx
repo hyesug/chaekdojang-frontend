@@ -552,7 +552,6 @@ export default function ProfilePage() {
               >
                 <p className="font-bold text-brown-800 text-xl">{profile.followerCount}</p>
                 <p className="text-xs text-brown-500 mt-0.5">팔로워</p>
-                <p className="mt-1 text-[11px] font-medium text-brown-400 transition-colors group-hover:text-brown-700">보기 →</p>
               </button>
               <button
                 onClick={() => setFollowModal("followings")}
@@ -561,7 +560,6 @@ export default function ProfilePage() {
               >
                 <p className="font-bold text-brown-800 text-xl">{profile.followingCount}</p>
                 <p className="text-xs text-brown-500 mt-0.5">팔로잉</p>
-                <p className="mt-1 text-[11px] font-medium text-brown-400 transition-colors group-hover:text-brown-700">보기 →</p>
               </button>
             </div>
 

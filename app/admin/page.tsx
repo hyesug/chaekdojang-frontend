@@ -519,6 +519,8 @@ function getActionDescription(
     return `${actorLabel(event)} · ${book.title} 책을 봤어요`;
   }
   if (event.eventType === "page_view") {
+    const reviewId = getReviewId(path);
+    if (reviewId) return `${actorLabel(event)} · 독후감 #${reviewId}을 봤어요`;
     return `${actorLabel(event)} · ${getRouteLabel(path)}을 봤어요`;
   }
   return `${actorLabel(event)} · ${getMetricEventLabel(event.eventType)}`;
@@ -552,6 +554,8 @@ function getPageViewContext(
     const bookLabel = book ? `${book.title}${book.author ? ` · ${book.author}` : ""}` : "책 정보 없음";
     return `독후감 상세 · 작성자 ${review.author.nickname} · ${bookLabel}`;
   }
+  const reviewId = getReviewId(path);
+  if (reviewId) return `독후감 상세 · ID ${reviewId}`;
   const book = bookMetaByPath[path];
   if (book) {
     return `책 상세 · ${book.title}${book.author ? ` · ${book.author}` : ""}`;
@@ -570,6 +574,8 @@ function getActionContext(
     const book = review.book;
     return `독후감 상세 · 작성자 ${review.author.nickname} · ${book ? `${book.title}${book.author ? ` · ${book.author}` : ""}` : "책 정보 없음"}`;
   }
+  const reviewId = getReviewId(path);
+  if (reviewId) return `독후감 상세 · ID ${reviewId}`;
   const book = bookMetaByPath[path];
   if (book) return `책 상세 · ${book.title}${book.author ? ` · ${book.author}` : ""}`;
   return getRouteLabel(path);
@@ -976,7 +982,7 @@ export default function AdminPage() {
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   const filteredPageViews = recentPageViews.filter((event) => {
-    const text = `${getPageViewTitle(event, bookMetaByPath, reviewMetaByPath)} ${getPageViewContext(event, bookMetaByPath, reviewMetaByPath)} ${event.path} ${event.nickname ?? ""} ${referrerLabel(event.referrer)} ${event.ip ?? ""}`.toLowerCase();
+    const text = `${getActionDescription(event, bookMetaByPath, reviewMetaByPath)} ${getPageViewTitle(event, bookMetaByPath, reviewMetaByPath)} ${getPageViewContext(event, bookMetaByPath, reviewMetaByPath)} ${event.path} ${event.nickname ?? ""} ${referrerLabel(event.referrer)} ${event.ip ?? ""}`.toLowerCase();
     return text.includes(query.toLowerCase());
   });
 
@@ -1643,7 +1649,7 @@ export default function AdminPage() {
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="rounded-full bg-cream-100 px-2 py-0.5 text-xs font-medium text-brown-600">페이지 조회</span>
-                        <p className="font-medium text-brown-900">{getPageViewTitle(event, bookMetaByPath, reviewMetaByPath)}</p>
+                        <p className="font-medium text-brown-900">{getActionDescription(event, bookMetaByPath, reviewMetaByPath)}</p>
                       </div>
                       <p className="mt-1 text-sm text-brown-500">{getPageViewContext(event, bookMetaByPath, reviewMetaByPath)}</p>
                       <p className="mt-2 break-all font-mono text-xs text-brown-400">{normalizePath(event.path)}</p>

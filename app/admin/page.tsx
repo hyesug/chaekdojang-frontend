@@ -7,7 +7,7 @@ import ReviewDetailModal from "../components/ReviewDetailModal";
 import { API_BASE } from "../lib/api";
 import { authFetch, getValidToken } from "../lib/auth";
 
-type Tab = "dashboard" | "users" | "reviews" | "inquiries" | "officialProfiles" | "pages" | "actions" | "security" | "audit";
+type Tab = "dashboard" | "users" | "reviews" | "inquiries" | "officialProfiles" | "actions" | "security" | "audit";
 
 interface PageResponse<T> {
   content: T[];
@@ -231,8 +231,7 @@ const tabs: Array<{ key: Tab; label: string }> = [
   { key: "reviews", label: "📖 독후감" },
   { key: "inquiries", label: "💬 문의" },
   { key: "officialProfiles", label: "🏷️ 공식 프로필" },
-  { key: "pages", label: "🧭 유입/페이지" },
-  { key: "actions", label: "⚡ 사용자 행동" },
+  { key: "actions", label: "🧭 유입·사용자 행동" },
   { key: "security", label: "🛡️ 보안·오류" },
   { key: "audit", label: "🧾 관리자 이력" },
 ];
@@ -526,43 +525,6 @@ function getActionDescription(
   return `${actorLabel(event)} · ${getMetricEventLabel(event.eventType)}`;
 }
 
-function getPageViewTitle(
-  event: MetricEvent,
-  bookMetaByPath: Record<string, BookTitleResponse>,
-  reviewMetaByPath: Record<string, ReviewLookupResponse>
-) {
-  const path = normalizePath(event.path);
-  const review = reviewMetaByPath[path];
-  if (review) {
-    const bookTitle = review.book?.title ?? "책 정보 없음";
-    return `${review.author.nickname}님의 ${bookTitle} 독후감`;
-  }
-  const book = bookMetaByPath[path];
-  if (book) return `${book.title} 책 상세`;
-  return getRouteLabel(path);
-}
-
-function getPageViewContext(
-  event: MetricEvent,
-  bookMetaByPath: Record<string, BookTitleResponse>,
-  reviewMetaByPath: Record<string, ReviewLookupResponse>
-) {
-  const path = normalizePath(event.path);
-  const review = reviewMetaByPath[path];
-  if (review) {
-    const book = review.book;
-    const bookLabel = book ? `${book.title}${book.author ? ` · ${book.author}` : ""}` : "책 정보 없음";
-    return `독후감 상세 · 작성자 ${review.author.nickname} · ${bookLabel}`;
-  }
-  const reviewId = getReviewId(path);
-  if (reviewId) return `독후감 상세 · ID ${reviewId}`;
-  const book = bookMetaByPath[path];
-  if (book) {
-    return `책 상세 · ${book.title}${book.author ? ` · ${book.author}` : ""}`;
-  }
-  return getRouteLabel(path);
-}
-
 function getActionContext(
   event: MetricEvent,
   bookMetaByPath: Record<string, BookTitleResponse>,
@@ -662,7 +624,6 @@ export default function AdminPage() {
   const [inquiriesPage, setInquiriesPage] = useState(0);
   const [officialApplicationsPage, setOfficialApplicationsPage] = useState(0);
   const [officialProfilesPage, setOfficialProfilesPage] = useState(0);
-  const [pageViewsPage, setPageViewsPage] = useState(0);
   const [actionsPage, setActionsPage] = useState(0);
   const [securityPage, setSecurityPage] = useState(0);
   const [auditPage, setAuditPage] = useState(0);
@@ -849,7 +810,6 @@ export default function AdminPage() {
     setInquiriesPage(0);
     setOfficialApplicationsPage(0);
     setOfficialProfilesPage(0);
-    setPageViewsPage(0);
     setActionsPage(0);
     setSecurityPage(0);
     setAuditPage(0);
@@ -974,15 +934,6 @@ export default function AdminPage() {
 
   const filteredAuditLogs = auditLogs.filter((log) => {
     const text = `${log.actorNickname ?? ""} ${log.action} ${log.targetType} ${log.summary}`.toLowerCase();
-    return text.includes(query.toLowerCase());
-  });
-
-  const recentPageViews = visibleMetrics
-    .filter((event) => event.eventType === "page_view")
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-
-  const filteredPageViews = recentPageViews.filter((event) => {
-    const text = `${getActionDescription(event, bookMetaByPath, reviewMetaByPath)} ${getPageViewTitle(event, bookMetaByPath, reviewMetaByPath)} ${getPageViewContext(event, bookMetaByPath, reviewMetaByPath)} ${event.path} ${event.nickname ?? ""} ${referrerLabel(event.referrer)} ${event.ip ?? ""}`.toLowerCase();
     return text.includes(query.toLowerCase());
   });
 
@@ -1154,7 +1105,6 @@ export default function AdminPage() {
   const pagedInquiries = paginate(filteredInquiries, inquiriesPage);
   const pagedOfficialApplications = paginate(filteredOfficialApplications, officialApplicationsPage);
   const pagedOfficialProfiles = paginate(filteredOfficialProfiles, officialProfilesPage);
-  const pagedPageViews = paginate(filteredPageViews, pageViewsPage);
   const pagedActions = paginate(filteredActions, actionsPage);
   const pagedSecurityEvents = paginate(filteredSecurityEvents, securityPage);
   const pagedAuditLogs = paginate(filteredAuditLogs, auditPage);
@@ -1641,34 +1591,6 @@ export default function AdminPage() {
             </section>
           )}
 
-          {tab === "pages" && (
-            <section className="space-y-3">
-              {pagedPageViews.map((event) => (
-                <div key={event.id} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-full bg-cream-100 px-2 py-0.5 text-xs font-medium text-brown-600">페이지 조회</span>
-                        <p className="font-medium text-brown-900">{getActionDescription(event, bookMetaByPath, reviewMetaByPath)}</p>
-                      </div>
-                      <p className="mt-1 text-sm text-brown-500">{getPageViewContext(event, bookMetaByPath, reviewMetaByPath)}</p>
-                      <p className="mt-2 break-all font-mono text-xs text-brown-400">{normalizePath(event.path)}</p>
-                      <p className="mt-2 text-sm text-brown-500">
-                        {actorLabel(event)} · {getDeviceLabel(event.device)} · 유입 {referrerLabel(event.referrer)}
-                      </p>
-                    </div>
-                    <div className="shrink-0 text-left text-xs text-brown-300 sm:text-right">
-                      <p>{formatLogTime(event.createdAt)}</p>
-                      <p className="mt-1">세션 {shortSession(event.sessionId)}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              <PaginationControls page={pageViewsPage} total={filteredPageViews.length} onChange={setPageViewsPage} />
-              {filteredPageViews.length === 0 && <EmptyState>페이지 조회 기록이 없어요</EmptyState>}
-            </section>
-          )}
-
           {tab === "actions" && (
             <section className="space-y-3">
               {pagedActions.map((event) => (
@@ -1692,7 +1614,7 @@ export default function AdminPage() {
                 </div>
               ))}
               <PaginationControls page={actionsPage} total={filteredActions.length} onChange={setActionsPage} />
-              {filteredActions.length === 0 && <EmptyState>사용자 행동 기록이 없어요</EmptyState>}
+              {filteredActions.length === 0 && <EmptyState>유입·사용자 행동 기록이 없어요</EmptyState>}
             </section>
           )}
 

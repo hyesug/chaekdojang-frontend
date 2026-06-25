@@ -1444,7 +1444,11 @@ export default function AdminPage() {
                 <tbody>
                   {pagedUsers.map((user) => (
                     <tr key={user.id} className="border-t border-cream-100 hover:bg-cream-50">
-                      <td className="px-4 py-3 font-medium text-brown-800">{user.nickname}</td>
+                      <td className="px-4 py-3 font-medium">
+                        <Link href={`/users/${user.id}`} className="text-brown-800 hover:text-brown-600 hover:underline">
+                          {user.nickname}
+                        </Link>
+                      </td>
                       <td className="px-4 py-3 text-brown-500">{user.email ?? "-"}</td>
                       <td className="px-4 py-3"><span className="rounded-full bg-cream-100 px-2 py-0.5 text-xs text-brown-600">{user.role}</span></td>
                       <td className="px-4 py-3 text-brown-400">{new Date(user.createdAt).toLocaleDateString("ko-KR")}</td>

@@ -1,18 +1,29 @@
 const LOGGED_OUT_KEY = "chaekdojang:logged-out";
+const AUTH_STATE_KEY = "chaekdojang:authenticated";
+const REFRESH_FAILURE_COOLDOWN_MS = 10_000;
+
+let refreshInFlight: Promise<boolean> | null = null;
+let lastRefreshFailureAt = 0;
 
 function isLogoutBlocked() {
   return typeof window !== "undefined" && sessionStorage.getItem(LOGGED_OUT_KEY) === "true";
 }
 
+function setAuthState(authenticated: boolean) {
+  if (typeof window === "undefined") return;
+  sessionStorage.setItem(AUTH_STATE_KEY, authenticated ? "true" : "false");
+}
+
 export function markLoggedIn() {
   if (typeof window === "undefined") return;
   sessionStorage.removeItem(LOGGED_OUT_KEY);
+  setAuthState(true);
 }
 
 export function getValidToken(): string | null {
   if (typeof window === "undefined") return null;
   if (isLogoutBlocked()) return null;
-  return "cookie-session";
+  return sessionStorage.getItem(AUTH_STATE_KEY) === "true" ? "cookie-session" : null;
 }
 
 export function clearToken() {
@@ -48,23 +59,39 @@ export async function isAuthenticated() {
     const res = await fetch("/api/auth/session", { cache: "no-store", credentials: "include" });
     if (res.ok) {
       const json = await res.json();
-      return Boolean(json.data?.authenticated);
+      const authenticated = Boolean(json.data?.authenticated);
+      setAuthState(authenticated);
+      return authenticated;
     }
-    return await refreshSession();
+    setAuthState(false);
+    return false;
   } catch {
+    setAuthState(false);
     return false;
   }
 }
 
 export async function refreshSession() {
   if (isLogoutBlocked()) return false;
+  if (refreshInFlight) return refreshInFlight;
+  if (Date.now() - lastRefreshFailureAt < REFRESH_FAILURE_COOLDOWN_MS) return false;
 
-  try {
-    const res = await fetch("/api/auth/refresh", { method: "POST", credentials: "include" });
-    return res.ok;
-  } catch {
-    return false;
-  }
+  refreshInFlight = (async () => {
+    try {
+      const res = await fetch("/api/auth/refresh", { method: "POST", credentials: "include" });
+      setAuthState(res.ok);
+      if (!res.ok) lastRefreshFailureAt = Date.now();
+      return res.ok;
+    } catch {
+      setAuthState(false);
+      lastRefreshFailureAt = Date.now();
+      return false;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+
+  return refreshInFlight;
 }
 
 export async function authFetch(input: RequestInfo | URL, init: RequestInit = {}) {

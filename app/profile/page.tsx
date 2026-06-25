@@ -17,12 +17,6 @@ const MAX_PROFILE_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_PROFILE_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 const PROFILE_IMAGE_HELP_TEXT = "JPG, PNG, WEBP, GIF 이미지를 5MB 이하로 올릴 수 있어요.";
 
-type ReadingStats = {
-  totalFinished: number;
-  monthly: { year: number; month: number; count: number }[];
-  genres: { genre: string; count: number }[];
-};
-
 type RecommendedUser = {
   id: number;
   nickname: string;
@@ -122,7 +116,6 @@ export default function ProfilePage() {
   const [saveError, setSaveError] = useState("");
   const [followModal, setFollowModal] = useState<null | "followers" | "followings">(null);
   const [uploading, setUploading] = useState(false);
-  const [stats, setStats] = useState<ReadingStats | null>(null);
   const [lifeBookSearch, setLifeBookSearch] = useState("");
   const [lifeBookResults, setLifeBookResults] = useState<LifeBook[]>([]);
   const [lifeBookSearching, setLifeBookSearching] = useState(false);
@@ -181,7 +174,6 @@ export default function ProfilePage() {
           profileImage: data.profileImage ?? "",
         });
         loadReviews(token, 0, "");
-        loadStats(token);
         loadRecommendations(token);
         loadOfficialApplications(token);
       }
@@ -200,20 +192,6 @@ export default function ProfilePage() {
       if (res.ok) {
         const json = await res.json();
         setOfficialApplications(json.data ?? []);
-      }
-    } catch {
-      /* 무시 */
-    }
-  }
-
-  async function loadStats(token: string) {
-    try {
-      const res = await fetch(`${BASE}/api/users/me/stats`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const json = await res.json();
-        setStats(json.data ?? json);
       }
     } catch {
       /* 무시 */
@@ -981,47 +959,6 @@ export default function ProfilePage() {
           월별 캘린더
         </Link>
       </div>
-
-      {/* 독서 통계 요약 */}
-      {stats && (stats.totalFinished > 0 || stats.genres.length > 0) && (
-        <div className="bg-white rounded-2xl border border-cream-200 p-5 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-serif text-base font-bold text-brown-800">📊 독서 기록</h2>
-            <Link href="/calendar" className="text-xs text-brown-400 hover:text-brown-600">
-              월별 캘린더
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div className="text-center bg-cream-50 rounded-xl p-3">
-              <p className="text-2xl font-bold text-brown-800">{stats.totalFinished}</p>
-              <p className="text-xs text-brown-400 mt-0.5">완독한 책</p>
-            </div>
-            {stats.genres[0] && (
-              <div className="text-center bg-cream-50 rounded-xl p-3">
-                <p className="text-sm font-bold text-brown-800 truncate">{stats.genres[0].genre}</p>
-                <p className="text-xs text-brown-400 mt-0.5">최애 장르</p>
-              </div>
-            )}
-          </div>
-
-          {/* 장르 요약 */}
-          {stats.genres.length > 0 && (
-            <div>
-              <p className="text-xs text-brown-500 font-medium mb-2">선호 장르</p>
-              <div className="flex flex-wrap gap-2">
-                {stats.genres.slice(0, 4).map((g) => {
-                  return (
-                    <span key={g.genre} className="px-3 py-1 rounded-full bg-cream-100 text-xs text-brown-600">
-                      {g.genre} {g.count}권
-                    </span>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* 취향 맞는 독자 추천 */}
       {recommendations.length > 0 && (

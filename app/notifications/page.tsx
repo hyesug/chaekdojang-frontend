@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { API_BASE } from "../lib/api";
+import { authFetch, getValidToken } from "../lib/auth";
 
 const BASE = API_BASE;
 
@@ -21,8 +21,7 @@ type Notification = {
 };
 
 function getToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return "cookie-session";
+  return getValidToken();
 }
 
 function typeIcon(type: NotificationType) {
@@ -43,14 +42,12 @@ export default function NotificationsPage() {
     const token = getToken();
     if (!token) { router.push("/auth/login"); return; }
 
-    fetch(`${BASE}/api/notifications`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    authFetch(`${BASE}/api/notifications`)
       .then((r) => (r.ok ? r.json() : null))
       .then((json) => { if (json) setNotifications(json.data ?? []); })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [router]);
 
   function notifyBell() {
     window.dispatchEvent(new Event("notification-read"));
@@ -60,9 +57,8 @@ export default function NotificationsPage() {
     const token = getToken();
     if (!token) return;
     try {
-      const res = await fetch(`${BASE}/api/notifications`, {
+      const res = await authFetch(`${BASE}/api/notifications`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) return;
       setNotifications([]);
@@ -75,9 +71,8 @@ export default function NotificationsPage() {
   async function markAllAsRead() {
     const token = getToken();
     if (!token) return;
-    await fetch(`${BASE}/api/notifications/read-all`, {
+    await authFetch(`${BASE}/api/notifications/read-all`, {
       method: "PATCH",
-      headers: { Authorization: `Bearer ${token}` },
     });
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     notifyBell();
@@ -86,9 +81,8 @@ export default function NotificationsPage() {
   async function markAsRead(id: number) {
     const token = getToken();
     if (!token) return;
-    await fetch(`${BASE}/api/notifications/${id}/read`, {
+    await authFetch(`${BASE}/api/notifications/${id}/read`, {
       method: "PATCH",
-      headers: { Authorization: `Bearer ${token}` },
     });
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
@@ -100,9 +94,8 @@ export default function NotificationsPage() {
     const token = getToken();
     if (!token) return;
     try {
-      const res = await fetch(`${BASE}/api/notifications/${id}`, {
+      const res = await authFetch(`${BASE}/api/notifications/${id}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
         console.error("알림 삭제 실패:", res.status);
@@ -111,6 +104,16 @@ export default function NotificationsPage() {
       setNotifications((prev) => prev.filter((n) => n.id !== id));
     } catch (e) {
       console.error("알림 삭제 오류:", e);
+    }
+  }
+
+  async function openNotification(notification: Notification) {
+    await markAsRead(notification.id);
+    if (
+      notification.targetId !== null &&
+      ["LIKE", "COMMENT", "SAME_BOOK_REVIEW"].includes(notification.type)
+    ) {
+      router.push(`/reviews/${notification.targetId}`);
     }
   }
 
@@ -158,7 +161,15 @@ export default function NotificationsPage() {
           {notifications.map((n) => (
             <div
               key={n.id}
-              onClick={() => markAsRead(n.id)}
+              role="button"
+              tabIndex={0}
+              onClick={() => openNotification(n)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  openNotification(n);
+                }
+              }}
               className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-colors cursor-pointer ${
                 n.isRead ? "bg-white border border-cream-200" : "bg-cream-100 border border-cream-300"
               }`}

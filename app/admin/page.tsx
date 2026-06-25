@@ -503,11 +503,20 @@ function classifyErrorLike(method: string, uri: string, status: number) {
   };
 }
 
-function getActionDescription(event: MetricEvent, bookTitleByPath: Record<string, string>) {
+function getActionDescription(
+  event: MetricEvent,
+  bookMetaByPath: Record<string, BookTitleResponse>,
+  reviewMetaByPath: Record<string, ReviewLookupResponse>
+) {
   const path = normalizePath(event.path);
-  const bookTitle = bookTitleByPath[path];
-  if (event.eventType === "page_view" && bookTitle) {
-    return `${actorLabel(event)} · ${bookTitle} 책을 봤어요`;
+  const review = reviewMetaByPath[path];
+  if (event.eventType === "page_view" && review) {
+    const bookTitle = review.book?.title ?? "책 정보 없음";
+    return `${actorLabel(event)} · ${review.author.nickname}님의 ${bookTitle} 독후감을 봤어요`;
+  }
+  const book = bookMetaByPath[path];
+  if (event.eventType === "page_view" && book) {
+    return `${actorLabel(event)} · ${book.title} 책을 봤어요`;
   }
   if (event.eventType === "page_view") {
     return `${actorLabel(event)} · ${getRouteLabel(path)}을 봤어요`;
@@ -515,10 +524,54 @@ function getActionDescription(event: MetricEvent, bookTitleByPath: Record<string
   return `${actorLabel(event)} · ${getMetricEventLabel(event.eventType)}`;
 }
 
-function getActionContext(event: MetricEvent, bookTitleByPath: Record<string, string>) {
+function getPageViewTitle(
+  event: MetricEvent,
+  bookMetaByPath: Record<string, BookTitleResponse>,
+  reviewMetaByPath: Record<string, ReviewLookupResponse>
+) {
   const path = normalizePath(event.path);
-  const bookTitle = bookTitleByPath[path];
-  if (bookTitle) return `책 상세 · ${bookTitle}`;
+  const review = reviewMetaByPath[path];
+  if (review) {
+    const bookTitle = review.book?.title ?? "책 정보 없음";
+    return `${review.author.nickname}님의 ${bookTitle} 독후감`;
+  }
+  const book = bookMetaByPath[path];
+  if (book) return `${book.title} 책 상세`;
+  return getRouteLabel(path);
+}
+
+function getPageViewContext(
+  event: MetricEvent,
+  bookMetaByPath: Record<string, BookTitleResponse>,
+  reviewMetaByPath: Record<string, ReviewLookupResponse>
+) {
+  const path = normalizePath(event.path);
+  const review = reviewMetaByPath[path];
+  if (review) {
+    const book = review.book;
+    const bookLabel = book ? `${book.title}${book.author ? ` · ${book.author}` : ""}` : "책 정보 없음";
+    return `독후감 상세 · 작성자 ${review.author.nickname} · ${bookLabel}`;
+  }
+  const book = bookMetaByPath[path];
+  if (book) {
+    return `책 상세 · ${book.title}${book.author ? ` · ${book.author}` : ""}`;
+  }
+  return getRouteLabel(path);
+}
+
+function getActionContext(
+  event: MetricEvent,
+  bookMetaByPath: Record<string, BookTitleResponse>,
+  reviewMetaByPath: Record<string, ReviewLookupResponse>
+) {
+  const path = normalizePath(event.path);
+  const review = reviewMetaByPath[path];
+  if (review) {
+    const book = review.book;
+    return `독후감 상세 · 작성자 ${review.author.nickname} · ${book ? `${book.title}${book.author ? ` · ${book.author}` : ""}` : "책 정보 없음"}`;
+  }
+  const book = bookMetaByPath[path];
+  if (book) return `책 상세 · ${book.title}${book.author ? ` · ${book.author}` : ""}`;
   return getRouteLabel(path);
 }
 
@@ -596,7 +649,6 @@ export default function AdminPage() {
   const [bookSearchQuery, setBookSearchQuery] = useState("");
   const [bookSearchResults, setBookSearchResults] = useState<BookSearchResult[]>([]);
   const [bookSearching, setBookSearching] = useState(false);
-  const [bookTitleByPath, setBookTitleByPath] = useState<Record<string, string>>({});
   const [bookMetaByPath, setBookMetaByPath] = useState<Record<string, BookTitleResponse>>({});
   const [reviewMetaByPath, setReviewMetaByPath] = useState<Record<string, ReviewLookupResponse>>({});
   const [usersPage, setUsersPage] = useState(0);
@@ -654,7 +706,23 @@ export default function AdminPage() {
     return content;
   }
 
-  async function fetchContentLookups(events: MetricEvent[]) {
+  async function fetchContentLookups(events: MetricEvent[], adminReviews: Review[], stats: BookStat[]) {
+    const bookFallbacks = Object.fromEntries(
+      stats.map((book) => [normalizePath(`/books/${book.bookId}`), {
+        id: book.bookId,
+        title: book.title,
+        author: book.author,
+        thumbnail: null,
+      }])
+    );
+    const reviewFallbacks = Object.fromEntries(
+      adminReviews.map((review) => [normalizePath(`/reviews/${review.id}`), {
+        id: review.id,
+        content: review.content,
+        author: { nickname: review.authorNickname },
+        book: { title: review.bookTitle, author: "", thumbnail: null },
+      }])
+    );
     const paths = Array.from(new Set(events.map((event) => getBookPath(event.path)).filter(Boolean) as string[])).slice(0, 80);
     const bookEntries = await Promise.all(paths.map(async (path) => {
       const slug = getBookSlug(path);
@@ -663,13 +731,28 @@ export default function AdminPage() {
         const res = await fetch(`${API_BASE}/api/books/public/${encodeURIComponent(slug)}`, {
           credentials: "include",
         });
-        if (!res.ok) return null;
-        const json = await res.json();
-        const book = (json.data ?? json) as BookTitleResponse;
-        return book.title ? [path, book] as const : null;
+        if (res.ok) {
+          const json = await res.json();
+          const book = (json.data ?? json) as BookTitleResponse;
+          if (book.title) return [path, book] as const;
+        }
       } catch {
-        return null;
+        // fall through to the id-based lookup below
       }
+      if (/^\d+$/.test(slug)) {
+        try {
+          const res = await fetch(`${API_BASE}/api/books/${encodeURIComponent(slug)}`, {
+            credentials: "include",
+          });
+          if (!res.ok) return null;
+          const json = await res.json();
+          const book = (json.data ?? json) as BookTitleResponse;
+          return book.title ? [path, book] as const : null;
+        } catch {
+          return null;
+        }
+      }
+      return null;
     }));
     const reviewPaths = Array.from(new Set(events.map((event) => getReviewPath(event.path)).filter(Boolean) as string[])).slice(0, 80);
     const reviewEntries = await Promise.all(reviewPaths.map(async (path) => {
@@ -687,11 +770,16 @@ export default function AdminPage() {
         return null;
       }
     }));
-    const books = Object.fromEntries(bookEntries.filter(Boolean) as Array<readonly [string, BookTitleResponse]>);
+    const books = {
+      ...bookFallbacks,
+      ...Object.fromEntries(bookEntries.filter(Boolean) as Array<readonly [string, BookTitleResponse]>),
+    };
     return {
       books,
-      titles: Object.fromEntries(Object.entries(books).map(([path, book]) => [path, book.title])),
-      reviews: Object.fromEntries(reviewEntries.filter(Boolean) as Array<readonly [string, ReviewLookupResponse]>),
+      reviews: {
+        ...reviewFallbacks,
+        ...Object.fromEntries(reviewEntries.filter(Boolean) as Array<readonly [string, ReviewLookupResponse]>),
+      },
     };
   }
 
@@ -725,7 +813,7 @@ export default function AdminPage() {
         fetchAdmin<DashboardSummary>("/api/admin/dashboard/summary"),
         fetchAdmin<AggregatedSecurity[]>("/api/admin/security/summary"),
       ]);
-      const nextContentLookups = await fetchContentLookups(nextMetrics);
+      const nextContentLookups = await fetchContentLookups(nextMetrics, nextReviews, nextStats ?? []);
       setUsers(nextUsers);
       setReviews(nextReviews);
       setBookStats(nextStats ?? []);
@@ -736,7 +824,6 @@ export default function AdminPage() {
       setMetricEvents(nextMetrics);
       setErrorLogs(nextErrors);
       setAuditLogs(nextAudit);
-      setBookTitleByPath(nextContentLookups.titles);
       setBookMetaByPath(nextContentLookups.books);
       setReviewMetaByPath(nextContentLookups.reviews);
       setDashboardSummary(nextDashboard);
@@ -889,7 +976,7 @@ export default function AdminPage() {
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   const filteredPageViews = recentPageViews.filter((event) => {
-    const text = `${getRouteLabel(event.path)} ${event.path} ${event.nickname ?? ""} ${referrerLabel(event.referrer)} ${event.ip ?? ""}`.toLowerCase();
+    const text = `${getPageViewTitle(event, bookMetaByPath, reviewMetaByPath)} ${getPageViewContext(event, bookMetaByPath, reviewMetaByPath)} ${event.path} ${event.nickname ?? ""} ${referrerLabel(event.referrer)} ${event.ip ?? ""}`.toLowerCase();
     return text.includes(query.toLowerCase());
   });
 
@@ -897,7 +984,7 @@ export default function AdminPage() {
     .filter((event) => !["heartbeat", "session_end"].includes(event.eventType))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .filter((event) => {
-      const text = `${getActionDescription(event, bookTitleByPath)} ${getMetricEventLabel(event.eventType)} ${event.nickname ?? ""} ${event.path} ${event.ip ?? ""}`.toLowerCase();
+      const text = `${getActionDescription(event, bookMetaByPath, reviewMetaByPath)} ${getActionContext(event, bookMetaByPath, reviewMetaByPath)} ${getMetricEventLabel(event.eventType)} ${event.nickname ?? ""} ${event.path} ${event.ip ?? ""}`.toLowerCase();
       return text.includes(query.toLowerCase());
     });
 
@@ -1552,8 +1639,9 @@ export default function AdminPage() {
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="rounded-full bg-cream-100 px-2 py-0.5 text-xs font-medium text-brown-600">페이지 조회</span>
-                        <p className="font-medium text-brown-900">{getRouteLabel(event.path)}</p>
+                        <p className="font-medium text-brown-900">{getPageViewTitle(event, bookMetaByPath, reviewMetaByPath)}</p>
                       </div>
+                      <p className="mt-1 text-sm text-brown-500">{getPageViewContext(event, bookMetaByPath, reviewMetaByPath)}</p>
                       <p className="mt-2 break-all font-mono text-xs text-brown-400">{normalizePath(event.path)}</p>
                       <p className="mt-2 text-sm text-brown-500">
                         {actorLabel(event)} · {getDeviceLabel(event.device)} · 유입 {referrerLabel(event.referrer)}
@@ -1577,9 +1665,9 @@ export default function AdminPage() {
                 <div key={event.id} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
-                      <p className="font-medium text-brown-900">{getActionDescription(event, bookTitleByPath)}</p>
+                      <p className="font-medium text-brown-900">{getActionDescription(event, bookMetaByPath, reviewMetaByPath)}</p>
                       <p className="mt-1 text-sm text-brown-500">
-                        {getMetricEventLabel(event.eventType)} · {getDeviceLabel(event.device)} · {getActionContext(event, bookTitleByPath)}
+                        {getMetricEventLabel(event.eventType)} · {getDeviceLabel(event.device)} · {getActionContext(event, bookMetaByPath, reviewMetaByPath)}
                       </p>
                       <p className="mt-2 break-all font-mono text-xs text-brown-400">{normalizePath(event.path)}</p>
                       <p className="mt-2 text-xs text-brown-300">

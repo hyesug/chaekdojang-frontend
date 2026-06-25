@@ -111,7 +111,7 @@ export default async function GroupPage({ params }: Props) {
         </div>
       </section>
 
-      <GroupManageClient slug={group.slug} manager={group.manager} member={group.member} books={group.books.map((book) => ({ id: book.id, title: book.title, bookId: book.bookId }))} />
+      <GroupManageClient slug={group.slug} manager={group.manager} member={group.member} joinPolicy={group.joinPolicy} books={group.books.map((book) => ({ id: book.id, title: book.title, bookId: book.bookId }))} />
 
       <section className="mt-8">
         <div className="flex items-center justify-between gap-3">

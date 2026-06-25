@@ -16,6 +16,7 @@ type GroupMember = {
   status: "PENDING" | "APPROVED" | "REJECTED";
   createdAt: string;
 };
+type JoinPolicy = "OPEN" | "APPROVAL";
 type MyReview = {
   id: number;
   content: string;
@@ -28,7 +29,7 @@ function getToken() {
   return getValidToken();
 }
 
-export default function GroupManageClient({ slug, manager, member, books }: { slug: string; manager: boolean; member: boolean; books: GroupBook[] }) {
+export default function GroupManageClient({ slug, manager, member, joinPolicy, books }: { slug: string; manager: boolean; member: boolean; joinPolicy: JoinPolicy; books: GroupBook[] }) {
   const router = useRouter();
   const [bookId, setBookId] = useState("");
   const [note, setNote] = useState("");
@@ -39,28 +40,35 @@ export default function GroupManageClient({ slug, manager, member, books }: { sl
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [pendingMembers, setPendingMembers] = useState<GroupMember[]>([]);
+  const [approvedMembers, setApprovedMembers] = useState<GroupMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
 
-  const loadPendingMembers = useCallback(async () => {
+  const loadMembers = useCallback(async () => {
     if (!manager) return;
     const token = getToken();
     if (!token) return;
     setMembersLoading(true);
     try {
-      const res = await authFetch(`${API_BASE}/api/groups/${slug}/members?status=PENDING`);
+      const res = await authFetch(`${API_BASE}/api/groups/${slug}/members${joinPolicy === "APPROVAL" ? "?status=PENDING" : ""}`);
       if (!res.ok) throw new Error(await res.text());
       const json = await res.json();
-      setPendingMembers((json.data ?? json) as GroupMember[]);
+      const members = (json.data ?? json) as GroupMember[];
+      if (joinPolicy === "APPROVAL") {
+        setPendingMembers(members);
+      } else {
+        setApprovedMembers(members.filter((item) => item.status === "APPROVED"));
+      }
     } catch {
       setPendingMembers([]);
+      setApprovedMembers([]);
     } finally {
       setMembersLoading(false);
     }
-  }, [manager, slug]);
+  }, [joinPolicy, manager, slug]);
 
   useEffect(() => {
-    loadPendingMembers();
-  }, [loadPendingMembers]);
+    loadMembers();
+  }, [loadMembers]);
 
   const loadMyReviews = useCallback(async () => {
     if (!member || !groupBookId) return;
@@ -152,6 +160,7 @@ export default function GroupManageClient({ slug, manager, member, books }: { sl
       if (!res.ok) throw new Error(await res.text());
       setPendingMembers((members) => members.filter((member) => member.id !== memberId));
       setMessage(action === "approve" ? "가입 요청을 승인했어요." : "가입 요청을 거절했어요.");
+      await loadMembers();
       router.refresh();
     } catch {
       setMessage("멤버 상태를 변경하지 못했어요. 권한을 확인해주세요.");
@@ -170,31 +179,52 @@ export default function GroupManageClient({ slug, manager, member, books }: { sl
         {manager && (
           <div className="space-y-3 rounded-2xl bg-cream-50 p-4">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-brown-700">가입 승인 대기</p>
-              <button type="button" onClick={loadPendingMembers} className="text-xs font-medium text-brown-500 hover:text-brown-800">
+              <p className="text-sm font-semibold text-brown-700">{joinPolicy === "APPROVAL" ? "가입 승인 대기" : "가입 회원"}</p>
+              <button type="button" onClick={loadMembers} className="text-xs font-medium text-brown-500 hover:text-brown-800">
                 새로고침
               </button>
             </div>
             {membersLoading && <p className="text-sm text-brown-400">불러오는 중...</p>}
-            {!membersLoading && pendingMembers.length === 0 && (
-              <p className="rounded-xl bg-white px-3 py-4 text-sm text-brown-400">승인 대기 중인 멤버가 없어요.</p>
+            {joinPolicy === "APPROVAL" ? (
+              <>
+                {!membersLoading && pendingMembers.length === 0 && (
+                  <p className="rounded-xl bg-white px-3 py-4 text-sm text-brown-400">승인 대기 중인 멤버가 없어요.</p>
+                )}
+                {!membersLoading && pendingMembers.map((member) => (
+                  <div key={member.id} className="flex items-center justify-between gap-3 rounded-xl bg-white px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-brown-800">{member.nickname}</p>
+                      <p className="text-xs text-brown-400">요청일 {new Date(member.createdAt).toLocaleDateString("ko-KR")}</p>
+                    </div>
+                    <div className="flex shrink-0 gap-2">
+                      <button type="button" disabled={loading} onClick={() => updateMember(member.id, "approve")} className="rounded-lg bg-brown-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brown-800 disabled:opacity-50">
+                        승인
+                      </button>
+                      <button type="button" disabled={loading} onClick={() => updateMember(member.id, "reject")} className="rounded-lg border border-cream-300 px-3 py-1.5 text-xs font-semibold text-brown-500 hover:bg-cream-100 disabled:opacity-50">
+                        거절
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </>
+            ) : (
+              <>
+                {!membersLoading && approvedMembers.length === 0 && (
+                  <p className="rounded-xl bg-white px-3 py-4 text-sm text-brown-400">가입한 멤버가 없어요.</p>
+                )}
+                {!membersLoading && approvedMembers.map((member) => (
+                  <div key={member.id} className="flex items-center justify-between gap-3 rounded-xl bg-white px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-brown-800">{member.nickname}</p>
+                      <p className="text-xs text-brown-400">
+                        {member.role === "OWNER" ? "모임장" : member.role === "MANAGER" ? "관리자" : "멤버"} · 가입일 {new Date(member.createdAt).toLocaleDateString("ko-KR")}
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-600">가입 중</span>
+                  </div>
+                ))}
+              </>
             )}
-            {!membersLoading && pendingMembers.map((member) => (
-              <div key={member.id} className="flex items-center justify-between gap-3 rounded-xl bg-white px-3 py-2">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-brown-800">{member.nickname}</p>
-                  <p className="text-xs text-brown-400">요청일 {new Date(member.createdAt).toLocaleDateString("ko-KR")}</p>
-                </div>
-                <div className="flex shrink-0 gap-2">
-                  <button type="button" disabled={loading} onClick={() => updateMember(member.id, "approve")} className="rounded-lg bg-brown-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brown-800 disabled:opacity-50">
-                    승인
-                  </button>
-                  <button type="button" disabled={loading} onClick={() => updateMember(member.id, "reject")} className="rounded-lg border border-cream-300 px-3 py-1.5 text-xs font-semibold text-brown-500 hover:bg-cream-100 disabled:opacity-50">
-                    거절
-                  </button>
-                </div>
-              </div>
-            ))}
           </div>
         )}
         {manager && (

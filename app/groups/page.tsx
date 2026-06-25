@@ -1,4 +1,5 @@
 import Link from "next/link";
+import GroupsClient, { type ReadingGroupListItem } from "./GroupsClient";
 import { fetchApiData, SITE_URL } from "../lib/serverApi";
 
 type ReadingGroupBook = {
@@ -18,7 +19,10 @@ type ReadingGroup = {
   imageUrl: string | null;
   visibility: "PUBLIC" | "PRIVATE";
   joinPolicy: "OPEN" | "APPROVAL";
+  joinEnabled: boolean;
   ownerNickname: string;
+  member: boolean;
+  manager: boolean;
   books: ReadingGroupBook[];
   createdAt: string;
 };
@@ -57,28 +61,7 @@ export default async function GroupsPage() {
         </div>
       </section>
 
-      <section className="mt-8 space-y-4">
-        {groups.map((group) => (
-          <Link key={group.id} href={`/groups/${group.slug}`} className="block rounded-2xl border border-cream-200 bg-white p-5 shadow-sm hover:bg-cream-50">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <h2 className="font-serif text-xl font-bold text-brown-900">{group.name}</h2>
-                <p className="mt-1 text-sm text-brown-400">모임장 {group.ownerNickname} · 책 {group.books.length}권</p>
-                {group.description && <p className="mt-3 line-clamp-2 text-sm leading-6 text-brown-600">{group.description}</p>}
-              </div>
-              <span className="shrink-0 rounded-full bg-cream-100 px-3 py-1 text-xs text-brown-500">
-                {group.joinPolicy === "OPEN" ? "바로 가입" : "승인제"}
-              </span>
-            </div>
-          </Link>
-        ))}
-        {groups.length === 0 && (
-          <div className="rounded-2xl border border-cream-200 bg-white py-16 text-center text-brown-400">
-            <p>아직 공개 독서모임이 없어요.</p>
-            <p className="mt-1 text-sm">첫 번째 모임을 만들어보세요.</p>
-          </div>
-        )}
-      </section>
+      <GroupsClient initialGroups={groups as ReadingGroupListItem[]} />
     </main>
   );
 }

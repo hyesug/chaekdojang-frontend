@@ -27,6 +27,7 @@ type ReadingGroup = {
   imageUrl: string | null;
   visibility: "PUBLIC" | "PRIVATE";
   joinPolicy: "OPEN" | "APPROVAL";
+  joinEnabled: boolean;
   ownerNickname: string;
   member: boolean;
   manager: boolean;
@@ -86,11 +87,16 @@ export default async function GroupPage({ params }: Props) {
               <span className="rounded-full bg-cream-100 px-2 py-0.5 text-xs text-brown-500">
                 {group.joinPolicy === "OPEN" ? "바로 가입" : "승인제"}
               </span>
+              {!group.joinEnabled && (
+                <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs text-red-500">
+                  가입 중지
+                </span>
+              )}
             </div>
             <p className="mt-1 text-sm text-brown-400">모임장 {group.ownerNickname}</p>
             {group.description && <p className="mt-3 whitespace-pre-line text-sm leading-6 text-brown-600">{group.description}</p>}
             <div className="mt-4">
-              <GroupDetailClient slug={group.slug} member={group.member} />
+              <GroupDetailClient slug={group.slug} member={group.member} joinEnabled={group.joinEnabled} />
             </div>
           </div>
         </div>

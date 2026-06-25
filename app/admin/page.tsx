@@ -7,7 +7,7 @@ import ReviewDetailModal from "../components/ReviewDetailModal";
 import { API_BASE } from "../lib/api";
 import { authFetch, getValidToken } from "../lib/auth";
 
-type Tab = "dashboard" | "users" | "reviews" | "inquiries" | "officialProfiles" | "actions" | "security" | "audit";
+type Tab = "dashboard" | "users" | "reviews" | "groups" | "inquiries" | "officialProfiles" | "actions" | "security" | "audit";
 
 interface PageResponse<T> {
   content: T[];
@@ -38,6 +38,22 @@ interface BookStat {
   title: string;
   author: string;
   reviewCount: number;
+}
+
+interface AdminReadingGroup {
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  visibility: "PUBLIC" | "PRIVATE";
+  joinPolicy: "OPEN" | "APPROVAL";
+  joinEnabled: boolean;
+  ownerId: number;
+  ownerNickname: string;
+  memberCount: number;
+  pendingCount: number;
+  bookCount: number;
+  createdAt: string;
 }
 
 interface Inquiry {
@@ -229,6 +245,7 @@ const tabs: Array<{ key: Tab; label: string }> = [
   { key: "dashboard", label: "📊 운영 현황" },
   { key: "users", label: "👥 회원" },
   { key: "reviews", label: "📖 독후감" },
+  { key: "groups", label: "👪 독서모임" },
   { key: "inquiries", label: "💬 문의" },
   { key: "officialProfiles", label: "🏷️ 공식 프로필" },
   { key: "actions", label: "🧭 유입·사용자 행동" },
@@ -600,6 +617,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [bookStats, setBookStats] = useState<BookStat[]>([]);
+  const [readingGroups, setReadingGroups] = useState<AdminReadingGroup[]>([]);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [officialApplications, setOfficialApplications] = useState<OfficialProfileApplication[]>([]);
   const [officialProfiles, setOfficialProfiles] = useState<OfficialProfile[]>([]);
@@ -621,6 +639,7 @@ export default function AdminPage() {
   const [reviewMetaByPath, setReviewMetaByPath] = useState<Record<string, ReviewLookupResponse>>({});
   const [usersPage, setUsersPage] = useState(0);
   const [reviewsPage, setReviewsPage] = useState(0);
+  const [groupsPage, setGroupsPage] = useState(0);
   const [inquiriesPage, setInquiriesPage] = useState(0);
   const [officialApplicationsPage, setOfficialApplicationsPage] = useState(0);
   const [officialProfilesPage, setOfficialProfilesPage] = useState(0);
@@ -757,6 +776,7 @@ export default function AdminPage() {
         nextUsers,
         nextReviews,
         nextStats,
+        nextReadingGroups,
         nextInquiries,
         nextOfficialApplications,
         nextOfficialProfiles,
@@ -770,6 +790,7 @@ export default function AdminPage() {
         fetchAllPages<User>("/api/admin/users?size=200"),
         fetchAllPages<Review>("/api/admin/reviews?size=200"),
         fetchAdmin<BookStat[]>("/api/admin/reviews/stats"),
+        fetchAllPages<AdminReadingGroup>("/api/admin/groups?size=200"),
         fetchAllPages<Inquiry>("/api/admin/inquiries?size=200"),
         fetchAllPages<OfficialProfileApplication>("/api/admin/profile-applications?size=200"),
         fetchAdmin<OfficialProfile[]>("/api/admin/profiles"),
@@ -784,6 +805,7 @@ export default function AdminPage() {
       setUsers(nextUsers);
       setReviews(nextReviews);
       setBookStats(nextStats ?? []);
+      setReadingGroups(nextReadingGroups);
       setInquiries(nextInquiries);
       setOfficialApplications(nextOfficialApplications);
       setOfficialProfiles(nextOfficialProfiles ?? []);
@@ -807,6 +829,7 @@ export default function AdminPage() {
   useEffect(() => {
     setUsersPage(0);
     setReviewsPage(0);
+    setGroupsPage(0);
     setInquiriesPage(0);
     setOfficialApplicationsPage(0);
     setOfficialProfilesPage(0);
@@ -914,6 +937,11 @@ export default function AdminPage() {
 
   const filteredReviews = reviews.filter((review) => {
     const text = `${review.authorNickname} ${review.bookTitle} ${review.content}`.toLowerCase();
+    return text.includes(query.toLowerCase());
+  });
+
+  const filteredReadingGroups = readingGroups.filter((group) => {
+    const text = `${group.name} ${group.slug} ${group.description ?? ""} ${group.ownerNickname} ${group.visibility} ${group.joinPolicy} ${group.joinEnabled ? "가입가능" : "가입중지"}`.toLowerCase();
     return text.includes(query.toLowerCase());
   });
 
@@ -1102,6 +1130,7 @@ export default function AdminPage() {
 
   const pagedUsers = paginate(filteredUsers, usersPage);
   const pagedReviews = paginate(filteredReviews, reviewsPage);
+  const pagedReadingGroups = paginate(filteredReadingGroups, groupsPage);
   const pagedInquiries = paginate(filteredInquiries, inquiriesPage);
   const pagedOfficialApplications = paginate(filteredOfficialApplications, officialApplicationsPage);
   const pagedOfficialProfiles = paginate(filteredOfficialProfiles, officialProfilesPage);
@@ -1144,6 +1173,38 @@ export default function AdminPage() {
       method: "PATCH",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ hidden, reason: reason.trim() }),
+    });
+    if (res.status === 401) { router.replace("/auth/login"); return; }
+    if (res.status === 403) { setUnauthorized(true); return; }
+    loadAll();
+  }
+
+  async function toggleGroupJoin(group: AdminReadingGroup) {
+    const token = getToken();
+    if (!token) return;
+    const enabled = !group.joinEnabled;
+    const reason = window.prompt(enabled ? "독서모임 가입을 재개하는 사유를 입력해주세요." : "독서모임 가입을 중지하는 사유를 입력해주세요.");
+    if (!reason || reason.trim().length < 5) return;
+    const res = await authFetch(`${API_BASE}/api/admin/groups/${group.id}/join-enabled`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled, reason: reason.trim() }),
+    });
+    if (res.status === 401) { router.replace("/auth/login"); return; }
+    if (res.status === 403) { setUnauthorized(true); return; }
+    loadAll();
+  }
+
+  async function deleteGroup(group: AdminReadingGroup) {
+    const token = getToken();
+    if (!token) return;
+    if (!window.confirm(`'${group.name}' 독서모임을 삭제할까요? 멤버, 선정 책, 연결된 그룹 독후감 정보도 함께 삭제됩니다.`)) return;
+    const reason = window.prompt("독서모임을 삭제하는 사유를 입력해주세요.");
+    if (!reason || reason.trim().length < 5) return;
+    const res = await authFetch(`${API_BASE}/api/admin/groups/${group.id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ reason: reason.trim() }),
     });
     if (res.status === 401) { router.replace("/auth/login"); return; }
     if (res.status === 403) { setUnauthorized(true); return; }
@@ -1446,6 +1507,56 @@ export default function AdminPage() {
               ))}
               <PaginationControls page={reviewsPage} total={filteredReviews.length} onChange={setReviewsPage} />
               {filteredReviews.length === 0 && <EmptyState>독후감이 없어요</EmptyState>}
+            </section>
+          )}
+
+          {tab === "groups" && (
+            <section className="space-y-3">
+              {pagedReadingGroups.map((group) => (
+                <div key={group.id} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Link href={`/groups/${group.slug}`} className="font-serif text-lg font-bold text-brown-900 hover:text-brown-600 hover:underline">
+                          {group.name}
+                        </Link>
+                        <span className="rounded-full bg-cream-100 px-2 py-0.5 text-xs text-brown-600">
+                          {group.visibility === "PUBLIC" ? "공개" : "비공개"}
+                        </span>
+                        <span className="rounded-full bg-cream-100 px-2 py-0.5 text-xs text-brown-600">
+                          {group.joinPolicy === "OPEN" ? "바로 가입" : "승인제"}
+                        </span>
+                        <span className={`rounded-full px-2 py-0.5 text-xs ${group.joinEnabled ? "bg-green-50 text-green-600" : "bg-red-50 text-red-500"}`}>
+                          {group.joinEnabled ? "가입 가능" : "가입 중지"}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-sm text-brown-500">
+                        모임장 {group.ownerNickname} · 멤버 {group.memberCount}명 · 대기 {group.pendingCount}명 · 책 {group.bookCount}권 · {formatLogTime(group.createdAt)}
+                      </p>
+                      {group.description && <p className="mt-2 line-clamp-2 text-sm leading-6 text-brown-600">{group.description}</p>}
+                      <p className="mt-1 text-xs text-brown-300">/{group.slug}</p>
+                    </div>
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => toggleGroupJoin(group)}
+                        className={`rounded-lg px-3 py-1.5 text-xs ${group.joinEnabled ? "bg-red-50 text-red-500 hover:bg-red-100" : "bg-green-50 text-green-600 hover:bg-green-100"}`}
+                      >
+                        {group.joinEnabled ? "가입 중지" : "가입 재개"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteGroup(group)}
+                        className="rounded-lg border border-red-200 px-3 py-1.5 text-xs text-red-500 hover:bg-red-50"
+                      >
+                        삭제
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <PaginationControls page={groupsPage} total={filteredReadingGroups.length} onChange={setGroupsPage} />
+              {filteredReadingGroups.length === 0 && <EmptyState>독서모임이 없어요</EmptyState>}
             </section>
           )}
 

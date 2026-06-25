@@ -3,16 +3,15 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { API_BASE } from "../../lib/api";
+import { authFetch, getValidToken } from "../../lib/auth";
 
-export default function GroupDetailClient({ slug, member }: { slug: string; member: boolean }) {
+export default function GroupDetailClient({ slug, member, joinEnabled }: { slug: string; member: boolean; joinEnabled: boolean }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
   function getToken() {
-    if (typeof window === "undefined") return null;
-    const token = localStorage.getItem("token");
-    return !token || token === "undefined" || token === "null" ? null : token;
+    return getValidToken();
   }
 
   async function joinGroup() {
@@ -24,9 +23,8 @@ export default function GroupDetailClient({ slug, member }: { slug: string; memb
     setLoading(true);
     setMessage("");
     try {
-      const res = await fetch(`${API_BASE}/api/groups/${slug}/join`, {
+      const res = await authFetch(`${API_BASE}/api/groups/${slug}/join`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error(await res.text());
       setMessage("가입 요청이 처리됐어요.");
@@ -40,6 +38,10 @@ export default function GroupDetailClient({ slug, member }: { slug: string; memb
 
   if (member) {
     return <p className="rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-600">참여 중</p>;
+  }
+
+  if (!joinEnabled) {
+    return <p className="rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-red-500">가입 중지</p>;
   }
 
   return (

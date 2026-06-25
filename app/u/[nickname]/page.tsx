@@ -8,6 +8,7 @@ import ProfileAvatar from "../../components/ProfileAvatar";
 import PublicProfileStats from "../../components/PublicProfileStats";
 import { fetchApiData, shareText, SITE_URL } from "../../lib/serverApi";
 import PublicProfileReviews from "./PublicProfileReviews";
+import PublicProfileFollowButton from "./PublicProfileFollowButton";
 
 type UserProfile = {
   id: number;
@@ -79,10 +80,13 @@ export default async function NicknameProfilePage({ params }: Props) {
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       <div className="bg-white rounded-lg border border-brown-100 p-6 shadow-sm mb-6">
-        <div className="flex items-center gap-4">
+        <div className="flex items-start gap-4">
           <ProfileAvatar src={profile.profileImage} name={profile.nickname} size="lg" />
           <div className="min-w-0 flex-1">
-            <h1 className="font-serif text-2xl font-bold text-brown-800 truncate">{profile.nickname}</h1>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <h1 className="font-serif text-2xl font-bold text-brown-800 truncate">{profile.nickname}</h1>
+              <PublicProfileFollowButton userId={profile.id} />
+            </div>
             <ExpandableBio bio={profile.bio || shareText()} className="mt-1" />
           </div>
         </div>

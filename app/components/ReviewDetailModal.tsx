@@ -6,6 +6,7 @@ import Link from "next/link";
 import ProfileAvatar from "./ProfileAvatar";
 import ReviewViewTracker from "./ReviewViewTracker";
 import { API_BASE } from "../lib/api";
+import { authFetch, getValidToken } from "../lib/auth";
 
 const BASE = API_BASE;
 
@@ -29,8 +30,7 @@ type Comment = {
 };
 
 function getToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return "cookie-session";
+  return getValidToken();
 }
 
 function getMyUserId(): number | null {
@@ -107,11 +107,8 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
     async function load() {
       setLoading(true);
       try {
-        const token = getToken();
         const [reviewRes] = await Promise.all([
-          fetch(`${BASE}/api/reviews/${reviewId}`, {
-            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-          }),
+          fetch(`${BASE}/api/reviews/${reviewId}`),
         ]);
         if (reviewRes.ok) {
           const json = await reviewRes.json();
@@ -129,9 +126,7 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
       const token = getToken();
       if (token) {
         // 좋아요 상태
-        fetch(`${BASE}/api/reviews/${reviewId}/like/status`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
+        authFetch(`${BASE}/api/reviews/${reviewId}/like/status`)
           .then((r) => (r.ok ? r.json() : null))
           .then((json) => { if (json !== null) setLiked(Boolean(json.data ?? json)); })
           .catch(() => {});
@@ -145,9 +140,7 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
     if (!review?.author.id || !myId || myId === review.author.id) return;
     const token = getToken();
     if (!token) return;
-    fetch(`${BASE}/api/users/${review.author.id}/follow/status`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    authFetch(`${BASE}/api/users/${review.author.id}/follow/status`)
       .then((r) => (r.ok ? r.json() : null))
       .then((json) => { if (json !== null) setFollowing(Boolean(json.data ?? json)); })
       .catch(() => {});
@@ -166,9 +159,8 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
     const next = !liked;
     setLiked(next);
     setLikeCount((c) => c + (next ? 1 : -1));
-    const res = await fetch(`${BASE}/api/reviews/${reviewId}/like`, {
+    const res = await authFetch(`${BASE}/api/reviews/${reviewId}/like`, {
       method: next ? "POST" : "DELETE",
-      headers: { Authorization: `Bearer ${getToken()}` },
     });
     if (res.status === 401) {
       setLiked(!next); setLikeCount((c) => c + (next ? -1 : 1));
@@ -185,9 +177,8 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
     const next = !following;
     setFollowing(next);
     try {
-      const res = await fetch(`${BASE}/api/users/${review.author.id}/follow`, {
+      const res = await authFetch(`${BASE}/api/users/${review.author.id}/follow`, {
         method: next ? "POST" : "DELETE",
-        headers: { Authorization: `Bearer ${getToken()}` },
       });
       if (res.status === 401) {
         setFollowing(!next);  router.push("/auth/login");
@@ -206,9 +197,9 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
     if (!trimmed || submitting) return;
     setSubmitting(true);
     try {
-      const res = await fetch(`${BASE}/api/reviews/${reviewId}/comments`, {
+      const res = await authFetch(`${BASE}/api/reviews/${reviewId}/comments`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: trimmed }),
       });
       if (res.status === 401) {
@@ -227,9 +218,9 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
     if (!review || saving) return;
     setSaving(true);
     try {
-      const res = await fetch(`${BASE}/api/reviews/${review.id}`, {
+      const res = await authFetch(`${BASE}/api/reviews/${review.id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: editContent, rating: editRating }),
       });
       if (res.ok) {
@@ -244,9 +235,8 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
   }
 
   async function handleCommentDelete(commentId: number) {
-    const res = await fetch(`${BASE}/api/reviews/${reviewId}/comments/${commentId}`, {
+    const res = await authFetch(`${BASE}/api/reviews/${reviewId}/comments/${commentId}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${getToken()}` },
     });
     if (res.ok) setComments((prev) => prev.filter((c) => c.id !== commentId));
   }

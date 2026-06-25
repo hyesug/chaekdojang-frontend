@@ -10,7 +10,7 @@ import { API_BASE } from "../lib/api";
 const BASE = API_BASE;
 
 type FollowUser = {
-  id: number;
+  id: number | null;
   nickname: string;
   profileImage: string | null;
   bio?: string | null;
@@ -73,7 +73,7 @@ export default function FollowListModal({ userId, type, onClose }: Props) {
           // 팔로잉 목록 → 전부 following=true / 팔로워 목록 → 전부 following=false
           const init: Record<number, boolean> = {};
           list.forEach((u) => {
-            init[u.id] = type === "followings";
+            if (u.id !== null) init[u.id] = type === "followings";
           });
           setFollowingMap(init);
         }
@@ -138,17 +138,20 @@ export default function FollowListModal({ userId, type, onClose }: Props) {
           ) : (
             <ul>
               {users.map((u) => {
+                const canOpenProfile = u.id !== null;
+                const targetId = u.id;
                 const isMe = myId === u.id;
-                const isFollowing = followingMap[u.id] ?? false;
-                const isLoading = loadingMap[u.id] ?? false;
+                const isFollowing = u.id !== null ? followingMap[u.id] ?? false : false;
+                const isLoading = u.id !== null ? loadingMap[u.id] ?? false : false;
 
                 return (
-                  <li key={u.id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-cream-50 transition-colors">
+                  <li key={u.id ?? u.nickname} className="flex items-center gap-3 px-5 py-3.5 hover:bg-cream-50 transition-colors">
                     {/* 프로필 이미지 + 닉네임 → 프로필 페이지 링크 */}
                     <Link
-                      href={isMe ? "/profile" : `/users/${u.id}`}
+                      href={isMe ? "/profile" : `/u/${encodeURIComponent(u.nickname)}`}
                       onClick={onClose}
-                      className="flex items-center gap-3 flex-1 min-w-0"
+                      aria-disabled={!canOpenProfile}
+                      className={`flex items-center gap-3 flex-1 min-w-0 ${canOpenProfile ? "" : "pointer-events-none"}`}
                     >
                       <ProfileAvatar src={u.profileImage} name={u.nickname} size="sm" />
                       <div className="flex-1 min-w-0">
@@ -163,9 +166,9 @@ export default function FollowListModal({ userId, type, onClose }: Props) {
                     </Link>
 
                     {/* 팔로우/언팔로우 버튼 — 내 계정이 아니고 로그인된 경우에만 */}
-                    {!isMe && isLoggedIn && (
+                    {!isMe && isLoggedIn && targetId !== null && (
                       <button
-                        onClick={() => handleFollow(u.id)}
+                        onClick={() => handleFollow(targetId)}
                         disabled={isLoading}
                         className={`flex-shrink-0 text-xs px-3 py-1.5 rounded-full border transition-colors disabled:opacity-50 ${
                           isFollowing

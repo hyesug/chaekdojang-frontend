@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import ReviewCard, { type Review } from "../../components/ReviewCard";
 import ExpandableBio from "../../components/ExpandableBio";
 import ProfileAvatar from "../../components/ProfileAvatar";
+import PublicProfileStats from "../../components/PublicProfileStats";
 import { fetchApiData, shareText, SITE_URL } from "../../lib/serverApi";
 
 type UserProfile = {
@@ -85,18 +86,13 @@ export default async function NicknameProfilePage({ params }: Props) {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 mt-5">
-          {[
-            { label: "독후감", count: profile.reviewCount },
-            { label: "완독", count: profile.librarySummary?.finishedCount ?? 0 },
-            { label: "팔로워", count: profile.followerCount },
-          ].map((item) => (
-            <div key={item.label} className="rounded-lg bg-cream-50 px-3 py-3 text-center border border-cream-200">
-              <p className="text-xl font-bold text-brown-800">{item.count}</p>
-              <p className="text-xs text-brown-400 mt-0.5">{item.label}</p>
-            </div>
-          ))}
-        </div>
+        <PublicProfileStats
+          userId={profile.id}
+          reviewCount={profile.reviewCount}
+          finishedCount={profile.librarySummary?.finishedCount ?? 0}
+          followerCount={profile.followerCount}
+          followingCount={profile.followingCount}
+        />
 
         {profile.lifeBook && (
           <Link href={`/books/${profile.lifeBook.id}`} className="mt-5 flex items-center gap-3 rounded-lg bg-cream-50 border border-cream-200 p-3 hover:bg-white">

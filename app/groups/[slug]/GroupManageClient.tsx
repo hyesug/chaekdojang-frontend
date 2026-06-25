@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { API_BASE } from "../../lib/api";
+import { authFetch, getValidToken } from "../../lib/auth";
 import BookSearchSelect from "./BookSearchSelect";
 
 type GroupBook = { id: number; title: string; bookId: number };
@@ -24,9 +25,7 @@ type MyReview = {
 };
 
 function getToken() {
-  if (typeof window === "undefined") return null;
-  const token = localStorage.getItem("token");
-  return !token || token === "undefined" || token === "null" ? null : token;
+  return getValidToken();
 }
 
 export default function GroupManageClient({ slug, manager, member, books }: { slug: string; manager: boolean; member: boolean; books: GroupBook[] }) {
@@ -48,9 +47,7 @@ export default function GroupManageClient({ slug, manager, member, books }: { sl
     if (!token) return;
     setMembersLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/groups/${slug}/members?status=PENDING`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await authFetch(`${API_BASE}/api/groups/${slug}/members?status=PENDING`);
       if (!res.ok) throw new Error(await res.text());
       const json = await res.json();
       setPendingMembers((json.data ?? json) as GroupMember[]);
@@ -72,9 +69,7 @@ export default function GroupManageClient({ slug, manager, member, books }: { sl
     setReviewsLoading(true);
     setSelectedReviewId("");
     try {
-      const res = await fetch(`${API_BASE}/api/groups/${slug}/books/${groupBookId}/my-reviews`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await authFetch(`${API_BASE}/api/groups/${slug}/books/${groupBookId}/my-reviews`);
       if (!res.ok) throw new Error(await res.text());
       const json = await res.json();
       setMyReviews((json.data ?? json) as MyReview[]);
@@ -97,11 +92,12 @@ export default function GroupManageClient({ slug, manager, member, books }: { sl
     setLoading(true);
     setMessage("");
     try {
-      const res = await fetch(`${API_BASE}/api/groups/${slug}/books`, {
+      const res = await authFetch(`${API_BASE}/api/groups/${slug}/books`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ bookId: Number(bookId), note: note.trim() || null }),
       });
+      if (res.status === 401) { router.push("/auth/login"); return; }
       if (!res.ok) throw new Error(await res.text());
       setBookId("");
       setNote("");
@@ -125,11 +121,12 @@ export default function GroupManageClient({ slug, manager, member, books }: { sl
     setLoading(true);
     setMessage("");
     try {
-      const res = await fetch(`${API_BASE}/api/groups/${slug}/books/${groupBookId}/reviews`, {
+      const res = await authFetch(`${API_BASE}/api/groups/${slug}/books/${groupBookId}/reviews`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reviewId: Number(selectedReviewId) }),
       });
+      if (res.status === 401) { router.push("/auth/login"); return; }
       if (!res.ok) throw new Error(await res.text());
       setSelectedReviewId("");
       setMessage("독후감을 모임에 연결했어요.");
@@ -148,10 +145,10 @@ export default function GroupManageClient({ slug, manager, member, books }: { sl
     setLoading(true);
     setMessage("");
     try {
-      const res = await fetch(`${API_BASE}/api/groups/${slug}/members/${memberId}/${action}`, {
+      const res = await authFetch(`${API_BASE}/api/groups/${slug}/members/${memberId}/${action}`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
       });
+      if (res.status === 401) { router.push("/auth/login"); return; }
       if (!res.ok) throw new Error(await res.text());
       setPendingMembers((members) => members.filter((member) => member.id !== memberId));
       setMessage(action === "approve" ? "가입 요청을 승인했어요." : "가입 요청을 거절했어요.");

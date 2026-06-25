@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { fetchApiData, SITE_URL } from "../../lib/serverApi";
+import { SITE_URL } from "../../lib/serverApi";
+import { fetchGroupApiData } from "../groupServerApi";
 import GroupDetailClient from "./GroupDetailClient";
 import GroupManageClient from "./GroupManageClient";
 
@@ -38,9 +39,7 @@ type ReadingGroup = {
 type Props = { params: Promise<{ slug: string }> };
 
 async function getGroup(slug: string) {
-  return fetchApiData<ReadingGroup>(`/api/groups/${encodeURIComponent(slug)}`, {
-    next: { revalidate: 120 },
-  });
+  return fetchGroupApiData<ReadingGroup>(`/api/groups/${encodeURIComponent(slug)}`);
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

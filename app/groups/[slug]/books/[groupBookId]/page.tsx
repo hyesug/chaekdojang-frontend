@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { fetchApiData, SITE_URL } from "../../../../lib/serverApi";
+import { SITE_URL } from "../../../../lib/serverApi";
+import { fetchGroupApiData } from "../../../groupServerApi";
 
 type ReadingGroupBook = {
   id: number;
@@ -40,15 +41,11 @@ type GroupReview = {
 type Props = { params: Promise<{ slug: string; groupBookId: string }> };
 
 async function getGroup(slug: string) {
-  return fetchApiData<ReadingGroup>(`/api/groups/${encodeURIComponent(slug)}`, {
-    next: { revalidate: 120 },
-  });
+  return fetchGroupApiData<ReadingGroup>(`/api/groups/${encodeURIComponent(slug)}`);
 }
 
 async function getReviews(slug: string, groupBookId: string) {
-  return (await fetchApiData<GroupReview[]>(`/api/groups/${encodeURIComponent(slug)}/books/${groupBookId}/reviews`, {
-    next: { revalidate: 120 },
-  })) ?? [];
+  return (await fetchGroupApiData<GroupReview[]>(`/api/groups/${encodeURIComponent(slug)}/books/${groupBookId}/reviews`)) ?? [];
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

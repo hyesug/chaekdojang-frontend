@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { API_BASE } from "../../lib/api";
+import { authFetch } from "../../lib/auth";
 
 export default function NewGroupPage() {
   const router = useRouter();
@@ -13,31 +14,19 @@ export default function NewGroupPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  function getToken() {
-    if (typeof window === "undefined") return null;
-    const token = localStorage.getItem("token");
-    return !token || token === "undefined" || token === "null" ? null : token;
-  }
-
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setError("");
-    const token = getToken();
-    if (!token) {
-      router.push("/auth/login");
-      return;
-    }
     if (!name.trim()) {
       setError("모임 이름을 입력해주세요.");
       return;
     }
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/groups`, {
+      const res = await authFetch(`${API_BASE}/api/groups`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           name: name.trim(),
@@ -46,6 +35,10 @@ export default function NewGroupPage() {
           joinPolicy,
         }),
       });
+      if (res.status === 401) {
+        router.push("/auth/login");
+        return;
+      }
       if (!res.ok) throw new Error(await res.text());
       const json = await res.json();
       const group = json.data ?? json;

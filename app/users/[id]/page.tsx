@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import ReviewCard, { type Review } from "../../components/ReviewCard";
 import FollowListModal from "../../components/FollowListModal";
@@ -216,6 +217,13 @@ export default function UserProfilePage() {
             </div>
           ))}
         </div>
+
+        <Link
+          href={`/calendar?userId=${profile.id}&nickname=${encodeURIComponent(profile.nickname)}`}
+          className="mt-5 flex items-center justify-center rounded-lg border border-cream-200 bg-white px-4 py-2 text-sm font-medium text-brown-600 hover:bg-cream-50"
+        >
+          월별 캘린더
+        </Link>
       </div>
 
       {/* 팔로워/팔로잉 모달 */}

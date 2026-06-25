@@ -27,6 +27,7 @@ WEB_BASE=https://staging.chaekdojang.com npm run smoke:prod
 Manual staging deployment:
 
 - GitHub Actions에서 `Deploy staging frontend` workflow를 수동 실행합니다.
+- `vercel.json`에서 `staging` 브랜치의 Vercel Git 자동 배포를 꺼두었습니다. 스테이징 반영은 위 workflow로만 진행합니다.
 - 필요한 GitHub Secrets:
   - `VERCEL_TOKEN`
   - `VERCEL_ORG_ID`

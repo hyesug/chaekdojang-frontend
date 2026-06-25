@@ -13,6 +13,9 @@ import { authFetch, clearToken, getValidToken, logout } from "../lib/auth";
 const BASE = API_BASE;
 const FEED_STATE_KEY = "chaekdojang:feed-state";
 const DELETE_CONFIRM_TEXT = "계정 삭제";
+const MAX_PROFILE_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_PROFILE_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const PROFILE_IMAGE_HELP_TEXT = "JPG, PNG, WEBP, GIF 이미지를 5MB 이하로 올릴 수 있어요.";
 
 type ReadingStats = {
   totalFinished: number;
@@ -56,6 +59,23 @@ type EditForm = {
   bio: string;
   profileImage: string;
 };
+
+function getProfileImageUploadError(file: File) {
+  if (file.size <= 0) return "비어 있는 파일은 업로드할 수 없어요.";
+  if (file.size > MAX_PROFILE_IMAGE_SIZE_BYTES) return "이미지 용량이 너무 커요. 5MB 이하로 줄여서 올려주세요.";
+  if (!ALLOWED_PROFILE_IMAGE_TYPES.has(file.type)) return "지원하지 않는 이미지 형식이에요. JPG, PNG, WEBP, GIF 파일만 올릴 수 있어요.";
+  return null;
+}
+
+function getUploadErrorMessage(message?: string) {
+  if (!message) return "이미지 업로드에 실패했습니다.";
+  if (message.includes("5MB")) return "이미지 용량이 너무 커요. 5MB 이하로 줄여서 올려주세요.";
+  if (message.includes("Only JPG")) return "지원하지 않는 이미지 형식이에요. JPG, PNG, WEBP, GIF 파일만 올릴 수 있어요.";
+  if (message.includes("valid image")) return "이미지 파일을 확인할 수 없어요. 다른 JPG, PNG, WEBP, GIF 파일로 다시 올려주세요.";
+  if (message.includes("4096px")) return "이미지 크기가 너무 커요. 가로·세로 4096px 이하 이미지를 올려주세요.";
+  if (message.includes("empty")) return "비어 있는 파일은 업로드할 수 없어요.";
+  return message;
+}
 
 type OfficialProfileType = "AUTHOR" | "PUBLISHER" | "BOOKSTORE";
 type OfficialProfileApplicationStatus = "PENDING" | "APPROVED" | "REJECTED";
@@ -285,9 +305,16 @@ export default function ProfilePage() {
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    const validationError = getProfileImageUploadError(file);
+    if (validationError) {
+      setSaveError(validationError);
+      e.target.value = "";
+      return;
+    }
     const token: string | null = "cookie-session";
     if (!token) return;
     setUploading(true);
+    setSaveError("");
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -300,14 +327,60 @@ export default function ProfilePage() {
         const json = await res.json();
         const url = (json.data as { url: string }).url;
         setEditForm((f) => ({ ...f, profileImage: url }));
+        await persistProfileImage(url);
       } else {
-        setSaveError("이미지 업로드에 실패했습니다.");
+        const data = await res.json().catch(() => ({}));
+        setSaveError(getUploadErrorMessage((data as { message?: string }).message));
       }
     } catch {
       setSaveError("이미지 업로드 중 오류가 발생했습니다.");
     } finally {
       setUploading(false);
     }
+  }
+
+  async function persistProfileImage(profileImage: string) {
+    const token = getValidToken();
+    if (!token) {
+      router.push("/auth/login");
+      return false;
+    }
+
+    const res = await authFetch(`${BASE}/api/users/me`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        nickname: editForm.nickname,
+        bio: editForm.bio.trim(),
+        profileImage,
+      }),
+    });
+
+    if (res.status === 401) {
+      router.push("/auth/login");
+      return false;
+    }
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setSaveError((data as { message?: string }).message ?? "프로필 이미지 저장에 실패했습니다.");
+      return false;
+    }
+
+    const json = await res.json();
+    const nextProfile = (json.data ?? json) as UserProfile;
+    setProfile((prev) => (prev ? { ...prev, ...nextProfile } : nextProfile));
+    setEditForm((f) => ({ ...f, profileImage: nextProfile.profileImage ?? "" }));
+    sessionStorage.removeItem(FEED_STATE_KEY);
+    return true;
+  }
+
+  async function handleUseDefaultImage() {
+    setEditForm((f) => ({ ...f, profileImage: "" }));
+    setSaveError("");
+    await persistProfileImage("");
   }
 
   async function handleSave(e: React.FormEvent) {
@@ -586,13 +659,14 @@ export default function ProfilePage() {
                 <button
                   type="button"
                   disabled={uploading || !editForm.profileImage}
-                  onClick={() => setEditForm((f) => ({ ...f, profileImage: "" }))}
+                  onClick={handleUseDefaultImage}
                   className="flex-1 rounded-xl border border-cream-300 px-4 py-2.5 text-sm text-brown-500 transition hover:border-brown-400 hover:bg-cream-50 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   기본이미지 쓰기
                 </button>
                 </div>
               </div>
+              <p className="mt-2 text-xs text-brown-300">{PROFILE_IMAGE_HELP_TEXT}</p>
             </div>
             {saveError && (
               <p className="text-sm text-red-500 bg-red-50 px-4 py-2.5 rounded-xl">{saveError}</p>

@@ -110,6 +110,13 @@ export default async function NicknameProfilePage({ params }: Props) {
             </div>
           </Link>
         )}
+
+        <Link
+          href={`/calendar?userId=${profile.id}&nickname=${encodeURIComponent(profile.nickname)}`}
+          className="mt-5 flex items-center justify-center rounded-lg border border-cream-200 bg-white px-4 py-2 text-sm font-medium text-brown-600 hover:bg-cream-50"
+        >
+          월별 캘린더
+        </Link>
       </div>
 
       <h2 className="font-serif text-lg font-bold text-brown-800 mb-4">

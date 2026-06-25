@@ -98,27 +98,35 @@ export default function CalendarPage() {
   const [loading, setLoading] = useState(true);
   const [activeMonth, setActiveMonth] = useState(monthKey(new Date()));
   const [selectedDay, setSelectedDay] = useState<string | null>(dayKey(new Date()));
+  const [publicNickname, setPublicNickname] = useState<string | null>(null);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const nextPublicUserId = params.get("userId");
+    const nextPublicNickname = params.get("nickname");
+    setPublicNickname(nextPublicNickname ? decodeURIComponent(nextPublicNickname) : null);
+
     const token: string | null = "cookie-session";
-    if (!token) {
+    if (!nextPublicUserId && !token) {
       router.push("/auth/login");
       return;
     }
 
     async function loadCalendar() {
       try {
+        const libraryUrl = nextPublicUserId
+          ? `${API_BASE}/api/users/${encodeURIComponent(nextPublicUserId)}/library`
+          : `${API_BASE}/api/library`;
+        const reviewsUrl = nextPublicUserId
+          ? `${API_BASE}/api/users/${encodeURIComponent(nextPublicUserId)}/reviews`
+          : `${API_BASE}/api/users/me/reviews?page=0&size=1000`;
+        const headers: HeadersInit = token && !nextPublicUserId ? { Authorization: `Bearer ${token}` } : {};
         const [libraryRes, reviewsRes] = await Promise.all([
-          fetch(`${API_BASE}/api/library`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch(`${API_BASE}/api/users/me/reviews?page=0&size=1000`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
+          fetch(libraryUrl, { headers }),
+          fetch(reviewsUrl, { headers }),
         ]);
 
-        if (libraryRes.status === 401 || reviewsRes.status === 401) {
-          
+        if (!nextPublicUserId && (libraryRes.status === 401 || reviewsRes.status === 401)) {
           router.push("/auth/login");
           return;
         }
@@ -126,7 +134,7 @@ export default function CalendarPage() {
         let nextItems: LibraryItem[] = [];
         if (reviewsRes.ok) {
           const json = await reviewsRes.json();
-          const reviews: MyReview[] = json.data?.content ?? [];
+          const reviews: MyReview[] = Array.isArray(json.data) ? json.data : json.data?.content ?? [];
           const visibleReviewedBookIds = new Set(
             reviews
               .filter((review) => !review.hidden && review.book?.id)
@@ -217,16 +225,26 @@ export default function CalendarPage() {
     <div className="max-w-2xl mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="font-serif text-2xl font-bold text-brown-800">독서 캘린더</h1>
+          <h1 className="font-serif text-2xl font-bold text-brown-800">
+            {publicNickname ? `${publicNickname}님의 독서 캘린더` : "독서 캘린더"}
+          </h1>
           <p className="text-xs text-brown-400 mt-1">완독한 날마다 책 표지가 남아요</p>
         </div>
-        <Link href="/library" className="text-sm text-brown-500 hover:text-brown-700">내 서재</Link>
+        <Link
+          href={publicNickname ? `/u/${encodeURIComponent(publicNickname)}` : "/library"}
+          className="text-sm text-brown-500 hover:text-brown-700"
+        >
+          {publicNickname ? "프로필" : "내 서재"}
+        </Link>
       </div>
 
       <div className="bg-[#fbf8f1] border border-cream-200 rounded-lg shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 bg-white">
           <button onClick={() => moveMonth(-1)} className="text-xl leading-none text-brown-300 hover:text-brown-600" aria-label="이전 달">‹</button>
-          <h2 className="font-serif text-2xl font-bold text-brown-700">{monthLabel(activeMonth)}</h2>
+          <div className="flex items-baseline gap-2">
+            <h2 className="font-serif text-2xl font-bold text-brown-700">{monthLabel(activeMonth)}</h2>
+            <span className="text-xs font-medium text-brown-400">완독 {monthFinishedBooks}권</span>
+          </div>
           <button onClick={() => moveMonth(1)} className="text-xl leading-none text-brown-300 hover:text-brown-600" aria-label="다음 달">›</button>
         </div>
 
@@ -291,23 +309,6 @@ export default function CalendarPage() {
               </button>
             );
           })}
-        </div>
-      </div>
-
-      <div className="mt-5 grid grid-cols-3 gap-2 text-center">
-        <div className="rounded-lg bg-white border border-cream-200 py-3">
-          <p className="text-lg font-bold text-brown-800">{monthFinishedBooks}</p>
-          <p className="text-xs text-brown-400">완독한 책</p>
-        </div>
-        <div className="rounded-lg bg-white border border-cream-200 py-3">
-          <p className="text-lg font-bold text-brown-800">{monthFinishedEntries.length}</p>
-          <p className="text-xs text-brown-400">읽은 날</p>
-        </div>
-        <div className="rounded-lg bg-white border border-cream-200 py-3">
-          <p className="text-lg font-bold text-brown-800">
-            {new Date(Number(activeMonth.slice(0, 4)), Number(activeMonth.slice(5, 7)), 0).getDate() - monthFinishedEntries.length}
-          </p>
-          <p className="text-xs text-brown-400">비어있는 날</p>
         </div>
       </div>
 

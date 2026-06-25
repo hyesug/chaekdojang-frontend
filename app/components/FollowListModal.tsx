@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import ExpandableBio from "./ExpandableBio";
 import ProfileAvatar from "./ProfileAvatar";
 import { API_BASE } from "../lib/api";
+import { authFetch, getValidToken } from "../lib/auth";
 
 const BASE = API_BASE;
 
@@ -16,6 +17,10 @@ type FollowUser = {
   bio?: string | null;
 };
 
+type Me = {
+  id: number;
+};
+
 type Props = {
   userId: number;
   type: "followers" | "followings";
@@ -23,37 +28,35 @@ type Props = {
 };
 
 function getToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return "cookie-session";
-}
-
-function getMyUserId(): number | null {
-  const token = getToken();
-  if (!token) return null;
-  try {
-    const parts = token.split(".");
-    if (parts.length !== 3) return null;
-    const payload = JSON.parse(
-      atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))
-    );
-    const raw = payload.userId ?? payload.id ?? payload.sub;
-    return raw != null ? Number(raw) : null;
-  } catch {
-    return null;
-  }
+  return getValidToken();
 }
 
 export default function FollowListModal({ userId, type, onClose }: Props) {
   const router = useRouter();
-  const myId = getMyUserId();
   const isLoggedIn = !!getToken();
 
   const [users, setUsers] = useState<FollowUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [myId, setMyId] = useState<number | null>(null);
   // 팔로우 상태: userId → following 여부
   // followings 목록이면 모두 팔로우 중, followers 목록이면 모두 미팔로우로 초기화
   const [followingMap, setFollowingMap] = useState<Record<number, boolean>>({});
   const [loadingMap, setLoadingMap] = useState<Record<number, boolean>>({});
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) {
+      setMyId(null);
+      return;
+    }
+    authFetch(`${BASE}/api/users/me`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        const me = (json?.data ?? json) as Me | null;
+        setMyId(me?.id ?? null);
+      })
+      .catch(() => setMyId(null));
+  }, []);
 
   useEffect(() => {
     const endpoint =
@@ -61,10 +64,7 @@ export default function FollowListModal({ userId, type, onClose }: Props) {
         ? `${BASE}/api/users/${userId}/followings`
         : `${BASE}/api/users/${userId}/followers`;
 
-    const token = getToken();
-    const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
-
-    fetch(endpoint, { headers })
+    fetch(endpoint, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       .then((json) => {
         if (json) {
@@ -92,9 +92,8 @@ export default function FollowListModal({ userId, type, onClose }: Props) {
     setLoadingMap((prev) => ({ ...prev, [targetId]: true }));
 
     try {
-      const res = await fetch(`${BASE}/api/users/${targetId}/follow`, {
+      const res = await authFetch(`${BASE}/api/users/${targetId}/follow`, {
         method: next ? "POST" : "DELETE",
-        headers: { Authorization: `Bearer ${getToken()}` },
       });
       if (res.status === 401) {
         setFollowingMap((prev) => ({ ...prev, [targetId]: !next }));

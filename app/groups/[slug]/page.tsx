@@ -30,8 +30,10 @@ type ReadingGroup = {
   joinPolicy: "OPEN" | "APPROVAL";
   joinEnabled: boolean;
   ownerNickname: string;
+  memberCount: number;
   member: boolean;
   manager: boolean;
+  membershipStatus: "PENDING" | "APPROVED" | "REJECTED" | null;
   books: ReadingGroupBook[];
   createdAt: string;
 };
@@ -92,10 +94,18 @@ export default async function GroupPage({ params }: Props) {
                 </span>
               )}
             </div>
-            <p className="mt-1 text-sm text-brown-400">모임장 {group.ownerNickname}</p>
+            <p className="mt-1 text-sm text-brown-400">모임장 {group.ownerNickname} · 멤버 {group.memberCount ?? 0}명</p>
             {group.description && <p className="mt-3 whitespace-pre-line text-sm leading-6 text-brown-600">{group.description}</p>}
             <div className="mt-4">
-              <GroupDetailClient slug={group.slug} member={group.member} joinEnabled={group.joinEnabled} />
+              <GroupDetailClient
+                slug={group.slug}
+                initialMember={group.member}
+                initialMemberCount={group.memberCount ?? 0}
+                joinEnabled={group.joinEnabled}
+                joinPolicy={group.joinPolicy}
+                manager={group.manager}
+                initialMembershipStatus={group.membershipStatus}
+              />
             </div>
           </div>
         </div>
@@ -104,7 +114,17 @@ export default async function GroupPage({ params }: Props) {
       <GroupManageClient slug={group.slug} manager={group.manager} member={group.member} books={group.books.map((book) => ({ id: book.id, title: book.title, bookId: book.bookId }))} />
 
       <section className="mt-8">
-        <h2 className="font-serif text-xl font-bold text-brown-900">함께 읽는 책</h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-serif text-xl font-bold text-brown-900">함께 읽는 책</h2>
+          {group.manager && (
+            <a
+              href="#group-book-add"
+              className="rounded-full bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800"
+            >
+              책 추가하기
+            </a>
+          )}
+        </div>
         <div className="mt-4 space-y-4">
           {group.books.map((item) => (
             <div key={item.id} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
@@ -134,6 +154,14 @@ export default async function GroupPage({ params }: Props) {
             <div className="rounded-2xl border border-cream-200 bg-white py-16 text-center text-brown-400">
               <p>아직 선정된 책이 없어요.</p>
               <p className="mt-1 text-sm">모임장이 책을 등록하면 독후감을 모아볼 수 있습니다.</p>
+              {group.manager && (
+                <a
+                  href="#group-book-add"
+                  className="mt-4 inline-flex rounded-full bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800"
+                >
+                  첫 책 추가하기
+                </a>
+              )}
             </div>
           )}
         </div>

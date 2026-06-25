@@ -8,6 +8,7 @@ import FollowListModal from "../../components/FollowListModal";
 import ExpandableBio from "../../components/ExpandableBio";
 import ProfileAvatar from "../../components/ProfileAvatar";
 import { API_BASE } from "../../lib/api";
+import { authFetch, getValidToken } from "../../lib/auth";
 
 const BASE = API_BASE;
 
@@ -35,23 +36,12 @@ type UserProfile = {
   lifeBook: LifeBook | null;
 };
 
-function getToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return "cookie-session";
-}
+type Me = {
+  id: number;
+};
 
-function getMyUserId(): number | null {
-  const token = getToken();
-  if (!token) return null;
-  try {
-    const parts = token.split(".");
-    if (parts.length !== 3) return null;
-    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
-    const raw = payload.userId ?? payload.id ?? payload.sub;
-    return raw != null ? Number(raw) : null;
-  } catch {
-    return null;
-  }
+function getToken(): string | null {
+  return getValidToken();
 }
 
 export default function UserProfilePage() {
@@ -66,14 +56,13 @@ export default function UserProfilePage() {
   const [followerCount, setFollowerCount] = useState(0);
   const [followLoading, setFollowLoading] = useState(false);
   const [followModal, setFollowModal] = useState<null | "followers" | "followings">(null);
+  const [myId, setMyId] = useState<number | null>(null);
 
-  const myId = getMyUserId();
   const isLoggedIn = myId !== null;
 
   const fetchProfile = useCallback(async () => {
     const token = getToken();
-    const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
-    const res = await fetch(`${BASE}/api/users/${userId}`, { headers });
+    const res = await fetch(`${BASE}/api/users/${userId}`, { credentials: "include" });
     if (!res.ok) return;
     const json = await res.json();
     const data: UserProfile = json.data ?? json;
@@ -82,9 +71,7 @@ export default function UserProfilePage() {
 
     // 팔로우 상태는 별도 API로 확인 (UserProfileResponse에 isFollowing 없음)
     if (token) {
-      const statusRes = await fetch(`${BASE}/api/users/${userId}/follow/status`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const statusRes = await authFetch(`${BASE}/api/users/${userId}/follow/status`);
       if (statusRes.ok) {
         const statusJson = await statusRes.json();
         setFollowing(Boolean(statusJson.data ?? statusJson));
@@ -93,12 +80,27 @@ export default function UserProfilePage() {
   }, [userId]);
 
   const fetchReviews = useCallback(async () => {
-    const res = await fetch(`${BASE}/api/users/${userId}/reviews`);
+    const res = await fetch(`${BASE}/api/users/${userId}/reviews`, { credentials: "include" });
     if (res.ok) {
       const json = await res.json();
       setReviews(json.data ?? []);
     }
   }, [userId]);
+
+  useEffect(() => {
+    const token = getToken();
+    if (token) {
+      authFetch(`${BASE}/api/users/me`, { cache: "no-store" })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((json) => {
+          const me = (json?.data ?? json) as Me | null;
+          setMyId(me?.id ?? null);
+        })
+        .catch(() => setMyId(null));
+    } else {
+      setMyId(null);
+    }
+  }, []);
 
   useEffect(() => {
     /* 내 프로필이면 /profile 로 리다이렉트 */
@@ -108,7 +110,7 @@ export default function UserProfilePage() {
     }
     setLoading(true);
     Promise.all([fetchProfile(), fetchReviews()]).finally(() => setLoading(false));
-  }, [userId]);
+  }, [fetchProfile, fetchReviews, myId, router, userId]);
 
   async function handleFollow() {
     const token = getToken();
@@ -122,9 +124,8 @@ export default function UserProfilePage() {
     setFollowing(next);
     setFollowerCount((c) => c + (next ? 1 : -1));
     try {
-      const res = await fetch(`${BASE}/api/users/${userId}/follow`, {
+      const res = await authFetch(`${BASE}/api/users/${userId}/follow`, {
         method: next ? "POST" : "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
         setFollowing(!next);
@@ -191,17 +192,21 @@ export default function UserProfilePage() {
           </div>
           <button
             onClick={() => setFollowModal("followers")}
-            className="flex flex-col items-center hover:opacity-70 transition-opacity"
+            className="group rounded-lg border border-brown-200 bg-cream-50 px-3 py-2 text-center shadow-sm transition-all hover:-translate-y-0.5 hover:border-brown-400 hover:bg-white hover:shadow-md focus:outline-none focus:ring-2 focus:ring-brown-300 active:translate-y-0"
+            aria-label="팔로워 목록 보기"
           >
             <p className="font-bold text-brown-800 text-xl">{followerCount}</p>
-            <p className="text-xs text-brown-400 mt-0.5">팔로워</p>
+            <p className="text-xs text-brown-500 mt-0.5">팔로워</p>
+            <p className="mt-1 text-[11px] font-medium text-brown-400 transition-colors group-hover:text-brown-700">보기 →</p>
           </button>
           <button
             onClick={() => setFollowModal("followings")}
-            className="flex flex-col items-center hover:opacity-70 transition-opacity"
+            className="group rounded-lg border border-brown-200 bg-cream-50 px-3 py-2 text-center shadow-sm transition-all hover:-translate-y-0.5 hover:border-brown-400 hover:bg-white hover:shadow-md focus:outline-none focus:ring-2 focus:ring-brown-300 active:translate-y-0"
+            aria-label="팔로잉 목록 보기"
           >
             <p className="font-bold text-brown-800 text-xl">{profile.followingCount}</p>
-            <p className="text-xs text-brown-400 mt-0.5">팔로잉</p>
+            <p className="text-xs text-brown-500 mt-0.5">팔로잉</p>
+            <p className="mt-1 text-[11px] font-medium text-brown-400 transition-colors group-hover:text-brown-700">보기 →</p>
           </button>
         </div>
 

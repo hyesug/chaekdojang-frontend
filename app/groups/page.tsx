@@ -39,9 +39,11 @@ export const metadata = {
   },
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function GroupsPage() {
   const groups = (await fetchApiData<ReadingGroup[]>("/api/groups", {
-    next: { revalidate: 120 },
+    cache: "no-store",
   })) ?? [];
 
   return (

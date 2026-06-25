@@ -28,6 +28,10 @@ type Comment = {
   createdAt: string;
 };
 
+type Me = {
+  id: number;
+};
+
 const BASE = API_BASE;
 const SHARE_COPY = "읽은 책에 나만의 감상을 찍다";
 const FEED_STATE_KEY = "chaekdojang:feed-state";
@@ -39,22 +43,6 @@ const COVER_COLORS = [
 
 function getToken(): string | null {
   return getValidToken();
-}
-
-function getMyUserId(): number | null {
-  const token = getToken();
-  if (!token) return null;
-  try {
-    const parts = token.split(".");
-    if (parts.length !== 3) return null;
-    const payload = JSON.parse(
-      atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))
-    );
-    const raw = payload.userId ?? payload.id ?? payload.sub;
-    return raw != null ? Number(raw) : null;
-  } catch {
-    return null;
-  }
 }
 
 function Stars({ rating }: { rating: number }) {
@@ -96,10 +84,12 @@ function EditableStars({
 // ─────────────────────────────────────────────
 function CommentModal({
   reviewId,
+  currentUserId,
   onClose,
   onCountChange,
 }: {
   reviewId: number;
+  currentUserId: number | null;
   onClose: () => void;
   onCountChange: (delta: number) => void;
 }) {
@@ -108,7 +98,6 @@ function CommentModal({
   const [text, setText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
-  const myId = getMyUserId();
   const isLoggedIn = !!getToken();
 
   useEffect(() => {
@@ -219,7 +208,7 @@ function CommentModal({
                     {c.content}
                   </p>
                 </div>
-                {myId !== null && myId === c.author.id && (
+                {currentUserId !== null && currentUserId === c.author.id && (
                   <button
                     onClick={() => handleDelete(c.id)}
                     className="flex-shrink-0 text-xs text-red-400 hover:text-red-600 mt-0.5"
@@ -356,7 +345,8 @@ export default function ReviewCard({
 }) {
   const coverColor = COVER_COLORS[post.id % COVER_COLORS.length];
   const router = useRouter();
-  const myId = getMyUserId();
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const myId = currentUserId;
 
   const isOwner =
     forceOwner || (myId !== null && post.author.id != null && myId === post.author.id);
@@ -397,6 +387,21 @@ export default function ReviewCard({
   const [copied, setCopied] = useState(false);
   const [instaCopied, setInstaCopied] = useState(false);
   const canOpenHiddenDetail = hidden && isOwner;
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) {
+      setCurrentUserId(null);
+      return;
+    }
+    authFetch(`${BASE}/api/users/me`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        const me = (json?.data ?? json) as Me | null;
+        setCurrentUserId(me?.id ?? null);
+      })
+      .catch(() => setCurrentUserId(null));
+  }, []);
 
   useEffect(() => {
     const token = getToken();
@@ -834,6 +839,7 @@ export default function ReviewCard({
       {showComments && (
         <CommentModal
           reviewId={post.id}
+          currentUserId={currentUserId}
           onClose={() => setShowComments(false)}
           onCountChange={(delta) => setCommentCount((c) => c + delta)}
         />

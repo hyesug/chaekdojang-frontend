@@ -34,18 +34,22 @@ export default function PublicProfileStats({
         <button
           type="button"
           onClick={() => setFollowModal("followers")}
-          className="rounded-lg bg-cream-50 px-3 py-3 text-center border border-cream-200 hover:bg-white transition-colors"
+          className="group rounded-lg border border-brown-200 bg-cream-50 px-3 py-3 text-center shadow-sm transition-all hover:-translate-y-0.5 hover:border-brown-400 hover:bg-white hover:shadow-md focus:outline-none focus:ring-2 focus:ring-brown-300 active:translate-y-0"
+          aria-label="팔로워 목록 보기"
         >
           <p className="text-xl font-bold text-brown-800">{followerCount}</p>
-          <p className="text-xs text-brown-400 mt-0.5">팔로워</p>
+          <p className="text-xs text-brown-500 mt-0.5">팔로워</p>
+          <p className="mt-1 text-[11px] font-medium text-brown-400 transition-colors group-hover:text-brown-700">보기 →</p>
         </button>
         <button
           type="button"
           onClick={() => setFollowModal("followings")}
-          className="rounded-lg bg-cream-50 px-3 py-3 text-center border border-cream-200 hover:bg-white transition-colors"
+          className="group rounded-lg border border-brown-200 bg-cream-50 px-3 py-3 text-center shadow-sm transition-all hover:-translate-y-0.5 hover:border-brown-400 hover:bg-white hover:shadow-md focus:outline-none focus:ring-2 focus:ring-brown-300 active:translate-y-0"
+          aria-label="팔로잉 목록 보기"
         >
           <p className="text-xl font-bold text-brown-800">{followingCount}</p>
-          <p className="text-xs text-brown-400 mt-0.5">팔로잉</p>
+          <p className="text-xs text-brown-500 mt-0.5">팔로잉</p>
+          <p className="mt-1 text-[11px] font-medium text-brown-400 transition-colors group-hover:text-brown-700">보기 →</p>
         </button>
       </div>
 

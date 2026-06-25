@@ -24,8 +24,10 @@ export type ReadingGroupListItem = {
   joinPolicy: "OPEN" | "APPROVAL";
   joinEnabled: boolean;
   ownerNickname: string;
+  memberCount: number;
   member: boolean;
   manager: boolean;
+  membershipStatus: "PENDING" | "APPROVED" | "REJECTED" | null;
   books: ReadingGroupBook[];
   createdAt: string;
 };
@@ -41,6 +43,7 @@ function sortGroups(groups: ReadingGroupListItem[]) {
 
 export default function GroupsClient({ initialGroups }: { initialGroups: ReadingGroupListItem[] }) {
   const [groups, setGroups] = useState(() => sortGroups(initialGroups));
+  const [refreshing, setRefreshing] = useState(true);
 
   useEffect(() => {
     authFetch(`${API_BASE}/api/groups`, { cache: "no-store" })
@@ -49,11 +52,17 @@ export default function GroupsClient({ initialGroups }: { initialGroups: Reading
         if (!json) return;
         setGroups(sortGroups((json.data ?? json) as ReadingGroupListItem[]));
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setRefreshing(false));
   }, []);
 
   return (
     <section className="mt-8 space-y-4">
+      {refreshing && (
+        <div className="rounded-2xl border border-cream-200 bg-white px-4 py-3 text-sm text-brown-400 shadow-sm">
+          최신 독서모임을 불러오는 중...
+        </div>
+      )}
       {groups.map((group) => {
         const isMine = group.member || group.manager;
         return (
@@ -78,7 +87,7 @@ export default function GroupsClient({ initialGroups }: { initialGroups: Reading
                     </span>
                   )}
                 </div>
-                <p className="mt-1 text-sm text-brown-400">모임장 {group.ownerNickname} · 책 {group.books.length}권</p>
+                <p className="mt-1 text-sm text-brown-400">모임장 {group.ownerNickname} · 멤버 {group.memberCount ?? 0}명 · 책 {group.books.length}권</p>
                 {group.description && <p className="mt-3 line-clamp-2 text-sm leading-6 text-brown-600">{group.description}</p>}
               </div>
               <span className="shrink-0 rounded-full bg-cream-100 px-3 py-1 text-xs text-brown-500">

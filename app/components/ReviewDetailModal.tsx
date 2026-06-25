@@ -29,22 +29,12 @@ type Comment = {
   createdAt: string;
 };
 
+type Me = {
+  id: number;
+};
+
 function getToken(): string | null {
   return getValidToken();
-}
-
-function getMyUserId(): number | null {
-  const token = getToken();
-  if (!token) return null;
-  try {
-    const parts = token.split(".");
-    if (parts.length !== 3) return null;
-    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
-    const raw = payload.userId ?? payload.id ?? payload.sub;
-    return raw != null ? Number(raw) : null;
-  } catch {
-    return null;
-  }
 }
 
 function Stars({ rating }: { rating: number }) {
@@ -81,7 +71,8 @@ type Props = {
 
 export default function ReviewDetailModal({ reviewId, onClose, onEngagementChange }: Props) {
   const router = useRouter();
-  const myId = getMyUserId();
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const myId = currentUserId;
   const isLoggedIn = !!getToken();
 
   const [review, setReview] = useState<ReviewDetail | null>(null);
@@ -127,6 +118,14 @@ export default function ReviewDetailModal({ reviewId, onClose, onEngagementChang
 
       const token = getToken();
       if (token) {
+        authFetch(`${BASE}/api/users/me`, { cache: "no-store" })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((json) => {
+            const me = (json?.data ?? json) as Me | null;
+            setCurrentUserId(me?.id ?? null);
+          })
+          .catch(() => setCurrentUserId(null));
+
         // 좋아요 상태
         authFetch(`${BASE}/api/reviews/${reviewId}/like/status`)
           .then((r) => (r.ok ? r.json() : null))

@@ -198,8 +198,11 @@ export default function GroupManageClient({ slug, manager, member, books }: { sl
           </div>
         )}
         {manager && (
-          <form onSubmit={addBook} className="space-y-3 rounded-2xl bg-cream-50 p-4">
-            <p className="text-sm font-semibold text-brown-700">선정 책 추가</p>
+          <form id="group-book-add" onSubmit={addBook} className="scroll-mt-24 space-y-3 rounded-2xl bg-cream-50 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-brown-700">선정 책 추가</p>
+              <span className="rounded-full bg-white px-2 py-1 text-xs text-brown-400">책 검색</span>
+            </div>
             <BookSearchSelect value={bookId} onChange={(id) => setBookId(id)} />
             <input value={note} onChange={(event) => setNote(event.target.value)} placeholder="회차/기간 메모" className="w-full rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm text-brown-800 focus:border-brown-400 focus:outline-none" />
             <button disabled={loading} className="w-full rounded-xl bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800 disabled:opacity-50">책 추가</button>

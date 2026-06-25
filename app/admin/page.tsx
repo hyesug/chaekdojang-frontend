@@ -56,6 +56,44 @@ interface AdminReadingGroup {
   createdAt: string;
 }
 
+interface AdminReadingGroupDetail extends AdminReadingGroup {
+  reviewCount: number;
+  members: Array<{
+    id: number;
+    userId: number;
+    nickname: string;
+    profileImage: string | null;
+    role: "OWNER" | "MANAGER" | "MEMBER";
+    status: "PENDING" | "APPROVED" | "REJECTED";
+    createdAt: string;
+    updatedAt: string;
+  }>;
+  books: Array<{
+    id: number;
+    bookId: number;
+    title: string;
+    author: string;
+    publisher: string | null;
+    thumbnail: string | null;
+    note: string | null;
+    reviewCount: number;
+    createdAt: string;
+  }>;
+  reviews: Array<{
+    id: number;
+    groupBookId: number;
+    reviewId: number;
+    authorId: number;
+    authorNickname: string;
+    bookId: number | null;
+    bookTitle: string | null;
+    rating: number;
+    hidden: boolean;
+    content: string;
+    createdAt: string;
+  }>;
+}
+
 interface Inquiry {
   id: number;
   title: string;
@@ -259,6 +297,21 @@ function formatLogTime(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value.replace("T", " ");
   return date.toLocaleString("ko-KR", {
+    timeZone: "Asia/Seoul",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatReviewTime(value: string) {
+  const hasTimezone = /(?:Z|[+-]\d{2}:\d{2})$/.test(value);
+  const date = new Date(hasTimezone ? value : `${value}Z`);
+  if (Number.isNaN(date.getTime())) return value.replace("T", " ");
+  return date.toLocaleString("ko-KR", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
@@ -270,9 +323,22 @@ function isToday(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return false;
   const now = new Date();
-  return date.getFullYear() === now.getFullYear()
-    && date.getMonth() === now.getMonth()
-    && date.getDate() === now.getDate();
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date) === new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+}
+
+function isTodayReview(value: string) {
+  const hasTimezone = /(?:Z|[+-]\d{2}:\d{2})$/.test(value);
+  return isToday(hasTimezone ? value : `${value}Z`);
 }
 
 function normalizePath(value: string) {
@@ -388,6 +454,18 @@ const officialProfileStatusLabels: Record<OfficialProfileStatus, string> = {
   DRAFT: "초안",
   ACTIVE: "공개",
   HIDDEN: "숨김",
+};
+
+const groupMemberRoleLabels: Record<AdminReadingGroupDetail["members"][number]["role"], string> = {
+  OWNER: "모임장",
+  MANAGER: "관리자",
+  MEMBER: "멤버",
+};
+
+const groupMemberStatusLabels: Record<AdminReadingGroupDetail["members"][number]["status"], string> = {
+  PENDING: "승인 대기",
+  APPROVED: "승인됨",
+  REJECTED: "거절됨",
 };
 
 function visitorKey(event: MetricEvent) {
@@ -618,6 +696,9 @@ export default function AdminPage() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [bookStats, setBookStats] = useState<BookStat[]>([]);
   const [readingGroups, setReadingGroups] = useState<AdminReadingGroup[]>([]);
+  const [expandedGroupId, setExpandedGroupId] = useState<number | null>(null);
+  const [readingGroupDetails, setReadingGroupDetails] = useState<Record<number, AdminReadingGroupDetail>>({});
+  const [readingGroupDetailLoading, setReadingGroupDetailLoading] = useState<number | null>(null);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [officialApplications, setOfficialApplications] = useState<OfficialProfileApplication[]>([]);
   const [officialProfiles, setOfficialProfiles] = useState<OfficialProfile[]>([]);
@@ -1139,7 +1220,7 @@ export default function AdminPage() {
   const pagedAuditLogs = paginate(filteredAuditLogs, auditPage);
 
   const fallbackTodayVisitors = new Set(visibleMetrics.filter((event) => isToday(event.createdAt)).map(visitorKey)).size;
-  const fallbackTodayReviews = reviews.filter((review) => isToday(review.createdAt)).length;
+  const fallbackTodayReviews = reviews.filter((review) => isTodayReview(review.createdAt)).length;
   const fallbackTodayUsers = users.filter((user) => isToday(user.createdAt)).length;
   const fallbackTodayErrors = visibleErrors.filter((error) => isToday(error.createdAt) && error.status >= 500).length;
   const fallbackTodaySecurity = securitySummaries.filter((item) => isToday(item.lastAt)).reduce((sum, item) => sum + item.count, 0);
@@ -1179,6 +1260,21 @@ export default function AdminPage() {
     loadAll();
   }
 
+  async function toggleGroupDetail(group: AdminReadingGroup) {
+    if (expandedGroupId === group.id) {
+      setExpandedGroupId(null);
+      return;
+    }
+    setExpandedGroupId(group.id);
+    if (readingGroupDetails[group.id]) return;
+    setReadingGroupDetailLoading(group.id);
+    const detail = await fetchAdmin<AdminReadingGroupDetail>(`/api/admin/groups/${group.id}`);
+    if (detail) {
+      setReadingGroupDetails((items) => ({ ...items, [group.id]: detail }));
+    }
+    setReadingGroupDetailLoading(null);
+  }
+
   async function toggleGroupJoin(group: AdminReadingGroup) {
     const token = getToken();
     if (!token) return;
@@ -1192,6 +1288,11 @@ export default function AdminPage() {
     });
     if (res.status === 401) { router.replace("/auth/login"); return; }
     if (res.status === 403) { setUnauthorized(true); return; }
+    setReadingGroupDetails((items) => {
+      const next = { ...items };
+      delete next[group.id];
+      return next;
+    });
     loadAll();
   }
 
@@ -1208,6 +1309,18 @@ export default function AdminPage() {
     });
     if (res.status === 401) { router.replace("/auth/login"); return; }
     if (res.status === 403) { setUnauthorized(true); return; }
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      window.alert(`독서모임을 삭제하지 못했어요.${text ? `\n${text}` : ""}`);
+      return;
+    }
+    setReadingGroups((groups) => groups.filter((item) => item.id !== group.id));
+    setReadingGroupDetails((items) => {
+      const next = { ...items };
+      delete next[group.id];
+      return next;
+    });
+    if (expandedGroupId === group.id) setExpandedGroupId(null);
     loadAll();
   }
 
@@ -1496,7 +1609,7 @@ export default function AdminPage() {
                       className="min-w-0 flex-1 rounded-xl text-left hover:bg-cream-50"
                     >
                       <p className="font-serif text-lg font-bold text-brown-900">{review.bookTitle}</p>
-                      <p className="mt-1 text-sm text-brown-500">{review.authorNickname} · ★ {review.rating} · {formatLogTime(review.createdAt)}</p>
+                      <p className="mt-1 text-sm text-brown-500">{review.authorNickname} · ★ {review.rating} · {formatReviewTime(review.createdAt)}</p>
                       <p className="mt-2 line-clamp-2 text-sm leading-6 text-brown-600">{review.content}</p>
                     </button>
                     <button onClick={() => toggleHidden(review.id, !review.hidden)} className={`shrink-0 rounded-lg px-3 py-1.5 text-xs ${review.hidden ? "bg-green-50 text-green-600" : "bg-red-50 text-red-500"}`}>
@@ -1539,6 +1652,13 @@ export default function AdminPage() {
                     <div className="flex shrink-0 flex-wrap gap-2">
                       <button
                         type="button"
+                        onClick={() => toggleGroupDetail(group)}
+                        className="rounded-lg border border-cream-300 px-3 py-1.5 text-xs text-brown-600 hover:bg-cream-50"
+                      >
+                        {expandedGroupId === group.id ? "상세 닫기" : "상세 보기"}
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => toggleGroupJoin(group)}
                         className={`rounded-lg px-3 py-1.5 text-xs ${group.joinEnabled ? "bg-red-50 text-red-500 hover:bg-red-100" : "bg-green-50 text-green-600 hover:bg-green-100"}`}
                       >
@@ -1553,6 +1673,129 @@ export default function AdminPage() {
                       </button>
                     </div>
                   </div>
+                  {expandedGroupId === group.id && (
+                    <div className="mt-4 border-t border-cream-100 pt-4">
+                      {readingGroupDetailLoading === group.id && (
+                        <p className="rounded-xl bg-cream-50 px-4 py-6 text-center text-sm text-brown-400">독서모임 상세를 불러오는 중...</p>
+                      )}
+                      {readingGroupDetails[group.id] && (() => {
+                        const detail = readingGroupDetails[group.id];
+                        const pendingMembers = detail.members.filter((member) => member.status === "PENDING");
+                        return (
+                          <div className="space-y-4">
+                            <div className="grid gap-2 sm:grid-cols-4">
+                              <div className="rounded-xl bg-cream-50 p-3">
+                                <p className="text-xs text-brown-400">승인 멤버</p>
+                                <p className="mt-1 text-lg font-bold text-brown-900">{detail.memberCount}명</p>
+                              </div>
+                              <div className="rounded-xl bg-yellow-50 p-3">
+                                <p className="text-xs text-yellow-700">승인 대기</p>
+                                <p className="mt-1 text-lg font-bold text-yellow-800">{detail.pendingCount}명</p>
+                              </div>
+                              <div className="rounded-xl bg-cream-50 p-3">
+                                <p className="text-xs text-brown-400">선정 책</p>
+                                <p className="mt-1 text-lg font-bold text-brown-900">{detail.bookCount}권</p>
+                              </div>
+                              <div className="rounded-xl bg-cream-50 p-3">
+                                <p className="text-xs text-brown-400">그룹 독후감</p>
+                                <p className="mt-1 text-lg font-bold text-brown-900">{detail.reviewCount}개</p>
+                              </div>
+                            </div>
+
+                            <div className="rounded-xl border border-cream-100 p-3">
+                              <div className="flex items-center justify-between gap-2">
+                                <h3 className="font-semibold text-brown-900">승인 대기 멤버</h3>
+                                <span className="text-xs text-brown-300">{pendingMembers.length}명</span>
+                              </div>
+                              <div className="mt-3 space-y-2">
+                                {pendingMembers.map((member) => (
+                                  <Link key={member.id} href={`/users/${member.userId}`} className="flex items-center justify-between rounded-lg bg-yellow-50 px-3 py-2 text-sm hover:bg-yellow-100">
+                                    <span className="font-medium text-brown-800">{member.nickname}</span>
+                                    <span className="text-xs text-yellow-700">{formatLogTime(member.createdAt)}</span>
+                                  </Link>
+                                ))}
+                                {pendingMembers.length === 0 && <p className="py-3 text-center text-sm text-brown-300">승인 대기 멤버가 없어요</p>}
+                              </div>
+                            </div>
+
+                            <div className="rounded-xl border border-cream-100 p-3">
+                              <div className="flex items-center justify-between gap-2">
+                                <h3 className="font-semibold text-brown-900">전체 멤버</h3>
+                                <span className="text-xs text-brown-300">{detail.members.length}명</span>
+                              </div>
+                              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                                {detail.members.map((member) => (
+                                  <Link key={member.id} href={`/users/${member.userId}`} className="rounded-lg bg-cream-50 px-3 py-2 text-sm hover:bg-cream-100">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="font-medium text-brown-800">{member.nickname}</span>
+                                      <span className={`rounded-full px-2 py-0.5 text-[11px] ${
+                                        member.status === "APPROVED" ? "bg-green-50 text-green-600" :
+                                        member.status === "PENDING" ? "bg-yellow-50 text-yellow-700" :
+                                        "bg-red-50 text-red-500"
+                                      }`}>
+                                        {groupMemberStatusLabels[member.status]}
+                                      </span>
+                                    </div>
+                                    <p className="mt-1 text-xs text-brown-400">{groupMemberRoleLabels[member.role]} · 가입 {formatLogTime(member.createdAt)}</p>
+                                  </Link>
+                                ))}
+                                {detail.members.length === 0 && <p className="py-3 text-center text-sm text-brown-300 sm:col-span-2">멤버가 없어요</p>}
+                              </div>
+                            </div>
+
+                            <div className="rounded-xl border border-cream-100 p-3">
+                              <div className="flex items-center justify-between gap-2">
+                                <h3 className="font-semibold text-brown-900">선정 책</h3>
+                                <span className="text-xs text-brown-300">{detail.books.length}권</span>
+                              </div>
+                              <div className="mt-3 space-y-2">
+                                {detail.books.map((book) => (
+                                  <div key={book.id} className="rounded-lg bg-cream-50 px-3 py-2">
+                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                      <div className="min-w-0">
+                                        <Link href={`/books/${book.bookId}`} className="font-medium text-brown-900 hover:text-brown-600 hover:underline">{book.title}</Link>
+                                        <p className="mt-1 text-xs text-brown-400">{book.author}{book.publisher ? ` · ${book.publisher}` : ""} · 그룹 독후감 {book.reviewCount}개 · 등록 {formatLogTime(book.createdAt)}</p>
+                                        {book.note && <p className="mt-1 line-clamp-2 text-xs text-brown-500">{book.note}</p>}
+                                      </div>
+                                      <Link href={`/groups/${detail.slug}/books/${book.id}`} className="shrink-0 rounded-lg border border-cream-300 px-2 py-1 text-xs text-brown-500 hover:bg-white">
+                                        모음 보기
+                                      </Link>
+                                    </div>
+                                  </div>
+                                ))}
+                                {detail.books.length === 0 && <p className="py-3 text-center text-sm text-brown-300">선정 책이 없어요</p>}
+                              </div>
+                            </div>
+
+                            <div className="rounded-xl border border-cream-100 p-3">
+                              <div className="flex items-center justify-between gap-2">
+                                <h3 className="font-semibold text-brown-900">연결된 독후감</h3>
+                                <span className="text-xs text-brown-300">{detail.reviews.length}개</span>
+                              </div>
+                              <div className="mt-3 space-y-2">
+                                {detail.reviews.map((review) => (
+                                  <button
+                                    key={review.id}
+                                    type="button"
+                                    onClick={() => setSelectedReviewId(review.reviewId)}
+                                    className="block w-full rounded-lg bg-cream-50 px-3 py-2 text-left hover:bg-cream-100"
+                                  >
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className="font-medium text-brown-900">{review.bookTitle ?? "책 정보 없음"}</span>
+                                      <span className="text-xs text-brown-400">{review.authorNickname} · ★ {review.rating} · {formatReviewTime(review.createdAt)}</span>
+                                      {review.hidden && <span className="rounded-full bg-red-50 px-2 py-0.5 text-[11px] text-red-500">숨김</span>}
+                                    </div>
+                                    <p className="mt-1 line-clamp-2 text-xs leading-5 text-brown-500">{review.content}</p>
+                                  </button>
+                                ))}
+                                {detail.reviews.length === 0 && <p className="py-3 text-center text-sm text-brown-300">연결된 독후감이 없어요</p>}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
                 </div>
               ))}
               <PaginationControls page={groupsPage} total={filteredReadingGroups.length} onChange={setGroupsPage} />

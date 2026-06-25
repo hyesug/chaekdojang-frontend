@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import ReviewCard, { type Review } from "../../components/ReviewCard";
+import { type Review } from "../../components/ReviewCard";
 import ExpandableBio from "../../components/ExpandableBio";
 import ProfileAvatar from "../../components/ProfileAvatar";
 import PublicProfileStats from "../../components/PublicProfileStats";
 import { fetchApiData, shareText, SITE_URL } from "../../lib/serverApi";
+import PublicProfileReviews from "./PublicProfileReviews";
 
 type UserProfile = {
   id: number;
@@ -115,18 +116,7 @@ export default async function NicknameProfilePage({ params }: Props) {
         </Link>
       </div>
 
-      <h2 className="font-serif text-lg font-bold text-brown-800 mb-4">
-        {profile.nickname}님의 공개 독후감
-      </h2>
-      {(reviews ?? []).length === 0 ? (
-        <div className="text-center py-12 text-brown-400">아직 공개 독후감이 없어요.</div>
-      ) : (
-        <div className="flex flex-col gap-4">
-          {(reviews ?? []).map((review) => (
-            <ReviewCard key={review.id} post={review} />
-          ))}
-        </div>
-      )}
+      <PublicProfileReviews nickname={profile.nickname} reviews={reviews ?? []} />
     </div>
   );
 }

@@ -13,10 +13,12 @@ export default function NewGroupPage() {
   const [visibility, setVisibility] = useState<"PUBLIC" | "PRIVATE">("PUBLIC");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setError("");
+    setStatusMessage("");
     if (!name.trim()) {
       setError("모임 이름을 입력해주세요.");
       return;
@@ -42,6 +44,8 @@ export default function NewGroupPage() {
       if (!res.ok) throw new Error(await res.text());
       const json = await res.json();
       const group = json.data ?? json;
+      setStatusMessage("독서모임을 만들었어요. 상세 화면으로 이동 중...");
+      router.refresh();
       router.push(`/groups/${group.slug}`);
     } catch {
       setError("독서모임을 만들지 못했어요. 잠시 후 다시 시도해주세요.");
@@ -107,13 +111,14 @@ export default function NewGroupPage() {
         </div>
 
         {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-500">{error}</p>}
+        {statusMessage && <p className="rounded-xl bg-green-50 px-3 py-2 text-sm text-green-600">{statusMessage}</p>}
 
         <button
           type="submit"
           disabled={loading}
           className="w-full rounded-xl bg-brown-700 px-4 py-3 text-sm font-semibold text-white hover:bg-brown-800 disabled:opacity-50"
         >
-          {loading ? "만드는 중..." : "독서모임 만들기"}
+          {loading ? "독서모임 만드는 중..." : "독서모임 만들기"}
         </button>
       </form>
     </main>

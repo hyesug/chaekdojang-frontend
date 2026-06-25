@@ -7,7 +7,7 @@ import ReviewDetailModal from "../components/ReviewDetailModal";
 import { API_BASE } from "../lib/api";
 import { authFetch, getValidToken } from "../lib/auth";
 
-type Tab = "dashboard" | "users" | "reviews" | "inquiries" | "officialProfiles" | "pages" | "actions" | "security" | "audit";
+type Tab = "dashboard" | "users" | "reviews" | "groups" | "inquiries" | "officialProfiles" | "actions" | "security" | "audit";
 
 interface PageResponse<T> {
   content: T[];
@@ -38,6 +38,60 @@ interface BookStat {
   title: string;
   author: string;
   reviewCount: number;
+}
+
+interface AdminReadingGroup {
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  visibility: "PUBLIC" | "PRIVATE";
+  joinPolicy: "OPEN" | "APPROVAL";
+  joinEnabled: boolean;
+  ownerId: number;
+  ownerNickname: string;
+  memberCount: number;
+  pendingCount: number;
+  bookCount: number;
+  createdAt: string;
+}
+
+interface AdminReadingGroupDetail extends AdminReadingGroup {
+  reviewCount: number;
+  members: Array<{
+    id: number;
+    userId: number;
+    nickname: string;
+    profileImage: string | null;
+    role: "OWNER" | "MANAGER" | "MEMBER";
+    status: "PENDING" | "APPROVED" | "REJECTED" | "BLOCKED";
+    createdAt: string;
+    updatedAt: string;
+  }>;
+  books: Array<{
+    id: number;
+    bookId: number;
+    title: string;
+    author: string;
+    publisher: string | null;
+    thumbnail: string | null;
+    note: string | null;
+    reviewCount: number;
+    createdAt: string;
+  }>;
+  reviews: Array<{
+    id: number;
+    groupBookId: number;
+    reviewId: number;
+    authorId: number;
+    authorNickname: string;
+    bookId: number | null;
+    bookTitle: string | null;
+    rating: number;
+    hidden: boolean;
+    content: string;
+    createdAt: string;
+  }>;
 }
 
 interface Inquiry {
@@ -134,7 +188,23 @@ interface ErrorLog {
   message: string;
   ip: string | null;
   userId: number | null;
+  userAgent: string | null;
+  referer: string | null;
   createdAt: string;
+}
+
+interface BookTitleResponse {
+  id?: number;
+  title: string;
+  author?: string;
+  thumbnail?: string | null;
+}
+
+interface ReviewLookupResponse {
+  id: number;
+  content: string;
+  author: { nickname: string };
+  book: { title: string; author: string; thumbnail: string | null } | null;
 }
 
 interface AdminAuditLog {
@@ -151,28 +221,13 @@ interface AdminAuditLog {
 interface DashboardSummary {
   todayVisitors: number;
   todayPageViews: number;
+  todayBookSearches?: number;
+  todayBookDetailViews?: number;
+  todayReviewDetailViews?: number;
   todayReviews: number;
   todayUsers: number;
   todayServerErrors: number;
   todaySuspiciousRequests: number;
-}
-
-interface AggregatedPage {
-  path: string;
-  label: string;
-  views: number;
-  visitors: number;
-  avgDurationSeconds: number;
-  topReferrer: string;
-  lastAt: string;
-}
-
-interface AggregatedAction {
-  eventType: string;
-  label: string;
-  count: number;
-  visitors: number;
-  lastAt: string;
 }
 
 interface AggregatedSecurity {
@@ -183,25 +238,6 @@ interface AggregatedSecurity {
   ip: string;
   lastAt: string;
 }
-
-type PageSummary = {
-  path: string;
-  label: string;
-  views: number;
-  visitors: Set<string>;
-  durationSum: number;
-  durationCount: number;
-  referrers: Map<string, number>;
-  lastAt: string;
-};
-
-type ActionSummary = {
-  eventType: string;
-  label: string;
-  count: number;
-  visitors: Set<string>;
-  lastAt: string;
-};
 
 type SecuritySummary = {
   key: string;
@@ -226,24 +262,56 @@ type SecurityEvent = {
   exceptionType?: string;
   count: number;
   lastAt: string;
+  userId?: number | null;
+  userAgent?: string | null;
+  referer?: string | null;
+  occurrenceTimes: string[];
+};
+
+type ContentViewSummary = {
+  path: string;
+  title: string;
+  subtitle: string;
+  thumbnail?: string | null;
+  views: number;
+  visitors: Set<string>;
+  lastAt: string;
+  href: string;
 };
 
 const tabs: Array<{ key: Tab; label: string }> = [
   { key: "dashboard", label: "📊 운영 현황" },
   { key: "users", label: "👥 회원" },
   { key: "reviews", label: "📖 독후감" },
+  { key: "groups", label: "👪 독서모임" },
   { key: "inquiries", label: "💬 문의" },
   { key: "officialProfiles", label: "🏷️ 공식 프로필" },
-  { key: "pages", label: "🧭 유입/페이지" },
-  { key: "actions", label: "⚡ 사용자 행동" },
+  { key: "actions", label: "🧭 유입·사용자 행동" },
   { key: "security", label: "🛡️ 보안·오류" },
   { key: "audit", label: "🧾 관리자 이력" },
 ];
+
+const LIST_PAGE_SIZE = 50;
 
 function formatLogTime(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value.replace("T", " ");
   return date.toLocaleString("ko-KR", {
+    timeZone: "Asia/Seoul",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatReviewTime(value: string) {
+  const hasTimezone = /(?:Z|[+-]\d{2}:\d{2})$/.test(value);
+  const date = new Date(hasTimezone ? value : `${value}Z`);
+  if (Number.isNaN(date.getTime())) return value.replace("T", " ");
+  return date.toLocaleString("ko-KR", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
@@ -255,9 +323,22 @@ function isToday(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return false;
   const now = new Date();
-  return date.getFullYear() === now.getFullYear()
-    && date.getMonth() === now.getMonth()
-    && date.getDate() === now.getDate();
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date) === new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+}
+
+function isTodayReview(value: string) {
+  const hasTimezone = /(?:Z|[+-]\d{2}:\d{2})$/.test(value);
+  return isToday(hasTimezone ? value : `${value}Z`);
 }
 
 function normalizePath(value: string) {
@@ -375,8 +456,53 @@ const officialProfileStatusLabels: Record<OfficialProfileStatus, string> = {
   HIDDEN: "숨김",
 };
 
+const groupMemberRoleLabels: Record<AdminReadingGroupDetail["members"][number]["role"], string> = {
+  OWNER: "모임장",
+  MANAGER: "관리자",
+  MEMBER: "멤버",
+};
+
+const groupMemberStatusLabels: Record<AdminReadingGroupDetail["members"][number]["status"], string> = {
+  PENDING: "승인 대기",
+  APPROVED: "승인됨",
+  REJECTED: "거절됨",
+  BLOCKED: "차단됨",
+};
+
 function visitorKey(event: MetricEvent) {
   return event.userId != null ? `u:${event.userId}` : event.sessionId || event.ip || `event:${event.id}`;
+}
+
+function appendPageParam(path: string, page: number) {
+  return `${path}${path.includes("?") ? "&" : "?"}page=${page}`;
+}
+
+function getPageCount(total: number) {
+  return Math.max(1, Math.ceil(total / LIST_PAGE_SIZE));
+}
+
+function paginate<T>(items: T[], page: number) {
+  const start = page * LIST_PAGE_SIZE;
+  return items.slice(start, start + LIST_PAGE_SIZE);
+}
+
+function getBookPath(value: string) {
+  const path = normalizePath(value);
+  return /^\/books\/[^/]+$/.test(path) ? path : null;
+}
+
+function getBookSlug(value: string) {
+  return getBookPath(value)?.split("/").pop() ?? null;
+}
+
+function getReviewPath(value: string) {
+  const path = normalizePath(value);
+  return /^\/reviews\/\d+$/.test(path) ? path : null;
+}
+
+function getReviewId(value: string) {
+  const id = getReviewPath(value)?.split("/").pop();
+  return id ? Number(id) : null;
 }
 
 function referrerLabel(referrer: string | null) {
@@ -394,11 +520,6 @@ function referrerLabel(referrer: string | null) {
   }
 }
 
-function topReferrer(referrers: Map<string, number>) {
-  const [first] = Array.from(referrers.entries()).sort((a, b) => b[1] - a[1]);
-  return first?.[0] ?? "-";
-}
-
 function suspiciousType(uri: string, status?: number) {
   const path = uri.toLowerCase();
   if (path.includes(".env")) return "환경파일 스캔";
@@ -409,6 +530,113 @@ function suspiciousType(uri: string, status?: number) {
   if (status && status >= 500) return "서버 오류";
   if (status && status >= 400) return "요청 오류";
   return "기타 이상 요청";
+}
+
+function classifyErrorLike(method: string, uri: string, status: number) {
+  const path = normalizePath(uri);
+  const lower = path.toLowerCase();
+  if (method === "POST" && path === "/api/auth/refresh" && (status === 401 || status === 403)) {
+    return {
+      label: "세션 갱신 실패",
+      description: "로그인 만료, refresh token 없음, 폐기된 세션, 브라우저 쿠키 누락, 봇 요청 가능성이 있습니다.",
+      impact: "사용자가 로그인 페이지로 이동했거나 로그인 상태가 풀렸을 수 있습니다.",
+      botSuspected: false,
+      userImpactLikely: false,
+    };
+  }
+  if (method === "GET" && path.startsWith("/api/books/public/") && status === 404) {
+    return {
+      label: "공개 책 상세 조회 실패",
+      description: "없는 책 ID/slug 접근, 삭제된 책, 비공개 책, 오래된 링크, 봇 접근 가능성이 있습니다.",
+      impact: "사용자가 책 상세 페이지에서 404를 봤을 수 있습니다.",
+      botSuspected: false,
+      userImpactLikely: true,
+    };
+  }
+  if ([".env", ".git", "wp-login.php", "xmlrpc.php", "phpmyadmin", ".php", ".bak", ".sql", "swagger-ui", "v3/api-docs", "actuator"].some((needle) => lower.includes(needle))) {
+    return {
+      label: "스캐너 의심 요청",
+      description: "일반 사용자가 아니라 취약점 스캐너일 가능성이 높습니다.",
+      impact: "일반 사용자 영향은 낮습니다.",
+      botSuspected: true,
+      userImpactLikely: false,
+    };
+  }
+  if (status >= 500) {
+    return {
+      label: "서버 오류",
+      description: "실제 서버 예외 가능성이 높으므로 우선 확인이 필요합니다.",
+      impact: "사용자가 기능 실패를 경험했을 수 있습니다.",
+      botSuspected: false,
+      userImpactLikely: true,
+    };
+  }
+  if (status === 403) {
+    return {
+      label: "권한 없음",
+      description: "권한이 없는 사용자가 보호된 리소스에 접근했습니다.",
+      impact: "권한이 필요한 기능에서 차단되었을 수 있습니다.",
+      botSuspected: false,
+      userImpactLikely: true,
+    };
+  }
+  if (status === 404) {
+    return {
+      label: "리소스 없음",
+      description: "존재하지 않는 경로나 삭제된 리소스 접근입니다.",
+      impact: "사용자가 404 화면을 봤을 수 있습니다.",
+      botSuspected: false,
+      userImpactLikely: true,
+    };
+  }
+  return {
+    label: suspiciousType(uri, status),
+    description: "추가 확인이 필요한 요청 오류입니다.",
+    impact: "사용자 영향 여부를 referer와 User-Agent로 확인하세요.",
+    botSuspected: false,
+    userImpactLikely: status >= 400,
+  };
+}
+
+function getActionDescription(
+  event: MetricEvent,
+  bookMetaByPath: Record<string, BookTitleResponse>,
+  reviewMetaByPath: Record<string, ReviewLookupResponse>
+) {
+  const path = normalizePath(event.path);
+  const review = reviewMetaByPath[path];
+  if (event.eventType === "page_view" && review) {
+    const bookTitle = review.book?.title ?? "책 정보 없음";
+    return `${actorLabel(event)} · ${review.author.nickname}님의 ${bookTitle} 독후감을 봤어요`;
+  }
+  const book = bookMetaByPath[path];
+  if (event.eventType === "page_view" && book) {
+    return `${actorLabel(event)} · ${book.title} 책을 봤어요`;
+  }
+  if (event.eventType === "page_view") {
+    const reviewId = getReviewId(path);
+    if (reviewId) return `${actorLabel(event)} · 독후감 #${reviewId}을 봤어요`;
+    return `${actorLabel(event)} · ${getRouteLabel(path)}을 봤어요`;
+  }
+  return `${actorLabel(event)} · ${getMetricEventLabel(event.eventType)}`;
+}
+
+function getActionContext(
+  event: MetricEvent,
+  bookMetaByPath: Record<string, BookTitleResponse>,
+  reviewMetaByPath: Record<string, ReviewLookupResponse>
+) {
+  const path = normalizePath(event.path);
+  const review = reviewMetaByPath[path];
+  if (review) {
+    const book = review.book;
+    return `독후감 상세 · 작성자 ${review.author.nickname} · ${book ? `${book.title}${book.author ? ` · ${book.author}` : ""}` : "책 정보 없음"}`;
+  }
+  const reviewId = getReviewId(path);
+  if (reviewId) return `독후감 상세 · ID ${reviewId}`;
+  const book = bookMetaByPath[path];
+  if (book) return `책 상세 · ${book.title}${book.author ? ` · ${book.author}` : ""}`;
+  return getRouteLabel(path);
 }
 
 function StatCard({ label, value, helper }: { label: string; value: string | number; helper?: string }) {
@@ -425,12 +653,53 @@ function EmptyState({ children }: { children: string }) {
   return <div className="rounded-2xl border border-cream-200 bg-white py-12 text-center text-sm text-brown-300">{children}</div>;
 }
 
+function PaginationControls({
+  page,
+  total,
+  onChange,
+}: {
+  page: number;
+  total: number;
+  onChange: (page: number) => void;
+}) {
+  const pageCount = getPageCount(total);
+  if (pageCount <= 1) return null;
+
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+      <button
+        type="button"
+        disabled={page <= 0}
+        onClick={() => onChange(page - 1)}
+        className="rounded-xl border border-cream-300 px-3 py-1.5 text-xs text-brown-500 transition hover:border-brown-400 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        이전
+      </button>
+      <span className="text-xs text-brown-400">
+        {page + 1} / {pageCount} · 총 {total.toLocaleString()}개
+      </span>
+      <button
+        type="button"
+        disabled={page >= pageCount - 1}
+        onClick={() => onChange(page + 1)}
+        className="rounded-xl border border-cream-300 px-3 py-1.5 text-xs text-brown-500 transition hover:border-brown-400 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        다음
+      </button>
+    </div>
+  );
+}
+
 export default function AdminPage() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("dashboard");
   const [users, setUsers] = useState<User[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [bookStats, setBookStats] = useState<BookStat[]>([]);
+  const [readingGroups, setReadingGroups] = useState<AdminReadingGroup[]>([]);
+  const [expandedGroupId, setExpandedGroupId] = useState<number | null>(null);
+  const [readingGroupDetails, setReadingGroupDetails] = useState<Record<number, AdminReadingGroupDetail>>({});
+  const [readingGroupDetailLoading, setReadingGroupDetailLoading] = useState<number | null>(null);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [officialApplications, setOfficialApplications] = useState<OfficialProfileApplication[]>([]);
   const [officialProfiles, setOfficialProfiles] = useState<OfficialProfile[]>([]);
@@ -439,8 +708,6 @@ export default function AdminPage() {
   const [errorLogs, setErrorLogs] = useState<ErrorLog[]>([]);
   const [auditLogs, setAuditLogs] = useState<AdminAuditLog[]>([]);
   const [dashboardSummary, setDashboardSummary] = useState<DashboardSummary | null>(null);
-  const [aggregatedPages, setAggregatedPages] = useState<AggregatedPage[]>([]);
-  const [aggregatedActions, setAggregatedActions] = useState<AggregatedAction[]>([]);
   const [aggregatedSecurity, setAggregatedSecurity] = useState<AggregatedSecurity[]>([]);
   const [loading, setLoading] = useState(true);
   const [unauthorized, setUnauthorized] = useState(false);
@@ -450,6 +717,22 @@ export default function AdminPage() {
   const [bookSearchQuery, setBookSearchQuery] = useState("");
   const [bookSearchResults, setBookSearchResults] = useState<BookSearchResult[]>([]);
   const [bookSearching, setBookSearching] = useState(false);
+  const [bookMetaByPath, setBookMetaByPath] = useState<Record<string, BookTitleResponse>>({});
+  const [reviewMetaByPath, setReviewMetaByPath] = useState<Record<string, ReviewLookupResponse>>({});
+  const [usersPage, setUsersPage] = useState(0);
+  const [reviewsPage, setReviewsPage] = useState(0);
+  const [groupsPage, setGroupsPage] = useState(0);
+  const [inquiriesPage, setInquiriesPage] = useState(0);
+  const [officialApplicationsPage, setOfficialApplicationsPage] = useState(0);
+  const [officialProfilesPage, setOfficialProfilesPage] = useState(0);
+  const [actionsPage, setActionsPage] = useState(0);
+  const [securityPage, setSecurityPage] = useState(0);
+  const [auditPage, setAuditPage] = useState(0);
+  const [securityTypeFilter, setSecurityTypeFilter] = useState("");
+  const [securityStatusFilter, setSecurityStatusFilter] = useState("");
+  const [securityAudienceFilter, setSecurityAudienceFilter] = useState("");
+  const [securityGroupBy, setSecurityGroupBy] = useState("default");
+  const [expandedSecurityKey, setExpandedSecurityKey] = useState<string | null>(null);
 
   function getToken() {
     return getValidToken();
@@ -478,9 +761,94 @@ export default function AdminPage() {
     return (json.data ?? json) as T;
   }
 
-  async function fetchPage<T>(path: string) {
-    const data = await fetchAdmin<PageResponse<T>>(path);
-    return data?.content ?? [];
+  async function fetchAllPages<T>(path: string) {
+    const first = await fetchAdmin<PageResponse<T>>(appendPageParam(path, 0));
+    if (!first) return [];
+
+    const content = [...(first.content ?? [])];
+    const totalPages = first.totalPages ?? 1;
+    for (let page = 1; page < totalPages; page += 1) {
+      const next = await fetchAdmin<PageResponse<T>>(appendPageParam(path, page));
+      content.push(...(next?.content ?? []));
+    }
+    return content;
+  }
+
+  async function fetchContentLookups(events: MetricEvent[], adminReviews: Review[], stats: BookStat[]) {
+    const bookFallbacks = Object.fromEntries(
+      stats.map((book) => [normalizePath(`/books/${book.bookId}`), {
+        id: book.bookId,
+        title: book.title,
+        author: book.author,
+        thumbnail: null,
+      }])
+    );
+    const reviewFallbacks = Object.fromEntries(
+      adminReviews.map((review) => [normalizePath(`/reviews/${review.id}`), {
+        id: review.id,
+        content: review.content,
+        author: { nickname: review.authorNickname },
+        book: { title: review.bookTitle, author: "", thumbnail: null },
+      }])
+    );
+    const paths = Array.from(new Set(events.map((event) => getBookPath(event.path)).filter(Boolean) as string[])).slice(0, 80);
+    const bookEntries = await Promise.all(paths.map(async (path) => {
+      const slug = getBookSlug(path);
+      if (!slug) return null;
+      try {
+        const res = await fetch(`${API_BASE}/api/books/public/${encodeURIComponent(slug)}`, {
+          credentials: "include",
+        });
+        if (res.ok) {
+          const json = await res.json();
+          const book = (json.data ?? json) as BookTitleResponse;
+          if (book.title) return [path, book] as const;
+        }
+      } catch {
+        // fall through to the id-based lookup below
+      }
+      if (/^\d+$/.test(slug)) {
+        try {
+          const res = await fetch(`${API_BASE}/api/books/${encodeURIComponent(slug)}`, {
+            credentials: "include",
+          });
+          if (!res.ok) return null;
+          const json = await res.json();
+          const book = (json.data ?? json) as BookTitleResponse;
+          return book.title ? [path, book] as const : null;
+        } catch {
+          return null;
+        }
+      }
+      return null;
+    }));
+    const reviewPaths = Array.from(new Set(events.map((event) => getReviewPath(event.path)).filter(Boolean) as string[])).slice(0, 80);
+    const reviewEntries = await Promise.all(reviewPaths.map(async (path) => {
+      const reviewId = getReviewId(path);
+      if (!reviewId) return null;
+      try {
+        const res = await fetch(`${API_BASE}/api/reviews/${reviewId}`, {
+          credentials: "include",
+        });
+        if (!res.ok) return null;
+        const json = await res.json();
+        const review = (json.data ?? json) as ReviewLookupResponse;
+        return review.id ? [path, review] as const : null;
+      } catch {
+        return null;
+      }
+    }));
+    const books = {
+      ...bookFallbacks,
+      ...Object.fromEntries(bookEntries.filter(Boolean) as Array<readonly [string, BookTitleResponse]>),
+    };
+    return {
+      books,
+      reviews: {
+        ...reviewFallbacks,
+        ...Object.fromEntries(reviewEntries.filter(Boolean) as Array<readonly [string, ReviewLookupResponse]>),
+      },
+    };
   }
 
   async function loadAll() {
@@ -490,6 +858,7 @@ export default function AdminPage() {
         nextUsers,
         nextReviews,
         nextStats,
+        nextReadingGroups,
         nextInquiries,
         nextOfficialApplications,
         nextOfficialProfiles,
@@ -498,28 +867,27 @@ export default function AdminPage() {
         nextErrors,
         nextAudit,
         nextDashboard,
-        nextPages,
-        nextActions,
         nextSecurity,
       ] = await Promise.all([
-        fetchPage<User>("/api/admin/users?size=200"),
-        fetchPage<Review>("/api/admin/reviews?size=100"),
+        fetchAllPages<User>("/api/admin/users?size=200"),
+        fetchAllPages<Review>("/api/admin/reviews?size=200"),
         fetchAdmin<BookStat[]>("/api/admin/reviews/stats"),
-        fetchPage<Inquiry>("/api/admin/inquiries?size=100"),
-        fetchPage<OfficialProfileApplication>("/api/admin/profile-applications?size=100"),
+        fetchAllPages<AdminReadingGroup>("/api/admin/groups?size=200"),
+        fetchAllPages<Inquiry>("/api/admin/inquiries?size=200"),
+        fetchAllPages<OfficialProfileApplication>("/api/admin/profile-applications?size=200"),
         fetchAdmin<OfficialProfile[]>("/api/admin/profiles"),
-        fetchPage<AccessLog>("/api/admin/access-logs?size=300"),
-        fetchPage<MetricEvent>("/api/admin/metrics?size=500"),
-        fetchPage<ErrorLog>("/api/admin/error-logs?size=200"),
-        fetchPage<AdminAuditLog>("/api/admin/audit-logs?size=100"),
+        fetchAllPages<AccessLog>("/api/admin/access-logs?size=200"),
+        fetchAllPages<MetricEvent>("/api/admin/metrics?size=200"),
+        fetchAllPages<ErrorLog>("/api/admin/error-logs?size=200"),
+        fetchAllPages<AdminAuditLog>("/api/admin/audit-logs?size=200"),
         fetchAdmin<DashboardSummary>("/api/admin/dashboard/summary"),
-        fetchAdmin<AggregatedPage[]>("/api/admin/analytics/pages"),
-        fetchAdmin<AggregatedAction[]>("/api/admin/analytics/actions"),
         fetchAdmin<AggregatedSecurity[]>("/api/admin/security/summary"),
       ]);
+      const nextContentLookups = await fetchContentLookups(nextMetrics, nextReviews, nextStats ?? []);
       setUsers(nextUsers);
       setReviews(nextReviews);
       setBookStats(nextStats ?? []);
+      setReadingGroups(nextReadingGroups);
       setInquiries(nextInquiries);
       setOfficialApplications(nextOfficialApplications);
       setOfficialProfiles(nextOfficialProfiles ?? []);
@@ -527,9 +895,9 @@ export default function AdminPage() {
       setMetricEvents(nextMetrics);
       setErrorLogs(nextErrors);
       setAuditLogs(nextAudit);
+      setBookMetaByPath(nextContentLookups.books);
+      setReviewMetaByPath(nextContentLookups.reviews);
       setDashboardSummary(nextDashboard);
-      setAggregatedPages(nextPages ?? []);
-      setAggregatedActions(nextActions ?? []);
       setAggregatedSecurity(nextSecurity ?? []);
     } finally {
       setLoading(false);
@@ -539,6 +907,18 @@ export default function AdminPage() {
   useEffect(() => {
     loadAll();
   }, []);
+
+  useEffect(() => {
+    setUsersPage(0);
+    setReviewsPage(0);
+    setGroupsPage(0);
+    setInquiriesPage(0);
+    setOfficialApplicationsPage(0);
+    setOfficialProfilesPage(0);
+    setActionsPage(0);
+    setSecurityPage(0);
+    setAuditPage(0);
+  }, [query, tab]);
 
   const adminIds = useMemo(
     () => new Set(users.filter((user) => user.role === "ADMIN" || user.role === "SUPER_ADMIN").map((user) => user.id)),
@@ -578,55 +958,6 @@ export default function AdminPage() {
     }),
     [errorLogs, adminIds]
   );
-
-  const rawPageSummaries = useMemo(() => {
-    const map = new Map<string, PageSummary>();
-    visibleMetrics.forEach((event) => {
-      const path = normalizePath(event.path);
-      if (event.eventType !== "page_view" && event.durationMs <= 0) return;
-      const item = map.get(path) ?? {
-        path,
-        label: getRouteLabel(path),
-        views: 0,
-        visitors: new Set<string>(),
-        durationSum: 0,
-        durationCount: 0,
-        referrers: new Map<string, number>(),
-        lastAt: event.createdAt,
-      };
-      if (event.eventType === "page_view") item.views += 1;
-      item.visitors.add(visitorKey(event));
-      if (event.durationMs > 0) {
-        item.durationSum += event.durationMs;
-        item.durationCount += 1;
-      }
-      const referrer = referrerLabel(event.referrer);
-      item.referrers.set(referrer, (item.referrers.get(referrer) ?? 0) + 1);
-      if (event.createdAt > item.lastAt) item.lastAt = event.createdAt;
-      map.set(path, item);
-    });
-    return Array.from(map.values()).sort((a, b) => b.lastAt.localeCompare(a.lastAt) || b.views - a.views);
-  }, [visibleMetrics]);
-
-  const rawActionSummaries = useMemo(() => {
-    const map = new Map<string, ActionSummary>();
-    visibleMetrics
-      .filter((event) => !["heartbeat", "session_end"].includes(event.eventType))
-      .forEach((event) => {
-        const item = map.get(event.eventType) ?? {
-          eventType: event.eventType,
-          label: getMetricEventLabel(event.eventType),
-          count: 0,
-          visitors: new Set<string>(),
-          lastAt: event.createdAt,
-        };
-        item.count += 1;
-        item.visitors.add(visitorKey(event));
-        if (event.createdAt > item.lastAt) item.lastAt = event.createdAt;
-        map.set(event.eventType, item);
-      });
-    return Array.from(map.values()).sort((a, b) => b.lastAt.localeCompare(a.lastAt) || b.count - a.count);
-  }, [visibleMetrics]);
 
   const rawSecuritySummaries = useMemo(() => {
     const map = new Map<string, SecuritySummary>();
@@ -668,31 +999,6 @@ export default function AdminPage() {
     return Array.from(map.values()).sort((a, b) => b.count - a.count || b.lastAt.localeCompare(a.lastAt));
   }, [visibleErrors, visibleAccessLogs]);
 
-  const pageSummaries = useMemo(() => {
-    if (aggregatedPages.length === 0) return rawPageSummaries;
-    return aggregatedPages.map((page) => ({
-      path: page.path,
-      label: page.label,
-      views: page.views,
-      visitors: new Set(Array.from({ length: page.visitors }, (_, index) => String(index))),
-      durationSum: page.avgDurationSeconds * 1000,
-      durationCount: page.avgDurationSeconds > 0 ? 1 : 0,
-      referrers: new Map([[page.topReferrer || "-", 1]]),
-      lastAt: page.lastAt,
-    })).sort((a, b) => b.lastAt.localeCompare(a.lastAt) || b.views - a.views);
-  }, [aggregatedPages, rawPageSummaries]);
-
-  const actionSummaries = useMemo(() => {
-    if (aggregatedActions.length === 0) return rawActionSummaries;
-    return aggregatedActions.map((action) => ({
-      eventType: action.eventType,
-      label: action.label,
-      count: action.count,
-      visitors: new Set(Array.from({ length: action.visitors }, (_, index) => String(index))),
-      lastAt: action.lastAt,
-    }));
-  }, [aggregatedActions, rawActionSummaries]);
-
   const securitySummaries = useMemo(() => {
     if (aggregatedSecurity.length === 0) return rawSecuritySummaries;
     return aggregatedSecurity.map((item) => ({
@@ -716,6 +1022,11 @@ export default function AdminPage() {
     return text.includes(query.toLowerCase());
   });
 
+  const filteredReadingGroups = readingGroups.filter((group) => {
+    const text = `${group.name} ${group.slug} ${group.description ?? ""} ${group.ownerNickname} ${group.visibility} ${group.joinPolicy} ${group.joinEnabled ? "가입가능" : "가입중지"}`.toLowerCase();
+    return text.includes(query.toLowerCase());
+  });
+
   const filteredInquiries = inquiries.filter((inquiry) => {
     const text = `${inquiry.title} ${inquiry.authorName}`.toLowerCase();
     return text.includes(query.toLowerCase());
@@ -731,12 +1042,8 @@ export default function AdminPage() {
     return text.includes(query.toLowerCase());
   });
 
-  const recentPageViews = visibleMetrics
-    .filter((event) => event.eventType === "page_view")
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-
-  const filteredPageViews = recentPageViews.filter((event) => {
-    const text = `${getRouteLabel(event.path)} ${event.path} ${event.nickname ?? ""} ${referrerLabel(event.referrer)} ${event.ip ?? ""}`.toLowerCase();
+  const filteredAuditLogs = auditLogs.filter((log) => {
+    const text = `${log.actorNickname ?? ""} ${log.action} ${log.targetType} ${log.summary}`.toLowerCase();
     return text.includes(query.toLowerCase());
   });
 
@@ -744,7 +1051,7 @@ export default function AdminPage() {
     .filter((event) => !["heartbeat", "session_end"].includes(event.eventType))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .filter((event) => {
-      const text = `${getMetricEventLabel(event.eventType)} ${event.nickname ?? ""} ${event.path} ${event.ip ?? ""}`.toLowerCase();
+      const text = `${getActionDescription(event, bookMetaByPath, reviewMetaByPath)} ${getActionContext(event, bookMetaByPath, reviewMetaByPath)} ${getMetricEventLabel(event.eventType)} ${event.nickname ?? ""} ${event.path} ${event.ip ?? ""}`.toLowerCase();
       return text.includes(query.toLowerCase());
     });
 
@@ -753,7 +1060,12 @@ export default function AdminPage() {
     visibleErrors.forEach((log) => {
       const uri = normalizePath(log.uri);
       const message = log.message || "(no message)";
-      const key = `error:${log.status}:${log.exceptionType}:${uri}:${message}:${log.ip ?? ""}`;
+      const groupKey = securityGroupBy === "ip"
+        ? log.ip ?? "-"
+        : securityGroupBy === "path"
+        ? uri
+        : `${log.status}:${log.exceptionType}:${uri}:${message}:${log.ip ?? ""}`;
+      const key = `error:${groupKey}`;
       const previous = map.get(key);
       const item: SecurityEvent = {
         key,
@@ -768,6 +1080,10 @@ export default function AdminPage() {
         exceptionType: log.exceptionType,
         count: (previous?.count ?? 0) + 1,
         lastAt: previous && previous.lastAt > log.createdAt ? previous.lastAt : log.createdAt,
+        userId: previous?.userId ?? log.userId,
+        userAgent: previous?.userAgent ?? log.userAgent,
+        referer: previous?.referer ?? log.referer,
+        occurrenceTimes: [...(previous?.occurrenceTimes ?? []), log.createdAt].sort((a, b) => b.localeCompare(a)).slice(0, 20),
       };
       map.set(key, item);
     });
@@ -775,7 +1091,12 @@ export default function AdminPage() {
       .filter((log) => log.status >= 500 || suspiciousType(log.uri) !== "기타 이상 요청")
       .forEach((log) => {
         const uri = normalizePath(log.uri);
-        const key = `access:${log.status}:${log.method}:${uri}:${log.ip}`;
+        const groupKey = securityGroupBy === "ip"
+          ? log.ip
+          : securityGroupBy === "path"
+          ? uri
+          : `${log.status}:${log.method}:${uri}:${log.ip}`;
+        const key = `access:${groupKey}`;
         const previous = map.get(key);
         const item: SecurityEvent = {
           key,
@@ -789,25 +1110,122 @@ export default function AdminPage() {
           message: `HTTP ${log.status} 응답 · ${log.elapsedMs}ms`,
           count: (previous?.count ?? 0) + 1,
           lastAt: previous && previous.lastAt > log.createdAt ? previous.lastAt : log.createdAt,
+          occurrenceTimes: [...(previous?.occurrenceTimes ?? []), log.createdAt].sort((a, b) => b.localeCompare(a)).slice(0, 20),
         };
         map.set(key, item);
       });
     return Array.from(map.values()).sort((a, b) => b.lastAt.localeCompare(a.lastAt));
-  }, [visibleErrors, visibleAccessLogs]);
+  }, [visibleErrors, visibleAccessLogs, securityGroupBy]);
 
   const filteredSecurityEvents = securityEvents.filter((item) => {
-    const text = `${item.type} ${item.method} ${item.uri} ${item.status} ${item.ip} ${item.exceptionType ?? ""} ${item.message}`.toLowerCase();
-    return text.includes(query.toLowerCase());
+    const info = classifyErrorLike(item.method, item.uri, item.status);
+    const text = `${info.label} ${item.type} ${item.method} ${item.uri} ${item.status} ${item.ip} ${item.exceptionType ?? ""} ${item.message} ${item.userAgent ?? ""} ${item.referer ?? ""}`.toLowerCase();
+    if (!text.includes(query.toLowerCase())) return false;
+    if (securityTypeFilter && info.label !== securityTypeFilter) return false;
+    if (securityStatusFilter && String(item.status) !== securityStatusFilter) return false;
+    if (securityAudienceFilter === "bot" && !info.botSuspected) return false;
+    if (securityAudienceFilter === "user" && !info.userImpactLikely) return false;
+    return true;
   });
 
+  const todayVisibleMetrics = visibleMetrics.filter((event) => isToday(event.createdAt));
+
+  const todayBookViews = useMemo(() => {
+    const map = new Map<string, ContentViewSummary>();
+    todayVisibleMetrics
+      .filter((event) => event.eventType === "page_view")
+      .forEach((event) => {
+        const path = getBookPath(event.path);
+        if (!path) return;
+        const book = bookMetaByPath[path];
+        const item = map.get(path) ?? {
+          path,
+          title: book?.title ?? getRouteLabel(path),
+          subtitle: book?.author ? `${book.author} · 책 상세` : "책 상세",
+          thumbnail: book?.thumbnail,
+          views: 0,
+          visitors: new Set<string>(),
+          lastAt: event.createdAt,
+          href: path,
+        };
+        item.views += 1;
+        item.visitors.add(visitorKey(event));
+        if (event.createdAt > item.lastAt) item.lastAt = event.createdAt;
+        map.set(path, item);
+      });
+    return Array.from(map.values()).sort((a, b) => b.views - a.views || b.lastAt.localeCompare(a.lastAt)).slice(0, 5);
+  }, [todayVisibleMetrics, bookMetaByPath]);
+
+  const todayReviewViews = useMemo(() => {
+    const map = new Map<string, ContentViewSummary>();
+    todayVisibleMetrics
+      .filter((event) => event.eventType === "page_view")
+      .forEach((event) => {
+        const path = getReviewPath(event.path);
+        if (!path) return;
+        const review = reviewMetaByPath[path];
+        const item = map.get(path) ?? {
+          path,
+          title: review?.book ? `${review.book.title} 독후감` : "독후감 상세",
+          subtitle: review ? `작성자 ${review.author.nickname} · ${review.content.slice(0, 36)}` : "독후감 상세",
+          thumbnail: review?.book?.thumbnail,
+          views: 0,
+          visitors: new Set<string>(),
+          lastAt: event.createdAt,
+          href: path,
+        };
+        item.views += 1;
+        item.visitors.add(visitorKey(event));
+        if (event.createdAt > item.lastAt) item.lastAt = event.createdAt;
+        map.set(path, item);
+      });
+    return Array.from(map.values()).sort((a, b) => b.views - a.views || b.lastAt.localeCompare(a.lastAt)).slice(0, 5);
+  }, [todayVisibleMetrics, reviewMetaByPath]);
+
+  const todaySearchCount = todayVisibleMetrics.filter((event) =>
+    event.eventType === "book_search" || (event.eventType === "page_view" && normalizePath(event.path) === "/search")
+  ).length;
+
+  const todayBookDetailViewCount = todayVisibleMetrics.filter((event) =>
+    event.eventType === "page_view" && Boolean(getBookPath(event.path))
+  ).length;
+
+  const todayReviewDetailViewCount = todayVisibleMetrics.filter((event) =>
+    event.eventType === "page_view" && Boolean(getReviewPath(event.path))
+  ).length;
+
+  const referrerSummaries = Array.from(todayVisibleMetrics.reduce((map, event) => {
+    if (event.eventType === "page_view") {
+      const key = referrerLabel(event.referrer);
+      map.set(key, (map.get(key) ?? 0) + 1);
+    }
+    return map;
+  }, new Map<string, number>()).entries()).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+  const impactfulSecurityEvents = filteredSecurityEvents.filter((item) => {
+    const info = classifyErrorLike(item.method, item.uri, item.status);
+    return info.userImpactLikely;
+  }).slice(0, 5);
+
+  const scannerSecurityEvents = filteredSecurityEvents.filter((item) => classifyErrorLike(item.method, item.uri, item.status).botSuspected).slice(0, 5);
+  const sessionRefreshEvents = filteredSecurityEvents.filter((item) => classifyErrorLike(item.method, item.uri, item.status).label === "세션 갱신 실패").slice(0, 5);
+
+  const pagedUsers = paginate(filteredUsers, usersPage);
+  const pagedReviews = paginate(filteredReviews, reviewsPage);
+  const pagedReadingGroups = paginate(filteredReadingGroups, groupsPage);
+  const pagedInquiries = paginate(filteredInquiries, inquiriesPage);
+  const pagedOfficialApplications = paginate(filteredOfficialApplications, officialApplicationsPage);
+  const pagedOfficialProfiles = paginate(filteredOfficialProfiles, officialProfilesPage);
+  const pagedActions = paginate(filteredActions, actionsPage);
+  const pagedSecurityEvents = paginate(filteredSecurityEvents, securityPage);
+  const pagedAuditLogs = paginate(filteredAuditLogs, auditPage);
+
   const fallbackTodayVisitors = new Set(visibleMetrics.filter((event) => isToday(event.createdAt)).map(visitorKey)).size;
-  const fallbackTodayPageViews = visibleMetrics.filter((event) => isToday(event.createdAt) && event.eventType === "page_view").length;
-  const fallbackTodayReviews = reviews.filter((review) => isToday(review.createdAt)).length;
+  const fallbackTodayReviews = reviews.filter((review) => isTodayReview(review.createdAt)).length;
   const fallbackTodayUsers = users.filter((user) => isToday(user.createdAt)).length;
   const fallbackTodayErrors = visibleErrors.filter((error) => isToday(error.createdAt) && error.status >= 500).length;
   const fallbackTodaySecurity = securitySummaries.filter((item) => isToday(item.lastAt)).reduce((sum, item) => sum + item.count, 0);
   const todayVisitors = dashboardSummary?.todayVisitors ?? fallbackTodayVisitors;
-  const todayPageViews = dashboardSummary?.todayPageViews ?? fallbackTodayPageViews;
   const todayReviews = dashboardSummary?.todayReviews ?? fallbackTodayReviews;
   const todayUsers = dashboardSummary?.todayUsers ?? fallbackTodayUsers;
   const todayErrors = dashboardSummary?.todayServerErrors ?? fallbackTodayErrors;
@@ -840,6 +1258,70 @@ export default function AdminPage() {
     });
     if (res.status === 401) { router.replace("/auth/login"); return; }
     if (res.status === 403) { setUnauthorized(true); return; }
+    loadAll();
+  }
+
+  async function toggleGroupDetail(group: AdminReadingGroup) {
+    if (expandedGroupId === group.id) {
+      setExpandedGroupId(null);
+      return;
+    }
+    setExpandedGroupId(group.id);
+    if (readingGroupDetails[group.id]) return;
+    setReadingGroupDetailLoading(group.id);
+    const detail = await fetchAdmin<AdminReadingGroupDetail>(`/api/admin/groups/${group.id}`);
+    if (detail) {
+      setReadingGroupDetails((items) => ({ ...items, [group.id]: detail }));
+    }
+    setReadingGroupDetailLoading(null);
+  }
+
+  async function toggleGroupJoin(group: AdminReadingGroup) {
+    const token = getToken();
+    if (!token) return;
+    const enabled = !group.joinEnabled;
+    const reason = window.prompt(enabled ? "독서모임 가입을 재개하는 사유를 입력해주세요." : "독서모임 가입을 중지하는 사유를 입력해주세요.");
+    if (!reason || reason.trim().length < 5) return;
+    const res = await authFetch(`${API_BASE}/api/admin/groups/${group.id}/join-enabled`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled, reason: reason.trim() }),
+    });
+    if (res.status === 401) { router.replace("/auth/login"); return; }
+    if (res.status === 403) { setUnauthorized(true); return; }
+    setReadingGroupDetails((items) => {
+      const next = { ...items };
+      delete next[group.id];
+      return next;
+    });
+    loadAll();
+  }
+
+  async function deleteGroup(group: AdminReadingGroup) {
+    const token = getToken();
+    if (!token) return;
+    if (!window.confirm(`'${group.name}' 독서모임을 삭제할까요? 멤버, 선정 책, 연결된 그룹 독후감 정보도 함께 삭제됩니다.`)) return;
+    const reason = window.prompt("독서모임을 삭제하는 사유를 입력해주세요.");
+    if (!reason || reason.trim().length < 5) return;
+    const res = await authFetch(`${API_BASE}/api/admin/groups/${group.id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ reason: reason.trim() }),
+    });
+    if (res.status === 401) { router.replace("/auth/login"); return; }
+    if (res.status === 403) { setUnauthorized(true); return; }
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      window.alert(`독서모임을 삭제하지 못했어요.${text ? `\n${text}` : ""}`);
+      return;
+    }
+    setReadingGroups((groups) => groups.filter((item) => item.id !== group.id));
+    setReadingGroupDetails((items) => {
+      const next = { ...items };
+      delete next[group.id];
+      return next;
+    });
+    if (expandedGroupId === group.id) setExpandedGroupId(null);
     loadAll();
   }
 
@@ -907,11 +1389,6 @@ export default function AdminPage() {
     loadAll();
   }
 
-  function reviewHrefForBook(book: BookStat) {
-    const review = reviews.find((item) => item.bookTitle === book.title);
-    return review ? `/reviews/${review.id}` : `/books/${book.bookId}/reviews`;
-  }
-
   if (unauthorized) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-16 text-center">
@@ -973,63 +1450,24 @@ export default function AdminPage() {
 
           {tab === "dashboard" && (
             <>
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                 <StatCard label="오늘 방문자" value={todayVisitors} helper="관리자 제외" />
-                <StatCard label="오늘 페이지뷰" value={todayPageViews} />
-                <StatCard label="오늘 독후감" value={todayReviews} />
+                <StatCard label="책 상세 방문" value={dashboardSummary?.todayBookDetailViews ?? todayBookDetailViewCount} />
+                <StatCard label="독후감 상세 방문" value={dashboardSummary?.todayReviewDetailViews ?? todayReviewDetailViewCount} />
+                <StatCard label="책 검색" value={dashboardSummary?.todayBookSearches ?? todaySearchCount} />
+                <StatCard label="독후감 작성" value={todayReviews} />
                 <StatCard label="오늘 가입" value={todayUsers} />
                 <StatCard label="서버 오류" value={todayErrors} helper="오늘 5xx" />
                 <StatCard label="의심 요청" value={todaySecurity} helper="스캔/오류 묶음" />
               </div>
 
-              <div className="grid gap-4 lg:grid-cols-2">
-                <section className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
-                  <h2 className="font-serif text-lg font-bold text-brown-900">인기 페이지</h2>
-                  <div className="mt-3 space-y-3">
-                    {pageSummaries.slice(0, 6).map((page) => (
-                      <div key={page.path} className="rounded-xl bg-cream-50 p-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="font-medium text-brown-800">{page.label}</p>
-                            <p className="truncate text-xs text-brown-300">{page.path}</p>
-                          </div>
-                          <p className="shrink-0 text-sm font-bold text-brown-700">{page.views}회</p>
-                        </div>
-                        <p className="mt-2 text-xs text-brown-400">방문자 {page.visitors.size}명 · 유입 {topReferrer(page.referrers)} · 마지막 {formatLogTime(page.lastAt)}</p>
-                      </div>
-                    ))}
-                    {pageSummaries.length === 0 && <p className="py-6 text-center text-sm text-brown-300">방문 데이터가 없어요</p>}
-                  </div>
-                </section>
-
-                <section className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
-                  <h2 className="font-serif text-lg font-bold text-brown-900">사용자 행동</h2>
-                  <div className="mt-3 space-y-3">
-                    {actionSummaries.slice(0, 6).map((action) => (
-                      <div key={action.eventType} className="flex items-center justify-between rounded-xl bg-cream-50 p-3">
-                        <div>
-                          <p className="font-medium text-brown-800">{action.label}</p>
-                          <p className="text-xs text-brown-400">사용자 {action.visitors.size}명 · 마지막 {formatLogTime(action.lastAt)}</p>
-                        </div>
-                        <p className="text-sm font-bold text-brown-700">{action.count}회</p>
-                      </div>
-                    ))}
-                    {actionSummaries.length === 0 && <p className="py-6 text-center text-sm text-brown-300">행동 데이터가 없어요</p>}
-                  </div>
-                </section>
-              </div>
-
-              <div className="grid gap-4 lg:grid-cols-2">
+              <div className="grid gap-4 lg:grid-cols-3">
                 <section className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
                   <h2 className="font-serif text-lg font-bold text-brown-900">책별 독후감 TOP 5</h2>
-                  <div className="mt-3 space-y-2">
+                  <div className="mt-3 space-y-3">
                     {bookStats.slice(0, 5).map((book) => (
-                      <Link
-                        key={book.bookId}
-                        href={reviewHrefForBook(book)}
-                        className="block rounded-xl bg-cream-50 p-3 hover:bg-cream-100"
-                      >
-                        <div className="flex justify-between gap-3">
+                      <Link key={book.bookId} href={`/books/${book.bookId}/reviews`} className="block rounded-xl bg-cream-50 p-3 hover:bg-cream-100">
+                        <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className="truncate font-medium text-brown-800">{book.title}</p>
                             <p className="text-xs text-brown-400">{book.author}</p>
@@ -1038,22 +1476,90 @@ export default function AdminPage() {
                         </div>
                       </Link>
                     ))}
+                    {bookStats.length === 0 && <p className="py-6 text-center text-sm text-brown-300">독후감 데이터가 없어요</p>}
                   </div>
                 </section>
 
                 <section className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
-                  <h2 className="font-serif text-lg font-bold text-brown-900">보안·오류 요약</h2>
-                  <div className="mt-3 space-y-2">
-                    {securitySummaries.slice(0, 5).map((item) => (
-                      <div key={item.key} className="rounded-xl bg-cream-50 p-3">
-                        <div className="flex justify-between gap-3">
-                          <p className="font-medium text-brown-800">{item.type}</p>
-                          <p className="text-sm font-bold text-brown-700">{item.count}회</p>
+                  <h2 className="font-serif text-lg font-bold text-brown-900">오늘 많이 본 책 TOP 5</h2>
+                  <div className="mt-3 space-y-3">
+                    {todayBookViews.map((book) => (
+                      <Link key={book.path} href={book.href} className="block rounded-xl bg-cream-50 p-3 hover:bg-cream-100">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate font-medium text-brown-800">{book.title}</p>
+                            <p className="truncate text-xs text-brown-400">{book.subtitle}</p>
+                          </div>
+                          <p className="shrink-0 text-sm font-bold text-brown-700">{book.views}회</p>
                         </div>
-                        <p className="mt-1 truncate text-xs text-brown-400">{item.uri} · {item.ip} · {formatLogTime(item.lastAt)}</p>
+                        <p className="mt-2 text-xs text-brown-400">방문자 {book.visitors.size}명 · 마지막 {formatLogTime(book.lastAt)}</p>
+                      </Link>
+                    ))}
+                    {todayBookViews.length === 0 && <p className="py-6 text-center text-sm text-brown-300">오늘 책 상세 방문이 없어요</p>}
+                  </div>
+                </section>
+
+                <section className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+                  <h2 className="font-serif text-lg font-bold text-brown-900">오늘 많이 본 독후감 TOP 5</h2>
+                  <div className="mt-3 space-y-3">
+                    {todayReviewViews.map((review) => (
+                      <Link key={review.path} href={review.href} className="block rounded-xl bg-cream-50 p-3 hover:bg-cream-100">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate font-medium text-brown-800">{review.title}</p>
+                            <p className="truncate text-xs text-brown-400">{review.subtitle}</p>
+                          </div>
+                          <p className="shrink-0 text-sm font-bold text-brown-700">{review.views}회</p>
+                        </div>
+                        <p className="mt-2 text-xs text-brown-400">방문자 {review.visitors.size}명 · 마지막 {formatLogTime(review.lastAt)}</p>
+                      </Link>
+                    ))}
+                    {todayReviewViews.length === 0 && <p className="py-6 text-center text-sm text-brown-300">오늘 독후감 상세 방문이 없어요</p>}
+                  </div>
+                </section>
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-3">
+                <section className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+                  <h2 className="font-serif text-lg font-bold text-brown-900">검색·유입</h2>
+                  <div className="mt-3 space-y-3">
+                    <div className="rounded-xl bg-cream-50 p-3">
+                      <p className="font-medium text-brown-800">오늘 책 검색</p>
+                      <p className="mt-1 text-2xl font-bold text-brown-900">{dashboardSummary?.todayBookSearches ?? todaySearchCount}</p>
+                    </div>
+                    {referrerSummaries.map(([label, count]) => (
+                      <div key={label} className="flex items-center justify-between rounded-xl bg-cream-50 px-3 py-2">
+                        <p className="text-sm text-brown-700">{label}</p>
+                        <p className="text-sm font-bold text-brown-700">{count}회</p>
                       </div>
                     ))}
-                    {securitySummaries.length === 0 && <p className="py-6 text-center text-sm text-brown-300">보안·오류 이슈가 없어요</p>}
+                  </div>
+                </section>
+
+                <section className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+                  <h2 className="font-serif text-lg font-bold text-brown-900">사용자 영향 가능 오류</h2>
+                  <div className="mt-3 space-y-2">
+                    {impactfulSecurityEvents.map((item) => (
+                      <div key={item.key} className="rounded-xl bg-red-50 p-3">
+                        <p className="font-medium text-red-600">{classifyErrorLike(item.method, item.uri, item.status).label}</p>
+                        <p className="mt-1 truncate text-xs text-red-400">{item.method} {item.uri} · {item.count}회 · {formatLogTime(item.lastAt)}</p>
+                      </div>
+                    ))}
+                    {impactfulSecurityEvents.length === 0 && <p className="py-6 text-center text-sm text-brown-300">사용자 영향 가능 오류가 없어요</p>}
+                  </div>
+                </section>
+
+                <section className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+                  <h2 className="font-serif text-lg font-bold text-brown-900">스캐너·세션 요약</h2>
+                  <div className="mt-3 space-y-2">
+                    <div className="rounded-xl bg-cream-50 p-3">
+                      <p className="text-sm font-medium text-brown-800">스캐너 의심</p>
+                      <p className="text-xs text-brown-400">{scannerSecurityEvents.reduce((sum, item) => sum + item.count, 0)}회</p>
+                    </div>
+                    <div className="rounded-xl bg-cream-50 p-3">
+                      <p className="text-sm font-medium text-brown-800">세션 갱신 실패</p>
+                      <p className="text-xs text-brown-400">{sessionRefreshEvents.reduce((sum, item) => sum + item.count, 0)}회</p>
+                    </div>
                   </div>
                 </section>
               </div>
@@ -1067,9 +1573,13 @@ export default function AdminPage() {
                   <tr><th className="px-4 py-3">닉네임</th><th className="px-4 py-3">이메일</th><th className="px-4 py-3">역할</th><th className="px-4 py-3">가입일</th><th className="px-4 py-3"></th></tr>
                 </thead>
                 <tbody>
-                  {filteredUsers.map((user) => (
+                  {pagedUsers.map((user) => (
                     <tr key={user.id} className="border-t border-cream-100 hover:bg-cream-50">
-                      <td className="px-4 py-3 font-medium text-brown-800">{user.nickname}</td>
+                      <td className="px-4 py-3 font-medium">
+                        <Link href={`/users/${user.id}`} className="text-brown-800 hover:text-brown-600 hover:underline">
+                          {user.nickname}
+                        </Link>
+                      </td>
                       <td className="px-4 py-3 text-brown-500">{user.email ?? "-"}</td>
                       <td className="px-4 py-3"><span className="rounded-full bg-cream-100 px-2 py-0.5 text-xs text-brown-600">{user.role}</span></td>
                       <td className="px-4 py-3 text-brown-400">{new Date(user.createdAt).toLocaleDateString("ko-KR")}</td>
@@ -1084,12 +1594,14 @@ export default function AdminPage() {
                   ))}
                 </tbody>
               </table>
+              <PaginationControls page={usersPage} total={filteredUsers.length} onChange={setUsersPage} />
+              {filteredUsers.length === 0 && <div className="border-t border-cream-100 py-8 text-center text-sm text-brown-300">회원이 없어요</div>}
             </section>
           )}
 
           {tab === "reviews" && (
             <section className="space-y-3">
-              {filteredReviews.map((review) => (
+              {pagedReviews.map((review) => (
                 <div key={review.id} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <button
@@ -1098,7 +1610,7 @@ export default function AdminPage() {
                       className="min-w-0 flex-1 rounded-xl text-left hover:bg-cream-50"
                     >
                       <p className="font-serif text-lg font-bold text-brown-900">{review.bookTitle}</p>
-                      <p className="mt-1 text-sm text-brown-500">{review.authorNickname} · ★ {review.rating} · {formatLogTime(review.createdAt)}</p>
+                      <p className="mt-1 text-sm text-brown-500">{review.authorNickname} · ★ {review.rating} · {formatReviewTime(review.createdAt)}</p>
                       <p className="mt-2 line-clamp-2 text-sm leading-6 text-brown-600">{review.content}</p>
                     </button>
                     <button onClick={() => toggleHidden(review.id, !review.hidden)} className={`shrink-0 rounded-lg px-3 py-1.5 text-xs ${review.hidden ? "bg-green-50 text-green-600" : "bg-red-50 text-red-500"}`}>
@@ -1107,18 +1619,200 @@ export default function AdminPage() {
                   </div>
                 </div>
               ))}
+              <PaginationControls page={reviewsPage} total={filteredReviews.length} onChange={setReviewsPage} />
               {filteredReviews.length === 0 && <EmptyState>독후감이 없어요</EmptyState>}
+            </section>
+          )}
+
+          {tab === "groups" && (
+            <section className="space-y-3">
+              {pagedReadingGroups.map((group) => (
+                <div key={group.id} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Link href={`/groups/${group.slug}`} className="font-serif text-lg font-bold text-brown-900 hover:text-brown-600 hover:underline">
+                          {group.name}
+                        </Link>
+                        <span className="rounded-full bg-cream-100 px-2 py-0.5 text-xs text-brown-600">
+                          {group.visibility === "PUBLIC" ? "공개" : "비공개"}
+                        </span>
+                        <span className="rounded-full bg-cream-100 px-2 py-0.5 text-xs text-brown-600">
+                          {group.joinPolicy === "OPEN" ? "바로 가입" : "승인제"}
+                        </span>
+                        <span className={`rounded-full px-2 py-0.5 text-xs ${group.joinEnabled ? "bg-green-50 text-green-600" : "bg-red-50 text-red-500"}`}>
+                          {group.joinEnabled ? "가입 가능" : "가입 중지"}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-sm text-brown-500">
+                        모임장 {group.ownerNickname} · 멤버 {group.memberCount}명 · 대기 {group.pendingCount}명 · 책 {group.bookCount}권 · {formatLogTime(group.createdAt)}
+                      </p>
+                      {group.description && <p className="mt-2 line-clamp-2 text-sm leading-6 text-brown-600">{group.description}</p>}
+                      <p className="mt-1 text-xs text-brown-300">/{group.slug}</p>
+                    </div>
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => toggleGroupDetail(group)}
+                        className="rounded-lg border border-cream-300 px-3 py-1.5 text-xs text-brown-600 hover:bg-cream-50"
+                      >
+                        {expandedGroupId === group.id ? "상세 닫기" : "상세 보기"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => toggleGroupJoin(group)}
+                        className={`rounded-lg px-3 py-1.5 text-xs ${group.joinEnabled ? "bg-red-50 text-red-500 hover:bg-red-100" : "bg-green-50 text-green-600 hover:bg-green-100"}`}
+                      >
+                        {group.joinEnabled ? "가입 중지" : "가입 재개"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteGroup(group)}
+                        className="rounded-lg border border-red-200 px-3 py-1.5 text-xs text-red-500 hover:bg-red-50"
+                      >
+                        삭제
+                      </button>
+                    </div>
+                  </div>
+                  {expandedGroupId === group.id && (
+                    <div className="mt-4 border-t border-cream-100 pt-4">
+                      {readingGroupDetailLoading === group.id && (
+                        <p className="rounded-xl bg-cream-50 px-4 py-6 text-center text-sm text-brown-400">독서모임 상세를 불러오는 중...</p>
+                      )}
+                      {readingGroupDetails[group.id] && (() => {
+                        const detail = readingGroupDetails[group.id];
+                        const pendingMembers = detail.members.filter((member) => member.status === "PENDING");
+                        return (
+                          <div className="space-y-4">
+                            <div className="grid gap-2 sm:grid-cols-4">
+                              <div className="rounded-xl bg-cream-50 p-3">
+                                <p className="text-xs text-brown-400">승인 멤버</p>
+                                <p className="mt-1 text-lg font-bold text-brown-900">{detail.memberCount}명</p>
+                              </div>
+                              <div className="rounded-xl bg-yellow-50 p-3">
+                                <p className="text-xs text-yellow-700">승인 대기</p>
+                                <p className="mt-1 text-lg font-bold text-yellow-800">{detail.pendingCount}명</p>
+                              </div>
+                              <div className="rounded-xl bg-cream-50 p-3">
+                                <p className="text-xs text-brown-400">선정 책</p>
+                                <p className="mt-1 text-lg font-bold text-brown-900">{detail.bookCount}권</p>
+                              </div>
+                              <div className="rounded-xl bg-cream-50 p-3">
+                                <p className="text-xs text-brown-400">그룹 독후감</p>
+                                <p className="mt-1 text-lg font-bold text-brown-900">{detail.reviewCount}개</p>
+                              </div>
+                            </div>
+
+                            <div className="rounded-xl border border-cream-100 p-3">
+                              <div className="flex items-center justify-between gap-2">
+                                <h3 className="font-semibold text-brown-900">승인 대기 멤버</h3>
+                                <span className="text-xs text-brown-300">{pendingMembers.length}명</span>
+                              </div>
+                              <div className="mt-3 space-y-2">
+                                {pendingMembers.map((member) => (
+                                  <Link key={member.id} href={`/users/${member.userId}`} className="flex items-center justify-between rounded-lg bg-yellow-50 px-3 py-2 text-sm hover:bg-yellow-100">
+                                    <span className="font-medium text-brown-800">{member.nickname}</span>
+                                    <span className="text-xs text-yellow-700">{formatLogTime(member.createdAt)}</span>
+                                  </Link>
+                                ))}
+                                {pendingMembers.length === 0 && <p className="py-3 text-center text-sm text-brown-300">승인 대기 멤버가 없어요</p>}
+                              </div>
+                            </div>
+
+                            <div className="rounded-xl border border-cream-100 p-3">
+                              <div className="flex items-center justify-between gap-2">
+                                <h3 className="font-semibold text-brown-900">전체 멤버</h3>
+                                <span className="text-xs text-brown-300">{detail.members.length}명</span>
+                              </div>
+                              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                                {detail.members.map((member) => (
+                                  <Link key={member.id} href={`/users/${member.userId}`} className="rounded-lg bg-cream-50 px-3 py-2 text-sm hover:bg-cream-100">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="font-medium text-brown-800">{member.nickname}</span>
+                                      <span className={`rounded-full px-2 py-0.5 text-[11px] ${
+                                        member.status === "APPROVED" ? "bg-green-50 text-green-600" :
+                                        member.status === "PENDING" ? "bg-yellow-50 text-yellow-700" :
+                                        "bg-red-50 text-red-500"
+                                      }`}>
+                                        {groupMemberStatusLabels[member.status]}
+                                      </span>
+                                    </div>
+                                    <p className="mt-1 text-xs text-brown-400">{groupMemberRoleLabels[member.role]} · 가입 {formatLogTime(member.createdAt)}</p>
+                                  </Link>
+                                ))}
+                                {detail.members.length === 0 && <p className="py-3 text-center text-sm text-brown-300 sm:col-span-2">멤버가 없어요</p>}
+                              </div>
+                            </div>
+
+                            <div className="rounded-xl border border-cream-100 p-3">
+                              <div className="flex items-center justify-between gap-2">
+                                <h3 className="font-semibold text-brown-900">선정 책</h3>
+                                <span className="text-xs text-brown-300">{detail.books.length}권</span>
+                              </div>
+                              <div className="mt-3 space-y-2">
+                                {detail.books.map((book) => (
+                                  <div key={book.id} className="rounded-lg bg-cream-50 px-3 py-2">
+                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                      <div className="min-w-0">
+                                        <Link href={`/books/${book.bookId}`} className="font-medium text-brown-900 hover:text-brown-600 hover:underline">{book.title}</Link>
+                                        <p className="mt-1 text-xs text-brown-400">{book.author}{book.publisher ? ` · ${book.publisher}` : ""} · 그룹 독후감 {book.reviewCount}개 · 등록 {formatLogTime(book.createdAt)}</p>
+                                        {book.note && <p className="mt-1 line-clamp-2 text-xs text-brown-500">{book.note}</p>}
+                                      </div>
+                                      <Link href={`/groups/${detail.slug}/books/${book.id}`} className="shrink-0 rounded-lg border border-cream-300 px-2 py-1 text-xs text-brown-500 hover:bg-white">
+                                        모음 보기
+                                      </Link>
+                                    </div>
+                                  </div>
+                                ))}
+                                {detail.books.length === 0 && <p className="py-3 text-center text-sm text-brown-300">선정 책이 없어요</p>}
+                              </div>
+                            </div>
+
+                            <div className="rounded-xl border border-cream-100 p-3">
+                              <div className="flex items-center justify-between gap-2">
+                                <h3 className="font-semibold text-brown-900">연결된 독후감</h3>
+                                <span className="text-xs text-brown-300">{detail.reviews.length}개</span>
+                              </div>
+                              <div className="mt-3 space-y-2">
+                                {detail.reviews.map((review) => (
+                                  <button
+                                    key={review.id}
+                                    type="button"
+                                    onClick={() => setSelectedReviewId(review.reviewId)}
+                                    className="block w-full rounded-lg bg-cream-50 px-3 py-2 text-left hover:bg-cream-100"
+                                  >
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className="font-medium text-brown-900">{review.bookTitle ?? "책 정보 없음"}</span>
+                                      <span className="text-xs text-brown-400">{review.authorNickname} · ★ {review.rating} · {formatReviewTime(review.createdAt)}</span>
+                                      {review.hidden && <span className="rounded-full bg-red-50 px-2 py-0.5 text-[11px] text-red-500">숨김</span>}
+                                    </div>
+                                    <p className="mt-1 line-clamp-2 text-xs leading-5 text-brown-500">{review.content}</p>
+                                  </button>
+                                ))}
+                                {detail.reviews.length === 0 && <p className="py-3 text-center text-sm text-brown-300">연결된 독후감이 없어요</p>}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+              ))}
+              <PaginationControls page={groupsPage} total={filteredReadingGroups.length} onChange={setGroupsPage} />
+              {filteredReadingGroups.length === 0 && <EmptyState>독서모임이 없어요</EmptyState>}
             </section>
           )}
 
           {tab === "inquiries" && (
             <section className="space-y-3">
-              {filteredInquiries.map((inquiry) => (
+              {pagedInquiries.map((inquiry) => (
                 <Link key={inquiry.id} href={`/admin/inquiries/${inquiry.id}`} className="block rounded-2xl border border-cream-200 bg-white p-4 shadow-sm hover:bg-cream-50">
                   <p className="font-medium text-brown-900">{inquiry.title}</p>
                   <p className="mt-1 text-sm text-brown-400">{inquiry.authorName} · {formatLogTime(inquiry.createdAt)}</p>
                 </Link>
               ))}
+              <PaginationControls page={inquiriesPage} total={filteredInquiries.length} onChange={setInquiriesPage} />
               {filteredInquiries.length === 0 && <EmptyState>문의가 없어요</EmptyState>}
             </section>
           )}
@@ -1128,7 +1822,7 @@ export default function AdminPage() {
               <div>
                 <h2 className="mb-3 font-serif text-lg font-bold text-brown-900">신청 목록</h2>
                 <div className="space-y-3">
-                  {filteredOfficialApplications.map((application) => (
+                  {pagedOfficialApplications.map((application) => (
                     <div key={application.id} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div className="min-w-0">
@@ -1188,6 +1882,7 @@ export default function AdminPage() {
                       </div>
                     </div>
                   ))}
+                  <PaginationControls page={officialApplicationsPage} total={filteredOfficialApplications.length} onChange={setOfficialApplicationsPage} />
                   {filteredOfficialApplications.length === 0 && <EmptyState>공식 프로필 신청이 없어요</EmptyState>}
                 </div>
               </div>
@@ -1195,7 +1890,7 @@ export default function AdminPage() {
               <div>
                 <h2 className="mb-3 font-serif text-lg font-bold text-brown-900">공식 프로필</h2>
                 <div className="space-y-3">
-                  {filteredOfficialProfiles.map((profile) => (
+                  {pagedOfficialProfiles.map((profile) => (
                     <div key={profile.id} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
@@ -1244,47 +1939,22 @@ export default function AdminPage() {
                       </div>
                     </div>
                   ))}
+                  <PaginationControls page={officialProfilesPage} total={filteredOfficialProfiles.length} onChange={setOfficialProfilesPage} />
                   {filteredOfficialProfiles.length === 0 && <EmptyState>공식 프로필이 없어요</EmptyState>}
                 </div>
               </div>
             </section>
           )}
 
-          {tab === "pages" && (
-            <section className="space-y-3">
-              {filteredPageViews.slice(0, 120).map((event) => (
-                <div key={event.id} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-full bg-cream-100 px-2 py-0.5 text-xs font-medium text-brown-600">페이지 조회</span>
-                        <p className="font-medium text-brown-900">{getRouteLabel(event.path)}</p>
-                      </div>
-                      <p className="mt-2 break-all font-mono text-xs text-brown-400">{normalizePath(event.path)}</p>
-                      <p className="mt-2 text-sm text-brown-500">
-                        {actorLabel(event)} · {getDeviceLabel(event.device)} · 유입 {referrerLabel(event.referrer)}
-                      </p>
-                    </div>
-                    <div className="shrink-0 text-left text-xs text-brown-300 sm:text-right">
-                      <p>{formatLogTime(event.createdAt)}</p>
-                      <p className="mt-1">세션 {shortSession(event.sessionId)}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {filteredPageViews.length === 0 && <EmptyState>페이지 조회 기록이 없어요</EmptyState>}
-            </section>
-          )}
-
           {tab === "actions" && (
             <section className="space-y-3">
-              {filteredActions.slice(0, 120).map((event) => (
+              {pagedActions.map((event) => (
                 <div key={event.id} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
-                      <p className="font-medium text-brown-900">{getMetricEventLabel(event.eventType)}</p>
+                      <p className="font-medium text-brown-900">{getActionDescription(event, bookMetaByPath, reviewMetaByPath)}</p>
                       <p className="mt-1 text-sm text-brown-500">
-                        {actorLabel(event)} · {getDeviceLabel(event.device)} · {getRouteLabel(event.path)}
+                        {getMetricEventLabel(event.eventType)} · {getDeviceLabel(event.device)} · {getActionContext(event, bookMetaByPath, reviewMetaByPath)}
                       </p>
                       <p className="mt-2 break-all font-mono text-xs text-brown-400">{normalizePath(event.path)}</p>
                       <p className="mt-2 text-xs text-brown-300">
@@ -1298,40 +1968,90 @@ export default function AdminPage() {
                   </div>
                 </div>
               ))}
-              {filteredActions.length === 0 && <EmptyState>사용자 행동 기록이 없어요</EmptyState>}
+              <PaginationControls page={actionsPage} total={filteredActions.length} onChange={setActionsPage} />
+              {filteredActions.length === 0 && <EmptyState>유입·사용자 행동 기록이 없어요</EmptyState>}
             </section>
           )}
 
           {tab === "security" && (
             <section className="space-y-3">
-              {filteredSecurityEvents.slice(0, 120).map((item) => (
-                <div key={item.key} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className={`rounded-full px-2 py-0.5 text-xs ${item.severity === "오류" ? "bg-red-50 text-red-500" : "bg-yellow-50 text-yellow-600"}`}>{item.severity}</span>
-                        <span className="rounded-full bg-cream-100 px-2 py-0.5 text-xs text-brown-500">{item.status}</span>
-                        <p className="font-medium text-brown-900">{item.type}</p>
+              <div className="grid gap-2 rounded-2xl border border-cream-200 bg-white p-3 sm:grid-cols-4">
+                <select value={securityTypeFilter} onChange={(event) => setSecurityTypeFilter(event.target.value)} className="rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-700">
+                  <option value="">전체 오류 유형</option>
+                  <option value="세션 갱신 실패">세션 갱신 실패</option>
+                  <option value="공개 책 상세 조회 실패">공개 책 상세 조회 실패</option>
+                  <option value="스캐너 의심 요청">스캐너 의심 요청</option>
+                  <option value="서버 오류">서버 오류</option>
+                  <option value="권한 없음">권한 없음</option>
+                  <option value="리소스 없음">리소스 없음</option>
+                </select>
+                <select value={securityStatusFilter} onChange={(event) => setSecurityStatusFilter(event.target.value)} className="rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-700">
+                  <option value="">전체 status</option>
+                  {[400, 401, 403, 404, 429, 500, 502, 503].map((status) => <option key={status} value={status}>{status}</option>)}
+                </select>
+                <select value={securityAudienceFilter} onChange={(event) => setSecurityAudienceFilter(event.target.value)} className="rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-700">
+                  <option value="">전체 영향</option>
+                  <option value="user">실제 사용자 가능성</option>
+                  <option value="bot">봇/스캐너 의심</option>
+                </select>
+                <select value={securityGroupBy} onChange={(event) => setSecurityGroupBy(event.target.value)} className="rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-700">
+                  <option value="default">중복 기준</option>
+                  <option value="ip">IP별 묶기</option>
+                  <option value="path">path별 묶기</option>
+                </select>
+              </div>
+              {pagedSecurityEvents.map((item) => {
+                const info = classifyErrorLike(item.method, item.uri, item.status);
+                const expanded = expandedSecurityKey === item.key;
+                return (
+                  <div key={item.key} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`rounded-full px-2 py-0.5 text-xs ${item.severity === "오류" ? "bg-red-50 text-red-500" : "bg-yellow-50 text-yellow-600"}`}>{item.severity}</span>
+                          <span className="rounded-full bg-cream-100 px-2 py-0.5 text-xs text-brown-500">{item.status}</span>
+                          {info.botSuspected && <span className="rounded-full bg-cream-100 px-2 py-0.5 text-xs text-brown-500">봇 의심</span>}
+                          {info.userImpactLikely && <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs text-red-500">사용자 영향 가능</span>}
+                          <p className="font-medium text-brown-900">{info.label}</p>
+                        </div>
+                        <p className="mt-2 text-sm leading-6 text-brown-700">{info.description}</p>
+                        <p className="mt-1 text-xs text-brown-400">사용자 영향: {info.impact}</p>
+                        <p className="mt-2 break-all font-mono text-xs text-brown-400">{item.method} {item.uri}</p>
+                        <p className="mt-2 text-sm leading-6 text-brown-700">
+                          {item.exceptionType ? `${item.exceptionType}: ` : ""}{item.message}
+                        </p>
+                        <p className="mt-2 text-xs text-brown-300">
+                          IP {item.ip} · userId {item.userId ?? "비회원/알 수 없음"} · {item.source === "error" ? "오류 로그" : "접근 로그"} · 마지막 {formatLogTime(item.lastAt)}
+                        </p>
+                        {expanded && (
+                          <div className="mt-3 rounded-xl bg-cream-50 p-3 text-xs text-brown-500">
+                            <p className="break-all">User-Agent: {item.userAgent ?? "-"}</p>
+                            <p className="mt-1 break-all">Referer: {item.referer ?? "-"}</p>
+                            <p className="mt-2 font-medium text-brown-700">발생 시각</p>
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {item.occurrenceTimes.map((time) => <span key={time} className="rounded bg-white px-2 py-1">{formatLogTime(time)}</span>)}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <p className="mt-2 break-all font-mono text-xs text-brown-400">{item.method} {item.uri}</p>
-                      <p className="mt-2 text-sm leading-6 text-brown-700">
-                        {item.exceptionType ? `${item.exceptionType}: ` : ""}{item.message}
-                      </p>
-                      <p className="mt-2 text-xs text-brown-300">
-                        IP {item.ip} · {item.source === "error" ? "오류 로그" : "접근 로그"} · {formatLogTime(item.lastAt)}
-                      </p>
+                      <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
+                        {item.count > 1 && <p className="rounded-full bg-cream-100 px-3 py-1 text-xs font-semibold text-brown-600">중복 {item.count}회</p>}
+                        <button type="button" onClick={() => setExpandedSecurityKey(expanded ? null : item.key)} className="rounded-lg border border-cream-300 px-3 py-1.5 text-xs text-brown-500 hover:bg-cream-50">
+                          {expanded ? "접기" : "상세"}
+                        </button>
+                      </div>
                     </div>
-                    {item.count > 1 && <p className="shrink-0 rounded-full bg-cream-100 px-3 py-1 text-xs font-semibold text-brown-600">중복 {item.count}회</p>}
                   </div>
-                </div>
-              ))}
+                );
+              })}
+              <PaginationControls page={securityPage} total={filteredSecurityEvents.length} onChange={setSecurityPage} />
               {filteredSecurityEvents.length === 0 && <EmptyState>보안·오류 이슈가 없어요</EmptyState>}
             </section>
           )}
 
           {tab === "audit" && (
             <section className="space-y-3">
-              {auditLogs.filter((log) => `${log.actorNickname ?? ""} ${log.action} ${log.targetType} ${log.summary}`.toLowerCase().includes(query.toLowerCase())).map((log) => (
+              {pagedAuditLogs.map((log) => (
                 <div key={log.id} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div>
@@ -1343,7 +2063,8 @@ export default function AdminPage() {
                   </div>
                 </div>
               ))}
-              {auditLogs.length === 0 && <EmptyState>관리자 이력이 없어요</EmptyState>}
+              <PaginationControls page={auditPage} total={filteredAuditLogs.length} onChange={setAuditPage} />
+              {filteredAuditLogs.length === 0 && <EmptyState>관리자 이력이 없어요</EmptyState>}
             </section>
           )}
         </div>

@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import ReviewCard, { type Review } from "../../components/ReviewCard";
+import { type Review } from "../../components/ReviewCard";
 import ExpandableBio from "../../components/ExpandableBio";
 import ProfileAvatar from "../../components/ProfileAvatar";
+import PublicProfileStats from "../../components/PublicProfileStats";
 import { fetchApiData, shareText, SITE_URL } from "../../lib/serverApi";
+import PublicProfileReviews from "./PublicProfileReviews";
 
 type UserProfile = {
   id: number;
@@ -85,18 +87,13 @@ export default async function NicknameProfilePage({ params }: Props) {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 mt-5">
-          {[
-            { label: "독후감", count: profile.reviewCount },
-            { label: "완독", count: profile.librarySummary?.finishedCount ?? 0 },
-            { label: "팔로워", count: profile.followerCount },
-          ].map((item) => (
-            <div key={item.label} className="rounded-lg bg-cream-50 px-3 py-3 text-center border border-cream-200">
-              <p className="text-xl font-bold text-brown-800">{item.count}</p>
-              <p className="text-xs text-brown-400 mt-0.5">{item.label}</p>
-            </div>
-          ))}
-        </div>
+        <PublicProfileStats
+          userId={profile.id}
+          reviewCount={profile.reviewCount}
+          finishedCount={profile.librarySummary?.finishedCount ?? 0}
+          followerCount={profile.followerCount}
+          followingCount={profile.followingCount}
+        />
 
         {profile.lifeBook && (
           <Link href={`/books/${profile.lifeBook.id}`} className="mt-5 flex items-center gap-3 rounded-lg bg-cream-50 border border-cream-200 p-3 hover:bg-white">
@@ -110,20 +107,16 @@ export default async function NicknameProfilePage({ params }: Props) {
             </div>
           </Link>
         )}
+
+        <Link
+          href={`/calendar?userId=${profile.id}&nickname=${encodeURIComponent(profile.nickname)}`}
+          className="mt-5 flex items-center justify-center rounded-lg border border-cream-200 bg-white px-4 py-2 text-sm font-medium text-brown-600 hover:bg-cream-50"
+        >
+          월별 캘린더
+        </Link>
       </div>
 
-      <h2 className="font-serif text-lg font-bold text-brown-800 mb-4">
-        {profile.nickname}님의 공개 독후감
-      </h2>
-      {(reviews ?? []).length === 0 ? (
-        <div className="text-center py-12 text-brown-400">아직 공개 독후감이 없어요.</div>
-      ) : (
-        <div className="flex flex-col gap-4">
-          {(reviews ?? []).map((review) => (
-            <ReviewCard key={review.id} post={review} />
-          ))}
-        </div>
-      )}
+      <PublicProfileReviews nickname={profile.nickname} reviews={reviews ?? []} />
     </div>
   );
 }

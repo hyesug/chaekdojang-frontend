@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { API_BASE } from "../lib/api";
+import { authFetch, getValidToken } from "../lib/auth";
 
 const BASE = API_BASE;
 
-type NotificationType = "LIKE" | "COMMENT" | "FOLLOW" | "SAME_BOOK_REVIEW";
+type NotificationType = "LIKE" | "COMMENT" | "FOLLOW" | "SAME_BOOK_REVIEW" | "GROUP_JOIN_REQUEST" | "GROUP_JOINED" | "GROUP_JOIN_APPROVED";
 
 type Notification = {
   id: number;
@@ -15,14 +15,14 @@ type Notification = {
   senderNickname: string;
   senderProfileImage: string | null;
   targetId: number | null;
+  targetSlug: string | null;
   message: string;
   isRead: boolean;
   createdAt: string;
 };
 
 function getToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return "cookie-session";
+  return getValidToken();
 }
 
 function typeIcon(type: NotificationType) {
@@ -31,7 +31,26 @@ function typeIcon(type: NotificationType) {
     case "COMMENT": return "💬";
     case "FOLLOW": return "👤";
     case "SAME_BOOK_REVIEW": return "📚";
+    case "GROUP_JOIN_REQUEST": return "👥";
+    case "GROUP_JOINED": return "👥";
+    case "GROUP_JOIN_APPROVED": return "✓";
   }
+}
+
+function notificationHref(notification: Notification) {
+  if (
+    notification.targetSlug &&
+    ["GROUP_JOIN_REQUEST", "GROUP_JOINED", "GROUP_JOIN_APPROVED"].includes(notification.type)
+  ) {
+    return `/groups/${notification.targetSlug}`;
+  }
+  if (
+    notification.targetId !== null &&
+    ["LIKE", "COMMENT", "SAME_BOOK_REVIEW"].includes(notification.type)
+  ) {
+    return `/reviews/${notification.targetId}`;
+  }
+  return null;
 }
 
 export default function NotificationsPage() {
@@ -43,14 +62,12 @@ export default function NotificationsPage() {
     const token = getToken();
     if (!token) { router.push("/auth/login"); return; }
 
-    fetch(`${BASE}/api/notifications`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    authFetch(`${BASE}/api/notifications`)
       .then((r) => (r.ok ? r.json() : null))
       .then((json) => { if (json) setNotifications(json.data ?? []); })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [router]);
 
   function notifyBell() {
     window.dispatchEvent(new Event("notification-read"));
@@ -60,9 +77,8 @@ export default function NotificationsPage() {
     const token = getToken();
     if (!token) return;
     try {
-      const res = await fetch(`${BASE}/api/notifications`, {
+      const res = await authFetch(`${BASE}/api/notifications`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) return;
       setNotifications([]);
@@ -75,9 +91,8 @@ export default function NotificationsPage() {
   async function markAllAsRead() {
     const token = getToken();
     if (!token) return;
-    await fetch(`${BASE}/api/notifications/read-all`, {
+    await authFetch(`${BASE}/api/notifications/read-all`, {
       method: "PATCH",
-      headers: { Authorization: `Bearer ${token}` },
     });
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     notifyBell();
@@ -86,9 +101,8 @@ export default function NotificationsPage() {
   async function markAsRead(id: number) {
     const token = getToken();
     if (!token) return;
-    await fetch(`${BASE}/api/notifications/${id}/read`, {
+    await authFetch(`${BASE}/api/notifications/${id}/read`, {
       method: "PATCH",
-      headers: { Authorization: `Bearer ${token}` },
     });
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
@@ -100,9 +114,8 @@ export default function NotificationsPage() {
     const token = getToken();
     if (!token) return;
     try {
-      const res = await fetch(`${BASE}/api/notifications/${id}`, {
+      const res = await authFetch(`${BASE}/api/notifications/${id}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
         console.error("알림 삭제 실패:", res.status);
@@ -111,6 +124,14 @@ export default function NotificationsPage() {
       setNotifications((prev) => prev.filter((n) => n.id !== id));
     } catch (e) {
       console.error("알림 삭제 오류:", e);
+    }
+  }
+
+  async function openNotification(notification: Notification) {
+    await markAsRead(notification.id);
+    const href = notificationHref(notification);
+    if (href) {
+      router.push(href);
     }
   }
 
@@ -155,14 +176,29 @@ export default function NotificationsPage() {
         </div>
       ) : (
         <div className="flex flex-col gap-1">
-          {notifications.map((n) => (
-            <div
-              key={n.id}
-              onClick={() => markAsRead(n.id)}
-              className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-colors cursor-pointer ${
-                n.isRead ? "bg-white border border-cream-200" : "bg-cream-100 border border-cream-300"
-              }`}
-            >
+          {notifications.map((n) => {
+            const href = notificationHref(n);
+            return (
+              <div
+                key={n.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => openNotification(n)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    openNotification(n);
+                  }
+                }}
+                className={`group flex items-center gap-3 rounded-2xl border px-4 py-3.5 shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-brown-300 ${
+                  href
+                    ? "cursor-pointer hover:-translate-y-0.5 hover:border-brown-300 hover:bg-white hover:shadow-md active:translate-y-0"
+                    : "cursor-pointer hover:bg-cream-50"
+                } ${
+                  n.isRead ? "border-cream-200 bg-white" : "border-cream-300 bg-cream-100"
+                }`}
+                aria-label={href ? `${n.message} 상세 페이지로 이동` : `${n.message} 읽음 처리`}
+              >
               {/* 타입 아이콘 */}
               <div className="w-9 h-9 rounded-full bg-brown-100 flex-shrink-0 flex items-center justify-center text-base">
                 {typeIcon(n.type)}
@@ -173,7 +209,14 @@ export default function NotificationsPage() {
                 <p className={`text-sm leading-snug ${n.isRead ? "text-brown-600" : "text-brown-800 font-medium"}`}>
                   {n.message}
                 </p>
-                <p className="text-xs text-brown-300 mt-0.5">{n.createdAt.slice(0, 10)}</p>
+                <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                  <p className="text-xs text-brown-300">{n.createdAt.slice(0, 10)}</p>
+                  {href && (
+                    <span className="text-xs font-medium text-brown-400 transition-colors group-hover:text-brown-700">
+                      상세 보기 →
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* 읽지 않음 표시 */}
@@ -185,11 +228,18 @@ export default function NotificationsPage() {
               <button
                 onClick={(e) => { e.stopPropagation(); deleteNotification(n.id); }}
                 className="flex-shrink-0 text-xs text-brown-300 hover:text-red-400 transition-colors ml-1"
+                aria-label="알림 삭제"
               >
                 ✕
               </button>
+              {href && (
+                <span className="hidden text-lg text-brown-300 transition-transform group-hover:translate-x-0.5 group-hover:text-brown-600 sm:block">
+                  →
+                </span>
+              )}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

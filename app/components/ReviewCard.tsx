@@ -6,7 +6,7 @@ import Link from "next/link";
 import ReviewDetailModal from "./ReviewDetailModal";
 import ProfileAvatar from "./ProfileAvatar";
 import { API_BASE } from "../lib/api";
-import { authFetch } from "../lib/auth";
+import { authFetch, getValidToken } from "../lib/auth";
 import { buildSearchLinks } from "../lib/purchaseLinks";
 
 export type Review = {
@@ -28,6 +28,10 @@ type Comment = {
   createdAt: string;
 };
 
+type Me = {
+  id: number;
+};
+
 const BASE = API_BASE;
 const SHARE_COPY = "읽은 책에 나만의 감상을 찍다";
 const FEED_STATE_KEY = "chaekdojang:feed-state";
@@ -38,24 +42,7 @@ const COVER_COLORS = [
 ];
 
 function getToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return "cookie-session";
-}
-
-function getMyUserId(): number | null {
-  const token = getToken();
-  if (!token) return null;
-  try {
-    const parts = token.split(".");
-    if (parts.length !== 3) return null;
-    const payload = JSON.parse(
-      atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))
-    );
-    const raw = payload.userId ?? payload.id ?? payload.sub;
-    return raw != null ? Number(raw) : null;
-  } catch {
-    return null;
-  }
+  return getValidToken();
 }
 
 function Stars({ rating }: { rating: number }) {
@@ -97,10 +84,12 @@ function EditableStars({
 // ─────────────────────────────────────────────
 function CommentModal({
   reviewId,
+  currentUserId,
   onClose,
   onCountChange,
 }: {
   reviewId: number;
+  currentUserId: number | null;
   onClose: () => void;
   onCountChange: (delta: number) => void;
 }) {
@@ -109,7 +98,6 @@ function CommentModal({
   const [text, setText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
-  const myId = getMyUserId();
   const isLoggedIn = !!getToken();
 
   useEffect(() => {
@@ -140,11 +128,10 @@ function CommentModal({
 
     setSubmitting(true);
     try {
-      const res = await fetch(`${BASE}/api/reviews/${reviewId}/comments`, {
+      const res = await authFetch(`${BASE}/api/reviews/${reviewId}/comments`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${getToken()}`,
         },
         body: JSON.stringify({ content: trimmed }),
       });
@@ -164,11 +151,10 @@ function CommentModal({
   }
 
   async function handleDelete(commentId: number) {
-    const res = await fetch(
+    const res = await authFetch(
       `${BASE}/api/reviews/${reviewId}/comments/${commentId}`,
       {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${getToken()}` },
       }
     );
     if (res.status === 401) {
@@ -222,7 +208,7 @@ function CommentModal({
                     {c.content}
                   </p>
                 </div>
-                {myId !== null && myId === c.author.id && (
+                {currentUserId !== null && currentUserId === c.author.id && (
                   <button
                     onClick={() => handleDelete(c.id)}
                     className="flex-shrink-0 text-xs text-red-400 hover:text-red-600 mt-0.5"
@@ -359,7 +345,8 @@ export default function ReviewCard({
 }) {
   const coverColor = COVER_COLORS[post.id % COVER_COLORS.length];
   const router = useRouter();
-  const myId = getMyUserId();
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const myId = currentUserId;
 
   const isOwner =
     forceOwner || (myId !== null && post.author.id != null && myId === post.author.id);
@@ -403,10 +390,23 @@ export default function ReviewCard({
 
   useEffect(() => {
     const token = getToken();
+    if (!token) {
+      setCurrentUserId(null);
+      return;
+    }
+    authFetch(`${BASE}/api/users/me`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        const me = (json?.data ?? json) as Me | null;
+        setCurrentUserId(me?.id ?? null);
+      })
+      .catch(() => setCurrentUserId(null));
+  }, []);
+
+  useEffect(() => {
+    const token = getToken();
     if (!token) return;
-    fetch(`${BASE}/api/reviews/${post.id}/like/status`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    authFetch(`${BASE}/api/reviews/${post.id}/like/status`)
       .then((r) => (r.ok ? r.json() : null))
       .then((json) => {
         if (json !== null) setLiked(Boolean(json.data ?? json));
@@ -418,9 +418,7 @@ export default function ReviewCard({
     if (!isOther || !post.author.id) return;
     const token = getToken();
     if (!token) return;
-    fetch(`${BASE}/api/users/${post.author.id}/follow/status`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    authFetch(`${BASE}/api/users/${post.author.id}/follow/status`)
       .then((r) => (r.ok ? r.json() : null))
       .then((json) => {
         if (json !== null) setFollowing(Boolean(json.data ?? json));
@@ -431,9 +429,7 @@ export default function ReviewCard({
   useEffect(() => {
     const token = getToken();
     if (!token) return;
-    authFetch(`${BASE}/api/reviews/${post.id}/bookmark/status`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    authFetch(`${BASE}/api/reviews/${post.id}/bookmark/status`)
       .then((r) => (r.ok ? r.json() : null))
       .then((json) => {
         if (json !== null) setBookmarked(Boolean(json.data ?? json));
@@ -450,9 +446,8 @@ export default function ReviewCard({
     setLiked(next);
     setLikeCount((c) => c + (next ? 1 : -1));
 
-    const res = await fetch(`${BASE}/api/reviews/${post.id}/like`, {
+    const res = await authFetch(`${BASE}/api/reviews/${post.id}/like`, {
       method: next ? "POST" : "DELETE",
-      headers: { Authorization: `Bearer ${getToken()}` },
     });
 
     if (res.status === 401) {
@@ -470,9 +465,8 @@ export default function ReviewCard({
 
   async function handleDelete() {
     if (!confirm("이 독후감을 삭제할까요?")) return;
-    const res = await fetch(`${BASE}/api/reviews/${post.id}`, {
+    const res = await authFetch(`${BASE}/api/reviews/${post.id}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${getToken()}` },
     });
     if (res.status === 204 || res.ok) {
       setDeleted(true);
@@ -486,11 +480,10 @@ export default function ReviewCard({
     if (saving) return;
     setSaving(true);
     try {
-      const res = await fetch(`${BASE}/api/reviews/${post.id}`, {
+      const res = await authFetch(`${BASE}/api/reviews/${post.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${getToken()}`,
         },
         body: JSON.stringify({ content, rating }),
       });
@@ -513,11 +506,10 @@ export default function ReviewCard({
     setHidden(next);
     setVisibilitySaving(true);
     try {
-      const res = await fetch(`${BASE}/api/reviews/${post.id}/hidden`, {
+      const res = await authFetch(`${BASE}/api/reviews/${post.id}/hidden`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${getToken()}`,
         },
         body: JSON.stringify({ hidden: next }),
       });
@@ -558,7 +550,6 @@ export default function ReviewCard({
     try {
       const res = await authFetch(`${BASE}/api/reviews/${post.id}/bookmark`, {
         method: next ? "POST" : "DELETE",
-        headers: { Authorization: `Bearer ${getToken()}` },
       });
       if (res.status === 401) {
         setBookmarked(!next);
@@ -597,9 +588,8 @@ export default function ReviewCard({
     const next = !following;
     setFollowing(next);
     try {
-      const res = await fetch(`${BASE}/api/users/${post.author.id}/follow`, {
+      const res = await authFetch(`${BASE}/api/users/${post.author.id}/follow`, {
         method: next ? "POST" : "DELETE",
-        headers: { Authorization: `Bearer ${getToken()}` },
       });
       if (res.status === 401) {
         setFollowing(!next);
@@ -849,6 +839,7 @@ export default function ReviewCard({
       {showComments && (
         <CommentModal
           reviewId={post.id}
+          currentUserId={currentUserId}
           onClose={() => setShowComments(false)}
           onCountChange={(delta) => setCommentCount((c) => c + delta)}
         />
@@ -858,6 +849,11 @@ export default function ReviewCard({
         <ReviewDetailModal
           reviewId={post.id}
           onClose={() => setShowDetail(false)}
+          onEngagementChange={({ likeCount: nextLikeCount, commentCount: nextCommentCount, liked: nextLiked }) => {
+            setLikeCount(nextLikeCount);
+            setCommentCount(nextCommentCount);
+            if (typeof nextLiked === "boolean") setLiked(nextLiked);
+          }}
         />
       )}
 

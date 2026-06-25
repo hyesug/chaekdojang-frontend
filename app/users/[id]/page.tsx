@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import ReviewCard, { type Review } from "../../components/ReviewCard";
 import FollowListModal from "../../components/FollowListModal";
 import ExpandableBio from "../../components/ExpandableBio";
 import ProfileAvatar from "../../components/ProfileAvatar";
 import { API_BASE } from "../../lib/api";
+import { authFetch, getValidToken } from "../../lib/auth";
 
 const BASE = API_BASE;
 
@@ -34,23 +36,16 @@ type UserProfile = {
   lifeBook: LifeBook | null;
 };
 
-function getToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return "cookie-session";
+type Me = {
+  id: number;
+};
+
+function normalizeSearchText(value: string | null | undefined) {
+  return (value ?? "").normalize("NFKC").toLowerCase().replace(/\s+/g, "");
 }
 
-function getMyUserId(): number | null {
-  const token = getToken();
-  if (!token) return null;
-  try {
-    const parts = token.split(".");
-    if (parts.length !== 3) return null;
-    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
-    const raw = payload.userId ?? payload.id ?? payload.sub;
-    return raw != null ? Number(raw) : null;
-  } catch {
-    return null;
-  }
+function getToken(): string | null {
+  return getValidToken();
 }
 
 export default function UserProfilePage() {
@@ -65,14 +60,27 @@ export default function UserProfilePage() {
   const [followerCount, setFollowerCount] = useState(0);
   const [followLoading, setFollowLoading] = useState(false);
   const [followModal, setFollowModal] = useState<null | "followers" | "followings">(null);
+  const [myId, setMyId] = useState<number | null>(null);
+  const [reviewQuery, setReviewQuery] = useState("");
 
-  const myId = getMyUserId();
   const isLoggedIn = myId !== null;
+  const normalizedReviewQuery = normalizeSearchText(reviewQuery);
+
+  const filteredReviews = useMemo(() => {
+    if (!normalizedReviewQuery) return reviews;
+    return reviews.filter((review) => {
+      const searchable = [
+        review.book?.title,
+        review.book?.author,
+        review.content,
+      ].map(normalizeSearchText).join(" ");
+      return searchable.includes(normalizedReviewQuery);
+    });
+  }, [normalizedReviewQuery, reviews]);
 
   const fetchProfile = useCallback(async () => {
     const token = getToken();
-    const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
-    const res = await fetch(`${BASE}/api/users/${userId}`, { headers });
+    const res = await fetch(`${BASE}/api/users/${userId}`, { credentials: "include" });
     if (!res.ok) return;
     const json = await res.json();
     const data: UserProfile = json.data ?? json;
@@ -81,9 +89,7 @@ export default function UserProfilePage() {
 
     // 팔로우 상태는 별도 API로 확인 (UserProfileResponse에 isFollowing 없음)
     if (token) {
-      const statusRes = await fetch(`${BASE}/api/users/${userId}/follow/status`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const statusRes = await authFetch(`${BASE}/api/users/${userId}/follow/status`);
       if (statusRes.ok) {
         const statusJson = await statusRes.json();
         setFollowing(Boolean(statusJson.data ?? statusJson));
@@ -92,12 +98,27 @@ export default function UserProfilePage() {
   }, [userId]);
 
   const fetchReviews = useCallback(async () => {
-    const res = await fetch(`${BASE}/api/users/${userId}/reviews`);
+    const res = await fetch(`${BASE}/api/users/${userId}/reviews`, { credentials: "include" });
     if (res.ok) {
       const json = await res.json();
       setReviews(json.data ?? []);
     }
   }, [userId]);
+
+  useEffect(() => {
+    const token = getToken();
+    if (token) {
+      authFetch(`${BASE}/api/users/me`, { cache: "no-store" })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((json) => {
+          const me = (json?.data ?? json) as Me | null;
+          setMyId(me?.id ?? null);
+        })
+        .catch(() => setMyId(null));
+    } else {
+      setMyId(null);
+    }
+  }, []);
 
   useEffect(() => {
     /* 내 프로필이면 /profile 로 리다이렉트 */
@@ -107,7 +128,7 @@ export default function UserProfilePage() {
     }
     setLoading(true);
     Promise.all([fetchProfile(), fetchReviews()]).finally(() => setLoading(false));
-  }, [userId]);
+  }, [fetchProfile, fetchReviews, myId, router, userId]);
 
   async function handleFollow() {
     const token = getToken();
@@ -121,9 +142,8 @@ export default function UserProfilePage() {
     setFollowing(next);
     setFollowerCount((c) => c + (next ? 1 : -1));
     try {
-      const res = await fetch(`${BASE}/api/users/${userId}/follow`, {
+      const res = await authFetch(`${BASE}/api/users/${userId}/follow`, {
         method: next ? "POST" : "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
         setFollowing(!next);
@@ -190,17 +210,19 @@ export default function UserProfilePage() {
           </div>
           <button
             onClick={() => setFollowModal("followers")}
-            className="flex flex-col items-center hover:opacity-70 transition-opacity"
+            className="group rounded-lg border border-brown-200 bg-cream-50 px-3 py-2 text-center shadow-sm transition-all hover:-translate-y-0.5 hover:border-brown-400 hover:bg-white hover:shadow-md focus:outline-none focus:ring-2 focus:ring-brown-300 active:translate-y-0"
+            aria-label="팔로워 목록 보기"
           >
             <p className="font-bold text-brown-800 text-xl">{followerCount}</p>
-            <p className="text-xs text-brown-400 mt-0.5">팔로워</p>
+            <p className="text-xs text-brown-500 mt-0.5">팔로워</p>
           </button>
           <button
             onClick={() => setFollowModal("followings")}
-            className="flex flex-col items-center hover:opacity-70 transition-opacity"
+            className="group rounded-lg border border-brown-200 bg-cream-50 px-3 py-2 text-center shadow-sm transition-all hover:-translate-y-0.5 hover:border-brown-400 hover:bg-white hover:shadow-md focus:outline-none focus:ring-2 focus:ring-brown-300 active:translate-y-0"
+            aria-label="팔로잉 목록 보기"
           >
             <p className="font-bold text-brown-800 text-xl">{profile.followingCount}</p>
-            <p className="text-xs text-brown-400 mt-0.5">팔로잉</p>
+            <p className="text-xs text-brown-500 mt-0.5">팔로잉</p>
           </button>
         </div>
 
@@ -216,6 +238,13 @@ export default function UserProfilePage() {
             </div>
           ))}
         </div>
+
+        <Link
+          href={`/calendar?userId=${profile.id}&nickname=${encodeURIComponent(profile.nickname)}`}
+          className="mt-5 flex items-center justify-center rounded-lg border border-cream-200 bg-white px-4 py-2 text-sm font-medium text-brown-600 hover:bg-cream-50"
+        >
+          월별 캘린더
+        </Link>
       </div>
 
       {/* 팔로워/팔로잉 모달 */}
@@ -248,17 +277,41 @@ export default function UserProfilePage() {
       )}
 
       {/* 독후감 목록 */}
-      <h2 className="font-serif text-lg font-bold text-brown-800 mb-4">
-        {profile.nickname}님의 독후감
-      </h2>
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="font-serif text-lg font-bold text-brown-800">
+            {profile.nickname}님의 독후감
+          </h2>
+          {reviews.length > 0 && (
+            <p className="mt-1 text-xs text-brown-400">
+              {filteredReviews.length} / {reviews.length}개
+            </p>
+          )}
+        </div>
+        {reviews.length > 0 && (
+          <label className="block sm:w-72">
+            <span className="sr-only">독후감 검색</span>
+            <input
+              value={reviewQuery}
+              onChange={(event) => setReviewQuery(event.target.value)}
+              placeholder="책 제목, 저자, 내용 검색"
+              className="w-full rounded-xl border border-cream-300 bg-white px-4 py-2.5 text-sm text-brown-800 shadow-sm placeholder:text-brown-300 focus:border-brown-400 focus:outline-none focus:ring-2 focus:ring-brown-100"
+            />
+          </label>
+        )}
+      </div>
       {reviews.length === 0 ? (
         <div className="text-center py-12 text-brown-400">
           <p className="text-4xl mb-3">📖</p>
           <p>아직 독후감이 없어요</p>
         </div>
+      ) : filteredReviews.length === 0 ? (
+        <div className="rounded-2xl border border-cream-200 bg-white py-12 text-center text-brown-400">
+          검색 결과가 없어요.
+        </div>
       ) : (
         <div className="flex flex-col gap-4">
-          {reviews.map((post) => (
+          {filteredReviews.map((post) => (
             <ReviewCard
               key={post.id}
               post={post}

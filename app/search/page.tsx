@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import ProfileAvatar from "../components/ProfileAvatar";
 import { API_BASE } from "../lib/api";
 import { buildSearchLinks } from "../lib/purchaseLinks";
+import { trackMetric } from "../components/AnalyticsTracker";
 
 type SearchTab = "books" | "users";
 
@@ -190,6 +191,7 @@ function SearchContent() {
         if (trimmed) params.set("q", trimmed);
         if (trimmedAuthor) params.set("author", trimmedAuthor);
         if (trimmedPublisher) params.set("publisher", trimmedPublisher);
+        trackMetric("book_search", `/search?${params.toString()}`);
         const res = await fetch(
           `${BASE}/api/books/search?${params.toString()}`
         );

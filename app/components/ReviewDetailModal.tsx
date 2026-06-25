@@ -6,6 +6,7 @@ import Link from "next/link";
 import ProfileAvatar from "./ProfileAvatar";
 import ReviewViewTracker from "./ReviewViewTracker";
 import { API_BASE } from "../lib/api";
+import { authFetch, getValidToken } from "../lib/auth";
 
 const BASE = API_BASE;
 
@@ -28,23 +29,12 @@ type Comment = {
   createdAt: string;
 };
 
-function getToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return "cookie-session";
-}
+type Me = {
+  id: number;
+};
 
-function getMyUserId(): number | null {
-  const token = getToken();
-  if (!token) return null;
-  try {
-    const parts = token.split(".");
-    if (parts.length !== 3) return null;
-    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
-    const raw = payload.userId ?? payload.id ?? payload.sub;
-    return raw != null ? Number(raw) : null;
-  } catch {
-    return null;
-  }
+function getToken(): string | null {
+  return getValidToken();
 }
 
 function Stars({ rating }: { rating: number }) {
@@ -76,11 +66,13 @@ function EditableStars({ rating, onChange }: { rating: number; onChange: (r: num
 type Props = {
   reviewId: number;
   onClose: () => void;
+  onEngagementChange?: (counts: { likeCount: number; commentCount: number; liked?: boolean }) => void;
 };
 
-export default function ReviewDetailModal({ reviewId, onClose }: Props) {
+export default function ReviewDetailModal({ reviewId, onClose, onEngagementChange }: Props) {
   const router = useRouter();
-  const myId = getMyUserId();
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const myId = currentUserId;
   const isLoggedIn = !!getToken();
 
   const [review, setReview] = useState<ReviewDetail | null>(null);
@@ -107,17 +99,15 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
     async function load() {
       setLoading(true);
       try {
-        const token = getToken();
         const [reviewRes] = await Promise.all([
-          fetch(`${BASE}/api/reviews/${reviewId}`, {
-            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-          }),
+          fetch(`${BASE}/api/reviews/${reviewId}`, { cache: "no-store" }),
         ]);
         if (reviewRes.ok) {
           const json = await reviewRes.json();
           const data: ReviewDetail = json.data ?? json;
           setReview(data);
           setLikeCount(data.likeCount);
+          onEngagementChange?.({ likeCount: data.likeCount, commentCount: data.commentCount });
           if (!data.hidden) {
             loadComments();
           }
@@ -128,10 +118,16 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
 
       const token = getToken();
       if (token) {
+        authFetch(`${BASE}/api/users/me`, { cache: "no-store" })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((json) => {
+            const me = (json?.data ?? json) as Me | null;
+            setCurrentUserId(me?.id ?? null);
+          })
+          .catch(() => setCurrentUserId(null));
+
         // 좋아요 상태
-        fetch(`${BASE}/api/reviews/${reviewId}/like/status`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
+        authFetch(`${BASE}/api/reviews/${reviewId}/like/status`)
           .then((r) => (r.ok ? r.json() : null))
           .then((json) => { if (json !== null) setLiked(Boolean(json.data ?? json)); })
           .catch(() => {});
@@ -145,19 +141,19 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
     if (!review?.author.id || !myId || myId === review.author.id) return;
     const token = getToken();
     if (!token) return;
-    fetch(`${BASE}/api/users/${review.author.id}/follow/status`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    authFetch(`${BASE}/api/users/${review.author.id}/follow/status`)
       .then((r) => (r.ok ? r.json() : null))
       .then((json) => { if (json !== null) setFollowing(Boolean(json.data ?? json)); })
       .catch(() => {});
   }, [review?.author.id, myId]);
 
   async function loadComments() {
-    const res = await fetch(`${BASE}/api/reviews/${reviewId}/comments`);
+    const res = await fetch(`${BASE}/api/reviews/${reviewId}/comments`, { cache: "no-store" });
     if (res.ok) {
       const json = await res.json();
-      setComments(json.data ?? json);
+      const nextComments = json.data ?? json;
+      setComments(nextComments);
+      onEngagementChange?.({ likeCount, commentCount: nextComments.length, liked });
     }
   }
 
@@ -166,15 +162,16 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
     const next = !liked;
     setLiked(next);
     setLikeCount((c) => c + (next ? 1 : -1));
-    const res = await fetch(`${BASE}/api/reviews/${reviewId}/like`, {
+    const res = await authFetch(`${BASE}/api/reviews/${reviewId}/like`, {
       method: next ? "POST" : "DELETE",
-      headers: { Authorization: `Bearer ${getToken()}` },
     });
     if (res.status === 401) {
       setLiked(!next); setLikeCount((c) => c + (next ? -1 : 1));
        router.push("/auth/login");
     } else if (!res.ok) {
       setLiked(!next); setLikeCount((c) => c + (next ? -1 : 1));
+    } else {
+      onEngagementChange?.({ likeCount: likeCount + (next ? 1 : -1), commentCount: comments.length, liked: next });
     }
   }
 
@@ -185,9 +182,8 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
     const next = !following;
     setFollowing(next);
     try {
-      const res = await fetch(`${BASE}/api/users/${review.author.id}/follow`, {
+      const res = await authFetch(`${BASE}/api/users/${review.author.id}/follow`, {
         method: next ? "POST" : "DELETE",
-        headers: { Authorization: `Bearer ${getToken()}` },
       });
       if (res.status === 401) {
         setFollowing(!next);  router.push("/auth/login");
@@ -206,9 +202,9 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
     if (!trimmed || submitting) return;
     setSubmitting(true);
     try {
-      const res = await fetch(`${BASE}/api/reviews/${reviewId}/comments`, {
+      const res = await authFetch(`${BASE}/api/reviews/${reviewId}/comments`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: trimmed }),
       });
       if (res.status === 401) {
@@ -227,9 +223,9 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
     if (!review || saving) return;
     setSaving(true);
     try {
-      const res = await fetch(`${BASE}/api/reviews/${review.id}`, {
+      const res = await authFetch(`${BASE}/api/reviews/${review.id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: editContent, rating: editRating }),
       });
       if (res.ok) {
@@ -244,11 +240,16 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
   }
 
   async function handleCommentDelete(commentId: number) {
-    const res = await fetch(`${BASE}/api/reviews/${reviewId}/comments/${commentId}`, {
+    const res = await authFetch(`${BASE}/api/reviews/${reviewId}/comments/${commentId}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${getToken()}` },
     });
-    if (res.ok) setComments((prev) => prev.filter((c) => c.id !== commentId));
+    if (res.ok) {
+      setComments((prev) => {
+        const nextComments = prev.filter((c) => c.id !== commentId);
+        onEngagementChange?.({ likeCount, commentCount: nextComments.length, liked });
+        return nextComments;
+      });
+    }
   }
 
   return (
@@ -312,7 +313,7 @@ export default function ReviewDetailModal({ reviewId, onClose }: Props) {
                   <ProfileAvatar src={review.author.profileImage} name={review.author.nickname} size="xs" />
                   {review.author.id != null ? (
                     <Link
-                      href={`/users/${review.author.id}`}
+                      href={`/u/${encodeURIComponent(review.author.nickname)}`}
                       onClick={onClose}
                       className="text-xs font-semibold text-brown-600 hover:underline"
                     >

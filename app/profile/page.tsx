@@ -13,12 +13,9 @@ import { authFetch, clearToken, getValidToken, logout } from "../lib/auth";
 const BASE = API_BASE;
 const FEED_STATE_KEY = "chaekdojang:feed-state";
 const DELETE_CONFIRM_TEXT = "계정 삭제";
-
-type ReadingStats = {
-  totalFinished: number;
-  monthly: { year: number; month: number; count: number }[];
-  genres: { genre: string; count: number }[];
-};
+const MAX_PROFILE_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_PROFILE_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const PROFILE_IMAGE_HELP_TEXT = "JPG, PNG, WEBP, GIF 이미지를 5MB 이하로 올릴 수 있어요.";
 
 type RecommendedUser = {
   id: number;
@@ -56,6 +53,23 @@ type EditForm = {
   bio: string;
   profileImage: string;
 };
+
+function getProfileImageUploadError(file: File) {
+  if (file.size <= 0) return "비어 있는 파일은 업로드할 수 없어요.";
+  if (file.size > MAX_PROFILE_IMAGE_SIZE_BYTES) return "이미지 용량이 너무 커요. 5MB 이하로 줄여서 올려주세요.";
+  if (!ALLOWED_PROFILE_IMAGE_TYPES.has(file.type)) return "지원하지 않는 이미지 형식이에요. JPG, PNG, WEBP, GIF 파일만 올릴 수 있어요.";
+  return null;
+}
+
+function getUploadErrorMessage(message?: string) {
+  if (!message) return "이미지 업로드에 실패했습니다.";
+  if (message.includes("5MB")) return "이미지 용량이 너무 커요. 5MB 이하로 줄여서 올려주세요.";
+  if (message.includes("Only JPG")) return "지원하지 않는 이미지 형식이에요. JPG, PNG, WEBP, GIF 파일만 올릴 수 있어요.";
+  if (message.includes("valid image")) return "이미지 파일을 확인할 수 없어요. 다른 JPG, PNG, WEBP, GIF 파일로 다시 올려주세요.";
+  if (message.includes("4096px")) return "이미지 크기가 너무 커요. 가로·세로 4096px 이하 이미지를 올려주세요.";
+  if (message.includes("empty")) return "비어 있는 파일은 업로드할 수 없어요.";
+  return message;
+}
 
 type OfficialProfileType = "AUTHOR" | "PUBLISHER" | "BOOKSTORE";
 type OfficialProfileApplicationStatus = "PENDING" | "APPROVED" | "REJECTED";
@@ -102,7 +116,6 @@ export default function ProfilePage() {
   const [saveError, setSaveError] = useState("");
   const [followModal, setFollowModal] = useState<null | "followers" | "followings">(null);
   const [uploading, setUploading] = useState(false);
-  const [stats, setStats] = useState<ReadingStats | null>(null);
   const [lifeBookSearch, setLifeBookSearch] = useState("");
   const [lifeBookResults, setLifeBookResults] = useState<LifeBook[]>([]);
   const [lifeBookSearching, setLifeBookSearching] = useState(false);
@@ -161,7 +174,6 @@ export default function ProfilePage() {
           profileImage: data.profileImage ?? "",
         });
         loadReviews(token, 0, "");
-        loadStats(token);
         loadRecommendations(token);
         loadOfficialApplications(token);
       }
@@ -180,20 +192,6 @@ export default function ProfilePage() {
       if (res.ok) {
         const json = await res.json();
         setOfficialApplications(json.data ?? []);
-      }
-    } catch {
-      /* 무시 */
-    }
-  }
-
-  async function loadStats(token: string) {
-    try {
-      const res = await fetch(`${BASE}/api/users/me/stats`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const json = await res.json();
-        setStats(json.data ?? json);
       }
     } catch {
       /* 무시 */
@@ -285,9 +283,16 @@ export default function ProfilePage() {
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    const validationError = getProfileImageUploadError(file);
+    if (validationError) {
+      setSaveError(validationError);
+      e.target.value = "";
+      return;
+    }
     const token: string | null = "cookie-session";
     if (!token) return;
     setUploading(true);
+    setSaveError("");
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -300,14 +305,60 @@ export default function ProfilePage() {
         const json = await res.json();
         const url = (json.data as { url: string }).url;
         setEditForm((f) => ({ ...f, profileImage: url }));
+        await persistProfileImage(url);
       } else {
-        setSaveError("이미지 업로드에 실패했습니다.");
+        const data = await res.json().catch(() => ({}));
+        setSaveError(getUploadErrorMessage((data as { message?: string }).message));
       }
     } catch {
       setSaveError("이미지 업로드 중 오류가 발생했습니다.");
     } finally {
       setUploading(false);
     }
+  }
+
+  async function persistProfileImage(profileImage: string) {
+    const token = getValidToken();
+    if (!token) {
+      router.push("/auth/login");
+      return false;
+    }
+
+    const res = await authFetch(`${BASE}/api/users/me`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        nickname: editForm.nickname,
+        bio: editForm.bio.trim(),
+        profileImage,
+      }),
+    });
+
+    if (res.status === 401) {
+      router.push("/auth/login");
+      return false;
+    }
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setSaveError((data as { message?: string }).message ?? "프로필 이미지 저장에 실패했습니다.");
+      return false;
+    }
+
+    const json = await res.json();
+    const nextProfile = (json.data ?? json) as UserProfile;
+    setProfile((prev) => (prev ? { ...prev, ...nextProfile } : nextProfile));
+    setEditForm((f) => ({ ...f, profileImage: nextProfile.profileImage ?? "" }));
+    sessionStorage.removeItem(FEED_STATE_KEY);
+    return true;
+  }
+
+  async function handleUseDefaultImage() {
+    setEditForm((f) => ({ ...f, profileImage: "" }));
+    setSaveError("");
+    await persistProfileImage("");
   }
 
   async function handleSave(e: React.FormEvent) {
@@ -496,17 +547,19 @@ export default function ProfilePage() {
               </div>
               <button
                 onClick={() => setFollowModal("followers")}
-                className="flex flex-col items-center hover:opacity-70 transition-opacity"
+                className="group rounded-lg border border-brown-200 bg-cream-50 px-3 py-2 text-center shadow-sm transition-all hover:-translate-y-0.5 hover:border-brown-400 hover:bg-white hover:shadow-md focus:outline-none focus:ring-2 focus:ring-brown-300 active:translate-y-0"
+                aria-label="팔로워 목록 보기"
               >
                 <p className="font-bold text-brown-800 text-xl">{profile.followerCount}</p>
-                <p className="text-xs text-brown-400 mt-0.5">팔로워</p>
+                <p className="text-xs text-brown-500 mt-0.5">팔로워</p>
               </button>
               <button
                 onClick={() => setFollowModal("followings")}
-                className="flex flex-col items-center hover:opacity-70 transition-opacity"
+                className="group rounded-lg border border-brown-200 bg-cream-50 px-3 py-2 text-center shadow-sm transition-all hover:-translate-y-0.5 hover:border-brown-400 hover:bg-white hover:shadow-md focus:outline-none focus:ring-2 focus:ring-brown-300 active:translate-y-0"
+                aria-label="팔로잉 목록 보기"
               >
                 <p className="font-bold text-brown-800 text-xl">{profile.followingCount}</p>
-                <p className="text-xs text-brown-400 mt-0.5">팔로잉</p>
+                <p className="text-xs text-brown-500 mt-0.5">팔로잉</p>
               </button>
             </div>
 
@@ -586,13 +639,14 @@ export default function ProfilePage() {
                 <button
                   type="button"
                   disabled={uploading || !editForm.profileImage}
-                  onClick={() => setEditForm((f) => ({ ...f, profileImage: "" }))}
+                  onClick={handleUseDefaultImage}
                   className="flex-1 rounded-xl border border-cream-300 px-4 py-2.5 text-sm text-brown-500 transition hover:border-brown-400 hover:bg-cream-50 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   기본이미지 쓰기
                 </button>
                 </div>
               </div>
+              <p className="mt-2 text-xs text-brown-300">{PROFILE_IMAGE_HELP_TEXT}</p>
             </div>
             {saveError && (
               <p className="text-sm text-red-500 bg-red-50 px-4 py-2.5 rounded-xl">{saveError}</p>
@@ -907,47 +961,6 @@ export default function ProfilePage() {
           월별 캘린더
         </Link>
       </div>
-
-      {/* 독서 통계 요약 */}
-      {stats && (stats.totalFinished > 0 || stats.genres.length > 0) && (
-        <div className="bg-white rounded-2xl border border-cream-200 p-5 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-serif text-base font-bold text-brown-800">📊 독서 기록</h2>
-            <Link href="/calendar" className="text-xs text-brown-400 hover:text-brown-600">
-              월별 캘린더
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div className="text-center bg-cream-50 rounded-xl p-3">
-              <p className="text-2xl font-bold text-brown-800">{stats.totalFinished}</p>
-              <p className="text-xs text-brown-400 mt-0.5">완독한 책</p>
-            </div>
-            {stats.genres[0] && (
-              <div className="text-center bg-cream-50 rounded-xl p-3">
-                <p className="text-sm font-bold text-brown-800 truncate">{stats.genres[0].genre}</p>
-                <p className="text-xs text-brown-400 mt-0.5">최애 장르</p>
-              </div>
-            )}
-          </div>
-
-          {/* 장르 요약 */}
-          {stats.genres.length > 0 && (
-            <div>
-              <p className="text-xs text-brown-500 font-medium mb-2">선호 장르</p>
-              <div className="flex flex-wrap gap-2">
-                {stats.genres.slice(0, 4).map((g) => {
-                  return (
-                    <span key={g.genre} className="px-3 py-1 rounded-full bg-cream-100 text-xs text-brown-600">
-                      {g.genre} {g.count}권
-                    </span>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* 취향 맞는 독자 추천 */}
       {recommendations.length > 0 && (

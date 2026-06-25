@@ -6,14 +6,19 @@ import { useRouter } from "next/navigation";
 import ExpandableBio from "./ExpandableBio";
 import ProfileAvatar from "./ProfileAvatar";
 import { API_BASE } from "../lib/api";
+import { authFetch, getValidToken } from "../lib/auth";
 
 const BASE = API_BASE;
 
 type FollowUser = {
-  id: number;
+  id: number | null;
   nickname: string;
   profileImage: string | null;
   bio?: string | null;
+};
+
+type Me = {
+  id: number;
 };
 
 type Props = {
@@ -23,37 +28,35 @@ type Props = {
 };
 
 function getToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return "cookie-session";
-}
-
-function getMyUserId(): number | null {
-  const token = getToken();
-  if (!token) return null;
-  try {
-    const parts = token.split(".");
-    if (parts.length !== 3) return null;
-    const payload = JSON.parse(
-      atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))
-    );
-    const raw = payload.userId ?? payload.id ?? payload.sub;
-    return raw != null ? Number(raw) : null;
-  } catch {
-    return null;
-  }
+  return getValidToken();
 }
 
 export default function FollowListModal({ userId, type, onClose }: Props) {
   const router = useRouter();
-  const myId = getMyUserId();
   const isLoggedIn = !!getToken();
 
   const [users, setUsers] = useState<FollowUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [myId, setMyId] = useState<number | null>(null);
   // 팔로우 상태: userId → following 여부
   // followings 목록이면 모두 팔로우 중, followers 목록이면 모두 미팔로우로 초기화
   const [followingMap, setFollowingMap] = useState<Record<number, boolean>>({});
   const [loadingMap, setLoadingMap] = useState<Record<number, boolean>>({});
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) {
+      setMyId(null);
+      return;
+    }
+    authFetch(`${BASE}/api/users/me`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        const me = (json?.data ?? json) as Me | null;
+        setMyId(me?.id ?? null);
+      })
+      .catch(() => setMyId(null));
+  }, []);
 
   useEffect(() => {
     const endpoint =
@@ -61,10 +64,7 @@ export default function FollowListModal({ userId, type, onClose }: Props) {
         ? `${BASE}/api/users/${userId}/followings`
         : `${BASE}/api/users/${userId}/followers`;
 
-    const token = getToken();
-    const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
-
-    fetch(endpoint, { headers })
+    fetch(endpoint, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       .then((json) => {
         if (json) {
@@ -73,7 +73,7 @@ export default function FollowListModal({ userId, type, onClose }: Props) {
           // 팔로잉 목록 → 전부 following=true / 팔로워 목록 → 전부 following=false
           const init: Record<number, boolean> = {};
           list.forEach((u) => {
-            init[u.id] = type === "followings";
+            if (u.id !== null) init[u.id] = type === "followings";
           });
           setFollowingMap(init);
         }
@@ -92,9 +92,8 @@ export default function FollowListModal({ userId, type, onClose }: Props) {
     setLoadingMap((prev) => ({ ...prev, [targetId]: true }));
 
     try {
-      const res = await fetch(`${BASE}/api/users/${targetId}/follow`, {
+      const res = await authFetch(`${BASE}/api/users/${targetId}/follow`, {
         method: next ? "POST" : "DELETE",
-        headers: { Authorization: `Bearer ${getToken()}` },
       });
       if (res.status === 401) {
         setFollowingMap((prev) => ({ ...prev, [targetId]: !next }));
@@ -138,17 +137,20 @@ export default function FollowListModal({ userId, type, onClose }: Props) {
           ) : (
             <ul>
               {users.map((u) => {
+                const canOpenProfile = u.id !== null;
+                const targetId = u.id;
                 const isMe = myId === u.id;
-                const isFollowing = followingMap[u.id] ?? false;
-                const isLoading = loadingMap[u.id] ?? false;
+                const isFollowing = u.id !== null ? followingMap[u.id] ?? false : false;
+                const isLoading = u.id !== null ? loadingMap[u.id] ?? false : false;
 
                 return (
-                  <li key={u.id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-cream-50 transition-colors">
+                  <li key={u.id ?? u.nickname} className="flex items-center gap-3 px-5 py-3.5 hover:bg-cream-50 transition-colors">
                     {/* 프로필 이미지 + 닉네임 → 프로필 페이지 링크 */}
                     <Link
-                      href={isMe ? "/profile" : `/users/${u.id}`}
+                      href={isMe ? "/profile" : `/u/${encodeURIComponent(u.nickname)}`}
                       onClick={onClose}
-                      className="flex items-center gap-3 flex-1 min-w-0"
+                      aria-disabled={!canOpenProfile}
+                      className={`flex items-center gap-3 flex-1 min-w-0 ${canOpenProfile ? "" : "pointer-events-none"}`}
                     >
                       <ProfileAvatar src={u.profileImage} name={u.nickname} size="sm" />
                       <div className="flex-1 min-w-0">
@@ -163,9 +165,9 @@ export default function FollowListModal({ userId, type, onClose }: Props) {
                     </Link>
 
                     {/* 팔로우/언팔로우 버튼 — 내 계정이 아니고 로그인된 경우에만 */}
-                    {!isMe && isLoggedIn && (
+                    {!isMe && isLoggedIn && targetId !== null && (
                       <button
-                        onClick={() => handleFollow(u.id)}
+                        onClick={() => handleFollow(targetId)}
                         disabled={isLoading}
                         className={`flex-shrink-0 text-xs px-3 py-1.5 rounded-full border transition-colors disabled:opacity-50 ${
                           isFollowing

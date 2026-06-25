@@ -48,7 +48,7 @@ export async function isAuthenticated() {
     const res = await fetch("/api/auth/session", { cache: "no-store", credentials: "include" });
     if (res.ok) {
       const json = await res.json();
-      if (json.data?.authenticated) return true;
+      return Boolean(json.data?.authenticated);
     }
     return await refreshSession();
   } catch {

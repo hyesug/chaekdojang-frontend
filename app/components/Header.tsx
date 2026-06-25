@@ -10,6 +10,8 @@ const navLinks = [
   { href: "/library", label: "서재" },
   { href: "/write", label: "독후감 쓰기" },
   { href: "/dojangdan", label: "도장단" },
+  { href: "/groups", label: "독서모임" },
+  { href: "/groups/new", label: "모임 만들기" },
   { href: "/cs", label: "고객센터" },
 ];
 
@@ -19,9 +21,10 @@ export default function Header() {
       <div className="max-w-4xl mx-auto px-4 h-16 flex items-center gap-4">
         <Link
           href="/"
-          className="font-serif text-2xl font-bold text-brown-700 tracking-tight flex-none inline-flex items-center gap-2"
+          aria-label="책도장 홈으로 이동"
+          className="relative z-10 -ml-2 flex-none inline-flex min-h-11 items-center gap-2 rounded-lg px-2 font-serif text-2xl font-bold tracking-tight text-brown-700"
         >
-          <span className="stamp-mark text-[11px] leading-none">冊</span>
+          <span className="stamp-mark pointer-events-none text-[11px] leading-none">冊</span>
           책도장
         </Link>
 

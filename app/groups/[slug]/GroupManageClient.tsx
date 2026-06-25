@@ -147,6 +147,30 @@ export default function GroupManageClient({ slug, manager, member, joinPolicy, b
     }
   }
 
+  async function detachReview(reviewId: number) {
+    const token = getToken();
+    if (!token) { router.push("/auth/login"); return; }
+    if (!groupBookId) return;
+    if (!window.confirm("이 독후감 연결을 끊을까요? 독후감 원문은 삭제되지 않습니다.")) return;
+    setLoading(true);
+    setMessage("");
+    try {
+      const res = await authFetch(`${API_BASE}/api/groups/${slug}/books/${groupBookId}/reviews/${reviewId}`, {
+        method: "DELETE",
+      });
+      if (res.status === 401) { router.push("/auth/login"); return; }
+      if (!res.ok) throw new Error(await res.text());
+      setSelectedReviewId("");
+      setMessage("독후감 연결을 끊었어요.");
+      await loadMyReviews();
+      router.refresh();
+    } catch {
+      setMessage("독후감 연결을 끊지 못했어요. 권한을 확인해주세요.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function updateMember(memberId: number, action: "approve" | "reject") {
     const token = getToken();
     if (!token) { router.push("/auth/login"); return; }
@@ -251,17 +275,18 @@ export default function GroupManageClient({ slug, manager, member, joinPolicy, b
             {!reviewsLoading && myReviews.length > 0 && (
               <div className="max-h-64 space-y-2 overflow-y-auto">
                 {myReviews.map((review) => (
-                  <label key={review.id} className={`block rounded-xl border px-3 py-2 text-sm ${review.attached ? "border-cream-200 bg-white text-brown-300" : "border-cream-200 bg-white text-brown-700 hover:border-brown-300"}`}>
+                  <div key={review.id} className={`rounded-xl border px-3 py-2 text-sm ${review.attached ? "border-green-100 bg-white text-brown-500" : "border-cream-200 bg-white text-brown-700 hover:border-brown-300"}`}>
                     <div className="flex items-start gap-2">
-                      <input
-                        type="radio"
-                        name="group-review"
-                        value={review.id}
-                        checked={selectedReviewId === String(review.id)}
-                        disabled={review.attached}
-                        onChange={(event) => setSelectedReviewId(event.target.value)}
-                        className="mt-1"
-                      />
+                      {!review.attached && (
+                        <input
+                          type="radio"
+                          name="group-review"
+                          value={review.id}
+                          checked={selectedReviewId === String(review.id)}
+                          onChange={(event) => setSelectedReviewId(event.target.value)}
+                          className="mt-1"
+                        />
+                      )}
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2 text-xs text-brown-400">
                           <span>별점 {review.rating}</span>
@@ -269,9 +294,19 @@ export default function GroupManageClient({ slug, manager, member, joinPolicy, b
                           {review.attached && <span className="font-medium text-green-600">이미 연결됨</span>}
                         </div>
                         <p className="mt-1 line-clamp-2 leading-5">{review.content}</p>
+                        {review.attached && (
+                          <button
+                            type="button"
+                            disabled={loading}
+                            onClick={() => detachReview(review.id)}
+                            className="mt-2 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-50 disabled:opacity-50"
+                          >
+                            연결 끊기
+                          </button>
+                        )}
                       </div>
                     </div>
-                  </label>
+                  </div>
                 ))}
               </div>
             )}

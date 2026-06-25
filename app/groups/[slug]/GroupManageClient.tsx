@@ -15,6 +15,13 @@ type GroupMember = {
   status: "PENDING" | "APPROVED" | "REJECTED";
   createdAt: string;
 };
+type MyReview = {
+  id: number;
+  content: string;
+  rating: number;
+  attached: boolean;
+  createdAt: string;
+};
 
 function getToken() {
   if (typeof window === "undefined") return null;
@@ -27,7 +34,9 @@ export default function GroupManageClient({ slug, manager, member, books }: { sl
   const [bookId, setBookId] = useState("");
   const [note, setNote] = useState("");
   const [groupBookId, setGroupBookId] = useState(books[0]?.id ? String(books[0].id) : "");
-  const [reviewId, setReviewId] = useState("");
+  const [selectedReviewId, setSelectedReviewId] = useState("");
+  const [myReviews, setMyReviews] = useState<MyReview[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [pendingMembers, setPendingMembers] = useState<GroupMember[]>([]);
@@ -55,6 +64,30 @@ export default function GroupManageClient({ slug, manager, member, books }: { sl
   useEffect(() => {
     loadPendingMembers();
   }, [loadPendingMembers]);
+
+  const loadMyReviews = useCallback(async () => {
+    if (!member || !groupBookId) return;
+    const token = getToken();
+    if (!token) return;
+    setReviewsLoading(true);
+    setSelectedReviewId("");
+    try {
+      const res = await fetch(`${API_BASE}/api/groups/${slug}/books/${groupBookId}/my-reviews`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const json = await res.json();
+      setMyReviews((json.data ?? json) as MyReview[]);
+    } catch {
+      setMyReviews([]);
+    } finally {
+      setReviewsLoading(false);
+    }
+  }, [groupBookId, member, slug]);
+
+  useEffect(() => {
+    loadMyReviews();
+  }, [loadMyReviews]);
 
   async function addBook(event: React.FormEvent) {
     event.preventDefault();
@@ -85,18 +118,22 @@ export default function GroupManageClient({ slug, manager, member, books }: { sl
     event.preventDefault();
     const token = getToken();
     if (!token) { router.push("/auth/login"); return; }
-    if (!groupBookId || !reviewId.trim()) return;
+    if (!groupBookId || !selectedReviewId) {
+      setMessage("연결할 독후감을 선택해주세요.");
+      return;
+    }
     setLoading(true);
     setMessage("");
     try {
       const res = await fetch(`${API_BASE}/api/groups/${slug}/books/${groupBookId}/reviews`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ reviewId: Number(reviewId) }),
+        body: JSON.stringify({ reviewId: Number(selectedReviewId) }),
       });
       if (!res.ok) throw new Error(await res.text());
-      setReviewId("");
+      setSelectedReviewId("");
       setMessage("독후감을 모임에 연결했어요.");
+      await loadMyReviews();
       router.refresh();
     } catch {
       setMessage("독후감을 연결하지 못했어요. 내 공개 독후감이고 같은 책인지 확인해주세요.");
@@ -177,8 +214,38 @@ export default function GroupManageClient({ slug, manager, member, books }: { sl
             <select value={groupBookId} onChange={(event) => setGroupBookId(event.target.value)} className="w-full rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm text-brown-700 focus:border-brown-400 focus:outline-none">
               {books.map((book) => <option key={book.id} value={book.id}>{book.title}</option>)}
             </select>
-            <input value={reviewId} onChange={(event) => setReviewId(event.target.value)} inputMode="numeric" placeholder="내 공개 독후감 ID" className="w-full rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm text-brown-800 focus:border-brown-400 focus:outline-none" />
-            <button disabled={loading} className="w-full rounded-xl bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800 disabled:opacity-50">독후감 연결</button>
+            {reviewsLoading && <p className="rounded-xl bg-white px-3 py-4 text-sm text-brown-400">내 독후감을 불러오는 중...</p>}
+            {!reviewsLoading && myReviews.length === 0 && (
+              <p className="rounded-xl bg-white px-3 py-4 text-sm text-brown-400">이 책에 작성한 공개 독후감이 없어요.</p>
+            )}
+            {!reviewsLoading && myReviews.length > 0 && (
+              <div className="max-h-64 space-y-2 overflow-y-auto">
+                {myReviews.map((review) => (
+                  <label key={review.id} className={`block rounded-xl border px-3 py-2 text-sm ${review.attached ? "border-cream-200 bg-white text-brown-300" : "border-cream-200 bg-white text-brown-700 hover:border-brown-300"}`}>
+                    <div className="flex items-start gap-2">
+                      <input
+                        type="radio"
+                        name="group-review"
+                        value={review.id}
+                        checked={selectedReviewId === String(review.id)}
+                        disabled={review.attached}
+                        onChange={(event) => setSelectedReviewId(event.target.value)}
+                        className="mt-1"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-brown-400">
+                          <span>별점 {review.rating}</span>
+                          <span>{new Date(review.createdAt).toLocaleDateString("ko-KR")}</span>
+                          {review.attached && <span className="font-medium text-green-600">이미 연결됨</span>}
+                        </div>
+                        <p className="mt-1 line-clamp-2 leading-5">{review.content}</p>
+                      </div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            )}
+            <button disabled={loading || !selectedReviewId} className="w-full rounded-xl bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800 disabled:opacity-50">선택한 독후감 연결</button>
           </form>
         )}
       </div>

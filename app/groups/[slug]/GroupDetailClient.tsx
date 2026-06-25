@@ -64,8 +64,9 @@ export default function GroupDetailClient({
       setMemberCount(group.memberCount ?? memberCount);
       setMessage(joinPolicy === "OPEN" ? "모임에 가입했어요." : "가입 요청을 보냈어요. 모임장 승인을 기다려주세요.");
       router.refresh();
-    } catch {
-      setMessage("이미 가입했거나 가입 요청을 처리하지 못했어요.");
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "";
+      setMessage(errorMessage.includes("차단") ? "이 모임에는 가입 신청할 수 없어요." : "가입 요청을 처리하지 못했어요. 잠시 후 다시 시도해주세요.");
     } finally {
       setLoading(false);
     }
@@ -158,7 +159,7 @@ export default function GroupDetailClient({
         disabled={loading}
         className="rounded-full bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800 disabled:opacity-50"
       >
-        {loading ? "처리 중..." : "모임 가입하기"}
+        {loading ? "처리 중..." : joinPolicy === "APPROVAL" ? "가입 신청하기" : "모임 가입하기"}
       </button>
       {message && <p className="text-xs text-brown-400">{message}</p>}
     </div>

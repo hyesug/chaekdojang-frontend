@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { API_BASE } from "../lib/api";
@@ -8,7 +8,8 @@ import { authFetch } from "../lib/auth";
 
 const FEED_STATE_KEY = "chaekdojang:feed-state";
 const PENDING_REVIEW_KEY = "chaekdojang:pending-review";
-const REVIEW_DRAFT_KEY = "chaekdojang:review-draft";
+const LEGACY_REVIEW_DRAFT_KEY = "chaekdojang:review-draft";
+const REVIEW_DRAFT_KEY_PREFIX = "chaekdojang:review-draft:v2";
 
 type BookResult = {
   id: number;
@@ -19,6 +20,16 @@ type BookResult = {
   thumbnail: string | null;
   source: string;
 };
+
+type ReviewDraft = {
+  selectedBook?: BookResult | null;
+  rating?: number;
+  content?: string;
+};
+
+function getReviewDraftKey(userId: number | "anonymous", bookId?: number | null) {
+  return `${REVIEW_DRAFT_KEY_PREFIX}:${userId}:${bookId ?? "general"}`;
+}
 
 /* 별점 선택 컴포넌트 — hover 시 색상 미리보기 */
 function StarPicker({
@@ -59,12 +70,14 @@ function StarPicker({
 function WriteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const restoredKeyRef = useRef<string | null>(null);
 
   /* 책 검색 상태 */
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<BookResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [selectedBook, setSelectedBook] = useState<BookResult | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<number | "anonymous" | null>(null);
 
   /* 검색 페이지에서 넘어온 경우 책 자동 선택 */
   useEffect(() => {
@@ -88,29 +101,61 @@ function WriteContent() {
   const [rating, setRating] = useState(0);
   const [content, setContent] = useState("");
   const [draftRestored, setDraftRestored] = useState(false);
+  const [draftReadyKey, setDraftReadyKey] = useState<string | null>(null);
 
   /* 제출 상태 */
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const raw = localStorage.getItem(REVIEW_DRAFT_KEY);
+    localStorage.removeItem(LEGACY_REVIEW_DRAFT_KEY);
+
+    authFetch(`${API_BASE}/api/users/me`, { cache: "no-store" })
+      .then(async (res) => {
+        if (!res.ok) {
+          setCurrentUserId("anonymous");
+          return;
+        }
+        const json = await res.json().catch(() => null);
+        const userId = json?.data?.id;
+        setCurrentUserId(typeof userId === "number" ? userId : "anonymous");
+      })
+      .catch(() => setCurrentUserId("anonymous"));
+  }, []);
+
+  useEffect(() => {
+    if (currentUserId === null) return;
+
+    const draftKey = getReviewDraftKey(currentUserId, selectedBook?.id);
+    if (restoredKeyRef.current === draftKey) return;
+
+    restoredKeyRef.current = draftKey;
+    setDraftReadyKey(draftKey);
+    setDraftRestored(false);
+
+    const hasCurrentInput = rating > 0 || content.trim().length > 0;
+    if (hasCurrentInput) return;
+
+    const raw = localStorage.getItem(draftKey);
     if (!raw) return;
     try {
-      const draft = JSON.parse(raw) as { selectedBook?: BookResult | null; rating?: number; content?: string };
+      const draft = JSON.parse(raw) as ReviewDraft;
       if (draft.selectedBook) setSelectedBook(draft.selectedBook);
       if (typeof draft.rating === "number") setRating(draft.rating);
       if (typeof draft.content === "string") setContent(draft.content);
       setDraftRestored(true);
     } catch {
-      localStorage.removeItem(REVIEW_DRAFT_KEY);
+      localStorage.removeItem(draftKey);
     }
-  }, []);
+  }, [content, currentUserId, rating, selectedBook?.id]);
 
   useEffect(() => {
+    if (currentUserId === null) return;
+    const draftKey = getReviewDraftKey(currentUserId, selectedBook?.id);
+    if (draftReadyKey !== draftKey) return;
     if (!selectedBook && rating === 0 && !content.trim()) return;
-    localStorage.setItem(REVIEW_DRAFT_KEY, JSON.stringify({ selectedBook, rating, content }));
-  }, [selectedBook, rating, content]);
+    localStorage.setItem(draftKey, JSON.stringify({ selectedBook, rating, content }));
+  }, [currentUserId, draftReadyKey, selectedBook, rating, content]);
 
   async function searchBooks() {
     if (!query.trim()) return;
@@ -159,7 +204,10 @@ function WriteContent() {
       if (res.ok) {
         const json = await res.json().catch(() => null);
         const createdReview = json?.data ?? json;
-        localStorage.removeItem(REVIEW_DRAFT_KEY);
+        if (currentUserId !== null) {
+          localStorage.removeItem(getReviewDraftKey(currentUserId, selectedBook.id));
+        }
+        localStorage.removeItem(LEGACY_REVIEW_DRAFT_KEY);
         sessionStorage.removeItem(FEED_STATE_KEY);
         if (createdReview?.id) {
           sessionStorage.setItem(PENDING_REVIEW_KEY, JSON.stringify(createdReview));

@@ -43,6 +43,12 @@ export default function BookSearchSelect({
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              searchBooks();
+            }
+          }}
           placeholder="책 제목 검색"
           className="min-w-0 flex-1 rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm text-brown-800 focus:border-brown-400 focus:outline-none"
         />

@@ -9,7 +9,7 @@ type Props = {
 };
 
 function normalize(value: string | null | undefined) {
-  return (value ?? "").trim().toLowerCase();
+  return (value ?? "").normalize("NFKC").toLowerCase().replace(/\s+/g, "");
 }
 
 export default function PublicProfileReviews({ nickname, reviews }: Props) {

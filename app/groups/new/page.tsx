@@ -14,6 +14,7 @@ export default function NewGroupPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
+  const effectiveJoinPolicy = visibility === "PRIVATE" ? "APPROVAL" : joinPolicy;
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -34,7 +35,7 @@ export default function NewGroupPage() {
           name: name.trim(),
           description: description.trim() || null,
           visibility,
-          joinPolicy,
+          joinPolicy: effectiveJoinPolicy,
         }),
       });
       if (res.status === 401) {
@@ -90,7 +91,11 @@ export default function NewGroupPage() {
             <span className="text-sm font-medium text-brown-700">공개 여부</span>
             <select
               value={visibility}
-              onChange={(event) => setVisibility(event.target.value as "PUBLIC" | "PRIVATE")}
+              onChange={(event) => {
+                const nextVisibility = event.target.value as "PUBLIC" | "PRIVATE";
+                setVisibility(nextVisibility);
+                if (nextVisibility === "PRIVATE") setJoinPolicy("APPROVAL");
+              }}
               className="mt-1 w-full rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm text-brown-700 focus:border-brown-400 focus:outline-none"
             >
               <option value="PUBLIC">공개</option>
@@ -100,13 +105,17 @@ export default function NewGroupPage() {
           <label className="block">
             <span className="text-sm font-medium text-brown-700">가입 방식</span>
             <select
-              value={joinPolicy}
+              value={effectiveJoinPolicy}
               onChange={(event) => setJoinPolicy(event.target.value as "OPEN" | "APPROVAL")}
+              disabled={visibility === "PRIVATE"}
               className="mt-1 w-full rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm text-brown-700 focus:border-brown-400 focus:outline-none"
             >
-              <option value="OPEN">바로 가입</option>
+              {visibility === "PUBLIC" && <option value="OPEN">바로 가입</option>}
               <option value="APPROVAL">승인 후 가입</option>
             </select>
+            {visibility === "PRIVATE" && (
+              <p className="mt-1 text-xs text-brown-400">비공개 모임은 승인 후 가입만 가능합니다.</p>
+            )}
           </label>
         </div>
 

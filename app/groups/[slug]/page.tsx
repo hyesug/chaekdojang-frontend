@@ -33,7 +33,7 @@ type ReadingGroup = {
   memberCount: number;
   member: boolean;
   manager: boolean;
-  membershipStatus: "PENDING" | "APPROVED" | "REJECTED" | null;
+  membershipStatus: "PENDING" | "APPROVED" | "REJECTED" | "BLOCKED" | null;
   books: ReadingGroupBook[];
   createdAt: string;
 };

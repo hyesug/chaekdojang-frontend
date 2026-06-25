@@ -6,7 +6,7 @@ import { API_BASE } from "../../lib/api";
 import { authFetch, getValidToken } from "../../lib/auth";
 
 type JoinPolicy = "OPEN" | "APPROVAL";
-type MembershipStatus = "PENDING" | "APPROVED" | "REJECTED" | null;
+type MembershipStatus = "PENDING" | "APPROVED" | "REJECTED" | "BLOCKED" | null;
 
 type GroupResponse = {
   member: boolean;
@@ -101,6 +101,15 @@ export default function GroupDetailClient({
     return (
       <div className="flex flex-wrap items-center gap-2">
         <span className="rounded-full bg-yellow-50 px-3 py-1 text-xs font-medium text-yellow-700">승인 대기 중</span>
+        <span className="rounded-full bg-cream-100 px-3 py-1 text-xs text-brown-500">멤버 {memberCount}명</span>
+      </div>
+    );
+  }
+
+  if (membershipStatus === "BLOCKED") {
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-red-600">가입 차단됨</span>
         <span className="rounded-full bg-cream-100 px-3 py-1 text-xs text-brown-500">멤버 {memberCount}명</span>
       </div>
     );

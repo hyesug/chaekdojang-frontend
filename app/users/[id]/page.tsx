@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import ReviewCard, { type Review } from "../../components/ReviewCard";
@@ -40,6 +40,10 @@ type Me = {
   id: number;
 };
 
+function normalizeSearchText(value: string | null | undefined) {
+  return (value ?? "").normalize("NFKC").toLowerCase().replace(/\s+/g, "");
+}
+
 function getToken(): string | null {
   return getValidToken();
 }
@@ -57,8 +61,22 @@ export default function UserProfilePage() {
   const [followLoading, setFollowLoading] = useState(false);
   const [followModal, setFollowModal] = useState<null | "followers" | "followings">(null);
   const [myId, setMyId] = useState<number | null>(null);
+  const [reviewQuery, setReviewQuery] = useState("");
 
   const isLoggedIn = myId !== null;
+  const normalizedReviewQuery = normalizeSearchText(reviewQuery);
+
+  const filteredReviews = useMemo(() => {
+    if (!normalizedReviewQuery) return reviews;
+    return reviews.filter((review) => {
+      const searchable = [
+        review.book?.title,
+        review.book?.author,
+        review.content,
+      ].map(normalizeSearchText).join(" ");
+      return searchable.includes(normalizedReviewQuery);
+    });
+  }, [normalizedReviewQuery, reviews]);
 
   const fetchProfile = useCallback(async () => {
     const token = getToken();
@@ -259,17 +277,41 @@ export default function UserProfilePage() {
       )}
 
       {/* 독후감 목록 */}
-      <h2 className="font-serif text-lg font-bold text-brown-800 mb-4">
-        {profile.nickname}님의 독후감
-      </h2>
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="font-serif text-lg font-bold text-brown-800">
+            {profile.nickname}님의 독후감
+          </h2>
+          {reviews.length > 0 && (
+            <p className="mt-1 text-xs text-brown-400">
+              {filteredReviews.length} / {reviews.length}개
+            </p>
+          )}
+        </div>
+        {reviews.length > 0 && (
+          <label className="block sm:w-72">
+            <span className="sr-only">독후감 검색</span>
+            <input
+              value={reviewQuery}
+              onChange={(event) => setReviewQuery(event.target.value)}
+              placeholder="책 제목, 저자, 내용 검색"
+              className="w-full rounded-xl border border-cream-300 bg-white px-4 py-2.5 text-sm text-brown-800 shadow-sm placeholder:text-brown-300 focus:border-brown-400 focus:outline-none focus:ring-2 focus:ring-brown-100"
+            />
+          </label>
+        )}
+      </div>
       {reviews.length === 0 ? (
         <div className="text-center py-12 text-brown-400">
           <p className="text-4xl mb-3">📖</p>
           <p>아직 독후감이 없어요</p>
         </div>
+      ) : filteredReviews.length === 0 ? (
+        <div className="rounded-2xl border border-cream-200 bg-white py-12 text-center text-brown-400">
+          검색 결과가 없어요.
+        </div>
       ) : (
         <div className="flex flex-col gap-4">
-          {reviews.map((post) => (
+          {filteredReviews.map((post) => (
             <ReviewCard
               key={post.id}
               post={post}

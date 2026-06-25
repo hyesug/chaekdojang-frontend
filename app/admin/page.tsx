@@ -64,7 +64,7 @@ interface AdminReadingGroupDetail extends AdminReadingGroup {
     nickname: string;
     profileImage: string | null;
     role: "OWNER" | "MANAGER" | "MEMBER";
-    status: "PENDING" | "APPROVED" | "REJECTED";
+    status: "PENDING" | "APPROVED" | "REJECTED" | "BLOCKED";
     createdAt: string;
     updatedAt: string;
   }>;
@@ -466,6 +466,7 @@ const groupMemberStatusLabels: Record<AdminReadingGroupDetail["members"][number]
   PENDING: "승인 대기",
   APPROVED: "승인됨",
   REJECTED: "거절됨",
+  BLOCKED: "차단됨",
 };
 
 function visitorKey(event: MetricEvent) {

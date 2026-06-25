@@ -7,7 +7,7 @@ import { authFetch, getValidToken } from "../lib/auth";
 
 const BASE = API_BASE;
 
-type NotificationType = "LIKE" | "COMMENT" | "FOLLOW" | "SAME_BOOK_REVIEW";
+type NotificationType = "LIKE" | "COMMENT" | "FOLLOW" | "SAME_BOOK_REVIEW" | "GROUP_JOIN_REQUEST" | "GROUP_JOINED";
 
 type Notification = {
   id: number;
@@ -15,6 +15,7 @@ type Notification = {
   senderNickname: string;
   senderProfileImage: string | null;
   targetId: number | null;
+  targetSlug: string | null;
   message: string;
   isRead: boolean;
   createdAt: string;
@@ -30,10 +31,18 @@ function typeIcon(type: NotificationType) {
     case "COMMENT": return "💬";
     case "FOLLOW": return "👤";
     case "SAME_BOOK_REVIEW": return "📚";
+    case "GROUP_JOIN_REQUEST": return "👥";
+    case "GROUP_JOINED": return "👥";
   }
 }
 
 function notificationHref(notification: Notification) {
+  if (
+    notification.targetSlug &&
+    ["GROUP_JOIN_REQUEST", "GROUP_JOINED"].includes(notification.type)
+  ) {
+    return `/groups/${notification.targetSlug}`;
+  }
   if (
     notification.targetId !== null &&
     ["LIKE", "COMMENT", "SAME_BOOK_REVIEW"].includes(notification.type)

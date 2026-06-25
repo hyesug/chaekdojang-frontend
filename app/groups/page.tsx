@@ -20,7 +20,8 @@ type ReadingGroup = {
   visibility: "PUBLIC" | "PRIVATE";
   joinPolicy: "OPEN" | "APPROVAL";
   joinEnabled: boolean;
-  ownerNickname: string;
+  ownerNickname: string | null;
+  memberCount: number;
   member: boolean;
   manager: boolean;
   books: ReadingGroupBook[];

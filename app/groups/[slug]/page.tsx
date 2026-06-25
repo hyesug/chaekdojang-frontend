@@ -29,7 +29,7 @@ type ReadingGroup = {
   visibility: "PUBLIC" | "PRIVATE";
   joinPolicy: "OPEN" | "APPROVAL";
   joinEnabled: boolean;
-  ownerNickname: string;
+  ownerNickname: string | null;
   memberCount: number;
   member: boolean;
   manager: boolean;
@@ -69,6 +69,7 @@ export default async function GroupPage({ params }: Props) {
   const { slug } = await params;
   const group = await getGroup(slug);
   if (!group) notFound();
+  const privateContentLocked = group.visibility === "PRIVATE" && !group.member && !group.manager;
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
@@ -94,26 +95,38 @@ export default async function GroupPage({ params }: Props) {
                 </span>
               )}
             </div>
-            <p className="mt-1 text-sm text-brown-400">모임장 {group.ownerNickname} · 멤버 {group.memberCount ?? 0}명</p>
+            {!privateContentLocked && (
+              <p className="mt-1 text-sm text-brown-400">
+                {group.ownerNickname ? `모임장 ${group.ownerNickname} · ` : ""}멤버 {group.memberCount ?? 0}명
+              </p>
+            )}
             {group.description && <p className="mt-3 whitespace-pre-line text-sm leading-6 text-brown-600">{group.description}</p>}
+            {privateContentLocked && (
+              <p className="mt-3 rounded-2xl bg-cream-50 px-4 py-3 text-sm leading-6 text-brown-500">
+                비공개 모임입니다. 가입 신청이 승인되면 선정 책과 모임 독후감을 볼 수 있어요.
+              </p>
+            )}
             <div className="mt-4">
               <GroupDetailClient
                 slug={group.slug}
                 initialMember={group.member}
-                initialMemberCount={group.memberCount ?? 0}
+                initialMemberCount={privateContentLocked ? 0 : group.memberCount ?? 0}
                 joinEnabled={group.joinEnabled}
                 joinPolicy={group.joinPolicy}
                 manager={group.manager}
                 initialMembershipStatus={group.membershipStatus}
+                showMemberCount={false}
               />
             </div>
           </div>
         </div>
       </section>
 
-      <GroupManageClient slug={group.slug} manager={group.manager} member={group.member} joinPolicy={group.joinPolicy} books={group.books.map((book) => ({ id: book.id, title: book.title, bookId: book.bookId }))} />
+      {!privateContentLocked && (
+        <GroupManageClient slug={group.slug} manager={group.manager} member={group.member} joinPolicy={group.joinPolicy} books={group.books.map((book) => ({ id: book.id, title: book.title, bookId: book.bookId }))} />
+      )}
 
-      <section className="mt-8">
+      {!privateContentLocked && <section className="mt-8">
         <div className="flex items-center justify-between gap-3">
           <h2 className="font-serif text-xl font-bold text-brown-900">함께 읽는 책</h2>
           {group.manager && (
@@ -165,7 +178,7 @@ export default async function GroupPage({ params }: Props) {
             </div>
           )}
         </div>
-      </section>
+      </section>}
     </main>
   );
 }

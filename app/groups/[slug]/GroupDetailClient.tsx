@@ -22,6 +22,7 @@ export default function GroupDetailClient({
   joinPolicy,
   manager,
   initialMembershipStatus,
+  showMemberCount = true,
 }: {
   slug: string;
   initialMember: boolean;
@@ -30,6 +31,7 @@ export default function GroupDetailClient({
   joinPolicy: JoinPolicy;
   manager: boolean;
   initialMembershipStatus: MembershipStatus;
+  showMemberCount?: boolean;
 }) {
   const router = useRouter();
   const [member, setMember] = useState(initialMember);
@@ -101,7 +103,7 @@ export default function GroupDetailClient({
     return (
       <div className="flex flex-wrap items-center gap-2">
         <span className="rounded-full bg-yellow-50 px-3 py-1 text-xs font-medium text-yellow-700">승인 대기 중</span>
-        <span className="rounded-full bg-cream-100 px-3 py-1 text-xs text-brown-500">멤버 {memberCount}명</span>
+        {showMemberCount && <span className="rounded-full bg-cream-100 px-3 py-1 text-xs text-brown-500">멤버 {memberCount}명</span>}
       </div>
     );
   }
@@ -110,7 +112,7 @@ export default function GroupDetailClient({
     return (
       <div className="flex flex-wrap items-center gap-2">
         <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-red-600">가입 차단됨</span>
-        <span className="rounded-full bg-cream-100 px-3 py-1 text-xs text-brown-500">멤버 {memberCount}명</span>
+        {showMemberCount && <span className="rounded-full bg-cream-100 px-3 py-1 text-xs text-brown-500">멤버 {memberCount}명</span>}
       </div>
     );
   }
@@ -122,7 +124,7 @@ export default function GroupDetailClient({
           <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-600">
             {manager ? "모임장" : "참여 중"}
           </span>
-          <span className="rounded-full bg-cream-100 px-3 py-1 text-xs text-brown-500">멤버 {memberCount}명</span>
+          {showMemberCount && <span className="rounded-full bg-cream-100 px-3 py-1 text-xs text-brown-500">멤버 {memberCount}명</span>}
         </div>
         {!manager && (
           <button
@@ -143,14 +145,14 @@ export default function GroupDetailClient({
     return (
       <div className="flex flex-wrap items-center gap-2">
         <p className="rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-red-500">가입 중지</p>
-        <span className="rounded-full bg-cream-100 px-3 py-1 text-xs text-brown-500">멤버 {memberCount}명</span>
+        {showMemberCount && <span className="rounded-full bg-cream-100 px-3 py-1 text-xs text-brown-500">멤버 {memberCount}명</span>}
       </div>
     );
   }
 
   return (
     <div className="flex flex-col items-start gap-2">
-      <span className="rounded-full bg-cream-100 px-3 py-1 text-xs text-brown-500">멤버 {memberCount}명</span>
+      {showMemberCount && <span className="rounded-full bg-cream-100 px-3 py-1 text-xs text-brown-500">멤버 {memberCount}명</span>}
       <button
         onClick={joinGroup}
         disabled={loading}

@@ -22,32 +22,32 @@ export default function PublicProfileStats({
 
   return (
     <>
-      <div className="grid grid-cols-4 gap-2 mt-5">
-        <div className="rounded-lg bg-cream-50 px-3 py-3 text-center border border-cream-200">
-          <p className="text-xl font-bold text-brown-800">{reviewCount}</p>
-          <p className="text-xs text-brown-400 mt-0.5">독후감</p>
+      <div className="mt-4 grid grid-cols-4 gap-1.5 sm:gap-2">
+        <div className="rounded-lg border border-cream-200 bg-cream-50 px-2 py-2 text-center">
+          <p className="text-lg font-bold leading-tight text-brown-800">{reviewCount}</p>
+          <p className="mt-0.5 text-[11px] text-brown-400">독후감</p>
         </div>
-        <div className="rounded-lg bg-cream-50 px-3 py-3 text-center border border-cream-200">
-          <p className="text-xl font-bold text-brown-800">{finishedCount}</p>
-          <p className="text-xs text-brown-400 mt-0.5">완독</p>
+        <div className="rounded-lg border border-cream-200 bg-cream-50 px-2 py-2 text-center">
+          <p className="text-lg font-bold leading-tight text-brown-800">{finishedCount}</p>
+          <p className="mt-0.5 text-[11px] text-brown-400">완독</p>
         </div>
         <button
           type="button"
           onClick={() => setFollowModal("followers")}
-          className="group rounded-lg border border-brown-200 bg-cream-50 px-3 py-3 text-center shadow-sm transition-all hover:-translate-y-0.5 hover:border-brown-400 hover:bg-white hover:shadow-md focus:outline-none focus:ring-2 focus:ring-brown-300 active:translate-y-0"
+          className="group rounded-lg border border-cream-200 bg-cream-50 px-2 py-2 text-center transition-colors hover:border-brown-300 hover:bg-white focus:outline-none focus:ring-2 focus:ring-brown-200"
           aria-label="팔로워 목록 보기"
         >
-          <p className="text-xl font-bold text-brown-800">{followerCount}</p>
-          <p className="text-xs text-brown-500 mt-0.5">팔로워</p>
+          <p className="text-lg font-bold leading-tight text-brown-800">{followerCount}</p>
+          <p className="mt-0.5 text-[11px] text-brown-500">팔로워</p>
         </button>
         <button
           type="button"
           onClick={() => setFollowModal("followings")}
-          className="group rounded-lg border border-brown-200 bg-cream-50 px-3 py-3 text-center shadow-sm transition-all hover:-translate-y-0.5 hover:border-brown-400 hover:bg-white hover:shadow-md focus:outline-none focus:ring-2 focus:ring-brown-300 active:translate-y-0"
+          className="group rounded-lg border border-cream-200 bg-cream-50 px-2 py-2 text-center transition-colors hover:border-brown-300 hover:bg-white focus:outline-none focus:ring-2 focus:ring-brown-200"
           aria-label="팔로잉 목록 보기"
         >
-          <p className="text-xl font-bold text-brown-800">{followingCount}</p>
-          <p className="text-xs text-brown-500 mt-0.5">팔로잉</p>
+          <p className="text-lg font-bold leading-tight text-brown-800">{followingCount}</p>
+          <p className="mt-0.5 text-[11px] text-brown-500">팔로잉</p>
         </button>
       </div>
 

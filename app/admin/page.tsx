@@ -386,6 +386,7 @@ function getMetricEventLabel(eventType: string) {
   if (eventType === "review_write_click") return "독후감 작성 클릭";
   if (eventType === "review_created") return "독후감 등록";
   if (eventType === "book_search") return "책 검색";
+  if (eventType === "book_click_search") return "검색 결과 책 클릭";
   if (eventType === "share_click") return "공유 클릭";
   if (eventType === "heartbeat") return "체류 신호";
   if (eventType === "session_end") return "페이지 이탈";
@@ -503,6 +504,17 @@ function getReviewPath(value: string) {
 function getReviewId(value: string) {
   const id = getReviewPath(value)?.split("/").pop();
   return id ? Number(id) : null;
+}
+
+function getSearchKeyword(value: string) {
+  const query = value.split("?")[1]?.split("#")[0];
+  if (!query) return "";
+  try {
+    const params = new URLSearchParams(query);
+    return (params.get("q") || params.get("query") || params.get("keyword") || "").trim();
+  } catch {
+    return "";
+  }
 }
 
 function referrerLabel(referrer: string | null) {
@@ -774,6 +786,11 @@ export default function AdminPage() {
     return content;
   }
 
+  async function fetchFirstPage<T>(path: string) {
+    const first = await fetchAdmin<PageResponse<T>>(appendPageParam(path, 0));
+    return first?.content ?? [];
+  }
+
   async function fetchContentLookups(events: MetricEvent[], adminReviews: Review[], stats: BookStat[]) {
     const bookFallbacks = Object.fromEntries(
       stats.map((book) => [normalizePath(`/books/${book.bookId}`), {
@@ -869,17 +886,17 @@ export default function AdminPage() {
         nextDashboard,
         nextSecurity,
       ] = await Promise.all([
-        fetchAllPages<User>("/api/admin/users?size=200"),
-        fetchAllPages<Review>("/api/admin/reviews?size=200"),
+        fetchFirstPage<User>("/api/admin/users?size=100"),
+        fetchFirstPage<Review>("/api/admin/reviews?size=100"),
         fetchAdmin<BookStat[]>("/api/admin/reviews/stats"),
-        fetchAllPages<AdminReadingGroup>("/api/admin/groups?size=200"),
-        fetchAllPages<Inquiry>("/api/admin/inquiries?size=200"),
-        fetchAllPages<OfficialProfileApplication>("/api/admin/profile-applications?size=200"),
+        fetchFirstPage<AdminReadingGroup>("/api/admin/groups?size=100"),
+        fetchFirstPage<Inquiry>("/api/admin/inquiries?size=100"),
+        fetchFirstPage<OfficialProfileApplication>("/api/admin/profile-applications?size=100"),
         fetchAdmin<OfficialProfile[]>("/api/admin/profiles"),
-        fetchAllPages<AccessLog>("/api/admin/access-logs?size=200"),
-        fetchAllPages<MetricEvent>("/api/admin/metrics?size=200"),
-        fetchAllPages<ErrorLog>("/api/admin/error-logs?size=200"),
-        fetchAllPages<AdminAuditLog>("/api/admin/audit-logs?size=200"),
+        fetchFirstPage<AccessLog>("/api/admin/access-logs?size=120"),
+        fetchFirstPage<MetricEvent>("/api/admin/metrics?size=120"),
+        fetchFirstPage<ErrorLog>("/api/admin/error-logs?size=120"),
+        fetchFirstPage<AdminAuditLog>("/api/admin/audit-logs?size=120"),
         fetchAdmin<DashboardSummary>("/api/admin/dashboard/summary"),
         fetchAdmin<AggregatedSecurity[]>("/api/admin/security/summary"),
       ]);
@@ -1130,31 +1147,32 @@ export default function AdminPage() {
 
   const todayVisibleMetrics = visibleMetrics.filter((event) => isToday(event.createdAt));
 
-  const todayBookViews = useMemo(() => {
+  const todayBookSearches = useMemo(() => {
     const map = new Map<string, ContentViewSummary>();
     todayVisibleMetrics
-      .filter((event) => event.eventType === "page_view")
+      .filter((event) => event.eventType === "book_search"
+        || event.eventType === "book_click_search"
+        || (event.eventType === "page_view" && normalizePath(event.path) === "/search"))
       .forEach((event) => {
-        const path = getBookPath(event.path);
-        if (!path) return;
-        const book = bookMetaByPath[path];
-        const item = map.get(path) ?? {
-          path,
-          title: book?.title ?? getRouteLabel(path),
-          subtitle: book?.author ? `${book.author} · 책 상세` : "책 상세",
-          thumbnail: book?.thumbnail,
+        const keyword = getSearchKeyword(event.path) || (event.eventType === "book_click_search" ? getRouteLabel(event.path) : "검색 페이지");
+        const key = keyword.toLowerCase();
+        const item = map.get(key) ?? {
+          path: `/search?q=${encodeURIComponent(keyword)}`,
+          title: keyword,
+          subtitle: event.eventType === "book_click_search" ? "검색 결과 클릭" : "책 검색",
+          thumbnail: null,
           views: 0,
           visitors: new Set<string>(),
           lastAt: event.createdAt,
-          href: path,
+          href: keyword === "검색 페이지" ? "/search" : `/search?q=${encodeURIComponent(keyword)}`,
         };
         item.views += 1;
         item.visitors.add(visitorKey(event));
         if (event.createdAt > item.lastAt) item.lastAt = event.createdAt;
-        map.set(path, item);
+        map.set(key, item);
       });
     return Array.from(map.values()).sort((a, b) => b.views - a.views || b.lastAt.localeCompare(a.lastAt)).slice(0, 5);
-  }, [todayVisibleMetrics, bookMetaByPath]);
+  }, [todayVisibleMetrics]);
 
   const todayReviewViews = useMemo(() => {
     const map = new Map<string, ContentViewSummary>();
@@ -1481,9 +1499,9 @@ export default function AdminPage() {
                 </section>
 
                 <section className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
-                  <h2 className="font-serif text-lg font-bold text-brown-900">오늘 많이 본 책 TOP 5</h2>
+                  <h2 className="font-serif text-lg font-bold text-brown-900">오늘 많이 검색한 책 TOP 5</h2>
                   <div className="mt-3 space-y-3">
-                    {todayBookViews.map((book) => (
+                    {todayBookSearches.map((book) => (
                       <Link key={book.path} href={book.href} className="block rounded-xl bg-cream-50 p-3 hover:bg-cream-100">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
@@ -1495,7 +1513,7 @@ export default function AdminPage() {
                         <p className="mt-2 text-xs text-brown-400">방문자 {book.visitors.size}명 · 마지막 {formatLogTime(book.lastAt)}</p>
                       </Link>
                     ))}
-                    {todayBookViews.length === 0 && <p className="py-6 text-center text-sm text-brown-300">오늘 책 상세 방문이 없어요</p>}
+                    {todayBookSearches.length === 0 && <p className="py-6 text-center text-sm text-brown-300">오늘 책 검색 기록이 없어요</p>}
                   </div>
                 </section>
 

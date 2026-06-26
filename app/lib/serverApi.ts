@@ -90,12 +90,18 @@ export async function fetchApiData<T>(
 }
 
 export function reviewTitle(review: ReviewDetail): string {
-  return review.book?.title ? `${review.book.title} 독후감 - 책도장` : "독후감 - 책도장";
+  return review.book?.title
+    ? `${review.book.title} 독후감 - ${review.author.nickname} | 책도장`
+    : `${review.author.nickname}님의 독후감 | 책도장`;
 }
 
 export function reviewDescription(review: ReviewDetail): string {
   const clean = review.content.replace(/\s+/g, " ").trim();
-  return clean.length > 120 ? `${clean.slice(0, 119)}…` : clean;
+  const excerpt = clean.length > 90 ? `${clean.slice(0, 89)}…` : clean;
+  if (review.book?.title) {
+    return `${review.author.nickname}님이 남긴 『${review.book.title}』 독후감입니다. 책도장에서 책 감상과 독서 기록을 확인해보세요. ${excerpt}`.trim();
+  }
+  return `${review.author.nickname}님이 남긴 독후감입니다. 책도장에서 책 감상과 독서 기록을 확인해보세요. ${excerpt}`.trim();
 }
 
 export function shareText(): string {

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import ReviewCard, { type Review } from "./components/ReviewCard";
+import PwaInstallCta from "./components/PwaInstallCta";
 import { API_BASE } from "./lib/api";
 
 const BASE = API_BASE;
@@ -199,6 +200,7 @@ export default function FeedPage() {
       {createdNotice && (
         <div className="mb-4 rounded-xl border border-green-100 bg-green-50 px-4 py-3 text-sm text-green-700">
           독후감이 등록됐어요. 피드에 바로 반영했어요.
+          <PwaInstallCta variant="inline" />
         </div>
       )}
 

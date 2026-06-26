@@ -37,9 +37,19 @@ export default function InstallPage() {
           <h2 className="font-serif text-lg font-bold text-brown-800">Android / Chrome</h2>
           <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-6 text-brown-600">
             <li>Chrome에서 책도장에 접속합니다.</li>
-            <li>오른쪽 위 점 3개 메뉴를 누릅니다.</li>
+            <li>화면에 앱 설치하기 버튼이 보이면 버튼을 누릅니다.</li>
+            <li>버튼이 보이지 않으면 오른쪽 위 점 3개 메뉴를 누릅니다.</li>
             <li>앱 설치 또는 홈 화면에 추가를 선택합니다.</li>
             <li>설치 또는 추가를 누르면 홈 화면에 책도장 아이콘이 생깁니다.</li>
+          </ol>
+        </div>
+
+        <div className="rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+          <h2 className="font-serif text-lg font-bold text-brown-800">PC Chrome</h2>
+          <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-6 text-brown-600">
+            <li>Chrome에서 책도장에 접속합니다.</li>
+            <li>주소창 오른쪽의 설치 아이콘을 누릅니다.</li>
+            <li>아이콘이 보이지 않으면 Chrome 메뉴에서 페이지를 앱으로 설치를 선택합니다.</li>
           </ol>
         </div>
 

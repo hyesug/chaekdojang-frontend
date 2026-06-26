@@ -192,8 +192,8 @@ export default async function PublicReviewPage({ params }: Props) {
 
             {review.book?.id && (
               <div className="mt-5 text-right text-sm">
-                <Link href={`/books/${review.book.id}`} className="text-brown-600 hover:underline">
-                  이 책의 다른 독후감 보기
+                <Link href={`/books/${review.book.id}/reviews`} className="text-brown-600 hover:underline">
+                  이 책 독후감 모아보기
                 </Link>
               </div>
             )}

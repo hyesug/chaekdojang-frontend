@@ -1,55 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-
-const DISMISSED_KEY = "chaekdojang:pwa-install-banner-dismissed-at";
-const DISMISS_DAYS = 7;
-const DISMISS_MS = DISMISS_DAYS * 24 * 60 * 60 * 1000;
-
-type InstallPlatform = "ios" | "android";
-
-function detectPlatform(userAgent: string): InstallPlatform | null {
-  if (/iPhone|iPod|iPad/.test(userAgent)) return "ios";
-  if (/Android/i.test(userAgent)) return "android";
-  return null;
-}
-
-function isStandaloneMode() {
-  return (
-    window.matchMedia("(display-mode: standalone)").matches ||
-    (window.navigator as Navigator & { standalone?: boolean }).standalone === true
-  );
-}
-
-function isRecentlyDismissed() {
-  const dismissedAt = Number(localStorage.getItem(DISMISSED_KEY) ?? 0);
-  return dismissedAt > 0 && Date.now() - dismissedAt < DISMISS_MS;
-}
+import { usePwaInstallPrompt } from "../hooks/usePwaInstallPrompt";
 
 export default function IosInstallBanner() {
-  const [platform, setPlatform] = useState<InstallPlatform | null>(null);
+  const { platform, canPromptInstall, shouldShowGuide, dismiss, promptInstall } = usePwaInstallPrompt();
 
-  useEffect(() => {
-    if (isRecentlyDismissed()) return;
-    if (isStandaloneMode()) return;
-
-    const detected = detectPlatform(window.navigator.userAgent);
-    if (!detected) return;
-
-    setPlatform(detected);
-  }, []);
-
-  function dismiss() {
-    localStorage.setItem(DISMISSED_KEY, String(Date.now()));
-    setPlatform(null);
-  }
-
-  if (!platform) return null;
+  if (!shouldShowGuide && !canPromptInstall) return null;
 
   const instruction = platform === "ios"
-    ? "Safari 공유 버튼을 누른 뒤 홈 화면에 추가를 선택하면 앱처럼 바로 열 수 있어요."
-    : "Chrome 오른쪽 위 메뉴에서 앱 설치 또는 홈 화면에 추가를 선택하면 앱처럼 바로 열 수 있어요.";
+    ? "iPhone에서는 Safari 공유 버튼을 누른 뒤 “홈 화면에 추가”를 선택해 주세요."
+    : "Chrome에서 앱 설치 버튼을 누르거나 오른쪽 위 메뉴에서 홈 화면에 추가할 수 있어요.";
 
   return (
     <section className="mx-auto mb-6 w-full max-w-2xl px-4">
@@ -58,9 +19,20 @@ export default function IosInstallBanner() {
           <div className="min-w-0 flex-1">
             <p className="font-semibold text-brown-800">책도장을 앱처럼 사용해보세요</p>
             <p className="mt-1 text-xs leading-5 text-brown-500">{instruction}</p>
-            <Link href="/install" className="mt-2 inline-block text-xs font-medium text-brown-700 underline underline-offset-2">
-              설치 방법 자세히 보기
-            </Link>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {canPromptInstall && (
+                <button
+                  type="button"
+                  onClick={promptInstall}
+                  className="rounded-full bg-brown-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brown-700"
+                >
+                  앱 설치하기
+                </button>
+              )}
+              <Link href="/install" className="text-xs font-medium text-brown-700 underline underline-offset-2">
+                설치 방법 보기
+              </Link>
+            </div>
           </div>
           <button
             type="button"

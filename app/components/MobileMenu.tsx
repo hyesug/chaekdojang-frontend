@@ -54,6 +54,13 @@ export default function MobileMenu({ links }: { links: NavLink[] }) {
               {label}
             </Link>
           ))}
+          <Link
+            href="/install"
+            onClick={() => setOpen(false)}
+            className="text-sm text-brown-700 font-medium hover:text-brown-500 py-1.5 px-2 rounded-lg hover:bg-cream-50 transition-colors"
+          >
+            앱처럼 사용하기
+          </Link>
           <AdminNavLink onClick={() => setOpen(false)} />
           <hr className="border-cream-200 my-1" />
           {loggedIn ? (

@@ -25,6 +25,15 @@ type UserProfile = {
   lifeBook: { id: number; title: string; author: string; thumbnail: string | null } | null;
 };
 
+type ReadingGoal = {
+  year: number;
+  targetCount: number | null;
+  finishedCount: number;
+  remainingCount: number;
+  progressPercent: number;
+  publicVisible: boolean;
+};
+
 type Props = {
   params: Promise<{ nickname: string }>;
 };
@@ -75,6 +84,8 @@ export default async function NicknameProfilePage({ params }: Props) {
   if (!profile) notFound();
 
   const reviews = await fetchApiData<Review[]>(`/api/users/${profile.id}/reviews`);
+  const readingGoal = await fetchApiData<ReadingGoal>(`/api/users/${profile.id}/reading-goal`);
+  const showReadingGoal = readingGoal?.targetCount != null && readingGoal.publicVisible;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
@@ -94,6 +105,31 @@ export default async function NicknameProfilePage({ params }: Props) {
           followerCount={profile.followerCount}
           followingCount={profile.followingCount}
         />
+
+        {showReadingGoal && (
+          <div className="mt-5 rounded-lg border border-cream-200 bg-cream-50 p-4">
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <p className="text-xs text-brown-400">{readingGoal.year}년 독서 목표</p>
+                <p className="mt-1 text-lg font-bold text-brown-800">
+                  {readingGoal.finishedCount}권 / {readingGoal.targetCount}권
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-semibold text-brown-700">{readingGoal.progressPercent}%</p>
+                <p className="mt-1 text-xs text-brown-400">
+                  {readingGoal.remainingCount > 0 ? `${readingGoal.remainingCount}권 남음` : "목표 달성"}
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
+              <div
+                className="h-full rounded-full bg-brown-600"
+                style={{ width: `${Math.min(readingGoal.progressPercent, 100)}%` }}
+              />
+            </div>
+          </div>
+        )}
 
         {profile.lifeBook && (
           <Link href={`/books/${profile.lifeBook.id}`} className="mt-5 flex items-center gap-3 rounded-lg bg-cream-50 border border-cream-200 p-3 hover:bg-white">

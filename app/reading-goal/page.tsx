@@ -14,6 +14,7 @@ type ReadingGoal = {
   finishedCount: number;
   progressPercent: number;
   remainingCount: number;
+  publicVisible?: boolean;
 } | null;
 
 type UserProfile = {
@@ -27,6 +28,7 @@ export default function ReadingGoalPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [year, setYear] = useState(CURRENT_YEAR);
   const [targetCount, setTargetCount] = useState("30");
+  const [publicVisible, setPublicVisible] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -53,6 +55,7 @@ export default function ReadingGoalPage() {
         setProfile(data);
         setYear(data.readingGoal?.year ?? CURRENT_YEAR);
         setTargetCount(String(data.readingGoal?.targetCount ?? 30));
+        setPublicVisible(data.readingGoal?.publicVisible ?? true);
       }
     } finally {
       setLoading(false);
@@ -73,7 +76,7 @@ export default function ReadingGoalPage() {
       const res = await authFetch("/api/users/me/reading-goal", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ year, targetCount: parsedTarget }),
+        body: JSON.stringify({ year, targetCount: parsedTarget, publicVisible }),
       });
       if (res.status === 401) {
         router.push("/auth/login");
@@ -84,7 +87,9 @@ export default function ReadingGoalPage() {
         return;
       }
       const json = await res.json();
-      setProfile(json.data ?? json);
+      const data = (json.data ?? json) as UserProfile;
+      setProfile(data);
+      setPublicVisible(data.readingGoal?.publicVisible ?? publicVisible);
       setMessage("독서 목표를 저장했습니다.");
     } finally {
       setSaving(false);
@@ -103,6 +108,7 @@ export default function ReadingGoalPage() {
       if (res.ok) {
         const json = await res.json();
         setProfile(json.data ?? json);
+        setPublicVisible(true);
         setMessage("독서 목표를 삭제했습니다.");
       }
     } finally {
@@ -160,6 +166,16 @@ export default function ReadingGoalPage() {
             />
           </div>
         </div>
+
+        <label className="mt-3 flex items-center gap-2 text-sm text-brown-500">
+          <input
+            type="checkbox"
+            checked={publicVisible}
+            onChange={(e) => setPublicVisible(e.target.checked)}
+            className="h-4 w-4 rounded border-cream-300 accent-brown-600"
+          />
+          공유 프로필에 목표 진행률 공개
+        </label>
 
         {message && <p className="mt-3 rounded-xl bg-cream-50 px-4 py-2.5 text-sm text-brown-600">{message}</p>}
 

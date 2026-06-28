@@ -1,4 +1,5 @@
 const LOGGED_OUT_KEY = "chaekdojang:logged-out";
+let refreshPromise: Promise<boolean> | null = null;
 
 function isLogoutBlocked() {
   return typeof window !== "undefined" && sessionStorage.getItem(LOGGED_OUT_KEY) === "true";
@@ -58,13 +59,21 @@ export async function isAuthenticated() {
 
 export async function refreshSession() {
   if (isLogoutBlocked()) return false;
+  if (refreshPromise) return refreshPromise;
 
-  try {
-    const res = await fetch("/api/auth/refresh", { method: "POST", credentials: "include" });
-    return res.ok;
-  } catch {
-    return false;
-  }
+  refreshPromise = fetch("/api/auth/refresh", { method: "POST", credentials: "include" })
+    .then((res) => {
+      if (!res.ok && typeof window !== "undefined") {
+        sessionStorage.setItem(LOGGED_OUT_KEY, "true");
+      }
+      return res.ok;
+    })
+    .catch(() => false)
+    .finally(() => {
+      refreshPromise = null;
+    });
+
+  return refreshPromise;
 }
 
 export async function authFetch(input: RequestInfo | URL, init: RequestInit = {}) {

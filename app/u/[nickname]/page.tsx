@@ -85,7 +85,7 @@ export default async function NicknameProfilePage({ params }: Props) {
   if (!profile) notFound();
 
   const reviews = await fetchApiData<Review[]>(`/api/users/${profile.id}/reviews`);
-  const readingGoal = await fetchApiData<ReadingGoal>(`/api/users/${profile.id}/reading-goal`);
+  const readingGoal = await fetchApiData<ReadingGoal>(`/api/users/${profile.id}/reading-goal`, { cache: "no-store" });
   const showReadingGoal = readingGoal?.targetCount != null && readingGoal.publicVisible;
 
   return (

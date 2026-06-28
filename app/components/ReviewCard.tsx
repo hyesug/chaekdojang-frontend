@@ -338,10 +338,12 @@ export default function ReviewCard({
   post,
   forceOwner = false,
   onVisibilityChange,
+  returnTo,
 }: {
   post: Review;
   forceOwner?: boolean;
   onVisibilityChange?: (review: Review) => void;
+  returnTo?: string;
 }) {
   const coverColor = COVER_COLORS[post.id % COVER_COLORS.length];
   const router = useRouter();
@@ -387,6 +389,9 @@ export default function ReviewCard({
   const [copied, setCopied] = useState(false);
   const [instaCopied, setInstaCopied] = useState(false);
   const canOpenHiddenDetail = hidden && isOwner;
+  const reviewHref = returnTo
+    ? `/reviews/${post.id}?returnTo=${encodeURIComponent(returnTo)}`
+    : `/reviews/${post.id}`;
 
   useEffect(() => {
     const token = getToken();
@@ -752,7 +757,7 @@ export default function ReviewCard({
           </button>
         ) : (
           <Link
-            href={hidden ? "#" : `/reviews/${post.id}`}
+            href={hidden ? "#" : reviewHref}
             className="mt-3 text-left w-full group block"
             onClick={(e) => {
               if (hidden) e.preventDefault();

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import BackButton from "../../components/BackButton";
 import ReviewEngagement from "../../components/ReviewEngagement";
 import ReviewCard, { type Review } from "../../components/ReviewCard";
 import ReviewViewTracker from "../../components/ReviewViewTracker";
@@ -16,6 +17,7 @@ import {
 
 type Props = {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ returnTo?: string }>;
 };
 
 async function getReview(id: string) {
@@ -79,10 +81,18 @@ function Stars({ rating }: { rating: number }) {
   );
 }
 
-export default async function PublicReviewPage({ params }: Props) {
+function safeInternalHref(value?: string) {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) return null;
+  return value;
+}
+
+export default async function PublicReviewPage({ params, searchParams }: Props) {
   const { id } = await params;
+  const query = searchParams ? await searchParams : undefined;
+  const returnTo = safeInternalHref(query?.returnTo);
   const review = await getReview(id);
   if (!review) notFound();
+  const bookReviewsHref = returnTo || (review.book?.id ? `/books/${review.book.id}` : "/");
 
   const related = review.book?.id
     ? await fetchApiData<Review[]>(`/api/books/${review.book.id}/reviews`)
@@ -123,9 +133,7 @@ export default async function PublicReviewPage({ params }: Props) {
       />
       <article className="max-w-3xl mx-auto px-4 py-8 sm:py-12">
         <div className="mb-5 flex items-center justify-between gap-3">
-          <Link href="/" className="text-sm text-brown-500 hover:text-brown-700">
-            책도장 피드
-          </Link>
+          <BackButton fallbackHref={bookReviewsHref} />
           <Link
             href="/write"
             className="px-4 py-2 rounded-full bg-brown-700 text-white text-sm hover:bg-brown-800"
@@ -192,7 +200,7 @@ export default async function PublicReviewPage({ params }: Props) {
 
             {review.book?.id && (
               <div className="mt-5 text-right text-sm">
-                <Link href={`/books/${review.book.id}/reviews`} className="text-brown-600 hover:underline">
+                <Link href={bookReviewsHref} className="text-brown-600 hover:underline">
                   이 책 독후감 모아보기
                 </Link>
               </div>
@@ -207,7 +215,7 @@ export default async function PublicReviewPage({ params }: Props) {
             </h2>
             <div className="flex flex-col gap-4">
               {relatedReviews.map((item) => (
-                <ReviewCard key={item.id} post={item} />
+                <ReviewCard key={item.id} post={item} returnTo={bookReviewsHref} />
               ))}
             </div>
           </section>

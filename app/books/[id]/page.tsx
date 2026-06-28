@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import BackButton from "../../components/BackButton";
 import ReviewCard from "../../components/ReviewCard";
 import {
   fetchApiData,
@@ -128,6 +129,10 @@ export default async function BookDetailPage({ params, searchParams }: Props) {
 
   const reviews = await getBookReviews(book.id, sort);
   const canonicalUrl = bookUrl(book);
+  const currentBookPath =
+    sort === "recent"
+      ? `/books/${encodeURIComponent(id)}`
+      : `/books/${encodeURIComponent(id)}?sort=${sort}`;
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
@@ -160,6 +165,10 @@ export default async function BookDetailPage({ params, searchParams }: Props) {
         suppressHydrationWarning
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+
+      <div className="mb-4">
+        <BackButton fallbackHref="/search" />
+      </div>
 
       <section className="rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
         <div className="flex gap-4">
@@ -239,7 +248,7 @@ export default async function BookDetailPage({ params, searchParams }: Props) {
         ) : (
           <div className="flex flex-col gap-4">
             {reviews.map((review) => (
-              <ReviewCard key={review.id} post={review} />
+              <ReviewCard key={review.id} post={review} returnTo={currentBookPath} />
             ))}
           </div>
         )}

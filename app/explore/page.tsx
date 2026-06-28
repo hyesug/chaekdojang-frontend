@@ -24,8 +24,17 @@ function getToken(): string | null {
   return "cookie-session";
 }
 
+function normalizeSort(value: string | null): SortType {
+  return value === "rating" || value === "popular" ? value : "recent";
+}
+
+function getSortFromUrl(): SortType {
+  if (typeof window === "undefined") return "recent";
+  return normalizeSort(new URLSearchParams(window.location.search).get("sort"));
+}
+
 export default function ExplorePage() {
-  const [sort, setSort] = useState<SortType>("recent");
+  const [sort, setSort] = useState<SortType>(getSortFromUrl);
 
   const [reviews, setReviews] = useState<Review[]>([]);
   const [page, setPage] = useState(0);
@@ -39,6 +48,24 @@ export default function ExplorePage() {
   const [followLoadingMap, setFollowLoadingMap] = useState<Record<number, boolean>>({});
 
   const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handlePopState = () => setSort(getSortFromUrl());
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  function changeSort(nextSort: SortType) {
+    setSort(nextSort);
+    const params = new URLSearchParams(window.location.search);
+    if (nextSort === "recent") {
+      params.delete("sort");
+    } else {
+      params.set("sort", nextSort);
+    }
+    const query = params.toString();
+    window.history.pushState(null, "", query ? `/explore?${query}` : "/explore");
+  }
 
   // 추천 독자 로드
   useEffect(() => {
@@ -187,7 +214,7 @@ export default function ExplorePage() {
         ).map(({ value, label }) => (
           <button
             key={value}
-            onClick={() => setSort(value)}
+            onClick={() => changeSort(value)}
             className={`flex-1 py-2 text-xs font-medium rounded-lg transition-colors ${
               sort === value
                 ? "bg-white text-brown-800 shadow-sm"

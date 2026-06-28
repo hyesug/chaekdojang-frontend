@@ -426,6 +426,7 @@ function SearchContent() {
                     <div className="flex flex-wrap gap-2 mt-3">
                       <Link
                         href={workHref}
+                        onClick={() => trackMetric("book_click_search", workHref)}
                         className="px-3 py-1.5 text-xs border border-brown-500 text-brown-700 rounded-full hover:bg-cream-100 transition-colors"
                       >
                         독후감 모아보기

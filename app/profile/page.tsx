@@ -7,6 +7,7 @@ import ReviewCard, { type Review } from "../components/ReviewCard";
 import FollowListModal from "../components/FollowListModal";
 import ExpandableBio, { MAX_BIO_LENGTH } from "../components/ExpandableBio";
 import ProfileAvatar from "../components/ProfileAvatar";
+import ReadingGoalProgress from "../components/ReadingGoalProgress";
 import { API_BASE } from "../lib/api";
 import { authFetch, clearToken, getValidToken, logout } from "../lib/auth";
 
@@ -46,6 +47,13 @@ type UserProfile = {
     wishlistCount: number;
   };
   lifeBook: LifeBook | null;
+  readingGoal: {
+    year: number;
+    targetCount: number;
+    finishedCount: number;
+    progressPercent: number;
+    remainingCount: number;
+  } | null;
 };
 
 type EditForm = {
@@ -580,6 +588,25 @@ export default function ProfilePage() {
               ))}
             </div>
 
+            <section className="mt-5 rounded-xl border border-cream-200 bg-cream-50 p-3">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h2 className="font-serif text-base font-bold text-brown-800">독서 목표</h2>
+                <Link
+                  href="/reading-goal"
+                  className="shrink-0 rounded-full bg-brown-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brown-700"
+                >
+                  {profile.readingGoal ? "목표 수정" : "목표 설정"}
+                </Link>
+              </div>
+              {profile.readingGoal ? (
+                <ReadingGoalProgress goal={profile.readingGoal} compact />
+              ) : (
+                <p className="rounded-lg border border-cream-200 bg-white px-3 py-3 text-sm text-brown-400">
+                  올해 독서 목표를 설정해보세요
+                </p>
+              )}
+            </section>
+
             <Link
               href={`/u/${encodeURIComponent(profile.nickname)}`}
               className="mt-4 block rounded-lg border border-dashed border-brown-200 bg-cream-50 px-4 py-3 text-sm text-brown-600 hover:bg-white transition-colors"
@@ -961,6 +988,12 @@ export default function ProfilePage() {
           월별 캘린더
         </Link>
       </div>
+      <Link
+        href="/install"
+        className="-mt-3 mb-6 block text-center text-xs font-medium text-brown-400 underline underline-offset-2 hover:text-brown-600"
+      >
+        책도장을 앱처럼 사용하기
+      </Link>
 
       {/* 취향 맞는 독자 추천 */}
       {recommendations.length > 0 && (

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import BackButton from "../../components/BackButton";
 import { SITE_URL } from "../../lib/serverApi";
 import { fetchGroupApiData } from "../groupServerApi";
 import GroupDetailClient from "./GroupDetailClient";
@@ -73,6 +74,10 @@ export default async function GroupPage({ params }: Props) {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
+      <div className="mb-4">
+        <BackButton fallbackHref="/groups" />
+      </div>
+
       <section className="rounded-3xl border border-cream-200 bg-white p-6 shadow-sm">
         <div className="flex gap-4">
           {group.imageUrl ? (

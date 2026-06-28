@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import BackButton from "../../components/BackButton";
 import ReviewCard from "../../components/ReviewCard";
 import {
   fetchApiData,
@@ -47,11 +48,11 @@ function bookUrl(book: PublicBookDetail) {
 }
 
 function descriptionFor(book: PublicBookDetail) {
-  return (
-    book.seoDescription ||
-    book.description ||
-    `${book.author}의 ${book.title} 독후감, 리뷰, 독서 기록을 책도장에서 확인해보세요.`
-  );
+  if (book.seoDescription) return book.seoDescription;
+  if (book.author) {
+    return `${book.author}의 『${book.title}』을 읽은 독자들의 독후감과 감상을 책도장에서 모아보세요.`;
+  }
+  return `『${book.title}』을 읽은 독자들의 독후감과 감상을 책도장에서 모아보세요.`;
 }
 
 function writeHref(book: PublicBookDetail) {
@@ -76,20 +77,28 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     };
   }
 
-  const title = book.seoTitle || `${book.title} 독후감과 문장 기록 | 책도장`;
+  const title = book.seoTitle || (book.author
+    ? `${book.title} - ${book.author} 독후감 모아보기 | 책도장`
+    : `${book.title} 독후감 모아보기 | 책도장`);
   const description = descriptionFor(book);
   const url = bookUrl(book);
+  const keywords = [
+    `${book.title} 독후감`,
+    `${book.title} 리뷰`,
+    `${book.title} 책 기록`,
+    `${book.title} 독서 기록`,
+    `${book.title} 감상문`,
+    `책도장 ${book.title}`,
+    `책도장 ${book.title} 독후감`,
+  ];
+  if (book.author) {
+    keywords.push(`${book.author} 책`, `${book.author} ${book.title} 독후감`);
+  }
 
   return {
     title: { absolute: title },
     description,
-    keywords: [
-      `${book.title} 독후감`,
-      `${book.title} 리뷰`,
-      `${book.title} 책 기록`,
-      `${book.title} 독서 기록`,
-      `${book.author} 책`,
-    ],
+    keywords,
     alternates: { canonical: `/books/${book.slug || book.id}` },
     openGraph: {
       type: "book",
@@ -120,6 +129,10 @@ export default async function BookDetailPage({ params, searchParams }: Props) {
 
   const reviews = await getBookReviews(book.id, sort);
   const canonicalUrl = bookUrl(book);
+  const currentBookPath =
+    sort === "recent"
+      ? `/books/${encodeURIComponent(id)}`
+      : `/books/${encodeURIComponent(id)}?sort=${sort}`;
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
@@ -152,6 +165,10 @@ export default async function BookDetailPage({ params, searchParams }: Props) {
         suppressHydrationWarning
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+
+      <div className="mb-4">
+        <BackButton fallbackHref="/search" />
+      </div>
 
       <section className="rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
         <div className="flex gap-4">
@@ -231,7 +248,7 @@ export default async function BookDetailPage({ params, searchParams }: Props) {
         ) : (
           <div className="flex flex-col gap-4">
             {reviews.map((review) => (
-              <ReviewCard key={review.id} post={review} />
+              <ReviewCard key={review.id} post={review} returnTo={currentBookPath} />
             ))}
           </div>
         )}

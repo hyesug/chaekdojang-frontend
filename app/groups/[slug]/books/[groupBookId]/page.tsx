@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import BackButton from "../../../../components/BackButton";
 import { SITE_URL } from "../../../../lib/serverApi";
 import { fetchGroupApiData } from "../../../groupServerApi";
 
@@ -74,12 +75,11 @@ export default async function GroupBookReviewsPage({ params }: Props) {
   if (!group) notFound();
   const book = group.books.find((item) => String(item.id) === groupBookId);
   if (!book) notFound();
+  const currentGroupBookPath = `/groups/${encodeURIComponent(group.slug)}/books/${encodeURIComponent(groupBookId)}`;
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-8">
-      <Link href={`/groups/${group.slug}`} className="text-sm text-brown-400 hover:text-brown-600">
-        ← 모임으로 돌아가기
-      </Link>
+      <BackButton fallbackHref={`/groups/${group.slug}`} />
 
       <section className="mt-4 rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
         <div className="flex gap-4">
@@ -99,7 +99,11 @@ export default async function GroupBookReviewsPage({ params }: Props) {
 
       <section className="mt-6 space-y-4">
         {reviews.map((review) => (
-          <Link key={review.id} href={`/reviews/${review.reviewId}`} className="block rounded-2xl border border-cream-200 bg-white p-5 shadow-sm hover:bg-cream-50">
+          <Link
+            key={review.id}
+            href={`/reviews/${review.reviewId}?returnTo=${encodeURIComponent(currentGroupBookPath)}`}
+            className="block rounded-2xl border border-cream-200 bg-white p-5 shadow-sm hover:bg-cream-50"
+          >
             <div className="flex items-center gap-2 text-sm text-brown-400">
               <span>{review.authorNickname}</span>
               <span>·</span>

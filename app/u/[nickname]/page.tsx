@@ -87,10 +87,11 @@ export default async function NicknameProfilePage({ params }: Props) {
   const reviews = await fetchApiData<Review[]>(`/api/users/${profile.id}/reviews`);
   const readingGoal = await fetchApiData<ReadingGoal>(`/api/users/${profile.id}/reading-goal`, { cache: "no-store" });
   const showReadingGoal = readingGoal?.targetCount != null && readingGoal.publicVisible;
+  const encodedNickname = encodeURIComponent(profile.nickname);
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-5 sm:py-8">
-      <div className="mb-5 rounded-lg border border-brown-100 bg-white p-4 shadow-sm sm:p-5">
+    <div className="mx-auto max-w-2xl px-4 py-5 sm:py-8">
+      <div className="mb-5 rounded-2xl border border-cream-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="flex items-center gap-3 sm:gap-4">
           <ProfileAvatar src={profile.profileImage} name={profile.nickname} size="lg" />
           <div className="min-w-0 flex-1">
@@ -102,7 +103,6 @@ export default async function NicknameProfilePage({ params }: Props) {
         <PublicProfileStats
           userId={profile.id}
           reviewCount={profile.reviewCount}
-          finishedCount={profile.librarySummary?.finishedCount ?? 0}
           followerCount={profile.followerCount}
           followingCount={profile.followingCount}
         />
@@ -114,23 +114,24 @@ export default async function NicknameProfilePage({ params }: Props) {
         )}
 
         {profile.lifeBook && (
-          <Link href={`/books/${profile.lifeBook.id}`} className="mt-4 flex items-center gap-2.5 rounded-lg border border-cream-200 bg-cream-50 p-2.5 hover:bg-white">
+          <Link href={`/books/${profile.lifeBook.id}`} className="mt-4 flex items-center gap-2.5 rounded-xl border border-cream-200 bg-cream-50 p-2.5 transition-colors hover:bg-white">
             {profile.lifeBook.thumbnail && (
               <Image src={profile.lifeBook.thumbnail} alt={profile.lifeBook.title} width={34} height={48} className="h-12 w-[34px] rounded object-cover" />
             )}
             <div className="min-w-0">
               <p className="text-xs text-brown-400">인생책</p>
-              <p className="text-sm font-semibold text-brown-800 truncate">{profile.lifeBook.title}</p>
-              <p className="text-xs text-brown-400 truncate">{profile.lifeBook.author}</p>
+              <p className="truncate text-sm font-semibold text-brown-800">{profile.lifeBook.title}</p>
+              <p className="truncate text-xs text-brown-400">{profile.lifeBook.author}</p>
             </div>
           </Link>
         )}
 
         <Link
-          href={`/calendar?userId=${profile.id}&nickname=${encodeURIComponent(profile.nickname)}`}
-          className="mt-3 inline-flex rounded-full border border-cream-200 bg-white px-3 py-1.5 text-xs font-medium text-brown-500 hover:bg-cream-50 hover:text-brown-700"
+          href={`/u/${encodedNickname}/library`}
+          className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-cream-200 bg-white px-3 py-1.5 text-xs font-medium text-brown-500 transition-colors hover:bg-cream-50 hover:text-brown-700"
         >
-          월별 캘린더
+          <span aria-hidden="true">📚</span>
+          서재 보기
         </Link>
       </div>
 

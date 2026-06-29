@@ -405,6 +405,11 @@ export default function ReviewCard({
   const reviewHref = effectiveReturnTo
     ? `/reviews/${post.id}?${new URLSearchParams({ returnTo: effectiveReturnTo }).toString()}`
     : `/reviews/${post.id}`;
+  const bookHref = pathname?.startsWith("/books/") && effectiveReturnTo
+    ? effectiveReturnTo
+    : post.book?.id
+    ? `/books/${post.book.id}`
+    : "#";
 
   function rememberReturnTo() {
     if (!effectiveReturnTo) return;
@@ -727,7 +732,7 @@ export default function ReviewCard({
               <>
                 {post.book.id ? (
                   <Link
-                    href={`/books/${post.book.id}`}
+                    href={bookHref}
                     className="font-serif text-base font-bold text-brown-800 leading-snug hover:text-brown-600 hover:underline transition-colors"
                     onClick={(e) => e.stopPropagation()}
                   >
@@ -897,6 +902,7 @@ export default function ReviewCard({
       {showDetail && (
         <ReviewDetailModal
           reviewId={post.id}
+          returnTo={effectiveReturnTo}
           onClose={() => setShowDetail(false)}
           onEngagementChange={({ likeCount: nextLikeCount, commentCount: nextCommentCount, liked: nextLiked }) => {
             setLikeCount(nextLikeCount);

@@ -67,9 +67,10 @@ type Props = {
   reviewId: number;
   onClose: () => void;
   onEngagementChange?: (counts: { likeCount: number; commentCount: number; liked?: boolean }) => void;
+  returnTo?: string;
 };
 
-export default function ReviewDetailModal({ reviewId, onClose, onEngagementChange }: Props) {
+export default function ReviewDetailModal({ reviewId, onClose, onEngagementChange, returnTo }: Props) {
   const router = useRouter();
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const myId = currentUserId;
@@ -264,7 +265,11 @@ export default function ReviewDetailModal({ reviewId, onClose, onEngagementChang
           <div className="flex items-center gap-3">
             {review && !review.hidden && (
               <Link
-                href={`/reviews/${reviewId}`}
+                href={
+                  returnTo
+                    ? `/reviews/${reviewId}?${new URLSearchParams({ returnTo }).toString()}`
+                    : `/reviews/${reviewId}`
+                }
                 onClick={onClose}
                 className="text-xs text-brown-400 hover:text-brown-700 transition-colors"
               >

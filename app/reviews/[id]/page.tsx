@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import BackButton from "../../components/BackButton";
+import ReviewAiSummaryCard from "../../components/ReviewAiSummaryCard";
 import ReviewEngagement from "../../components/ReviewEngagement";
 import ReviewCard, { type Review } from "../../components/ReviewCard";
 import ReviewViewTracker from "../../components/ReviewViewTracker";
@@ -188,7 +189,14 @@ export default async function PublicReviewPage({ params, searchParams }: Props) 
               </time>
             </div>
 
-            <p className="text-base leading-8 text-brown-800 whitespace-pre-wrap">
+            <ReviewAiSummaryCard
+              reviewId={review.id}
+              authorId={review.author.id ?? null}
+              bookTitle={review.book?.title ?? "독후감"}
+              authorNickname={review.author.nickname}
+            />
+
+            <p className="mt-6 text-base leading-8 text-brown-800 whitespace-pre-wrap">
               {review.content}
             </p>
 

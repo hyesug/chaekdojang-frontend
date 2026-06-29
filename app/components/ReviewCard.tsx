@@ -13,6 +13,12 @@ export type Review = {
   id: number;
   author: { id?: number | null; nickname: string; profileImage: string | null };
   book?: { id?: number; title: string; author: string; thumbnail: string | null } | null;
+  aiSummary?: {
+    oneLineReview: string;
+    emotionKeywords: string[];
+    recommendedFor: string;
+    impressivePoint: string;
+  } | null;
   rating: number;
   content: string;
   hidden?: boolean;
@@ -740,6 +746,24 @@ export default function ReviewCard({
             <Stars rating={displayRating} />
           </div>
         </div>
+
+        {post.aiSummary && (
+          <div className="mt-3 rounded-lg border border-cream-200 bg-cream-50 px-3 py-2.5">
+            <p className="text-sm font-semibold text-brown-800">
+              {post.aiSummary.oneLineReview}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {post.aiSummary.emotionKeywords.map((keyword) => (
+                <span key={keyword} className="rounded-full bg-white px-2 py-0.5 text-xs text-brown-500">
+                  {keyword}
+                </span>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-brown-400">
+              추천: {post.aiSummary.recommendedFor}
+            </p>
+          </div>
+        )}
 
         {/* 본문 */}
         {canOpenHiddenDetail ? (

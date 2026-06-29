@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
+import AiReadingCard from "./components/AiReadingCard";
 import ReviewCard, { type Review } from "./components/ReviewCard";
 import PwaInstallCta from "./components/PwaInstallCta";
 import { API_BASE } from "./lib/api";
+import { sampleAiReadingCard } from "./lib/aiReadingCard";
 
 const BASE = API_BASE;
 const PAGE_SIZE = 10;
@@ -195,6 +197,18 @@ export default function FeedPage() {
           + 독후감 쓰기
         </Link>
       </div>
+
+      <section className="mb-6 rounded-lg border border-cream-200 bg-white p-4 shadow-sm">
+        <div className="mb-4">
+          <h2 className="font-serif text-xl font-bold text-brown-800">
+            긴 독후감을 AI 독서카드로 정리해보세요.
+          </h2>
+          <p className="mt-1 text-sm leading-6 text-brown-500">
+            한 줄 감상, 감정 키워드, 추천 대상까지 자동으로 정리됩니다.
+          </p>
+        </div>
+        <AiReadingCard card={sampleAiReadingCard} compact />
+      </section>
 
       {/* 탭: 전체 / 팔로잉 / 취향 */}
       {createdNotice && (

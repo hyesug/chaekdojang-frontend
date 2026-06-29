@@ -11,6 +11,7 @@ import {
 
 type Props = {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ sort?: string }>;
 };
 
 async function getBook(id: string) {
@@ -19,9 +20,12 @@ async function getBook(id: string) {
   });
 }
 
-async function getReviews(id: string) {
+async function getReviews(id: string, sort?: string) {
+  const params = new URLSearchParams();
+  if (sort === "popular" || sort === "rating") params.set("sort", sort);
+  const query = params.toString();
   return (
-    (await fetchApiData<ReviewDetail[]>(`/api/books/${id}/reviews`, {
+    (await fetchApiData<ReviewDetail[]>(`/api/books/${id}/reviews${query ? `?${query}` : ""}`, {
       next: { revalidate: 300 },
     })) ?? []
   );
@@ -61,10 +65,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function BookReviewsPage({ params }: Props) {
+export default async function BookReviewsPage({ params, searchParams }: Props) {
   const { id } = await params;
-  const [book, reviews] = await Promise.all([getBook(id), getReviews(id)]);
+  const query = searchParams ? await searchParams : undefined;
+  const sort = query?.sort === "popular" || query?.sort === "rating" ? query.sort : undefined;
+  const [book, reviews] = await Promise.all([getBook(id), getReviews(id, sort)]);
   if (!book) notFound();
+  const returnTo = sort ? `/books/${encodeURIComponent(id)}/reviews?sort=${sort}` : `/books/${encodeURIComponent(id)}/reviews`;
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -109,7 +116,7 @@ export default async function BookReviewsPage({ params }: Props) {
       ) : (
         <div className="flex flex-col gap-4">
           {reviews.map((review) => (
-            <ReviewCard key={review.id} post={review} />
+            <ReviewCard key={review.id} post={review} returnTo={returnTo} />
           ))}
         </div>
       )}

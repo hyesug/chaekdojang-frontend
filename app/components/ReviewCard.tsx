@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import ReviewDetailModal from "./ReviewDetailModal";
 import ProfileAvatar from "./ProfileAvatar";
@@ -353,6 +353,8 @@ export default function ReviewCard({
 }) {
   const coverColor = COVER_COLORS[post.id % COVER_COLORS.length];
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const myId = currentUserId;
 
@@ -395,8 +397,13 @@ export default function ReviewCard({
   const [copied, setCopied] = useState(false);
   const [instaCopied, setInstaCopied] = useState(false);
   const canOpenHiddenDetail = hidden && isOwner;
-  const reviewHref = returnTo
-    ? `/reviews/${post.id}?${new URLSearchParams({ returnTo }).toString()}`
+  const currentReturnTo =
+    pathname?.startsWith("/books/")
+      ? `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`
+      : undefined;
+  const effectiveReturnTo = returnTo ?? currentReturnTo;
+  const reviewHref = effectiveReturnTo
+    ? `/reviews/${post.id}?${new URLSearchParams({ returnTo: effectiveReturnTo }).toString()}`
     : `/reviews/${post.id}`;
 
   useEffect(() => {

@@ -54,6 +54,7 @@ export default function ReviewAiSummaryCard({
 }) {
   const [summary, setSummary] = useState<ReviewAiSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
@@ -107,9 +108,15 @@ export default function ReviewAiSummaryCard({
         cache: "no-store",
         credentials: "include",
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        setLoadError(true);
+        return;
+      }
       const json = await res.json();
       setSummary(json.data ?? json);
+      setLoadError(false);
+    } catch {
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -180,10 +187,11 @@ export default function ReviewAiSummaryCard({
 
   const statusText = useMemo(() => {
     if (loading) return "AI 요약카드 확인 중";
+    if (loadError && !summary) return "AI 요약카드 상태를 확인하지 못했어요.";
     if (isGenerating) return "AI 요약카드 생성 중";
     if (summary?.status === "FAILED") return "요약카드 생성 실패";
     return null;
-  }, [loading, isGenerating, summary?.status]);
+  }, [loading, loadError, isGenerating, summary, summary?.status]);
 
   if (loading && !summary) {
     return <StatusBox text="AI 요약카드 확인 중" />;
@@ -216,6 +224,28 @@ export default function ReviewAiSummaryCard({
       </div>
 
       {statusText && <StatusBox text={statusText} compact />}
+
+      {!summary && !loading && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={loadSummary}
+            className="rounded-full border border-brown-300 px-3 py-1.5 text-xs text-brown-600 hover:border-brown-500"
+          >
+            다시 확인
+          </button>
+          {isOwner && (
+            <button
+              type="button"
+              onClick={regenerate}
+              disabled={saving}
+              className="rounded-full bg-brown-700 px-3 py-1.5 text-xs text-white hover:bg-brown-800 disabled:opacity-50"
+            >
+              AI로 다시 생성
+            </button>
+          )}
+        </div>
+      )}
 
       {summary?.status === "FAILED" && (
         <div className="flex flex-wrap gap-2">

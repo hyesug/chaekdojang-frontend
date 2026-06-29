@@ -1,64 +1,92 @@
 import type { AiReadingCardData } from "../lib/aiReadingCard";
 
+function authorName(card: AiReadingCardData) {
+  return (card.authorName || card.authorNickname || "책도장 독자").trim() || "책도장 독자";
+}
+
+function mainSentence(card: AiReadingCardData) {
+  return card.oneLineReview?.trim() || "이 책을 읽고 생각이 조금 달라졌다.";
+}
+
+function tags(card: AiReadingCardData) {
+  const values = card.emotionKeywords?.filter(Boolean).slice(0, 5) ?? [];
+  return values.length > 0 ? values : ["성찰", "감상", "기록"];
+}
+
 export default function AiReadingCard({
   card,
   compact = false,
-  exportSize = false,
 }: {
   card: AiReadingCardData;
   compact?: boolean;
   exportSize?: boolean;
 }) {
+  const name = authorName(card);
+  const sentence = mainSentence(card);
+  const keywords = tags(card);
+  const bookAuthor = card.bookAuthor?.trim() || "저자 미상";
+
   return (
     <div
       data-ai-reading-card
-      className={`relative overflow-hidden rounded-lg border border-cream-200 bg-[#fffaf0] text-brown-900 shadow-sm ${
-        exportSize ? "h-[1080px] w-[1080px] p-20" : compact ? "p-4" : "aspect-square w-full max-w-[520px] p-8"
+      className={`relative aspect-square w-full overflow-hidden rounded-lg border border-[#eadbc7] bg-[#fffaf0] text-[#2f170b] ${
+        compact ? "max-w-[360px] p-5" : "max-w-[520px] p-8 sm:p-10"
       }`}
     >
-      <div className="absolute right-5 top-5 flex h-12 w-12 items-center justify-center rounded-full border-2 border-red-300 text-sm font-bold text-red-500 opacity-80">
+      <div className="absolute right-6 top-6 flex h-12 w-12 items-center justify-center rounded-full border border-[#f3a5ad] font-serif text-lg font-bold text-[#e85f70]">
         冊
       </div>
 
       <div className="flex h-full flex-col">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brown-300">
-          Chaekdojang AI Reading Card
-        </p>
-        <h3 className={`mt-3 font-serif font-bold leading-tight ${exportSize ? "text-7xl" : compact ? "text-xl" : "text-4xl"}`}>
-          {card.bookTitle}
-        </h3>
-
-        <p className={`mt-6 font-serif font-bold leading-snug text-brown-800 ${exportSize ? "text-6xl" : compact ? "text-lg" : "text-3xl"}`}>
-          “{card.oneLineReview}”
-        </p>
-
-        <div className="mt-5 flex flex-wrap gap-2">
-          {card.emotionKeywords.slice(0, 5).map((keyword) => (
-            <span
-              key={keyword}
-              className={`rounded-full border border-brown-200 bg-white/75 text-brown-600 ${exportSize ? "px-5 py-2 text-2xl" : "px-3 py-1 text-sm"}`}
-            >
-              {keyword}
-            </span>
-          ))}
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#a87455] sm:text-xs">
+            CHAEKDOJANG
+          </p>
+          <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#b99074] sm:text-xs">
+            AI READING CARD
+          </p>
         </div>
 
-        <div className={`mt-6 grid gap-4 ${compact ? "" : "sm:grid-cols-2"}`}>
-          <div>
-            <p className="text-xs font-semibold text-brown-300">추천 대상</p>
-            <p className={`mt-1 font-medium text-brown-700 ${exportSize ? "text-3xl" : "text-sm"}`}>{card.recommendedFor}</p>
-          </div>
-          {card.impressivePoint && (
-            <div>
-              <p className="text-xs font-semibold text-brown-300">인상 깊은 지점</p>
-              <p className={`mt-1 text-brown-600 ${exportSize ? "text-2xl leading-9" : "text-sm leading-5"}`}>{card.impressivePoint}</p>
+        <div className="flex flex-1 items-center">
+          <p className="line-clamp-4 pr-4 font-serif text-3xl font-bold leading-snug text-[#2f170b] sm:text-4xl">
+            {sentence}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-[72px_1fr] gap-4 border-t border-[#eadbc7] pt-4 sm:grid-cols-[92px_1fr] sm:gap-5 sm:pt-5">
+          {card.bookThumbnail ? (
+            <img
+              src={card.bookThumbnail}
+              alt={card.bookTitle}
+              className="h-24 w-[72px] rounded object-cover shadow-sm sm:h-32 sm:w-[92px]"
+            />
+          ) : (
+            <div className="flex h-24 w-[72px] items-end justify-center rounded bg-[#d8bea3] pb-2 font-serif text-lg font-bold text-white shadow-sm sm:h-32 sm:w-[92px]">
+              책
             </div>
           )}
+
+          <div className="min-w-0">
+            <h3 className="line-clamp-2 font-serif text-base font-bold leading-snug text-[#2f170b] sm:text-xl">
+              {card.bookTitle}
+            </h3>
+            <p className="mt-1 truncate text-xs text-[#8c6047] sm:text-sm">{bookAuthor}</p>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {keywords.map((keyword) => (
+                <span
+                  key={keyword}
+                  className="rounded-full border border-[#d9b999] bg-white/70 px-2.5 py-1 text-[11px] text-[#6b3b24] sm:text-xs"
+                >
+                  {keyword}
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
 
-        <div className={`mt-auto flex items-end justify-between pt-6 text-brown-400 ${exportSize ? "text-2xl" : "text-xs"}`}>
-          <span>by {card.authorNickname}</span>
-          <span className={`font-serif font-bold text-brown-700 ${exportSize ? "text-3xl" : "text-base"}`}>책도장 · chaekdojang.com</span>
+        <div className="mt-4 flex items-end justify-between gap-3 text-[11px] text-[#9b6b4d] sm:text-xs">
+          <span className="max-w-[45%] truncate">by {name}</span>
+          <span className="font-serif font-bold text-[#2f170b]">책도장 · chaekdojang.com</span>
         </div>
       </div>
     </div>

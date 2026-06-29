@@ -199,6 +199,8 @@ export default async function PublicReviewPage({ params, searchParams }: Props) 
               reviewId={review.id}
               authorId={review.author.id ?? null}
               bookTitle={review.book?.title ?? "독후감"}
+              bookAuthor={review.book?.author ?? null}
+              bookThumbnail={review.book?.thumbnail ?? null}
               authorNickname={review.author.nickname}
             />
 

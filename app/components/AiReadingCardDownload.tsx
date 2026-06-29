@@ -5,6 +5,7 @@ import type { AiReadingCardData } from "../lib/aiReadingCard";
 
 const SIZE = 1080;
 const PADDING = 86;
+const CARD_INNER = SIZE - PADDING * 2;
 
 export default function AiReadingCardDownload({ card }: { card: AiReadingCardData }) {
   const [saving, setSaving] = useState(false);
@@ -13,8 +14,12 @@ export default function AiReadingCardDownload({ card }: { card: AiReadingCardDat
     if (saving) return;
     setSaving(true);
     try {
-      const canvas = renderCard(card);
-      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+      const canvas = await renderCard(card, true);
+      let blob = await toPngBlob(canvas);
+      if (!blob) {
+        const fallbackCanvas = await renderCard(card, false);
+        blob = await toPngBlob(fallbackCanvas);
+      }
       if (!blob) throw new Error("PNG 파일을 만들지 못했습니다.");
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -43,103 +48,182 @@ export default function AiReadingCardDownload({ card }: { card: AiReadingCardDat
   );
 }
 
-function renderCard(card: AiReadingCardData) {
+function authorName(card: AiReadingCardData) {
+  return (card.authorName || card.authorNickname || "책도장 독자").trim() || "책도장 독자";
+}
+
+function mainSentence(card: AiReadingCardData) {
+  return card.oneLineReview?.trim() || "이 책을 읽고 생각이 조금 달라졌다.";
+}
+
+function tags(card: AiReadingCardData) {
+  const values = card.emotionKeywords?.filter(Boolean).slice(0, 5) ?? [];
+  return values.length > 0 ? values : ["성찰", "감상", "기록"];
+}
+
+async function renderCard(card: AiReadingCardData, includeCover: boolean) {
   const canvas = document.createElement("canvas");
   canvas.width = SIZE;
   canvas.height = SIZE;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas context is not available.");
 
+  drawBackground(ctx);
+  drawStamp(ctx);
+  drawHeader(ctx);
+  drawMainSentence(ctx, mainSentence(card));
+  await drawBookArea(ctx, card, includeCover);
+  drawFooter(ctx, authorName(card));
+
+  return canvas;
+}
+
+function drawBackground(ctx: CanvasRenderingContext2D) {
   ctx.fillStyle = "#fffaf0";
   ctx.fillRect(0, 0, SIZE, SIZE);
 
   ctx.strokeStyle = "#eadbc7";
   ctx.lineWidth = 3;
-  roundRect(ctx, 46, 46, SIZE - 92, SIZE - 92, 28);
+  roundRect(ctx, 44, 44, SIZE - 88, SIZE - 88, 24);
   ctx.stroke();
+}
 
-  drawStamp(ctx);
-
-  ctx.fillStyle = "#b78262";
-  ctx.font = "700 22px Georgia, serif";
-  ctx.letterSpacing = "6px";
-  ctx.fillText("CHAEKDOJANG AI READING CARD", PADDING, 150);
-  ctx.letterSpacing = "0px";
-
-  let y = 210;
-  ctx.fillStyle = "#2f170b";
-  ctx.font = "700 58px Georgia, 'Times New Roman', serif";
-  y = drawWrappedText(ctx, card.bookTitle, PADDING, y, 720, 68, 2);
-
-  y += 54;
-  ctx.fillStyle = "#2f170b";
-  ctx.font = "700 48px Georgia, 'Times New Roman', serif";
-  y = drawWrappedText(ctx, `“${card.oneLineReview}”`, PADDING, y, 850, 72, 4);
-
-  y += 34;
-  y = drawKeywords(ctx, card.emotionKeywords.slice(0, 5), PADDING, y);
-
-  y += 54;
-  ctx.fillStyle = "#b26d43";
+function drawHeader(ctx: CanvasRenderingContext2D) {
+  ctx.fillStyle = "#9d6a4d";
   ctx.font = "700 24px Arial, sans-serif";
-  ctx.fillText("추천 대상", PADDING, y);
-  ctx.fillText("인상 깊은 지점", 560, y);
-
-  y += 40;
-  ctx.fillStyle = "#5b321d";
-  ctx.font = "400 30px Arial, sans-serif";
-  drawWrappedText(ctx, card.recommendedFor, PADDING, y, 390, 42, 3);
-  drawWrappedText(ctx, card.impressivePoint ?? "", 560, y, 390, 42, 4);
-
-  ctx.fillStyle = "#9b6b4d";
-  ctx.font = "400 24px Arial, sans-serif";
-  ctx.fillText(`by ${card.authorNickname}`, PADDING, 1000);
-
-  ctx.fillStyle = "#2f170b";
-  ctx.font = "700 30px Georgia, serif";
-  ctx.textAlign = "right";
-  ctx.fillText("책도장 · chaekdojang.com", SIZE - PADDING, 1000);
-  ctx.textAlign = "left";
-
-  return canvas;
+  ctx.fillText("CHAEKDOJANG", PADDING, 136);
+  ctx.fillStyle = "#b99074";
+  ctx.font = "700 22px Arial, sans-serif";
+  ctx.fillText("AI READING CARD", PADDING, 170);
 }
 
 function drawStamp(ctx: CanvasRenderingContext2D) {
   ctx.save();
-  ctx.strokeStyle = "#ff9aa4";
-  ctx.fillStyle = "#ff5f6f";
-  ctx.lineWidth = 4;
+  ctx.strokeStyle = "#f3a5ad";
+  ctx.fillStyle = "#e85f70";
+  ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.arc(920, 150, 48, 0, Math.PI * 2);
+  ctx.arc(914, 140, 46, 0, Math.PI * 2);
   ctx.stroke();
   ctx.font = "700 32px Georgia, serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText("冊", 920, 150);
+  ctx.fillText("冊", 914, 140);
   ctx.restore();
 }
 
-function drawKeywords(ctx: CanvasRenderingContext2D, keywords: string[], x: number, y: number) {
+function drawMainSentence(ctx: CanvasRenderingContext2D, sentence: string) {
+  const fontSize = sentence.length > 72 ? 48 : sentence.length > 44 ? 56 : 64;
+  ctx.fillStyle = "#2f170b";
+  ctx.font = `700 ${fontSize}px Georgia, 'Times New Roman', serif`;
+  ctx.textBaseline = "alphabetic";
+  drawWrappedText(ctx, sentence, PADDING, 360, CARD_INNER, fontSize * 1.34, 4);
+}
+
+async function drawBookArea(ctx: CanvasRenderingContext2D, card: AiReadingCardData, includeCover: boolean) {
+  const top = 700;
+  const coverX = PADDING;
+  const coverY = top;
+  const coverW = 136;
+  const coverH = 190;
+
+  ctx.strokeStyle = "#eadbc7";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(PADDING, top - 36);
+  ctx.lineTo(SIZE - PADDING, top - 36);
+  ctx.stroke();
+
+  if (includeCover && card.bookThumbnail) {
+    const img = await loadImage(card.bookThumbnail).catch(() => null);
+    if (img) {
+      drawCoverImage(ctx, img, coverX, coverY, coverW, coverH);
+    } else {
+      drawCoverPlaceholder(ctx, coverX, coverY, coverW, coverH);
+    }
+  } else {
+    drawCoverPlaceholder(ctx, coverX, coverY, coverW, coverH);
+  }
+
+  const textX = coverX + coverW + 36;
+  ctx.fillStyle = "#2f170b";
+  ctx.font = "700 36px Georgia, 'Times New Roman', serif";
+  drawWrappedText(ctx, card.bookTitle || "책 제목", textX, top + 42, 700, 46, 2);
+
+  ctx.fillStyle = "#8c6047";
+  ctx.font = "400 25px Arial, sans-serif";
+  ctx.fillText(card.bookAuthor?.trim() || "저자 미상", textX, top + 142);
+
+  drawKeywords(ctx, tags(card), textX, top + 188, 690);
+}
+
+function drawCoverImage(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  x: number,
+  y: number,
+  width: number,
+  height: number
+) {
+  ctx.save();
+  roundRect(ctx, x, y, width, height, 8);
+  ctx.clip();
+  const scale = Math.max(width / img.naturalWidth, height / img.naturalHeight);
+  const drawW = img.naturalWidth * scale;
+  const drawH = img.naturalHeight * scale;
+  ctx.drawImage(img, x + (width - drawW) / 2, y + (height - drawH) / 2, drawW, drawH);
+  ctx.restore();
+  ctx.strokeStyle = "#d6bd9f";
+  ctx.lineWidth = 2;
+  roundRect(ctx, x, y, width, height, 8);
+  ctx.stroke();
+}
+
+function drawCoverPlaceholder(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number) {
+  roundRect(ctx, x, y, width, height, 8);
+  ctx.fillStyle = "#d8bea3";
+  ctx.fill();
+  ctx.fillStyle = "#fffaf0";
+  ctx.font = "700 34px Georgia, serif";
+  ctx.textAlign = "center";
+  ctx.fillText("책", x + width / 2, y + height - 28);
+  ctx.textAlign = "left";
+}
+
+function drawFooter(ctx: CanvasRenderingContext2D, name: string) {
+  ctx.fillStyle = "#9b6b4d";
   ctx.font = "400 24px Arial, sans-serif";
+  drawEllipsizedText(ctx, `by ${name}`, PADDING, 1000, 410);
+
+  ctx.fillStyle = "#2f170b";
+  ctx.font = "700 29px Georgia, serif";
+  ctx.textAlign = "right";
+  ctx.fillText("책도장 · chaekdojang.com", SIZE - PADDING, 1000);
+  ctx.textAlign = "left";
+}
+
+function drawKeywords(ctx: CanvasRenderingContext2D, keywords: string[], x: number, y: number, maxWidth: number) {
+  ctx.font = "400 23px Arial, sans-serif";
   let cursorX = x;
   let cursorY = y;
-  for (const keyword of keywords) {
-    const width = ctx.measureText(keyword).width + 42;
-    if (cursorX + width > SIZE - PADDING) {
+  for (const keyword of keywords.slice(0, 5)) {
+    const label = keyword.trim();
+    if (!label) continue;
+    const width = Math.min(ctx.measureText(label).width + 40, 190);
+    if (cursorX + width > x + maxWidth) {
       cursorX = x;
-      cursorY += 52;
+      cursorY += 50;
     }
-    roundRect(ctx, cursorX, cursorY - 30, width, 42, 21);
+    roundRect(ctx, cursorX, cursorY - 31, width, 42, 21);
     ctx.fillStyle = "#fffdf8";
     ctx.fill();
-    ctx.strokeStyle = "#cfa783";
+    ctx.strokeStyle = "#d9b999";
     ctx.lineWidth = 2;
     ctx.stroke();
     ctx.fillStyle = "#6b3b24";
-    ctx.fillText(keyword, cursorX + 21, cursorY);
-    cursorX += width + 14;
+    drawEllipsizedText(ctx, label, cursorX + 20, cursorY, width - 38);
+    cursorX += width + 13;
   }
-  return cursorY + 12;
 }
 
 function drawWrappedText(
@@ -151,11 +235,9 @@ function drawWrappedText(
   lineHeight: number,
   maxLines: number
 ) {
-  const lines = wrapText(ctx, text, maxWidth, maxLines);
-  lines.forEach((line, index) => {
+  wrapText(ctx, text, maxWidth, maxLines).forEach((line, index) => {
     ctx.fillText(line, x, y + index * lineHeight);
   });
-  return y + lines.length * lineHeight;
 }
 
 function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, maxLines: number) {
@@ -185,6 +267,24 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number,
   return lines;
 }
 
+function drawEllipsizedText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number
+) {
+  if (ctx.measureText(text).width <= maxWidth) {
+    ctx.fillText(text, x, y);
+    return;
+  }
+  let value = text;
+  while (value.length > 1 && ctx.measureText(`${value}…`).width > maxWidth) {
+    value = value.slice(0, -1);
+  }
+  ctx.fillText(`${value}…`, x, y);
+}
+
 function roundRect(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -204,4 +304,24 @@ function roundRect(
   ctx.lineTo(x, y + radius);
   ctx.quadraticCurveTo(x, y, x + radius, y);
   ctx.closePath();
+}
+
+function loadImage(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+function toPngBlob(canvas: HTMLCanvasElement) {
+  return new Promise<Blob | null>((resolve) => {
+    try {
+      canvas.toBlob(resolve, "image/png");
+    } catch {
+      resolve(null);
+    }
+  });
 }

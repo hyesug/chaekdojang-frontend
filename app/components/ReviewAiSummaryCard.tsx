@@ -44,11 +44,15 @@ export default function ReviewAiSummaryCard({
   reviewId,
   authorId,
   bookTitle,
+  bookAuthor,
+  bookThumbnail,
   authorNickname,
 }: {
   reviewId: number;
   authorId: number | null;
   bookTitle: string;
+  bookAuthor?: string | null;
+  bookThumbnail?: string | null;
   authorNickname: string;
 }) {
   const [summary, setSummary] = useState<ReviewAiSummary | null>(null);
@@ -63,13 +67,16 @@ export default function ReviewAiSummaryCard({
   const isGenerating = summary?.status === "PENDING" || summary?.status === "PROCESSING";
   const canShowSummary = summary?.status === "COMPLETED" || summary?.status === "EDITED";
   const readingCard: AiReadingCardData | null =
-    canShowSummary && summary?.oneLineReview && summary.recommendedFor
+    canShowSummary && summary?.oneLineReview
       ? {
           bookTitle,
+          bookAuthor,
+          bookThumbnail,
+          authorName: authorNickname,
           authorNickname,
           oneLineReview: summary.oneLineReview,
           emotionKeywords: summary.emotionKeywords,
-          recommendedFor: summary.recommendedFor,
+          recommendedFor: summary.recommendedFor ?? "",
           impressivePoint: summary.impressivePoint,
         }
       : null;

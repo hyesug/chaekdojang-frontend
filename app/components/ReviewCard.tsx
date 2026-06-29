@@ -406,6 +406,15 @@ export default function ReviewCard({
     ? `/reviews/${post.id}?${new URLSearchParams({ returnTo: effectiveReturnTo }).toString()}`
     : `/reviews/${post.id}`;
 
+  function rememberReturnTo() {
+    if (!effectiveReturnTo) return;
+    try {
+      sessionStorage.setItem(`chaekdojang:return-to:${post.id}`, effectiveReturnTo);
+    } catch {
+      /* storage may be unavailable */
+    }
+  }
+
   useEffect(() => {
     const token = getToken();
     if (!token) {
@@ -791,7 +800,11 @@ export default function ReviewCard({
             href={hidden ? "#" : reviewHref}
             className="mt-3 text-left w-full group block"
             onClick={(e) => {
-              if (hidden) e.preventDefault();
+              if (hidden) {
+                e.preventDefault();
+                return;
+              }
+              rememberReturnTo();
             }}
           >
             <p className="text-sm text-brown-600 leading-relaxed line-clamp-3 group-hover:text-brown-800 transition-colors">

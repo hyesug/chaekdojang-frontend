@@ -6,16 +6,34 @@ type BackButtonProps = {
   fallbackHref: string;
   label?: string;
   preferFallback?: boolean;
+  storageKey?: string;
 };
 
 export default function BackButton({
   fallbackHref,
   label = "← 뒤로",
   preferFallback = false,
+  storageKey,
 }: BackButtonProps) {
   const router = useRouter();
 
+  function getStoredHref() {
+    if (!storageKey) return null;
+    try {
+      const value = sessionStorage.getItem(storageKey);
+      if (!value || !value.startsWith("/") || value.startsWith("//")) return null;
+      return value;
+    } catch {
+      return null;
+    }
+  }
+
   function handleBack() {
+    const storedHref = getStoredHref();
+    if (storedHref) {
+      router.push(storedHref);
+      return;
+    }
     if (preferFallback) {
       router.push(fallbackHref);
       return;

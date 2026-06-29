@@ -7,6 +7,7 @@ import ReviewAiSummaryCard from "../../components/ReviewAiSummaryCard";
 import ReviewEngagement from "../../components/ReviewEngagement";
 import ReviewCard, { type Review } from "../../components/ReviewCard";
 import ReviewViewTracker from "../../components/ReviewViewTracker";
+import StoredReturnLink from "../../components/StoredReturnLink";
 import {
   fetchApiData,
   reviewDescription,
@@ -94,6 +95,7 @@ export default async function PublicReviewPage({ params, searchParams }: Props) 
   const review = await getReview(id);
   if (!review) notFound();
   const bookReviewsHref = returnTo || (review.book?.id ? `/books/${review.book.id}` : "/");
+  const returnStorageKey = `chaekdojang:return-to:${review.id}`;
 
   const related = review.book?.id
     ? await fetchApiData<Review[]>(`/api/books/${review.book.id}/reviews`)
@@ -134,7 +136,11 @@ export default async function PublicReviewPage({ params, searchParams }: Props) 
       />
       <article className="max-w-3xl mx-auto px-4 py-8 sm:py-12">
         <div className="mb-5 flex items-center justify-between gap-3">
-          <BackButton fallbackHref={bookReviewsHref} preferFallback={Boolean(returnTo)} />
+          <BackButton
+            fallbackHref={bookReviewsHref}
+            preferFallback={Boolean(returnTo)}
+            storageKey={returnStorageKey}
+          />
           <Link
             href="/write"
             className="px-4 py-2 rounded-full bg-brown-700 text-white text-sm hover:bg-brown-800"
@@ -208,9 +214,13 @@ export default async function PublicReviewPage({ params, searchParams }: Props) 
 
             {review.book?.id && (
               <div className="mt-5 text-right text-sm">
-                <Link href={bookReviewsHref} className="text-brown-600 hover:underline">
+                <StoredReturnLink
+                  href={bookReviewsHref}
+                  storageKey={returnStorageKey}
+                  className="text-brown-600 hover:underline"
+                >
                   이 책의 다른 독후감 보기
-                </Link>
+                </StoredReturnLink>
               </div>
             )}
           </div>

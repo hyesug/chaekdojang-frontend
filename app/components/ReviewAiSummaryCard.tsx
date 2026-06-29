@@ -112,7 +112,8 @@ export default function ReviewAiSummaryCard({
         return;
       }
       const json = await res.json();
-      setSummary(json.data ?? json);
+      const nextSummary = Object.prototype.hasOwnProperty.call(json, "data") ? json.data : json;
+      setSummary(nextSummary ?? null);
       setLoadError(false);
     } catch {
       setLoadError(true);
@@ -133,7 +134,8 @@ export default function ReviewAiSummaryCard({
       });
       if (res.ok) {
         const json = await res.json();
-        setSummary(json.data ?? json);
+        const nextSummary = Object.prototype.hasOwnProperty.call(json, "data") ? json.data : json;
+        setSummary(nextSummary ?? null);
         setEditing(false);
       }
     } finally {
@@ -153,7 +155,8 @@ export default function ReviewAiSummaryCard({
       });
       if (res.ok) {
         const json = await res.json();
-        setSummary(json.data ?? json);
+        const nextSummary = Object.prototype.hasOwnProperty.call(json, "data") ? json.data : json;
+        setSummary(nextSummary ?? null);
         setEditing(false);
       }
     } finally {
@@ -185,15 +188,15 @@ export default function ReviewAiSummaryCard({
   }
 
   const statusText = useMemo(() => {
-    if (loading) return "AI 요약카드 확인 중";
-    if (loadError && !summary) return "AI 요약카드 상태를 확인하지 못했어요.";
-    if (isGenerating) return "AI 요약카드 생성 중";
-    if (summary?.status === "FAILED") return "요약카드 생성 실패";
+    if (loading) return "AI 독서카드 확인 중";
+    if (loadError && !summary) return "AI 독서카드 상태를 확인하지 못했어요.";
+    if (isGenerating) return "AI 독서카드 생성 중";
+    if (summary?.status === "FAILED") return "AI 독서카드 생성 실패";
     return null;
   }, [loading, loadError, isGenerating, summary, summary?.status]);
 
   if (loading && !summary) {
-    return <StatusBox text="AI 요약카드 확인 중" />;
+    return <StatusBox text="AI 독서카드 확인 중" />;
   }
 
   return (
@@ -230,14 +233,10 @@ export default function ReviewAiSummaryCard({
       {statusText && <StatusBox text={statusText} compact />}
 
       {!summary && !loading && (
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={loadSummary}
-            className="rounded-full border border-brown-300 px-3 py-1.5 text-xs text-brown-600 hover:border-brown-500"
-          >
-            다시 확인
-          </button>
+        <div className="space-y-3">
+          <p className="text-sm text-brown-500">
+            아직 AI 독서카드가 없습니다.
+          </p>
           {isOwner && (
             <button
               type="button"
@@ -245,7 +244,16 @@ export default function ReviewAiSummaryCard({
               disabled={saving}
               className="rounded-full bg-brown-700 px-3 py-1.5 text-xs text-white hover:bg-brown-800 disabled:opacity-50"
             >
-              AI로 다시 생성
+              {saving ? "생성 요청 중" : "AI 독서카드 생성"}
+            </button>
+          )}
+          {loadError && (
+            <button
+              type="button"
+              onClick={loadSummary}
+              className="ml-2 rounded-full border border-brown-300 px-3 py-1.5 text-xs text-brown-600 hover:border-brown-500"
+            >
+              다시 확인
             </button>
           )}
         </div>

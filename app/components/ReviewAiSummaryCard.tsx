@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import AiReadingCard from "./AiReadingCard";
 import AiReadingCardDownload from "./AiReadingCardDownload";
 import type { AiReadingCardData } from "../lib/aiReadingCard";
 import { authFetch } from "../lib/auth";
@@ -198,11 +197,16 @@ export default function ReviewAiSummaryCard({
   }
 
   return (
-    <section className="mt-5 rounded-lg border border-cream-200 bg-cream-50 p-4">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="font-serif text-lg font-bold text-brown-800">AI 요약카드</h2>
+    <section className="mt-5 rounded-lg border border-cream-200 bg-gradient-to-br from-cream-50 to-white p-4 sm:p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-brown-300">
+            AI Reading Card
+          </p>
+          <h2 className="mt-1 font-serif text-lg font-bold text-brown-800">AI 독서카드</h2>
+        </div>
         {isOwner && canShowSummary && !editing && (
-          <div className="flex flex-wrap justify-end gap-2">
+          <div className="flex flex-wrap justify-end gap-2 text-xs">
             {readingCard && <AiReadingCardDownload card={readingCard} />}
             <button
               type="button"
@@ -272,8 +276,7 @@ export default function ReviewAiSummaryCard({
       )}
 
       {canShowSummary && !editing && summary && readingCard && (
-        <div className="space-y-4">
-          <AiReadingCard card={readingCard} />
+        <div>
           <SummaryView summary={summary} />
         </div>
       )}
@@ -338,23 +341,32 @@ function StatusBox({ text, compact = false }: { text: string; compact?: boolean 
 
 function SummaryView({ summary }: { summary: ReviewAiSummary }) {
   return (
-    <div className="space-y-3">
-      <p className="text-base font-semibold text-brown-800">{summary.oneLineReview}</p>
+    <div className="space-y-4">
+      <blockquote className="border-l-2 border-brown-300 pl-4">
+        <p className="font-serif text-xl font-bold leading-relaxed text-brown-900 sm:text-2xl">
+          {summary.oneLineReview}
+        </p>
+      </blockquote>
+
       <div className="flex flex-wrap gap-1.5">
         {summary.emotionKeywords.map((keyword) => (
-          <span key={keyword} className="rounded-full bg-white px-2.5 py-1 text-xs text-brown-500">
+          <span
+            key={keyword}
+            className="rounded-full border border-cream-200 bg-white px-2.5 py-1 text-xs text-brown-500"
+          >
             {keyword}
           </span>
         ))}
       </div>
-      <dl className="grid gap-2 text-sm text-brown-600 sm:grid-cols-2">
+
+      <dl className="grid gap-3 text-sm leading-6 text-brown-600 sm:grid-cols-2">
         <div>
-          <dt className="text-xs text-brown-300">추천 대상</dt>
-          <dd>{summary.recommendedFor}</dd>
+          <dt className="mb-1 text-xs font-semibold text-brown-300">추천 대상</dt>
+          <dd className="text-brown-700">{summary.recommendedFor}</dd>
         </div>
         <div>
-          <dt className="text-xs text-brown-300">인상 깊은 지점</dt>
-          <dd>{summary.impressivePoint}</dd>
+          <dt className="mb-1 text-xs font-semibold text-brown-300">인상 깊은 지점</dt>
+          <dd className="text-brown-700">{summary.impressivePoint}</dd>
         </div>
       </dl>
     </div>

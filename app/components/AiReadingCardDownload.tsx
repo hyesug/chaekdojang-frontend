@@ -79,60 +79,62 @@ async function renderCard(card: AiReadingCardData, includeCover: boolean) {
 }
 
 function drawBackground(ctx: CanvasRenderingContext2D) {
-  ctx.fillStyle = "#fffaf0";
+  ctx.fillStyle = "#fffaf4";
   ctx.fillRect(0, 0, SIZE, SIZE);
 
-  ctx.strokeStyle = "#eadbc7";
-  ctx.lineWidth = 3;
-  roundRect(ctx, 44, 44, SIZE - 88, SIZE - 88, 24);
+  ctx.strokeStyle = "#e6d8c7";
+  ctx.lineWidth = 2;
+  roundRect(ctx, 10, 10, SIZE - 20, SIZE - 20, 8);
   ctx.stroke();
 }
 
 function drawHeader(ctx: CanvasRenderingContext2D) {
-  ctx.fillStyle = "#9d6a4d";
-  ctx.font = "700 24px Arial, sans-serif";
-  ctx.fillText("CHAEKDOJANG", PADDING, 136);
-  ctx.fillStyle = "#b99074";
-  ctx.font = "700 22px Arial, sans-serif";
-  ctx.fillText("AI READING CARD", PADDING, 170);
+  ctx.fillStyle = "#9f7b63";
+  ctx.font = "700 19px Arial, sans-serif";
+  ctx.fillText("CHAEKDOJANG", PADDING, 116);
+  ctx.fillStyle = "#b99c86";
+  ctx.font = "700 18px Arial, sans-serif";
+  ctx.fillText("AI READING CARD", PADDING, 144);
 }
 
 function drawStamp(ctx: CanvasRenderingContext2D) {
   ctx.save();
-  ctx.strokeStyle = "#f3a5ad";
-  ctx.fillStyle = "#e85f70";
-  ctx.lineWidth = 3;
+  ctx.strokeStyle = "#b58f73";
+  ctx.fillStyle = "#8b6349";
+  ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.arc(914, 140, 46, 0, Math.PI * 2);
+  ctx.arc(920, 126, 48, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.font = "700 32px Georgia, serif";
+  ctx.font = "700 28px Georgia, serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText("冊", 914, 140);
+  ctx.fillText("冊", 920, 120);
+  ctx.font = "400 13px Arial, sans-serif";
+  ctx.fillText("책도장", 920, 149);
   ctx.restore();
 }
 
 function drawMainSentence(ctx: CanvasRenderingContext2D, sentence: string) {
-  const fontSize = sentence.length > 72 ? 48 : sentence.length > 44 ? 56 : 64;
-  ctx.fillStyle = "#2f170b";
+  const fontSize = sentence.length > 72 ? 58 : sentence.length > 44 ? 66 : 76;
+  ctx.fillStyle = "#2b1a10";
   ctx.font = `700 ${fontSize}px Georgia, 'Times New Roman', serif`;
   ctx.textBaseline = "alphabetic";
-  drawWrappedText(ctx, sentence, PADDING, 360, CARD_INNER, fontSize * 1.34, 4);
+  const bottom = drawWrappedText(ctx, sentence, PADDING, 300, CARD_INNER - 70, fontSize * 1.28, 4);
+
+  ctx.strokeStyle = "#8b6349";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(PADDING, bottom + 34);
+  ctx.lineTo(PADDING + 74, bottom + 34);
+  ctx.stroke();
 }
 
 async function drawBookArea(ctx: CanvasRenderingContext2D, card: AiReadingCardData, includeCover: boolean) {
-  const top = 700;
+  const top = 650;
   const coverX = PADDING;
   const coverY = top;
-  const coverW = 136;
-  const coverH = 190;
-
-  ctx.strokeStyle = "#eadbc7";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(PADDING, top - 36);
-  ctx.lineTo(SIZE - PADDING, top - 36);
-  ctx.stroke();
+  const coverW = 132;
+  const coverH = 188;
 
   if (includeCover && card.bookThumbnail) {
     const img = await loadImage(card.bookThumbnail).catch(() => null);
@@ -146,15 +148,15 @@ async function drawBookArea(ctx: CanvasRenderingContext2D, card: AiReadingCardDa
   }
 
   const textX = coverX + coverW + 36;
-  ctx.fillStyle = "#2f170b";
-  ctx.font = "700 36px Georgia, 'Times New Roman', serif";
-  drawWrappedText(ctx, card.bookTitle || "책 제목", textX, top + 42, 700, 46, 2);
+  ctx.fillStyle = "#2b1a10";
+  ctx.font = "700 35px Georgia, 'Times New Roman', serif";
+  drawWrappedText(ctx, card.bookTitle || "책 제목", textX, top + 56, 650, 45, 2);
 
   ctx.fillStyle = "#8c6047";
-  ctx.font = "400 25px Arial, sans-serif";
-  ctx.fillText(card.bookAuthor?.trim() || "저자 미상", textX, top + 142);
+  ctx.font = "400 24px Arial, sans-serif";
+  ctx.fillText(card.bookAuthor?.trim() || "저자 미상", textX, top + 144);
 
-  drawKeywords(ctx, tags(card), textX, top + 188, 690);
+  drawKeywords(ctx, tags(card), textX, top + 190, 650);
 }
 
 function drawCoverImage(
@@ -191,36 +193,27 @@ function drawCoverPlaceholder(ctx: CanvasRenderingContext2D, x: number, y: numbe
 }
 
 function drawFooter(ctx: CanvasRenderingContext2D, name: string) {
-  ctx.fillStyle = "#9b6b4d";
-  ctx.font = "400 24px Arial, sans-serif";
-  drawEllipsizedText(ctx, `by ${name}`, PADDING, 1000, 410);
-
-  ctx.fillStyle = "#2f170b";
-  ctx.font = "700 29px Georgia, serif";
-  ctx.textAlign = "right";
-  ctx.fillText("책도장 · chaekdojang.com", SIZE - PADDING, 1000);
-  ctx.textAlign = "left";
+  ctx.fillStyle = "#7f6048";
+  ctx.font = "700 22px Arial, sans-serif";
+  drawEllipsizedText(ctx, `BY ${name}`, PADDING, 1000, 540);
 }
 
 function drawKeywords(ctx: CanvasRenderingContext2D, keywords: string[], x: number, y: number, maxWidth: number) {
-  ctx.font = "400 23px Arial, sans-serif";
+  ctx.font = "400 21px Arial, sans-serif";
   let cursorX = x;
   let cursorY = y;
   for (const keyword of keywords.slice(0, 5)) {
     const label = keyword.trim();
     if (!label) continue;
-    const width = Math.min(ctx.measureText(label).width + 40, 190);
+    const width = Math.min(ctx.measureText(label).width + 36, 180);
     if (cursorX + width > x + maxWidth) {
       cursorX = x;
       cursorY += 50;
     }
-    roundRect(ctx, cursorX, cursorY - 31, width, 42, 21);
-    ctx.fillStyle = "#fffdf8";
+    roundRect(ctx, cursorX, cursorY - 30, width, 40, 20);
+    ctx.fillStyle = "#eadfce";
     ctx.fill();
-    ctx.strokeStyle = "#d9b999";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.fillStyle = "#6b3b24";
+    ctx.fillStyle = "#6f5949";
     drawEllipsizedText(ctx, label, cursorX + 20, cursorY, width - 38);
     cursorX += width + 13;
   }
@@ -235,9 +228,11 @@ function drawWrappedText(
   lineHeight: number,
   maxLines: number
 ) {
-  wrapText(ctx, text, maxWidth, maxLines).forEach((line, index) => {
+  const lines = wrapText(ctx, text, maxWidth, maxLines);
+  lines.forEach((line, index) => {
     ctx.fillText(line, x, y + index * lineHeight);
   });
+  return y + Math.max(lines.length - 1, 0) * lineHeight;
 }
 
 function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, maxLines: number) {

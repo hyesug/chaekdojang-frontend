@@ -29,13 +29,13 @@ export default function BackButton({
   }
 
   function handleBack() {
+    if (preferFallback) {
+      router.push(fallbackHref);
+      return;
+    }
     const storedHref = getStoredHref();
     if (storedHref) {
       router.push(storedHref);
-      return;
-    }
-    if (preferFallback) {
-      router.push(fallbackHref);
       return;
     }
     if (window.history.length > 1) {

@@ -7,42 +7,48 @@ type BackButtonProps = {
   label?: string;
   preferFallback?: boolean;
   storageKey?: string;
+  fallbackStorageKey?: string;
 };
+
+function safeHref(value: string | null) {
+  return value != null && value.startsWith("/") && !value.startsWith("//");
+}
 
 export default function BackButton({
   fallbackHref,
   label = "← 뒤로",
   preferFallback = false,
   storageKey,
+  fallbackStorageKey,
 }: BackButtonProps) {
   const router = useRouter();
 
-  function getStoredHref() {
-    if (!storageKey) return null;
+  function getStoredHref(key?: string) {
+    if (!key) return null;
     try {
-      const value = sessionStorage.getItem(storageKey);
-      if (!value || !value.startsWith("/") || value.startsWith("//")) return null;
-      return value;
+      const value = sessionStorage.getItem(key);
+      return safeHref(value) ? value : null;
     } catch {
       return null;
     }
   }
 
+  function getTargetHref() {
+    return getStoredHref(storageKey) ?? getStoredHref(fallbackStorageKey) ?? fallbackHref;
+  }
+
   function handleBack() {
-    if (preferFallback) {
-      router.push(fallbackHref);
-      return;
-    }
-    const storedHref = getStoredHref();
-    if (storedHref) {
-      router.push(storedHref);
+    const target = getTargetHref();
+    const hasStoredTarget = Boolean(getStoredHref(storageKey) ?? getStoredHref(fallbackStorageKey));
+    if (preferFallback || hasStoredTarget) {
+      router.push(target);
       return;
     }
     if (window.history.length > 1) {
       router.back();
       return;
     }
-    router.push(fallbackHref);
+    router.push(target);
   }
 
   return (

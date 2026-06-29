@@ -21,10 +21,12 @@ export default function StoredReturnLink({
       const stored = sessionStorage.getItem(storageKey);
       if (stored && stored.startsWith("/") && !stored.startsWith("//")) {
         setResolvedHref(stored);
+        return;
       }
     } catch {
-      setResolvedHref(href);
+      /* keep fallback */
     }
+    setResolvedHref(href);
   }, [href, storageKey]);
 
   return (

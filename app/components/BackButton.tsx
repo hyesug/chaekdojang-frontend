@@ -5,12 +5,21 @@ import { useRouter } from "next/navigation";
 type BackButtonProps = {
   fallbackHref: string;
   label?: string;
+  preferFallback?: boolean;
 };
 
-export default function BackButton({ fallbackHref, label = "← 뒤로" }: BackButtonProps) {
+export default function BackButton({
+  fallbackHref,
+  label = "← 뒤로",
+  preferFallback = false,
+}: BackButtonProps) {
   const router = useRouter();
 
   function handleBack() {
+    if (preferFallback) {
+      router.push(fallbackHref);
+      return;
+    }
     if (window.history.length > 1) {
       router.back();
       return;

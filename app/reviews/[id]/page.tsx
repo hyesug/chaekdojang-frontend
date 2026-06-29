@@ -134,7 +134,7 @@ export default async function PublicReviewPage({ params, searchParams }: Props) 
       />
       <article className="max-w-3xl mx-auto px-4 py-8 sm:py-12">
         <div className="mb-5 flex items-center justify-between gap-3">
-          <BackButton fallbackHref={bookReviewsHref} />
+          <BackButton fallbackHref={bookReviewsHref} preferFallback={Boolean(returnTo)} />
           <Link
             href="/write"
             className="px-4 py-2 rounded-full bg-brown-700 text-white text-sm hover:bg-brown-800"

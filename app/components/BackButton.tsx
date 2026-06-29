@@ -4,9 +4,10 @@ import { useRouter } from "next/navigation";
 
 type BackButtonProps = {
   fallbackHref: string;
+  label?: string;
 };
 
-export default function BackButton({ fallbackHref }: BackButtonProps) {
+export default function BackButton({ fallbackHref, label = "← 뒤로" }: BackButtonProps) {
   const router = useRouter();
 
   function handleBack() {
@@ -23,7 +24,7 @@ export default function BackButton({ fallbackHref }: BackButtonProps) {
       onClick={handleBack}
       className="text-sm text-brown-500 hover:text-brown-700"
     >
-      ← 뒤로
+      {label}
     </button>
   );
 }

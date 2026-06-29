@@ -390,7 +390,7 @@ export default function ReviewCard({
   const [instaCopied, setInstaCopied] = useState(false);
   const canOpenHiddenDetail = hidden && isOwner;
   const reviewHref = returnTo
-    ? `/reviews/${post.id}?returnTo=${encodeURIComponent(returnTo)}`
+    ? `/reviews/${post.id}?${new URLSearchParams({ returnTo }).toString()}`
     : `/reviews/${post.id}`;
 
   useEffect(() => {

@@ -196,12 +196,12 @@ export default function FeedPage() {
         </Link>
       </div>
 
-      <section className="mb-6 rounded-lg border border-cream-200 bg-white p-4 shadow-sm">
-        <div>
-          <h2 className="font-serif text-xl font-bold text-brown-800">
+      <section className="mb-5 rounded-md border border-cream-200 bg-cream-50 px-3 py-2.5">
+        <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-2">
+          <h2 className="text-sm font-medium text-brown-700">
             긴 독후감을 AI 독서카드로 정리해보세요.
           </h2>
-          <p className="mt-1 text-sm leading-6 text-brown-500">
+          <p className="text-xs leading-5 text-brown-400">
             한 줄 감상, 감정 키워드, 추천 대상까지 자동으로 정리됩니다.
           </p>
         </div>

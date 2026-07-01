@@ -271,20 +271,42 @@ function ellipsisText(ctx: CanvasRenderingContext2D, text: string, maxW: number)
 }
 
 async function loadBookCover(src: string) {
-  const candidates = [nextImageProxy(src), src].filter(Boolean) as string[];
+  const candidates = [bookCoverProxy(src), nextImageProxy(src), normalizeImageUrl(src)].filter(Boolean) as string[];
   for (const candidate of candidates) {
-    const img = await loadImage(candidate).catch(() => null);
+    const img = await loadImageBlob(candidate).catch(() => null);
     if (img) return img;
   }
   return null;
 }
 
+function bookCoverProxy(src: string) {
+  const normalized = normalizeImageUrl(src);
+  return normalized ? `/image-proxy?url=${encodeURIComponent(normalized)}` : null;
+}
+
 function nextImageProxy(src: string) {
+  const normalized = normalizeImageUrl(src);
+  if (!normalized) return null;
+  return `/_next/image?url=${encodeURIComponent(normalized)}&w=256&q=90`;
+}
+
+function normalizeImageUrl(src: string) {
   try {
-    const url = new URL(src);
-    return `/_next/image?url=${encodeURIComponent(url.toString())}&w=256&q=90`;
+    return new URL(src.startsWith("//") ? `https:${src}` : src).toString();
   } catch {
     return null;
+  }
+}
+
+async function loadImageBlob(src: string) {
+  const res = await fetch(src, { cache: "force-cache" });
+  if (!res.ok) throw new Error("image fetch failed");
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  try {
+    return await loadImage(url);
+  } finally {
+    URL.revokeObjectURL(url);
   }
 }
 

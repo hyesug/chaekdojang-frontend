@@ -7,6 +7,7 @@ import BookReturnLink from "../../components/BookReturnLink";
 import ReviewAiSummaryCard from "../../components/ReviewAiSummaryCard";
 import ReviewEngagement from "../../components/ReviewEngagement";
 import ReviewCard, { type Review } from "../../components/ReviewCard";
+import ReviewReturnMemory from "../../components/ReviewReturnMemory";
 import ReviewViewTracker from "../../components/ReviewViewTracker";
 import { bookReturnStorageKey } from "../../lib/returnMemory";
 import {
@@ -136,6 +137,11 @@ export default async function PublicReviewPage({ params, searchParams }: Props) 
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,#fff8ea_0,#faf6ef_34%,#f2e4ce_100%)]">
+      <ReviewReturnMemory
+        bookId={review.book?.id ?? null}
+        reviewId={review.id}
+        returnTo={returnTo}
+      />
       <ReviewViewTracker reviewId={review.id} />
       <script
         type="application/ld+json"

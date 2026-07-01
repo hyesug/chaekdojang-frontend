@@ -425,6 +425,10 @@ export default function ReviewCard({
   }
 
   useEffect(() => {
+    rememberReturnTo();
+  }, [effectiveReturnTo, post.book?.id, post.id]);
+
+  useEffect(() => {
     const token = getToken();
     if (!token) {
       setCurrentUserId(null);

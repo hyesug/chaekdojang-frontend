@@ -35,7 +35,7 @@ export default function BackButton({
 
   function handleBack() {
     if (preferFallback) {
-      router.push(fallbackHref);
+      router.replace(fallbackHref);
       return;
     }
     const storedHref = getStoredHref(fallbackStorageKey) ?? getStoredHref(storageKey);

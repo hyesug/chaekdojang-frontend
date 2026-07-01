@@ -773,16 +773,10 @@ export default function ReviewCard({
             <p className="text-sm font-semibold text-brown-800">
               {post.aiSummary.oneLineReview}
             </p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {post.aiSummary.emotionKeywords.map((keyword) => (
-                <span key={keyword} className="rounded-full bg-white px-2 py-0.5 text-xs text-brown-500">
-                  {keyword}
-                </span>
-              ))}
+            <div className="mt-2 space-y-1 rounded-md bg-white px-2.5 py-1.5 text-xs text-brown-500">
+              <p>추천 대상: {post.aiSummary.recommendedFor}</p>
+              <p>인상 깊은 지점: {post.aiSummary.impressivePoint}</p>
             </div>
-            <p className="mt-2 text-xs text-brown-400">
-              추천: {post.aiSummary.recommendedFor}
-            </p>
           </div>
         )}
 

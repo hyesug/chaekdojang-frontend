@@ -8,6 +8,7 @@ import ProfileAvatar from "./ProfileAvatar";
 import { API_BASE } from "../lib/api";
 import { authFetch, getValidToken } from "../lib/auth";
 import { buildSearchLinks } from "../lib/purchaseLinks";
+import { bookReturnStorageKey } from "../lib/returnMemory";
 
 export type Review = {
   id: number;
@@ -415,6 +416,9 @@ export default function ReviewCard({
     if (!effectiveReturnTo) return;
     try {
       sessionStorage.setItem(`chaekdojang:return-to:${post.id}`, effectiveReturnTo);
+      if (post.book?.id) {
+        sessionStorage.setItem(bookReturnStorageKey(post.book.id), effectiveReturnTo);
+      }
     } catch {
       /* storage may be unavailable */
     }

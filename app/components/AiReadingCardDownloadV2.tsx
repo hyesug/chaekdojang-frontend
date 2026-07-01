@@ -32,7 +32,7 @@ export default function AiReadingCardDownloadV2({ card }: { card: AiReadingCardD
   }
 
   return (
-    <button type="button" onClick={save} disabled={saving} className="rounded-full bg-brown-700 px-3 py-1.5 text-xs text-white hover:bg-brown-800 disabled:opacity-50">
+    <button type="button" onClick={save} disabled={saving} className="rounded-full bg-brown-700 px-3 py-1.5 text-xs text-white hover:bg-brown-800 disabled:opacity-50 sm:w-full">
       {saving ? "저장 중" : "이미지로 저장"}
     </button>
   );

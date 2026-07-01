@@ -256,38 +256,6 @@ export default function ReviewAiSummaryCard({
 
   return (
     <section className="mt-4 rounded-lg border border-cream-200 bg-[#fbf7f0] p-3 shadow-sm sm:p-3.5">
-      <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-brown-400">
-            AI READING CARD
-          </p>
-        </div>
-        {isOwner && canShowSummary && (
-          <div className="flex flex-wrap justify-end gap-2 text-xs">
-            {readingCard && <AiReadingCardDownload card={readingCard} />}
-            {!editing && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setEditing(true)}
-                  className="text-xs text-brown-500 hover:text-brown-800"
-                >
-                  수정하기
-                </button>
-                <button
-                  type="button"
-                  onClick={regenerate}
-                  disabled={saving}
-                  className="text-xs text-brown-500 hover:text-brown-800 disabled:opacity-50"
-                >
-                  AI로 다시 생성
-                </button>
-              </>
-            )}
-          </div>
-        )}
-      </div>
-
       {statusText && <StatusBox text={statusText} compact />}
 
       {!summary && !loading && (
@@ -342,8 +310,30 @@ export default function ReviewAiSummaryCard({
       )}
 
       {canShowSummary && !editing && readingCard && (
-        <div className="max-w-[520px]">
-          <SummaryView card={readingCard} />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+          <div className="w-full max-w-[520px]">
+            <SummaryView card={readingCard} />
+          </div>
+          {isOwner && (
+            <div className="flex shrink-0 flex-row flex-wrap gap-2 text-xs sm:w-28 sm:flex-col">
+              <AiReadingCardDownload card={readingCard} />
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="rounded-full border border-brown-200 bg-white px-3 py-1.5 text-xs text-brown-500 hover:border-brown-400 hover:text-brown-800"
+              >
+                수정하기
+              </button>
+              <button
+                type="button"
+                onClick={regenerate}
+                disabled={saving}
+                className="rounded-full border border-brown-200 bg-white px-3 py-1.5 text-xs text-brown-500 hover:border-brown-400 hover:text-brown-800 disabled:opacity-50"
+              >
+                AI로 다시 생성
+              </button>
+            </div>
+          )}
         </div>
       )}
 

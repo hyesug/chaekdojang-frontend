@@ -149,12 +149,16 @@ export default function ReviewAiSummaryCard({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (res.ok) {
-        const json = await res.json();
-        const nextSummary = Object.prototype.hasOwnProperty.call(json, "data") ? json.data : json;
-        setSummary(nextSummary ?? null);
-        setEditing(false);
+      const json = await readJson(res);
+      if (!res.ok) {
+        alert(json?.message || "AI 독서카드 수정 내용을 저장하지 못했어요.");
+        return;
       }
+      const nextSummary = Object.prototype.hasOwnProperty.call(json ?? {}, "data") ? json?.data : json;
+      setSummary(toEditedSummary(payload, nextSummary));
+      setEditing(false);
+    } catch {
+      alert("AI 독서카드 수정 내용을 저장하지 못했어요.");
     } finally {
       setSaving(false);
     }
@@ -201,6 +205,40 @@ export default function ReviewAiSummaryCard({
       emotionKeywords: keywords,
       recommendedFor: form.recommendedFor.trim(),
       impressivePoint: form.impressivePoint.trim(),
+    };
+  }
+
+  async function readJson(res: Response) {
+    try {
+      return await res.json();
+    } catch {
+      return null;
+    }
+  }
+
+  function toEditedSummary(payload: {
+    oneLineReview: string;
+    emotionKeywords: string[];
+    recommendedFor: string;
+    impressivePoint: string;
+  }, nextSummary: ReviewAiSummary | null): ReviewAiSummary {
+    const base = nextSummary ?? summary;
+    const now = new Date().toISOString();
+    return {
+      reviewId,
+      retryCount: base?.retryCount ?? 0,
+      errorMessage: base?.errorMessage ?? null,
+      createdAt: base?.createdAt ?? now,
+      completedAt: base?.completedAt ?? now,
+      ...base,
+      oneLineReview: payload.oneLineReview,
+      emotionKeywords: payload.emotionKeywords,
+      recommendedFor: payload.recommendedFor,
+      impressivePoint: payload.impressivePoint,
+      status: "EDITED",
+      summarySource: "USER_EDITED",
+      userEdited: true,
+      updatedAt: base?.updatedAt ?? now,
     };
   }
 

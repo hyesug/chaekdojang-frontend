@@ -1,31 +1,29 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import StoredReturnLink from "./StoredReturnLink";
 import { bookReturnStorageKey } from "./BookReturnMemory";
 
-type Props = {
+export default function BookReturnLink({
+  bookId,
+  href,
+  preferHref = false,
+  children,
+  className,
+}: {
   bookId: number | string;
-  fallbackHref: string;
+  href: string;
+  preferHref?: boolean;
   children: React.ReactNode;
   className?: string;
-};
-
-function safe(value: string) {
-  return value.startsWith("/") && !value.startsWith("//");
-}
-
-export default function BookReturnLink({ bookId, fallbackHref, children, className }: Props) {
-  const [href, setHref] = useState(fallbackHref);
-
-  useEffect(() => {
-    try {
-      const stored = sessionStorage.getItem(bookReturnStorageKey(bookId));
-      if (stored && safe(stored)) setHref(stored);
-    } catch {
-      setHref(fallbackHref);
-    }
-  }, [bookId, fallbackHref]);
-
-  return <Link href={href} className={className}>{children}</Link>;
+}) {
+  return (
+    <StoredReturnLink
+      href={href}
+      storageKey={bookReturnStorageKey(bookId)}
+      preferHref={preferHref}
+      className={className}
+    >
+      {children}
+    </StoredReturnLink>
+  );
 }

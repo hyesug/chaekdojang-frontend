@@ -10,7 +10,13 @@ function isSafeInternalHref(value: string) {
   return value.startsWith("/") && !value.startsWith("//");
 }
 
-export default function BookReturnMemory({ bookId, href }: { bookId: number | string; href: string }) {
+export default function BookReturnMemory({
+  bookId,
+  href,
+}: {
+  bookId: number | string;
+  href: string;
+}) {
   useEffect(() => {
     if (!isSafeInternalHref(href)) return;
     try {

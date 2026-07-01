@@ -4,10 +4,10 @@ import { useRouter } from "next/navigation";
 
 type BackButtonProps = {
   fallbackHref: string;
+  fallbackStorageKey?: string;
   label?: string;
   preferFallback?: boolean;
   storageKey?: string;
-  fallbackStorageKey?: string;
 };
 
 function safeHref(value: string | null) {
@@ -16,10 +16,10 @@ function safeHref(value: string | null) {
 
 export default function BackButton({
   fallbackHref,
+  fallbackStorageKey,
   label = "← 뒤로",
   preferFallback = false,
   storageKey,
-  fallbackStorageKey,
 }: BackButtonProps) {
   const router = useRouter();
 
@@ -33,22 +33,21 @@ export default function BackButton({
     }
   }
 
-  function getTargetHref() {
-    return getStoredHref(storageKey) ?? getStoredHref(fallbackStorageKey) ?? fallbackHref;
-  }
-
   function handleBack() {
-    const target = getTargetHref();
-    const hasStoredTarget = Boolean(getStoredHref(storageKey) ?? getStoredHref(fallbackStorageKey));
-    if (preferFallback || hasStoredTarget) {
-      router.push(target);
+    if (preferFallback) {
+      router.push(fallbackHref);
+      return;
+    }
+    const storedHref = getStoredHref(storageKey) ?? getStoredHref(fallbackStorageKey);
+    if (storedHref) {
+      router.push(storedHref);
       return;
     }
     if (window.history.length > 1) {
       router.back();
       return;
     }
-    router.push(target);
+    router.push(fallbackHref);
   }
 
   return (

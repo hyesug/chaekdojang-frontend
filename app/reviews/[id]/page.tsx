@@ -3,11 +3,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import BackButton from "../../components/BackButton";
+import BookReturnLink from "../../components/BookReturnLink";
+import { bookReturnStorageKey } from "../../components/BookReturnMemory";
 import ReviewAiSummaryCard from "../../components/ReviewAiSummaryCard";
 import ReviewEngagement from "../../components/ReviewEngagement";
 import ReviewCard, { type Review } from "../../components/ReviewCard";
 import ReviewViewTracker from "../../components/ReviewViewTracker";
-import StoredReturnLink from "../../components/StoredReturnLink";
 import {
   fetchApiData,
   reviewDescription,
@@ -84,8 +85,15 @@ function Stars({ rating }: { rating: number }) {
 }
 
 function safeInternalHref(value?: string) {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) return null;
-  return value;
+  if (!value) return null;
+  const candidates = [value];
+  try {
+    candidates.push(decodeURIComponent(value));
+  } catch {
+    /* keep the original candidate */
+  }
+
+  return candidates.find((candidate) => candidate.startsWith("/") && !candidate.startsWith("//")) ?? null;
 }
 
 export default async function PublicReviewPage({ params, searchParams }: Props) {
@@ -138,6 +146,7 @@ export default async function PublicReviewPage({ params, searchParams }: Props) 
         <div className="mb-5 flex items-center justify-between gap-3">
           <BackButton
             fallbackHref={bookReviewsHref}
+            fallbackStorageKey={review.book?.id ? bookReturnStorageKey(review.book.id) : undefined}
             preferFallback={Boolean(returnTo)}
             storageKey={returnStorageKey}
           />
@@ -216,13 +225,14 @@ export default async function PublicReviewPage({ params, searchParams }: Props) 
 
             {review.book?.id && (
               <div className="mt-5 text-right text-sm">
-                <StoredReturnLink
+                <BookReturnLink
+                  bookId={review.book.id}
                   href={bookReviewsHref}
-                  storageKey={returnStorageKey}
+                  preferHref={Boolean(returnTo)}
                   className="text-brown-600 hover:underline"
                 >
                   이 책의 다른 독후감 보기
-                </StoredReturnLink>
+                </BookReturnLink>
               </div>
             )}
           </div>

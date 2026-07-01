@@ -55,13 +55,13 @@ async function drawCard(card: AiReadingCardData) {
 }
 
 function background(ctx: CanvasRenderingContext2D) {
-  ctx.fillStyle = "#f4eee5";
+  ctx.fillStyle = "#f2ece4";
   ctx.fillRect(0, 0, SIZE, SIZE);
 
   ctx.save();
-  ctx.shadowColor = "rgba(45, 31, 20, 0.22)";
-  ctx.shadowBlur = 28;
-  ctx.shadowOffsetY = 10;
+  ctx.shadowColor = "rgba(45, 31, 20, 0.18)";
+  ctx.shadowBlur = 24;
+  ctx.shadowOffsetY = 8;
   rounded(ctx, 28, 28, SIZE - 56, SIZE - 56, 10);
   ctx.fillStyle = "#fffaf3";
   ctx.fill();
@@ -79,18 +79,18 @@ function background(ctx: CanvasRenderingContext2D) {
   rounded(ctx, 28, 28, SIZE - 56, SIZE - 56, 10);
   ctx.clip();
 
-  const grad = ctx.createRadialGradient(930, 750, 40, 900, 785, 410);
-  grad.addColorStop(0, "rgba(226,214,194,0.56)");
+  const grad = ctx.createRadialGradient(920, 775, 40, 890, 800, 370);
+  grad.addColorStop(0, "rgba(226,214,194,0.42)");
   grad.addColorStop(1, "rgba(226,214,194,0)");
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, SIZE, SIZE);
 
-  ctx.fillStyle = "rgba(231,219,200,0.46)";
+  ctx.fillStyle = "rgba(231,219,200,0.32)";
   ctx.beginPath();
-  ctx.ellipse(840, 820, 245, 318, -0.72, 0, Math.PI * 2);
+  ctx.ellipse(855, 830, 230, 300, -0.72, 0, Math.PI * 2);
   ctx.fill();
   ctx.beginPath();
-  ctx.ellipse(955, 775, 172, 246, -0.2, 0, Math.PI * 2);
+  ctx.ellipse(965, 785, 155, 230, -0.2, 0, Math.PI * 2);
   ctx.fill();
 
   leaf(ctx);
@@ -104,10 +104,10 @@ function background(ctx: CanvasRenderingContext2D) {
 
 function header(ctx: CanvasRenderingContext2D) {
   ctx.fillStyle = "#8f6d55";
-  ctx.font = "700 19px Arial, sans-serif";
+  ctx.font = "700 18px Arial, sans-serif";
   ctx.fillText("CHAEKDOJANG", PAD, 118);
   ctx.fillStyle = "#b58f73";
-  ctx.font = "700 18px Arial, sans-serif";
+  ctx.font = "700 17px Arial, sans-serif";
   ctx.fillText("AI READING CARD", PAD, 146);
 }
 
@@ -129,23 +129,13 @@ function stamp(ctx: CanvasRenderingContext2D) {
 }
 
 function mainText(ctx: CanvasRenderingContext2D, text: string) {
-  const size = text.length > 64 ? 62 : text.length > 42 ? 72 : 84;
+  const size = text.length > 64 ? 50 : text.length > 42 ? 58 : 68;
   ctx.fillStyle = "#2b1a10";
   ctx.font = `600 ${size}px Georgia, 'Times New Roman', serif`;
-  const bottom = wrap(ctx, text, PAD, 275, 760, size * 1.26, 4);
-  ctx.save();
-  ctx.globalAlpha = 0.6;
-  ctx.strokeStyle = "#e8b7a3";
-  ctx.lineWidth = 12;
-  ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.moveTo(PAD + 268, 412);
-  ctx.lineTo(PAD + 438, 405);
-  ctx.stroke();
-  ctx.restore();
+  const bottom = wrap(ctx, text, PAD, 270, 760, size * 1.28, 4);
 
   ctx.strokeStyle = "#8f6d55";
-  ctx.lineWidth = 1.8;
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(PAD, bottom + 58);
   ctx.lineTo(PAD + 78, bottom + 58);
@@ -153,11 +143,11 @@ function mainText(ctx: CanvasRenderingContext2D, text: string) {
 }
 
 async function bookInfo(ctx: CanvasRenderingContext2D, card: AiReadingCardData) {
-  const top = 642;
-  const coverW = 138;
-  const coverH = 196;
+  const top = 650;
+  const coverW = 128;
+  const coverH = 184;
   if (card.bookThumbnail) {
-    const img = await loadImage(card.bookThumbnail).catch(() => null);
+    const img = await loadBookCover(card.bookThumbnail);
     if (img) {
       ctx.save();
       rounded(ctx, PAD, top, coverW, coverH, 8);
@@ -170,14 +160,14 @@ async function bookInfo(ctx: CanvasRenderingContext2D, card: AiReadingCardData) 
     } else cover(ctx, top, coverW, coverH);
   } else cover(ctx, top, coverW, coverH);
 
-  const x = PAD + coverW + 46;
+  const x = PAD + coverW + 42;
   ctx.fillStyle = "#2b1a10";
-  ctx.font = "700 35px Georgia, 'Times New Roman', serif";
-  wrap(ctx, card.bookTitle || "책 제목", x, top + 60, 600, 45, 2);
+  ctx.font = "700 31px Georgia, 'Times New Roman', serif";
+  wrap(ctx, card.bookTitle || "책 제목", x, top + 56, 610, 40, 2);
   ctx.fillStyle = "#8c6047";
-  ctx.font = "400 23px Arial, sans-serif";
-  ctx.fillText(`| ${card.bookAuthor || "저자 미상"}`, x, top + 142);
-  chips(ctx, card.emotionKeywords?.slice(0, 5) ?? ["성찰", "감상", "기록"], x, top + 194);
+  ctx.font = "400 21px Arial, sans-serif";
+  ctx.fillText(`| ${card.bookAuthor || "저자 미상"}`, x, top + 132);
+  chips(ctx, card.emotionKeywords?.slice(0, 5) ?? ["성찰", "감상", "기록"], x, top + 182);
 }
 
 function cover(ctx: CanvasRenderingContext2D, y: number, w: number, h: number) {
@@ -192,18 +182,18 @@ function cover(ctx: CanvasRenderingContext2D, y: number, w: number, h: number) {
 }
 
 function chips(ctx: CanvasRenderingContext2D, values: string[], x: number, y: number) {
-  ctx.font = "400 21px Arial, sans-serif";
+  ctx.font = "400 18px Arial, sans-serif";
   let cursor = x;
   for (const raw of values) {
     const label = raw.trim();
     if (!label) continue;
-    const w = Math.min(ctx.measureText(label).width + 36, 180);
-    rounded(ctx, cursor, y - 30, w, 40, 20);
+    const w = Math.min(ctx.measureText(label).width + 32, 168);
+    rounded(ctx, cursor, y - 27, w, 36, 18);
     ctx.fillStyle = "#eadfce";
     ctx.fill();
     ctx.fillStyle = "#6f5949";
-    ctx.fillText(label, cursor + 18, y);
-    cursor += w + 13;
+    ctx.fillText(label, cursor + 16, y);
+    cursor += w + 11;
   }
 }
 
@@ -221,11 +211,11 @@ function footer(ctx: CanvasRenderingContext2D, name: string) {
 
 function leaf(ctx: CanvasRenderingContext2D) {
   ctx.save();
-  ctx.translate(812, 770);
+  ctx.translate(826, 780);
   ctx.rotate(-0.65);
-  ctx.strokeStyle = "rgba(126, 99, 70, 0.7)";
-  ctx.fillStyle = "rgba(126, 99, 70, 0.16)";
-  ctx.lineWidth = 3;
+  ctx.strokeStyle = "rgba(126, 99, 70, 0.5)";
+  ctx.fillStyle = "rgba(126, 99, 70, 0.11)";
+  ctx.lineWidth = 2.4;
   ctx.beginPath();
   ctx.moveTo(0, 160);
   ctx.bezierCurveTo(22, 92, 56, 40, 100, -18);
@@ -278,6 +268,24 @@ function ellipsisText(ctx: CanvasRenderingContext2D, text: string, maxW: number)
   let value = text;
   while (value.length > 1 && ctx.measureText(value).width > maxW) value = `${value.slice(0, -2)}…`;
   return value;
+}
+
+async function loadBookCover(src: string) {
+  const candidates = [nextImageProxy(src), src].filter(Boolean) as string[];
+  for (const candidate of candidates) {
+    const img = await loadImage(candidate).catch(() => null);
+    if (img) return img;
+  }
+  return null;
+}
+
+function nextImageProxy(src: string) {
+  try {
+    const url = new URL(src);
+    return `/_next/image?url=${encodeURIComponent(url.toString())}&w=256&q=90`;
+  } catch {
+    return null;
+  }
 }
 
 function rounded(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {

@@ -66,18 +66,28 @@ export default function ReviewAiSummaryCard({
   const isOwner = authorId != null && currentUserId === authorId;
   const isGenerating = summary?.status === "PENDING" || summary?.status === "PROCESSING";
   const canShowSummary = summary?.status === "COMPLETED" || summary?.status === "EDITED";
+  const currentKeywords = editing
+    ? form.emotionKeywords
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .slice(0, 5)
+    : summary?.emotionKeywords ?? [];
+  const currentOneLineReview = editing ? form.oneLineReview.trim() : summary?.oneLineReview ?? "";
+  const currentRecommendedFor = editing ? form.recommendedFor.trim() : summary?.recommendedFor ?? "";
+  const currentImpressivePoint = editing ? form.impressivePoint.trim() : summary?.impressivePoint ?? "";
   const readingCard: AiReadingCardData | null =
-    canShowSummary && summary?.oneLineReview
+    canShowSummary && currentOneLineReview
       ? {
           bookTitle,
           bookAuthor,
           bookThumbnail,
           authorName: authorNickname,
           authorNickname,
-          oneLineReview: summary.oneLineReview,
-          emotionKeywords: summary.emotionKeywords,
-          recommendedFor: summary.recommendedFor ?? "",
-          impressivePoint: summary.impressivePoint,
+          oneLineReview: currentOneLineReview,
+          emotionKeywords: currentKeywords,
+          recommendedFor: currentRecommendedFor,
+          impressivePoint: currentImpressivePoint,
         }
       : null;
 
@@ -207,32 +217,35 @@ export default function ReviewAiSummaryCard({
   }
 
   return (
-    <section className="mt-4 rounded-lg border border-cream-200 bg-gradient-to-br from-cream-50 to-white p-3 sm:p-4">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+    <section className="mt-4 rounded-lg border border-cream-200 bg-[#fbf7f0] p-3 shadow-sm sm:p-3.5">
+      <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-brown-300">
-            AI Reading Card
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-brown-400">
+            AI READING CARD
           </p>
-          <h2 className="mt-0.5 font-serif text-base font-bold text-brown-800">AI 독서카드</h2>
         </div>
-        {isOwner && canShowSummary && !editing && (
+        {isOwner && canShowSummary && (
           <div className="flex flex-wrap justify-end gap-2 text-xs">
             {readingCard && <AiReadingCardDownload card={readingCard} />}
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              className="text-xs text-brown-500 hover:text-brown-800"
-            >
-              수정하기
-            </button>
-            <button
-              type="button"
-              onClick={regenerate}
-              disabled={saving}
-              className="text-xs text-brown-500 hover:text-brown-800 disabled:opacity-50"
-            >
-              AI로 다시 생성
-            </button>
+            {!editing && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className="text-xs text-brown-500 hover:text-brown-800"
+                >
+                  수정하기
+                </button>
+                <button
+                  type="button"
+                  onClick={regenerate}
+                  disabled={saving}
+                  className="text-xs text-brown-500 hover:text-brown-800 disabled:opacity-50"
+                >
+                  AI로 다시 생성
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -290,9 +303,9 @@ export default function ReviewAiSummaryCard({
         </div>
       )}
 
-      {canShowSummary && !editing && summary && readingCard && (
-        <div>
-          <SummaryView summary={summary} />
+      {canShowSummary && !editing && readingCard && (
+        <div className="max-w-[520px]">
+          <SummaryView card={readingCard} />
         </div>
       )}
 
@@ -354,36 +367,50 @@ function StatusBox({ text, compact = false }: { text: string; compact?: boolean 
   );
 }
 
-function SummaryView({ summary }: { summary: ReviewAiSummary }) {
+function SummaryView({ card }: { card: AiReadingCardData }) {
   return (
-    <div className="space-y-3">
-      <blockquote className="border-l-2 border-brown-300 pl-3">
-        <p className="font-serif text-lg font-bold leading-relaxed text-brown-900 sm:text-xl">
-          {summary.oneLineReview}
+    <div className="relative overflow-hidden rounded-lg border border-[#ded2c4] bg-[#fffaf2] px-5 py-4 shadow-sm">
+      <div className="pointer-events-none absolute -bottom-16 -right-10 h-48 w-48 rounded-full bg-[#e9dfd0]" />
+      <div className="pointer-events-none absolute bottom-4 right-7 h-24 w-16 rotate-45 border-l border-[#a48c70]/45" />
+      <div className="relative">
+        <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-brown-300">
+          CHAEKDOJANG
         </p>
-      </blockquote>
-
-      <div className="flex flex-wrap gap-1">
-        {summary.emotionKeywords.map((keyword) => (
-          <span
-            key={keyword}
-            className="rounded-full border border-cream-200 bg-white px-2 py-0.5 text-[11px] text-brown-500"
-          >
-            {keyword}
-          </span>
-        ))}
+        <p className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.2em] text-brown-300">
+          AI READING CARD
+        </p>
+        <p className="mt-5 max-w-[390px] font-serif text-[21px] font-semibold leading-snug text-brown-900 sm:text-[24px]">
+          {card.oneLineReview}
+        </p>
+        <div className="mt-4 h-px w-10 bg-brown-300" />
+        <div className="mt-4 flex gap-3">
+          {card.bookThumbnail ? (
+            <img
+              src={card.bookThumbnail}
+              alt={card.bookTitle}
+              className="h-[82px] w-[58px] shrink-0 rounded object-cover shadow"
+            />
+          ) : (
+            <div className="flex h-[82px] w-[58px] shrink-0 items-end justify-center rounded bg-brown-200 pb-2 font-serif text-sm text-white shadow">
+              책
+            </div>
+          )}
+          <div className="min-w-0 pt-1">
+            <p className="truncate text-sm font-semibold text-brown-900">{card.bookTitle}</p>
+            <p className="mt-1 truncate text-[11px] text-brown-400">| {card.bookAuthor || "저자 미상"}</p>
+            <div className="mt-2 flex flex-wrap gap-1">
+              {card.emotionKeywords.slice(0, 4).map((keyword) => (
+                <span
+                  key={keyword}
+                  className="rounded-full bg-[#eee5d8] px-2 py-0.5 text-[10px] text-brown-500"
+                >
+                  {keyword}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
-
-      <dl className="grid gap-2 text-xs leading-5 text-brown-600 sm:grid-cols-2">
-        <div>
-          <dt className="mb-1 text-xs font-semibold text-brown-300">추천 대상</dt>
-          <dd className="text-brown-700">{summary.recommendedFor}</dd>
-        </div>
-        <div>
-          <dt className="mb-1 text-xs font-semibold text-brown-300">인상 깊은 지점</dt>
-          <dd className="text-brown-700">{summary.impressivePoint}</dd>
-        </div>
-      </dl>
     </div>
   );
 }

@@ -13,6 +13,7 @@ import { authFetch, clearToken, getValidToken, logout } from "../lib/auth";
 
 const BASE = API_BASE;
 const FEED_STATE_KEY = "chaekdojang:feed-state";
+const PROFILE_SCROLL_STATE_KEY = "chaekdojang:profile-scroll-state";
 const DELETE_CONFIRM_TEXT = "계정 삭제";
 const MAX_PROFILE_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_PROFILE_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
@@ -150,6 +151,7 @@ export default function ProfilePage() {
   const [officialSubmitting, setOfficialSubmitting] = useState(false);
   const [officialMessage, setOfficialMessage] = useState("");
   const reviewSearchRef = useRef<string>("");
+  const profileScrollRestoredRef = useRef(false);
 
   useEffect(() => {
     const token = getValidToken();
@@ -181,7 +183,12 @@ export default function ProfilePage() {
           bio: data.bio ?? "",
           profileImage: data.profileImage ?? "",
         });
-        loadReviews(token, 0, "");
+        const scrollState = readProfileScrollState();
+        const initialQuery = scrollState?.q ?? "";
+        setReviewSearchInput(initialQuery);
+        reviewSearchRef.current = initialQuery;
+        await loadReviewsThroughPage(token, scrollState?.page ?? 0, initialQuery);
+        restoreProfileScroll(scrollState);
         loadRecommendations(token);
         loadOfficialApplications(token);
       }
@@ -242,6 +249,53 @@ export default function ProfilePage() {
     } finally {
       setReviewLoadingMore(false);
     }
+  }
+
+  async function loadReviewsThroughPage(token: string, page: number, q: string) {
+    const targetPage = Math.max(0, page);
+    for (let nextPage = 0; nextPage <= targetPage; nextPage += 1) {
+      await loadReviews(token, nextPage, q);
+    }
+  }
+
+  function readProfileScrollState() {
+    try {
+      const raw = sessionStorage.getItem(PROFILE_SCROLL_STATE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as { y?: number; page?: number; q?: string; ts?: number };
+      if (!parsed.ts || Date.now() - parsed.ts > 30 * 60 * 1000) return null;
+      return {
+        y: Number.isFinite(parsed.y) ? Math.max(0, parsed.y ?? 0) : 0,
+        page: Number.isFinite(parsed.page) ? Math.max(0, parsed.page ?? 0) : 0,
+        q: typeof parsed.q === "string" ? parsed.q : "",
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  function rememberProfileScroll() {
+    try {
+      sessionStorage.setItem(
+        PROFILE_SCROLL_STATE_KEY,
+        JSON.stringify({
+          y: window.scrollY,
+          page: reviewPage,
+          q: reviewSearchRef.current,
+          ts: Date.now(),
+        })
+      );
+    } catch {
+      /* storage may be unavailable */
+    }
+  }
+
+  function restoreProfileScroll(state: ReturnType<typeof readProfileScrollState>) {
+    if (!state || profileScrollRestoredRef.current) return;
+    profileScrollRestoredRef.current = true;
+    window.requestAnimationFrame(() => {
+      window.setTimeout(() => window.scrollTo({ top: state.y, behavior: "auto" }), 0);
+    });
   }
 
   function handleReviewSearch(e: React.FormEvent) {
@@ -1075,6 +1129,8 @@ export default function ProfilePage() {
                 key={post.id}
                 post={post}
                 forceOwner
+                returnTo="/profile"
+                onNavigateToDetail={rememberProfileScroll}
                 onVisibilityChange={(updated) => {
                   setReviews((prev) =>
                     prev.map((item) => (item.id === updated.id ? updated : item))

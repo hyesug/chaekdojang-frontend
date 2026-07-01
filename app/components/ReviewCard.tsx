@@ -344,11 +344,13 @@ function EditModal({
 export default function ReviewCard({
   post,
   forceOwner = false,
+  onNavigateToDetail,
   onVisibilityChange,
   returnTo,
 }: {
   post: Review;
   forceOwner?: boolean;
+  onNavigateToDetail?: () => void;
   onVisibilityChange?: (review: Review) => void;
   returnTo?: string;
 }) {
@@ -811,6 +813,7 @@ export default function ReviewCard({
                 e.preventDefault();
                 return;
               }
+              onNavigateToDetail?.();
               rememberReturnTo();
             }}
           >

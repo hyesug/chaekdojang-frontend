@@ -207,13 +207,13 @@ export default function ReviewAiSummaryCard({
   }
 
   return (
-    <section className="mt-5 rounded-lg border border-cream-200 bg-gradient-to-br from-cream-50 to-white p-4 sm:p-5">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <section className="mt-4 rounded-lg border border-cream-200 bg-gradient-to-br from-cream-50 to-white p-3 sm:p-4">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-brown-300">
             AI Reading Card
           </p>
-          <h2 className="mt-1 font-serif text-lg font-bold text-brown-800">AI 독서카드</h2>
+          <h2 className="mt-0.5 font-serif text-base font-bold text-brown-800">AI 독서카드</h2>
         </div>
         {isOwner && canShowSummary && !editing && (
           <div className="flex flex-wrap justify-end gap-2 text-xs">
@@ -356,25 +356,25 @@ function StatusBox({ text, compact = false }: { text: string; compact?: boolean 
 
 function SummaryView({ summary }: { summary: ReviewAiSummary }) {
   return (
-    <div className="space-y-4">
-      <blockquote className="border-l-2 border-brown-300 pl-4">
-        <p className="font-serif text-xl font-bold leading-relaxed text-brown-900 sm:text-2xl">
+    <div className="space-y-3">
+      <blockquote className="border-l-2 border-brown-300 pl-3">
+        <p className="font-serif text-lg font-bold leading-relaxed text-brown-900 sm:text-xl">
           {summary.oneLineReview}
         </p>
       </blockquote>
 
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-1">
         {summary.emotionKeywords.map((keyword) => (
           <span
             key={keyword}
-            className="rounded-full border border-cream-200 bg-white px-2.5 py-1 text-xs text-brown-500"
+            className="rounded-full border border-cream-200 bg-white px-2 py-0.5 text-[11px] text-brown-500"
           >
             {keyword}
           </span>
         ))}
       </div>
 
-      <dl className="grid gap-3 text-sm leading-6 text-brown-600 sm:grid-cols-2">
+      <dl className="grid gap-2 text-xs leading-5 text-brown-600 sm:grid-cols-2">
         <div>
           <dt className="mb-1 text-xs font-semibold text-brown-300">추천 대상</dt>
           <dd className="text-brown-700">{summary.recommendedFor}</dd>

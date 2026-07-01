@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { AiReadingCardData } from "../lib/aiReadingCard";
 
 const SIZE = 1080;
-const PAD = 82;
+const PAD = 88;
 
 export default function AiReadingCardDownloadV2({ card }: { card: AiReadingCardData }) {
   const [saving, setSaving] = useState(false);
@@ -55,16 +55,50 @@ async function drawCard(card: AiReadingCardData) {
 }
 
 function background(ctx: CanvasRenderingContext2D) {
-  ctx.fillStyle = "#fffaf3";
+  ctx.fillStyle = "#f4eee5";
   ctx.fillRect(0, 0, SIZE, SIZE);
-  const grad = ctx.createRadialGradient(850, 790, 80, 850, 790, 360);
-  grad.addColorStop(0, "rgba(228,210,188,0.45)");
-  grad.addColorStop(1, "rgba(228,210,188,0)");
+
+  ctx.save();
+  ctx.shadowColor = "rgba(45, 31, 20, 0.22)";
+  ctx.shadowBlur = 28;
+  ctx.shadowOffsetY = 10;
+  rounded(ctx, 28, 28, SIZE - 56, SIZE - 56, 10);
+  ctx.fillStyle = "#fffaf3";
+  ctx.fill();
+  ctx.restore();
+
+  const paper = ctx.createLinearGradient(28, 28, SIZE, SIZE);
+  paper.addColorStop(0, "rgba(255,255,255,0.88)");
+  paper.addColorStop(0.5, "rgba(255,250,243,0.92)");
+  paper.addColorStop(1, "rgba(243,231,214,0.96)");
+  rounded(ctx, 28, 28, SIZE - 56, SIZE - 56, 10);
+  ctx.fillStyle = paper;
+  ctx.fill();
+
+  ctx.save();
+  rounded(ctx, 28, 28, SIZE - 56, SIZE - 56, 10);
+  ctx.clip();
+
+  const grad = ctx.createRadialGradient(930, 750, 40, 900, 785, 410);
+  grad.addColorStop(0, "rgba(226,214,194,0.56)");
+  grad.addColorStop(1, "rgba(226,214,194,0)");
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, SIZE, SIZE);
-  ctx.strokeStyle = "#e3d4c1";
-  ctx.lineWidth = 3;
-  rounded(ctx, 34, 34, 1012, 1012, 14);
+
+  ctx.fillStyle = "rgba(231,219,200,0.46)";
+  ctx.beginPath();
+  ctx.ellipse(840, 820, 245, 318, -0.72, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(955, 775, 172, 246, -0.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  leaf(ctx);
+  ctx.restore();
+
+  ctx.strokeStyle = "#d7c7b6";
+  ctx.lineWidth = 2;
+  rounded(ctx, 28, 28, SIZE - 56, SIZE - 56, 10);
   ctx.stroke();
 }
 
@@ -83,34 +117,45 @@ function stamp(ctx: CanvasRenderingContext2D) {
   ctx.fillStyle = "#8b6349";
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.arc(922, 128, 49, 0, Math.PI * 2);
+  ctx.arc(928, 126, 49, 0, Math.PI * 2);
   ctx.stroke();
   ctx.font = "700 29px Georgia, serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText("冊", 922, 121);
+  ctx.fillText("冊", 928, 119);
   ctx.font = "400 13px Arial, sans-serif";
-  ctx.fillText("책도장", 922, 151);
+  ctx.fillText("책도장", 928, 151);
   ctx.restore();
 }
 
 function mainText(ctx: CanvasRenderingContext2D, text: string) {
-  const size = text.length > 64 ? 58 : text.length > 42 ? 66 : 76;
+  const size = text.length > 64 ? 62 : text.length > 42 ? 72 : 84;
   ctx.fillStyle = "#2b1a10";
-  ctx.font = `700 ${size}px Georgia, 'Times New Roman', serif`;
-  const bottom = wrap(ctx, text, PAD, 300, 850, size * 1.3, 4);
-  ctx.strokeStyle = "#8b6349";
-  ctx.lineWidth = 2;
+  ctx.font = `600 ${size}px Georgia, 'Times New Roman', serif`;
+  const bottom = wrap(ctx, text, PAD, 275, 760, size * 1.26, 4);
+  ctx.save();
+  ctx.globalAlpha = 0.6;
+  ctx.strokeStyle = "#e8b7a3";
+  ctx.lineWidth = 12;
+  ctx.lineCap = "round";
   ctx.beginPath();
-  ctx.moveTo(PAD, bottom + 36);
-  ctx.lineTo(PAD + 72, bottom + 36);
+  ctx.moveTo(PAD + 268, 412);
+  ctx.lineTo(PAD + 438, 405);
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.strokeStyle = "#8f6d55";
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.moveTo(PAD, bottom + 58);
+  ctx.lineTo(PAD + 78, bottom + 58);
   ctx.stroke();
 }
 
 async function bookInfo(ctx: CanvasRenderingContext2D, card: AiReadingCardData) {
   const top = 642;
-  const coverW = 128;
-  const coverH = 184;
+  const coverW = 138;
+  const coverH = 196;
   if (card.bookThumbnail) {
     const img = await loadImage(card.bookThumbnail).catch(() => null);
     if (img) {
@@ -125,14 +170,14 @@ async function bookInfo(ctx: CanvasRenderingContext2D, card: AiReadingCardData) 
     } else cover(ctx, top, coverW, coverH);
   } else cover(ctx, top, coverW, coverH);
 
-  const x = PAD + coverW + 38;
+  const x = PAD + coverW + 46;
   ctx.fillStyle = "#2b1a10";
   ctx.font = "700 35px Georgia, 'Times New Roman', serif";
-  wrap(ctx, card.bookTitle || "책 제목", x, top + 55, 650, 45, 2);
+  wrap(ctx, card.bookTitle || "책 제목", x, top + 60, 600, 45, 2);
   ctx.fillStyle = "#8c6047";
-  ctx.font = "400 24px Arial, sans-serif";
-  ctx.fillText(card.bookAuthor || "저자 미상", x, top + 145);
-  chips(ctx, card.emotionKeywords?.slice(0, 5) ?? ["성찰", "감상", "기록"], x, top + 196);
+  ctx.font = "400 23px Arial, sans-serif";
+  ctx.fillText(`| ${card.bookAuthor || "저자 미상"}`, x, top + 142);
+  chips(ctx, card.emotionKeywords?.slice(0, 5) ?? ["성찰", "감상", "기록"], x, top + 194);
 }
 
 function cover(ctx: CanvasRenderingContext2D, y: number, w: number, h: number) {
@@ -164,13 +209,47 @@ function chips(ctx: CanvasRenderingContext2D, values: string[], x: number, y: nu
 
 function footer(ctx: CanvasRenderingContext2D, name: string) {
   ctx.fillStyle = "#7f6048";
-  ctx.font = "700 22px Arial, sans-serif";
-  ellipsis(ctx, `by ${name}`, PAD, 1000, 470);
-  ctx.textAlign = "right";
+  ctx.font = "400 22px Arial, sans-serif";
+  ellipsis(ctx, `책도장 · chaekdojang.com`, PAD, 960, 470);
   ctx.fillStyle = "#2b1a10";
-  ctx.font = "700 24px Georgia, 'Times New Roman', serif";
-  ctx.fillText("책도장 · chaekdojang.com", SIZE - PAD, 1000);
+  ctx.font = "400 19px Arial, sans-serif";
+  const byline = ellipsisText(ctx, name, 280);
+  ctx.textAlign = "right";
+  ctx.fillText(byline, SIZE - PAD, 960);
   ctx.textAlign = "left";
+}
+
+function leaf(ctx: CanvasRenderingContext2D) {
+  ctx.save();
+  ctx.translate(812, 770);
+  ctx.rotate(-0.65);
+  ctx.strokeStyle = "rgba(126, 99, 70, 0.7)";
+  ctx.fillStyle = "rgba(126, 99, 70, 0.16)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(0, 160);
+  ctx.bezierCurveTo(22, 92, 56, 40, 100, -18);
+  ctx.stroke();
+  const leaves = [
+    [22, 115, -32],
+    [42, 82, 34],
+    [58, 50, -34],
+    [78, 18, 34],
+    [92, -8, -28],
+  ];
+  for (const [x, y, angle] of leaves) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate((angle * Math.PI) / 180);
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.bezierCurveTo(30, -32, 68, -20, 78, 0);
+    ctx.bezierCurveTo(50, 16, 18, 18, 0, 0);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+  ctx.restore();
 }
 
 function wrap(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxW: number, lineH: number, maxLines: number) {
@@ -192,9 +271,13 @@ function wrap(ctx: CanvasRenderingContext2D, text: string, x: number, y: number,
 }
 
 function ellipsis(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxW: number) {
+  ctx.fillText(ellipsisText(ctx, text, maxW), x, y);
+}
+
+function ellipsisText(ctx: CanvasRenderingContext2D, text: string, maxW: number) {
   let value = text;
   while (value.length > 1 && ctx.measureText(value).width > maxW) value = `${value.slice(0, -2)}…`;
-  ctx.fillText(value, x, y);
+  return value;
 }
 
 function rounded(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {

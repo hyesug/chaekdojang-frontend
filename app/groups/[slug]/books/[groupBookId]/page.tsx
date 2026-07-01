@@ -93,6 +93,12 @@ export default async function GroupBookReviewsPage({ params }: Props) {
             <h1 className="mt-1 font-serif text-2xl font-bold text-brown-900">{book.title} 독후감</h1>
             <p className="mt-1 text-sm text-brown-500">{book.author}</p>
             <p className="mt-3 text-sm text-brown-400">이 모임 멤버들이 남긴 독후감 {reviews.length}개</p>
+            <Link
+              href={`${currentGroupBookPath}/result`}
+              className="mt-4 inline-flex rounded-full bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800"
+            >
+              AI 결과 보기
+            </Link>
           </div>
         </div>
       </section>

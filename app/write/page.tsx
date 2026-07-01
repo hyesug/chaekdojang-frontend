@@ -25,6 +25,7 @@ type ReviewDraft = {
   selectedBook?: BookResult | null;
   rating?: number;
   content?: string;
+  generateAiSummary?: boolean;
 };
 
 function getReviewDraftKey(userId: number | "anonymous", bookId?: number | null) {
@@ -100,6 +101,7 @@ function WriteContent() {
   /* 독후감 상태 */
   const [rating, setRating] = useState(0);
   const [content, setContent] = useState("");
+  const [generateAiSummary, setGenerateAiSummary] = useState(false);
   const [draftRestored, setDraftRestored] = useState(false);
   const [draftReadyKey, setDraftReadyKey] = useState<string | null>(null);
 
@@ -143,19 +145,20 @@ function WriteContent() {
       if (draft.selectedBook) setSelectedBook(draft.selectedBook);
       if (typeof draft.rating === "number") setRating(draft.rating);
       if (typeof draft.content === "string") setContent(draft.content);
+      if (typeof draft.generateAiSummary === "boolean") setGenerateAiSummary(draft.generateAiSummary);
       setDraftRestored(true);
     } catch {
       localStorage.removeItem(draftKey);
     }
-  }, [content, currentUserId, rating, selectedBook?.id]);
+  }, [content, currentUserId, generateAiSummary, rating, selectedBook?.id]);
 
   useEffect(() => {
     if (currentUserId === null) return;
     const draftKey = getReviewDraftKey(currentUserId, selectedBook?.id);
     if (draftReadyKey !== draftKey) return;
     if (!selectedBook && rating === 0 && !content.trim()) return;
-    localStorage.setItem(draftKey, JSON.stringify({ selectedBook, rating, content }));
-  }, [currentUserId, draftReadyKey, selectedBook, rating, content]);
+    localStorage.setItem(draftKey, JSON.stringify({ selectedBook, rating, content, generateAiSummary }));
+  }, [currentUserId, draftReadyKey, selectedBook, rating, content, generateAiSummary]);
 
   async function searchBooks() {
     if (!query.trim()) return;
@@ -193,7 +196,7 @@ function WriteContent() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ bookId: selectedBook.id, rating, content }),
+        body: JSON.stringify({ bookId: selectedBook.id, rating, content, generateAiSummary }),
       });
 
       if (res.status === 401) {
@@ -354,6 +357,26 @@ function WriteContent() {
             className="w-full min-h-[42vh] sm:min-h-0 px-4 py-3 rounded-xl border border-cream-300 text-base sm:text-sm text-brown-800 bg-cream-50 placeholder:text-brown-300 focus:outline-none focus:border-brown-400 focus:ring-2 focus:ring-brown-100 transition resize-none leading-relaxed"
           />
           <p className="mt-1.5 text-xs text-brown-300 text-right">{content.length}자</p>
+        </section>
+
+        {/* STEP 4: AI 독서카드 */}
+        <section className="bg-white rounded-lg border border-cream-200 p-5 sm:p-6 shadow-sm">
+          <label className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              checked={generateAiSummary}
+              onChange={(event) => setGenerateAiSummary(event.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-cream-300 text-brown-700 focus:ring-brown-300"
+            />
+            <span>
+              <span className="block font-serif text-lg font-bold text-brown-700">
+                AI 독서카드도 만들기
+              </span>
+              <span className="mt-1 block text-sm leading-6 text-brown-400">
+                저장 후 AI가 한 줄 감상, 감정 키워드, 추천 대상을 정리합니다.
+              </span>
+            </span>
+          </label>
         </section>
 
         {error && (

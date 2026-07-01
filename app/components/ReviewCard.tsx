@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import ReviewDetailModal from "./ReviewDetailModal";
 import ProfileAvatar from "./ProfileAvatar";
@@ -13,6 +13,12 @@ export type Review = {
   id: number;
   author: { id?: number | null; nickname: string; profileImage: string | null };
   book?: { id?: number; title: string; author: string; thumbnail: string | null } | null;
+  aiSummary?: {
+    oneLineReview: string;
+    emotionKeywords: string[];
+    recommendedFor: string;
+    impressivePoint: string;
+  } | null;
   rating: number;
   content: string;
   hidden?: boolean;
@@ -347,6 +353,8 @@ export default function ReviewCard({
 }) {
   const coverColor = COVER_COLORS[post.id % COVER_COLORS.length];
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const myId = currentUserId;
 
@@ -389,9 +397,28 @@ export default function ReviewCard({
   const [copied, setCopied] = useState(false);
   const [instaCopied, setInstaCopied] = useState(false);
   const canOpenHiddenDetail = hidden && isOwner;
-  const reviewHref = returnTo
-    ? `/reviews/${post.id}?returnTo=${encodeURIComponent(returnTo)}`
+  const currentReturnTo =
+    pathname?.startsWith("/books/")
+      ? `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`
+      : undefined;
+  const effectiveReturnTo = returnTo ?? currentReturnTo;
+  const reviewHref = effectiveReturnTo
+    ? `/reviews/${post.id}?${new URLSearchParams({ returnTo: effectiveReturnTo }).toString()}`
     : `/reviews/${post.id}`;
+  const bookHref = pathname?.startsWith("/books/") && effectiveReturnTo
+    ? effectiveReturnTo
+    : post.book?.id
+    ? `/books/${post.book.id}`
+    : "#";
+
+  function rememberReturnTo() {
+    if (!effectiveReturnTo) return;
+    try {
+      sessionStorage.setItem(`chaekdojang:return-to:${post.id}`, effectiveReturnTo);
+    } catch {
+      /* storage may be unavailable */
+    }
+  }
 
   useEffect(() => {
     const token = getToken();
@@ -705,7 +732,7 @@ export default function ReviewCard({
               <>
                 {post.book.id ? (
                   <Link
-                    href={`/books/${post.book.id}`}
+                    href={bookHref}
                     className="font-serif text-base font-bold text-brown-800 leading-snug hover:text-brown-600 hover:underline transition-colors"
                     onClick={(e) => e.stopPropagation()}
                   >
@@ -741,6 +768,18 @@ export default function ReviewCard({
           </div>
         </div>
 
+        {post.aiSummary && (
+          <div className="mt-3 rounded-lg border border-cream-200 bg-cream-50 px-3 py-2.5">
+            <p className="text-sm font-semibold text-brown-800">
+              {post.aiSummary.oneLineReview}
+            </p>
+            <div className="mt-2 space-y-1 rounded-md bg-white px-2.5 py-1.5 text-xs text-brown-500">
+              <p>추천 대상: {post.aiSummary.recommendedFor}</p>
+              <p>인상 깊은 지점: {post.aiSummary.impressivePoint}</p>
+            </div>
+          </div>
+        )}
+
         {/* 본문 */}
         {canOpenHiddenDetail ? (
           <button
@@ -760,7 +799,11 @@ export default function ReviewCard({
             href={hidden ? "#" : reviewHref}
             className="mt-3 text-left w-full group block"
             onClick={(e) => {
-              if (hidden) e.preventDefault();
+              if (hidden) {
+                e.preventDefault();
+                return;
+              }
+              rememberReturnTo();
             }}
           >
             <p className="text-sm text-brown-600 leading-relaxed line-clamp-3 group-hover:text-brown-800 transition-colors">
@@ -853,6 +896,7 @@ export default function ReviewCard({
       {showDetail && (
         <ReviewDetailModal
           reviewId={post.id}
+          returnTo={effectiveReturnTo}
           onClose={() => setShowDetail(false)}
           onEngagementChange={({ likeCount: nextLikeCount, commentCount: nextCommentCount, liked: nextLiked }) => {
             setLikeCount(nextLikeCount);

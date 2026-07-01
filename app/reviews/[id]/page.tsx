@@ -3,9 +3,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import BackButton from "../../components/BackButton";
+import BookReturnLink from "../../components/BookReturnLink";
+import ReviewAiSummaryCard from "../../components/ReviewAiSummaryCard";
 import ReviewEngagement from "../../components/ReviewEngagement";
 import ReviewCard, { type Review } from "../../components/ReviewCard";
 import ReviewViewTracker from "../../components/ReviewViewTracker";
+import { bookReturnStorageKey } from "../../lib/returnMemory";
 import {
   fetchApiData,
   reviewDescription,
@@ -82,8 +85,15 @@ function Stars({ rating }: { rating: number }) {
 }
 
 function safeInternalHref(value?: string) {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) return null;
-  return value;
+  if (!value) return null;
+  const candidates = [value];
+  try {
+    candidates.push(decodeURIComponent(value));
+  } catch {
+    /* keep the original candidate */
+  }
+
+  return candidates.find((candidate) => candidate.startsWith("/") && !candidate.startsWith("//")) ?? null;
 }
 
 export default async function PublicReviewPage({ params, searchParams }: Props) {
@@ -93,6 +103,7 @@ export default async function PublicReviewPage({ params, searchParams }: Props) 
   const review = await getReview(id);
   if (!review) notFound();
   const bookReviewsHref = returnTo || (review.book?.id ? `/books/${review.book.id}` : "/");
+  const returnStorageKey = `chaekdojang:return-to:${review.id}`;
 
   const related = review.book?.id
     ? await fetchApiData<Review[]>(`/api/books/${review.book.id}/reviews`)
@@ -133,7 +144,12 @@ export default async function PublicReviewPage({ params, searchParams }: Props) 
       />
       <article className="max-w-3xl mx-auto px-4 py-8 sm:py-12">
         <div className="mb-5 flex items-center justify-between gap-3">
-          <BackButton fallbackHref={bookReviewsHref} />
+          <BackButton
+            fallbackHref={bookReviewsHref}
+            fallbackStorageKey={review.book?.id ? bookReturnStorageKey(review.book.id) : undefined}
+            preferFallback={Boolean(returnTo)}
+            storageKey={returnStorageKey}
+          />
           <Link
             href="/write"
             className="px-4 py-2 rounded-full bg-brown-700 text-white text-sm hover:bg-brown-800"
@@ -188,7 +204,16 @@ export default async function PublicReviewPage({ params, searchParams }: Props) 
               </time>
             </div>
 
-            <p className="text-base leading-8 text-brown-800 whitespace-pre-wrap">
+            <ReviewAiSummaryCard
+              reviewId={review.id}
+              authorId={review.author.id ?? null}
+              bookTitle={review.book?.title ?? "독후감"}
+              bookAuthor={review.book?.author ?? null}
+              bookThumbnail={review.book?.thumbnail ?? null}
+              authorNickname={review.author.nickname}
+            />
+
+            <p className="mt-6 text-base leading-8 text-brown-800 whitespace-pre-wrap">
               {review.content}
             </p>
 
@@ -200,9 +225,14 @@ export default async function PublicReviewPage({ params, searchParams }: Props) 
 
             {review.book?.id && (
               <div className="mt-5 text-right text-sm">
-                <Link href={bookReviewsHref} className="text-brown-600 hover:underline">
-                  이 책 독후감 모아보기
-                </Link>
+                <BookReturnLink
+                  bookId={review.book.id}
+                  href={bookReviewsHref}
+                  preferHref={Boolean(returnTo)}
+                  className="text-brown-600 hover:underline"
+                >
+                  이 책의 다른 독후감 보기
+                </BookReturnLink>
               </div>
             )}
           </div>

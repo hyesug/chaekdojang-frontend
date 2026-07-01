@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import BackButton from "../../components/BackButton";
+import BookReturnMemory from "../../components/BookReturnMemory";
 import ReviewCard from "../../components/ReviewCard";
 import {
   fetchApiData,
@@ -131,8 +132,8 @@ export default async function BookDetailPage({ params, searchParams }: Props) {
   const canonicalUrl = bookUrl(book);
   const currentBookPath =
     sort === "recent"
-      ? `/books/${encodeURIComponent(id)}`
-      : `/books/${encodeURIComponent(id)}?sort=${sort}`;
+      ? `/books/${book.id}`
+      : `/books/${book.id}?sort=${sort}`;
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
@@ -160,6 +161,7 @@ export default async function BookDetailPage({ params, searchParams }: Props) {
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-8">
+      <BookReturnMemory bookId={book.id} href={currentBookPath} />
       <script
         type="application/ld+json"
         suppressHydrationWarning

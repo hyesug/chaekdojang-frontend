@@ -11,7 +11,6 @@ const navLinks = [
   { href: "/write", label: "독후감 쓰기" },
   { href: "/dojangdan", label: "도장단" },
   { href: "/groups", label: "독서모임" },
-  { href: "/groups/new", label: "모임 만들기" },
   { href: "/cs", label: "고객센터" },
 ];
 

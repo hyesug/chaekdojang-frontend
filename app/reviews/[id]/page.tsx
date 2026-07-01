@@ -4,11 +4,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import BackButton from "../../components/BackButton";
 import BookReturnLink from "../../components/BookReturnLink";
-import { bookReturnStorageKey } from "../../components/BookReturnMemory";
 import ReviewAiSummaryCard from "../../components/ReviewAiSummaryCard";
 import ReviewEngagement from "../../components/ReviewEngagement";
 import ReviewCard, { type Review } from "../../components/ReviewCard";
 import ReviewViewTracker from "../../components/ReviewViewTracker";
+import { bookReturnStorageKey } from "../../lib/returnMemory";
 import {
   fetchApiData,
   reviewDescription,

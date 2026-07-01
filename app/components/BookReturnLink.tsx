@@ -1,7 +1,7 @@
 "use client";
 
 import StoredReturnLink from "./StoredReturnLink";
-import { bookReturnStorageKey } from "./BookReturnMemory";
+import { bookReturnStorageKey } from "../lib/returnMemory";
 
 export default function BookReturnLink({
   bookId,

@@ -1,10 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-
-export function bookReturnStorageKey(bookId: number | string) {
-  return `chaekdojang:book-return:${bookId}`;
-}
+import { bookReturnStorageKey } from "../lib/returnMemory";
 
 function isSafeInternalHref(value: string) {
   return value.startsWith("/") && !value.startsWith("//");

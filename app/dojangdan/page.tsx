@@ -2,78 +2,102 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "책도장단 모집",
-  description: "신간과 독립출판 서평단을 책도장에서 모집하고 독후감을 모아드립니다.",
+  title: "책도장단 베타 문의",
+  description: "신간·독립출판·작가의 책을 위한 서평단 모집과 독후감 모음 서비스를 문의하세요.",
 };
 
 const targets = [
-  "신간을 알리고 싶은 작가",
-  "독립출판물을 소개하고 싶은 창작자",
-  "서평단 리뷰를 한곳에 모으고 싶은 출판사",
-  "독자 반응을 정리해 홍보 자료로 쓰고 싶은 운영자",
+  "신간을 홍보하고 싶은 출판사",
+  "독립출판물을 알리고 싶은 작가",
+  "서평단 모집 페이지가 필요한 운영자",
+  "독후감을 한곳에 모아 보여주고 싶은 분",
 ];
 
 const features = [
+  "서평단 모집 페이지 생성",
+  "신청자 관리",
+  "독후감 작성 유도",
   "책별 독후감 모아보기",
-  "서평단 모집 안내",
-  "독후감 작성 링크",
-  "공유 가능한 리뷰 모음 페이지",
+  "공유 가능한 리뷰 모음 링크 제공",
 ];
 
-const steps = ["문의", "모집", "독서/작성", "리뷰 모음", "공유"];
+const steps = [
+  "책도장단 모집 페이지 생성",
+  "독자 신청",
+  "선정 및 책 제공",
+  "독후감 작성",
+  "책별 리뷰 모음 페이지 생성",
+  "외부 공유 및 홍보 활용",
+];
 
 export default function DojangdanPage() {
   return (
-    <div className="max-w-3xl mx-auto px-4 py-10">
-      <section className="mb-10">
-        <p className="text-sm text-brown-400 mb-2">책도장단</p>
-        <h1 className="font-serif text-3xl sm:text-4xl font-bold text-brown-800 leading-tight">
-          신간과 독립출판 서평단을 책도장에서 모집하고 독후감을 모아드립니다.
+    <main className="mx-auto max-w-3xl px-4 py-8 sm:py-10">
+      <section className="rounded-2xl border border-cream-200 bg-white p-6 shadow-sm">
+        <p className="text-sm font-semibold text-brown-400">책도장단</p>
+        <h1 className="mt-2 font-serif text-3xl font-bold leading-tight text-brown-900">
+          서평단 모집부터 독후감 모음까지 책 단위로 정리합니다.
         </h1>
-        <p className="mt-4 text-brown-500 leading-7">
-          책도장단은 작가와 출판사가 독자를 만나고, 흩어진 독후감을 책 단위로 모아
-          공유할 수 있도록 준비 중인 서평단 운영 기능입니다.
+        <p className="mt-4 text-sm leading-7 text-brown-600">
+          책도장단은 신간·독립출판·작가의 책을 독자에게 소개하고, 독후감을 한곳에 모아 보여주는 서평단 모집 서비스입니다.
         </p>
+        <Link
+          href="/cs"
+          className="mt-6 inline-flex rounded-full bg-brown-700 px-5 py-3 text-sm font-semibold text-white hover:bg-brown-800"
+        >
+          책도장단 베타 문의하기
+        </Link>
       </section>
 
-      <section className="grid sm:grid-cols-2 gap-3 mb-10">
-        {targets.map((item) => (
-          <div key={item} className="rounded-lg border border-cream-200 bg-white p-4 text-brown-700">
-            {item}
-          </div>
-        ))}
-      </section>
-
-      <section className="mb-10">
-        <h2 className="font-serif text-xl font-bold text-brown-800 mb-4">책도장단으로 할 수 있는 일</h2>
-        <div className="grid sm:grid-cols-2 gap-3">
-          {features.map((item) => (
-            <div key={item} className="rounded-lg bg-cream-50 border border-cream-200 p-4 text-sm text-brown-600">
+      <section className="mt-8">
+        <h2 className="font-serif text-xl font-bold text-brown-900">이런 분께 적합합니다</h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {targets.map((item) => (
+            <div key={item} className="rounded-2xl border border-cream-200 bg-white p-4 text-sm text-brown-700 shadow-sm">
               {item}
             </div>
           ))}
         </div>
       </section>
 
-      <section className="rounded-lg border border-brown-100 bg-white p-5">
-        <h2 className="font-serif text-xl font-bold text-brown-800 mb-3">진행 흐름</h2>
-        <ol className="grid sm:grid-cols-5 gap-2 text-sm text-brown-600">
-          {steps.map((step) => (
-            <li key={step} className="rounded-lg bg-cream-50 px-3 py-3 text-center">
-              {step}
+      <section className="mt-8">
+        <h2 className="font-serif text-xl font-bold text-brown-900">제공 기능</h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {features.map((item) => (
+            <div key={item} className="rounded-2xl border border-cream-200 bg-cream-50 p-4 text-sm text-brown-700">
+              {item}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-8 rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+        <h2 className="font-serif text-xl font-bold text-brown-900">운영 방식</h2>
+        <ol className="mt-4 space-y-3">
+          {steps.map((step, index) => (
+            <li key={step} className="flex gap-3 rounded-xl bg-cream-50 px-4 py-3 text-sm text-brown-700">
+              <span className="font-semibold text-brown-400">{index + 1}</span>
+              <span>{step}</span>
             </li>
           ))}
         </ol>
-        <p className="mt-4 text-sm text-brown-400">
-          현재는 초기 베타 기능으로 운영 가능 여부를 확인하고 있습니다.
+      </section>
+
+      <section className="mt-8 rounded-2xl border border-brown-100 bg-white p-5 shadow-sm">
+        <h2 className="font-serif text-xl font-bold text-brown-900">베타 운영 안내</h2>
+        <p className="mt-3 text-sm leading-7 text-brown-600">
+          현재 책도장단은 베타 운영 중입니다. 초기 제휴는 무료 또는 소액으로 테스트 가능하며, 운영 방식은 책의 성격과 모집 규모에 따라 조정됩니다.
+        </p>
+        <p className="mt-3 text-sm leading-7 text-brown-500">
+          문의 시 담당자명, 소속명, 이메일, 연락처, 책 제목, 출판사/작가 여부, 모집 희망 인원, 문의 내용을 함께 남겨주세요.
         </p>
         <Link
           href="/cs"
-          className="mt-5 inline-flex rounded-full bg-brown-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-brown-700"
+          className="mt-5 inline-flex rounded-full bg-brown-700 px-5 py-3 text-sm font-semibold text-white hover:bg-brown-800"
         >
-          책도장단 문의하기
+          베타 운영 문의하기
         </Link>
       </section>
-    </div>
+    </main>
   );
 }

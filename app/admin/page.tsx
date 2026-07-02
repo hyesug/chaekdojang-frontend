@@ -1250,17 +1250,22 @@ export default function AdminPage() {
   const todaySecurity = dashboardSummary?.todaySuspiciousRequests ?? fallbackTodaySecurity;
 
   async function setRole(userId: number, role: string) {
-    const token = getToken();
-    if (!token) return;
     const reason = window.prompt(role === "ADMIN" ? "관리자 권한을 부여하는 사유를 입력해주세요." : "관리자 권한을 해제하는 사유를 입력해주세요.");
     if (!reason || reason.trim().length < 5) return;
     const res = await authFetch(`${API_BASE}/api/admin/users/${userId}/role`, {
       method: "PATCH",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ role, reason: reason.trim() }),
     });
     if (res.status === 401) { router.replace("/auth/login"); return; }
-    if (res.status === 403) { setUnauthorized(true); return; }
+    if (res.status === 403) {
+      window.alert("관리자 지정은 최고 관리자 권한이 필요합니다.");
+      return;
+    }
+    if (!res.ok) {
+      window.alert("권한 변경에 실패했습니다. 사유를 5자 이상 입력했는지 확인해주세요.");
+      return;
+    }
     loadAll();
   }
 

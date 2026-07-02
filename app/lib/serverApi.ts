@@ -18,6 +18,12 @@ export type ReviewDetail = {
     author: string;
     thumbnail: string | null;
   } | null;
+  aiSummary?: {
+    oneLineReview: string;
+    emotionKeywords: string[];
+    recommendedFor: string;
+    impressivePoint: string;
+  } | null;
   content: string;
   rating: number;
   hidden?: boolean;

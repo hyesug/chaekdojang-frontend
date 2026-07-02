@@ -67,6 +67,33 @@ function writeHref(book: PublicBookDetail) {
   return `/write?${params.toString()}`;
 }
 
+function averageRating(reviews: ReviewDetail[]) {
+  if (reviews.length === 0) return "0.0";
+  const average = reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length;
+  return average.toFixed(1);
+}
+
+function commonEmotionKeywords(reviews: ReviewDetail[]) {
+  const counts = new Map<string, number>();
+  reviews.forEach((review) => {
+    review.aiSummary?.emotionKeywords?.forEach((keyword) => {
+      const normalized = keyword.trim();
+      if (normalized) counts.set(normalized, (counts.get(normalized) ?? 0) + 1);
+    });
+  });
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ko"))
+    .slice(0, 5)
+    .map(([keyword]) => keyword);
+}
+
+function oneLineReviews(reviews: ReviewDetail[]) {
+  return reviews
+    .map((review) => review.aiSummary?.oneLineReview?.trim())
+    .filter((value): value is string => Boolean(value))
+    .slice(0, 5);
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const book = await getPublicBook(id);
@@ -129,6 +156,8 @@ export default async function BookDetailPage({ params, searchParams }: Props) {
   if (!book) notFound();
 
   const reviews = await getBookReviews(book.id, sort);
+  const emotionKeywords = commonEmotionKeywords(reviews);
+  const oneLines = oneLineReviews(reviews);
   const canonicalUrl = bookUrl(book);
   const currentBookPath =
     sort === "recent"
@@ -200,10 +229,70 @@ export default async function BookDetailPage({ params, searchParams }: Props) {
                 href={writeHref(book)}
                 className="rounded-full bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800"
               >
-                독후감 쓰기
+                나도 이 책에 도장 찍기
+              </Link>
+              <Link
+                href={`/books/${book.id}/reaction-report`}
+                className="rounded-full border border-cream-300 px-3 py-2 text-xs font-medium text-brown-500 hover:bg-cream-50 hover:text-brown-800"
+              >
+                독자 반응 리포트 보기
               </Link>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="mt-5 space-y-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+            <p className="text-xs font-medium text-brown-400">이 책에 찍힌 도장</p>
+            <p className="mt-1 font-serif text-2xl font-bold text-brown-900">{book.reviewCount}개</p>
+          </div>
+          <div className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+            <p className="text-xs font-medium text-brown-400">평균 별점</p>
+            <p className="mt-1 font-serif text-2xl font-bold text-brown-900">{averageRating(reviews)}</p>
+          </div>
+          <div className="col-span-2 rounded-2xl border border-cream-200 bg-white p-4 shadow-sm sm:col-span-1">
+            <p className="text-xs font-medium text-brown-400">참여 독자</p>
+            <p className="mt-1 font-serif text-2xl font-bold text-brown-900">{book.readerCount}명</p>
+          </div>
+        </div>
+
+        {emotionKeywords.length > 0 && (
+          <div className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+            <p className="text-sm font-semibold text-brown-800">많이 남긴 감정</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {emotionKeywords.map((keyword) => (
+                <span key={keyword} className="rounded-full bg-cream-100 px-3 py-1 text-sm text-brown-600">
+                  {keyword}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="font-serif text-lg font-bold text-brown-900">한 줄 감상 모아보기</h2>
+            {reviews.length > 5 && (
+              <Link href={`/books/${book.id}/reviews`} className="text-xs font-medium text-brown-400 hover:text-brown-700">
+                더보기
+              </Link>
+            )}
+          </div>
+          {oneLines.length === 0 ? (
+            <p className="mt-3 rounded-xl bg-cream-50 px-4 py-5 text-center text-sm text-brown-400">
+              아직 한 줄 감상이 없습니다. 독후감을 남기면 이 책의 감상 모음에 표시됩니다.
+            </p>
+          ) : (
+            <ul className="mt-3 space-y-2">
+              {oneLines.map((line, index) => (
+                <li key={`${line}-${index}`} className="rounded-xl bg-cream-50 px-4 py-3 text-sm leading-6 text-brown-700">
+                  {line}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </section>
 
@@ -245,7 +334,13 @@ export default async function BookDetailPage({ params, searchParams }: Props) {
         {reviews.length === 0 ? (
           <div className="rounded-2xl border border-cream-200 bg-white py-16 text-center text-brown-400">
             <p>아직 공개 독후감이 없어요.</p>
-            <p className="mt-1 text-sm">첫 번째 독서 기록을 남겨보세요.</p>
+            <p className="mt-1 text-sm">첫 번째 도장을 찍어보세요.</p>
+            <Link
+              href={writeHref(book)}
+              className="mt-5 inline-flex rounded-full bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800"
+            >
+              나도 이 책에 도장 찍기
+            </Link>
           </div>
         ) : (
           <div className="flex flex-col gap-4">

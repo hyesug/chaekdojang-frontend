@@ -25,6 +25,14 @@ type ReviewDraft = {
   selectedBook?: BookResult | null;
   rating?: number;
   content?: string;
+  oneLineReview?: string;
+  emotionKeywords?: string[];
+  impressivePoint?: string;
+  goodPoint?: string;
+  disappointingPoint?: string;
+  recommendedFor?: string;
+  lifeApplication?: string;
+  isPublic?: boolean;
   generateAiSummary?: boolean;
 };
 
@@ -101,6 +109,15 @@ function WriteContent() {
   /* 독후감 상태 */
   const [rating, setRating] = useState(0);
   const [content, setContent] = useState("");
+  const [oneLineReview, setOneLineReview] = useState("");
+  const [emotionInput, setEmotionInput] = useState("");
+  const [selectedEmotions, setSelectedEmotions] = useState<string[]>([]);
+  const [impressivePoint, setImpressivePoint] = useState("");
+  const [goodPoint, setGoodPoint] = useState("");
+  const [disappointingPoint, setDisappointingPoint] = useState("");
+  const [recommendedFor, setRecommendedFor] = useState("");
+  const [lifeApplication, setLifeApplication] = useState("");
+  const [isPublic, setIsPublic] = useState(true);
   const [generateAiSummary, setGenerateAiSummary] = useState(false);
   const [draftRestored, setDraftRestored] = useState(false);
   const [draftReadyKey, setDraftReadyKey] = useState<string | null>(null);
@@ -135,7 +152,7 @@ function WriteContent() {
     setDraftReadyKey(draftKey);
     setDraftRestored(false);
 
-    const hasCurrentInput = rating > 0 || content.trim().length > 0;
+    const hasCurrentInput = rating > 0 || content.trim().length > 0 || oneLineReview.trim().length > 0;
     if (hasCurrentInput) return;
 
     const raw = localStorage.getItem(draftKey);
@@ -145,20 +162,72 @@ function WriteContent() {
       if (draft.selectedBook) setSelectedBook(draft.selectedBook);
       if (typeof draft.rating === "number") setRating(draft.rating);
       if (typeof draft.content === "string") setContent(draft.content);
+      if (typeof draft.oneLineReview === "string") setOneLineReview(draft.oneLineReview);
+      if (Array.isArray(draft.emotionKeywords)) setSelectedEmotions(draft.emotionKeywords);
+      if (typeof draft.impressivePoint === "string") setImpressivePoint(draft.impressivePoint);
+      if (typeof draft.goodPoint === "string") setGoodPoint(draft.goodPoint);
+      if (typeof draft.disappointingPoint === "string") setDisappointingPoint(draft.disappointingPoint);
+      if (typeof draft.recommendedFor === "string") setRecommendedFor(draft.recommendedFor);
+      if (typeof draft.lifeApplication === "string") setLifeApplication(draft.lifeApplication);
+      if (typeof draft.isPublic === "boolean") setIsPublic(draft.isPublic);
       if (typeof draft.generateAiSummary === "boolean") setGenerateAiSummary(draft.generateAiSummary);
       setDraftRestored(true);
     } catch {
       localStorage.removeItem(draftKey);
     }
-  }, [content, currentUserId, generateAiSummary, rating, selectedBook?.id]);
+  }, [content, currentUserId, generateAiSummary, oneLineReview, rating, selectedBook?.id]);
 
   useEffect(() => {
     if (currentUserId === null) return;
     const draftKey = getReviewDraftKey(currentUserId, selectedBook?.id);
     if (draftReadyKey !== draftKey) return;
-    if (!selectedBook && rating === 0 && !content.trim()) return;
-    localStorage.setItem(draftKey, JSON.stringify({ selectedBook, rating, content, generateAiSummary }));
-  }, [currentUserId, draftReadyKey, selectedBook, rating, content, generateAiSummary]);
+    if (!selectedBook && rating === 0 && !content.trim() && !oneLineReview.trim()) return;
+    localStorage.setItem(draftKey, JSON.stringify({
+      selectedBook,
+      rating,
+      content,
+      oneLineReview,
+      emotionKeywords: selectedEmotions,
+      impressivePoint,
+      goodPoint,
+      disappointingPoint,
+      recommendedFor,
+      lifeApplication,
+      isPublic,
+      generateAiSummary,
+    }));
+  }, [currentUserId, draftReadyKey, selectedBook, rating, content, oneLineReview, selectedEmotions, impressivePoint, goodPoint, disappointingPoint, recommendedFor, lifeApplication, isPublic, generateAiSummary]);
+
+  function toggleEmotion(keyword: string) {
+    setSelectedEmotions((prev) =>
+      prev.includes(keyword) ? prev.filter((item) => item !== keyword) : [...prev, keyword]
+    );
+  }
+
+  function addEmotionKeyword() {
+    const keyword = emotionInput.trim();
+    if (!keyword || selectedEmotions.includes(keyword)) return;
+    setSelectedEmotions((prev) => [...prev, keyword]);
+    setEmotionInput("");
+  }
+
+  function buildReviewContent() {
+    const sections = [
+      ["이 책을 한 줄로 말하면?", oneLineReview],
+      ["읽고 난 감정은?", selectedEmotions.join(", ")],
+      ["가장 인상 깊었던 부분은?", impressivePoint],
+      ["좋았던 점은?", goodPoint],
+      ["아쉬웠던 점은?", disappointingPoint],
+      ["누구에게 추천하고 싶은가?", recommendedFor],
+      ["내 삶에 적용할 점은?", lifeApplication],
+      ["본문 독후감", content],
+    ];
+    return sections
+      .map(([label, value]) => [label, value.trim()] as const)
+      .filter(([, value]) => value.length > 0)
+      .map(([label, value]) => `${label}\n${value}`)
+      .join("\n\n");
+  }
 
   async function searchBooks() {
     if (!query.trim()) return;
@@ -185,7 +254,9 @@ function WriteContent() {
     e.preventDefault();
     if (!selectedBook) { setError("책을 선택해주세요."); return; }
     if (rating === 0) { setError("별점을 선택해주세요."); return; }
-    if (content.trim().length < 10) { setError("독후감을 10자 이상 작성해주세요."); return; }
+    if (!oneLineReview.trim()) { setError("한 줄 감상을 입력해주세요."); return; }
+    const composedContent = buildReviewContent();
+    if (!composedContent.trim()) { setError("독후감 내용을 입력해주세요."); return; }
 
     setSubmitting(true);
     setError("");
@@ -196,7 +267,7 @@ function WriteContent() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ bookId: selectedBook.id, rating, content, generateAiSummary }),
+        body: JSON.stringify({ bookId: selectedBook.id, rating, content: composedContent, generateAiSummary }),
       });
 
       if (res.status === 401) {
@@ -207,6 +278,13 @@ function WriteContent() {
       if (res.ok) {
         const json = await res.json().catch(() => null);
         const createdReview = json?.data ?? json;
+        if (createdReview?.id && !isPublic) {
+          await authFetch(`${API_BASE}/api/reviews/${createdReview.id}/hidden`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ hidden: true }),
+          }).catch(() => null);
+        }
         if (currentUserId !== null) {
           localStorage.removeItem(getReviewDraftKey(currentUserId, selectedBook.id));
         }
@@ -336,23 +414,99 @@ function WriteContent() {
           )}
         </section>
 
-        {/* STEP 2: 별점 */}
+        {/* STEP 2: 빠른 도장 찍기 */}
         <section className="bg-white rounded-lg border border-cream-200 p-5 sm:p-6 shadow-sm">
           <h2 className="font-serif text-lg font-bold text-brown-700 mb-4">
-            2. 별점을 매겨주세요
+            2. 빠른 도장 찍기
           </h2>
-          <StarPicker value={rating} onChange={setRating} />
+          <div className="space-y-5">
+            <div>
+              <label className="mb-2 block text-sm font-medium text-brown-600">이 책을 한 줄로 말하면?</label>
+              <input
+                value={oneLineReview}
+                onChange={(event) => setOneLineReview(event.target.value)}
+                placeholder="짧은 감상을 남겨주세요"
+                className="w-full rounded-xl border border-cream-300 bg-cream-50 px-4 py-3 text-sm text-brown-800 placeholder:text-brown-300 focus:border-brown-400 focus:outline-none focus:ring-2 focus:ring-brown-100"
+              />
+            </div>
+            <div>
+              <p className="mb-2 text-sm font-medium text-brown-600">별점</p>
+              <StarPicker value={rating} onChange={setRating} />
+            </div>
+            <div>
+              <p className="mb-2 text-sm font-medium text-brown-600">읽고 난 감정은?</p>
+              <div className="flex flex-wrap gap-2">
+                {["성장", "혼란", "위로", "성찰", "흥미", "먹먹함", "기쁨", "분노"].map((keyword) => (
+                  <button
+                    key={keyword}
+                    type="button"
+                    onClick={() => toggleEmotion(keyword)}
+                    className={`rounded-full px-3 py-1.5 text-sm transition ${
+                      selectedEmotions.includes(keyword)
+                        ? "bg-brown-700 text-white"
+                        : "bg-cream-100 text-brown-500 hover:bg-cream-200"
+                    }`}
+                  >
+                    {keyword}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-2 flex gap-2">
+                <input
+                  value={emotionInput}
+                  onChange={(event) => setEmotionInput(event.target.value)}
+                  onKeyDown={(event) => event.key === "Enter" && (event.preventDefault(), addEmotionKeyword())}
+                  placeholder="직접 입력"
+                  className="min-w-0 flex-1 rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-800 placeholder:text-brown-300 focus:border-brown-400 focus:outline-none"
+                />
+                <button type="button" onClick={addEmotionKeyword} className="rounded-xl border border-cream-300 px-3 py-2 text-sm text-brown-500">
+                  추가
+                </button>
+              </div>
+            </div>
+            <label className="flex items-center justify-between gap-3 rounded-xl bg-cream-50 px-4 py-3">
+              <span>
+                <span className="block text-sm font-medium text-brown-700">공개 여부</span>
+                <span className="mt-0.5 block text-xs text-brown-400">
+                  공개하면 책 상세와 피드에 표시됩니다.
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                checked={isPublic}
+                onChange={(event) => setIsPublic(event.target.checked)}
+                className="h-5 w-5 rounded border-cream-300 text-brown-700 focus:ring-brown-300"
+              />
+            </label>
+          </div>
         </section>
 
-        {/* STEP 3: 독후감 본문 */}
+        {/* STEP 3: 자세히 쓰기 */}
         <section className="bg-white rounded-lg border border-cream-200 p-5 sm:p-6 shadow-sm">
           <h2 className="font-serif text-lg font-bold text-brown-700 mb-4">
-            3. 독후감을 남겨주세요
+            3. 자세히 쓰기
           </h2>
+          <div className="mb-4 grid gap-3">
+            {[
+              ["가장 인상 깊었던 부분은?", impressivePoint, setImpressivePoint],
+              ["좋았던 점은?", goodPoint, setGoodPoint],
+              ["아쉬웠던 점은?", disappointingPoint, setDisappointingPoint],
+              ["누구에게 추천하고 싶은가?", recommendedFor, setRecommendedFor],
+              ["내 삶에 적용할 점은?", lifeApplication, setLifeApplication],
+            ].map(([label, value, setter]) => (
+              <input
+                key={label as string}
+                value={value as string}
+                onChange={(event) => (setter as (value: string) => void)(event.target.value)}
+                placeholder={label as string}
+                className="w-full rounded-xl border border-cream-300 bg-cream-50 px-4 py-3 text-sm text-brown-800 placeholder:text-brown-300 focus:border-brown-400 focus:outline-none focus:ring-2 focus:ring-brown-100"
+              />
+            ))}
+          </div>
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder="이 책을 읽고 어떤 생각이 드셨나요? 기억에 남는 문장, 감상, 추천 이유 등을 자유롭게 적어주세요."
+            placeholder="본문 독후감은 자유롭게 적어주세요."
             rows={10}
             className="w-full min-h-[42vh] sm:min-h-0 px-4 py-3 rounded-xl border border-cream-300 text-base sm:text-sm text-brown-800 bg-cream-50 placeholder:text-brown-300 focus:outline-none focus:border-brown-400 focus:ring-2 focus:ring-brown-100 transition resize-none leading-relaxed"
           />

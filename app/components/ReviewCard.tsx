@@ -143,7 +143,7 @@ function CommentModal({
         body: JSON.stringify({ content: trimmed }),
       });
       if (res.status === 401) {
-        
+
         router.push("/auth/login");
         return;
       }
@@ -165,7 +165,7 @@ function CommentModal({
       }
     );
     if (res.status === 401) {
-      
+
       router.push("/auth/login");
       return;
     }
@@ -495,7 +495,7 @@ export default function ReviewCard({
     if (res.status === 401) {
       setLiked(!next);
       setLikeCount((c) => c + (next ? -1 : 1));
-      
+
       router.push("/auth/login");
       return;
     }
@@ -513,7 +513,7 @@ export default function ReviewCard({
     if (res.status === 204 || res.ok) {
       setDeleted(true);
     } else if (res.status === 401) {
-      
+
       router.push("/auth/login");
     }
   }
@@ -534,7 +534,7 @@ export default function ReviewCard({
         setDisplayRating(rating);
         setEditing(false);
       } else if (res.status === 401) {
-        
+
         router.push("/auth/login");
       }
     } finally {
@@ -557,7 +557,7 @@ export default function ReviewCard({
       });
       if (res.status === 401) {
         setHidden(!next);
-        
+
         router.push("/auth/login");
         return;
       }
@@ -635,7 +635,7 @@ export default function ReviewCard({
       });
       if (res.status === 401) {
         setFollowing(!next);
-        
+
         router.push("/auth/login");
       } else if (!res.ok) {
         setFollowing(!next);
@@ -780,16 +780,10 @@ export default function ReviewCard({
           </div>
         </div>
 
-        {post.aiSummary && (
-          <div className="mt-3 rounded-lg border border-cream-200 bg-cream-50 px-3 py-2.5">
-            <p className="text-sm font-semibold text-brown-800">
-              {post.aiSummary.oneLineReview}
-            </p>
-            <div className="mt-2 space-y-1 rounded-md bg-white px-2.5 py-1.5 text-xs text-brown-500">
-              <p>추천 대상: {post.aiSummary.recommendedFor}</p>
-              <p>인상 깊은 지점: {post.aiSummary.impressivePoint}</p>
-            </div>
-          </div>
+        {post.aiSummary?.oneLineReview && (
+          <p className="mt-2.5 border-l-2 border-[#c47f56]/50 pl-3 font-serif text-sm font-semibold leading-snug text-brown-800">
+            {post.aiSummary.oneLineReview}
+          </p>
         )}
 
         {/* 본문 */}

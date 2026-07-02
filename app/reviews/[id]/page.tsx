@@ -4,7 +4,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import BackButton from "../../components/BackButton";
 import BookReturnLink from "../../components/BookReturnLink";
-import ReviewAiSummaryCard from "../../components/ReviewAiSummaryCard";
 import ReviewEngagement from "../../components/ReviewEngagement";
 import ReviewCard, { type Review } from "../../components/ReviewCard";
 import ReviewReturnMemory from "../../components/ReviewReturnMemory";
@@ -209,15 +208,6 @@ export default async function PublicReviewPage({ params, searchParams }: Props) 
                 {review.createdAt.slice(0, 10)}
               </time>
             </div>
-
-            <ReviewAiSummaryCard
-              reviewId={review.id}
-              authorId={review.author.id ?? null}
-              bookTitle={review.book?.title ?? "독후감"}
-              bookAuthor={review.book?.author ?? null}
-              bookThumbnail={review.book?.thumbnail ?? null}
-              authorNickname={review.author.nickname}
-            />
 
             <p className="mt-6 text-base leading-8 text-brown-800 whitespace-pre-wrap">
               {review.content}

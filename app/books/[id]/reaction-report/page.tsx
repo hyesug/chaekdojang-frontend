@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import AiReadingCard from "../../../components/AiReadingCard";
 import { fetchApiData, SITE_URL } from "../../../lib/serverApi";
 
 type BookReactionReport = {
@@ -150,32 +151,30 @@ export default async function BookReactionReportPage({ params }: Props) {
           </section>
 
           <section className="mt-8">
-            <h2 className="font-serif text-xl font-bold text-brown-900">개별 AI 카드</h2>
-            <div className="mt-4 space-y-3">
+            <h2 className="font-serif text-xl font-bold text-brown-900">독자 AI 카드</h2>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
               {report.cards.map((card) => (
-                <article key={card.reviewId} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-brown-800">{card.authorNickname}</p>
-                      <p className="mt-1 text-xs text-brown-400">별점 {card.rating}</p>
-                    </div>
-                    <Link href={`/reviews/${card.reviewId}`} className="shrink-0 text-xs font-medium text-brown-400 hover:text-brown-700">
-                      독후감 보기
-                    </Link>
-                  </div>
-                  <p className="mt-3 text-sm leading-6 text-brown-700">
-                    {card.oneLineReview ?? "한 줄 감상이 아직 없어요."}
-                  </p>
-                  {card.emotionKeywords.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-1.5">
-                      {card.emotionKeywords.map((keyword) => (
-                        <span key={`${card.reviewId}-${keyword}`} className="rounded-full bg-cream-50 px-2.5 py-1 text-xs text-brown-500">
-                          {keyword}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </article>
+                <div key={card.reviewId} className="flex flex-col gap-2">
+                  <AiReadingCard
+                    compact
+                    card={{
+                      bookTitle: report.book.title,
+                      bookAuthor: report.book.author,
+                      bookThumbnail: report.book.thumbnail,
+                      authorNickname: card.authorNickname,
+                      oneLineReview: card.oneLineReview ?? "",
+                      emotionKeywords: card.emotionKeywords,
+                      recommendedFor: card.recommendedFor ?? "",
+                      impressivePoint: card.impressivePoint,
+                    }}
+                  />
+                  <Link
+                    href={`/reviews/${card.reviewId}`}
+                    className="text-center text-xs text-brown-400 hover:text-brown-700"
+                  >
+                    독후감 전문 보기 →
+                  </Link>
+                </div>
               ))}
             </div>
           </section>

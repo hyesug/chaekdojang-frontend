@@ -1251,7 +1251,10 @@ export default function AdminPage() {
 
   async function setRole(userId: number, role: string) {
     const reason = window.prompt(role === "ADMIN" ? "관리자 권한을 부여하는 사유를 입력해주세요." : "관리자 권한을 해제하는 사유를 입력해주세요.");
-    if (!reason || reason.trim().length < 5) return;
+    if (!reason || reason.trim().length < 5) {
+      window.alert("관리자 권한 변경 사유를 5자 이상 입력해주세요.");
+      return;
+    }
     const res = await authFetch(`${API_BASE}/api/admin/users/${userId}/role`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },

@@ -56,7 +56,7 @@ function Cover({ item, compact = false }: { item: LibraryItem; compact?: boolean
         alt={item.book.title}
         width={compact ? 32 : 48}
         height={compact ? 44 : 64}
-        className={`${sizeClass} rounded-[2px] object-cover shadow-sm bg-cream-100`}
+        className={`${sizeClass} rounded-[2px] object-contain shadow-sm bg-cream-100`}
       />
     );
   }

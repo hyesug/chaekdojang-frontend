@@ -238,18 +238,6 @@ export default async function PublicLibraryPage({ params, searchParams }: Props)
         </div>
       )}
 
-      {libraryItems.length > 0 && (
-        <div className="mt-8 grid grid-cols-3 gap-2 rounded-2xl bg-cream-200 p-4 text-center">
-          {(["READING", "FINISHED", "WISHLIST"] as LibraryStatus[]).map((status) => (
-            <div key={status}>
-              <p className="font-bold text-lg text-brown-700">
-                {libraryItems.filter((item) => item.status === status).length}
-              </p>
-              <p className="text-xs text-brown-400">{STATUS_LABELS[status]}</p>
-            </div>
-          ))}
-        </div>
-      )}
     </main>
   );
 }

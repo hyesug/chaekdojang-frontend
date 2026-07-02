@@ -673,10 +673,12 @@ export default function ReviewCard({
             <div className="flex items-start justify-between gap-3 mb-1">
               {/* 왼쪽: 작성자 + 팔로우 버튼 */}
               <div className="flex min-w-0 flex-1 items-center gap-1.5">
-                <ProfileAvatar src={post.author.profileImage} name={post.author.nickname} size="xs" />
+                <Link href={`/u/${encodeURIComponent(post.author.nickname)}`} className="shrink-0">
+                  <ProfileAvatar src={post.author.profileImage} name={post.author.nickname} size="xs" />
+                </Link>
                 {post.author.id != null ? (
                   <Link
-                    href={`/users/${post.author.id}`}
+                    href={`/u/${encodeURIComponent(post.author.nickname)}`}
                     className="text-xs text-brown-400 font-medium hover:text-brown-700 hover:underline transition-colors truncate"
                   >
                     {post.author.nickname}

@@ -35,7 +35,7 @@ async function getPublicBook(slug: string) {
 async function getBookReviews(bookId: number, sort: SortType) {
   return (
     (await fetchApiData<ReviewDetail[]>(`/api/books/${bookId}/reviews?sort=${sort}`, {
-      next: { revalidate: 300 },
+      cache: "no-store",
     })) ?? []
   );
 }

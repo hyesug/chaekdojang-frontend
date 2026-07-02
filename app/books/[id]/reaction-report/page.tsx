@@ -35,7 +35,7 @@ type Props = {
 
 async function getReport(id: string) {
   return fetchApiData<BookReactionReport>(`/api/books/${encodeURIComponent(id)}/reaction-report`, {
-    next: { revalidate: 300 },
+    cache: "no-store",
   });
 }
 

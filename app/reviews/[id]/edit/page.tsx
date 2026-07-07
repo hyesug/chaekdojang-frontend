@@ -1,4 +1,4 @@
-import ReviewEditForm from "../../../components/ReviewEditForm";
+import { redirect } from "next/navigation";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -6,5 +6,5 @@ type Props = {
 
 export default async function ReviewEditPage({ params }: Props) {
   const { id } = await params;
-  return <ReviewEditForm reviewId={Number(id)} />;
+  redirect(`/write?reviewId=${id}`);
 }

@@ -398,36 +398,30 @@ function StatusBox({ text, compact = false }: { text: string; compact?: boolean 
 function SummaryView({ card }: { card: AiReadingCardData }) {
   const hasExtra = !!(card.recommendedFor || card.impressivePoint);
   return (
-    <div
-      className="relative overflow-hidden rounded-2xl shadow-md"
-      style={{ background: "linear-gradient(150deg, #fef8f0 0%, #f3e6cc 55%, #e5cca8 100%)" }}
-    >
-      {/* 장식용 따옴표 */}
-      <span
-        className="pointer-events-none absolute left-1 top-[-10px] select-none font-serif font-bold leading-none text-[#c47f56]"
-        style={{ fontSize: "140px", opacity: 0.07 }}
-        aria-hidden
-      >
-        "
-      </span>
+    <div className="overflow-hidden rounded-2xl border border-[#e8e4df] bg-[#fafaf8] shadow-md">
+      {/* 상단 다크 바 */}
+      <div className="h-[5px] w-full bg-[#2c2018]" />
 
-      <div className="relative px-5 pb-4 pt-4">
+      <div className="px-5 pb-4 pt-3">
         {/* 헤더 */}
         <div className="flex items-center justify-between">
-          <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#c47f56]">AI Reading Card</p>
-          <p className="font-serif text-[9px] text-[#b8956d]">chaekdojang</p>
+          <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#2c2018]">AI Reading Card</p>
+          <p className="text-[9px] text-[#a09080]">chaekdojang</p>
         </div>
 
         {/* 책 제목 */}
-        <p className="mt-1.5 line-clamp-2 font-serif text-sm font-bold leading-snug text-[#1a0f07]">
+        <p className="mt-1.5 line-clamp-2 text-sm font-bold leading-snug text-[#1a110a]">
           {card.bookTitle}
+          {card.bookAuthor && (
+            <span className="ml-1.5 font-normal text-[#6b5a4a] opacity-80">· {card.bookAuthor}</span>
+          )}
         </p>
 
-        {/* 포인트 구분선 */}
-        <div className="my-3 h-[2px] w-8 rounded-full bg-[#c47f56] opacity-70" />
+        {/* 전체 너비 구분선 */}
+        <div className="my-2.5 h-[0.5px] w-full bg-[#2c2018] opacity-15" />
 
         {/* 한줄 감상 — 히어로 */}
-        <p className="font-serif text-[22px] font-bold leading-snug text-[#1a0f07] sm:text-[27px]">
+        <p className="text-[22px] font-bold leading-snug text-[#1a110a] sm:text-[27px]">
           {card.oneLineReview}
         </p>
 
@@ -436,7 +430,7 @@ function SummaryView({ card }: { card: AiReadingCardData }) {
           {card.emotionKeywords.slice(0, 4).map((keyword) => (
             <span
               key={keyword}
-              className="rounded-full border border-[#c47f56]/30 bg-white/50 px-3 py-0.5 text-[10px] font-medium text-[#7a5a42]"
+              className="rounded-sm bg-[#f0ebe4] px-2.5 py-0.5 text-[10px] font-medium text-[#6b5a4a]"
             >
               {keyword}
             </span>
@@ -444,26 +438,26 @@ function SummaryView({ card }: { card: AiReadingCardData }) {
         </div>
 
         {/* 하단 섹션 */}
-        <div className="mt-4 border-t border-[#d4a87c]/30 pt-3">
+        <div className="mt-4 border-t border-[#e0d8d0] pt-3">
           {hasExtra && (
             <div className="mb-2.5 grid grid-cols-2 gap-3">
               {card.recommendedFor && (
                 <div>
-                  <p className="text-[7px] font-bold uppercase tracking-widest text-[#c47f56]">추천 대상</p>
+                  <p className="text-[7px] font-bold uppercase tracking-widest text-[#2c2018] opacity-50">추천 대상</p>
                   <p className="mt-0.5 text-[10px] leading-snug text-[#5c3d28]">{card.recommendedFor}</p>
                 </div>
               )}
               {card.impressivePoint && (
                 <div>
-                  <p className="text-[7px] font-bold uppercase tracking-widest text-[#c47f56]">인상적인 구절</p>
+                  <p className="text-[7px] font-bold uppercase tracking-widest text-[#2c2018] opacity-50">인상적인 구절</p>
                   <p className="mt-0.5 text-[10px] leading-snug text-[#5c3d28]">{card.impressivePoint}</p>
                 </div>
               )}
             </div>
           )}
           <div className="flex items-center justify-between">
-            <span className="text-[9px] text-[#b8956d]">by {card.authorName || card.authorNickname}</span>
-            <span className="font-serif text-[9px] font-bold text-[#7a5a42]">책도장 · chaekdojang.com</span>
+            <span className="text-[9px] text-[#9a8878]">by {card.authorName || card.authorNickname}</span>
+            <span className="text-[9px] font-bold text-[#4a3828]">책도장</span>
           </div>
         </div>
       </div>

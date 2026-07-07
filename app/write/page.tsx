@@ -67,13 +67,47 @@ function WriteContent() {
   const searchParams = useSearchParams();
   const restoredKeyRef = useRef<string | null>(null);
 
+  // 수정 모드: ?reviewId=123 이 있으면 기존 독후감 수정
+  const reviewId = searchParams.get("reviewId");
+  const isEditMode = !!reviewId;
+
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<BookResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [selectedBook, setSelectedBook] = useState<BookResult | null>(null);
   const [currentUserId, setCurrentUserId] = useState<number | "anonymous" | null>(null);
 
+  // 수정 모드: 기존 독후감 데이터 로드
   useEffect(() => {
+    if (!reviewId) return;
+    fetch(`/api/reviews/${reviewId}`, { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        const data = json?.data ?? json;
+        if (!data) return;
+        if (data.book) {
+          setSelectedBook({
+            id: data.book.id,
+            title: data.book.title ?? "",
+            author: data.book.author ?? "",
+            publisher: data.book.publisher ?? "",
+            thumbnail: data.book.thumbnail ?? null,
+            isbn13: data.book.isbn13 ?? "",
+            source: "edit",
+          });
+        }
+        // content = "한줄감상\n\n본문" 구조이므로 분리
+        const fullContent: string = data.content ?? "";
+        const parts = fullContent.split("\n\n");
+        setOneLineReview(parts[0] ?? "");
+        setContent(parts.slice(1).join("\n\n"));
+        setRating(data.rating ?? 0);
+      })
+      .catch(() => {});
+  }, [reviewId]);
+
+  useEffect(() => {
+    if (isEditMode) return; // 수정 모드에서는 URL 파라미터 책 자동선택 건너뜀
     const bookId = searchParams.get("bookId");
     const title = searchParams.get("title");
     const author = searchParams.get("author");
@@ -88,7 +122,7 @@ function WriteContent() {
         source: "",
       });
     }
-  }, [searchParams]);
+  }, [searchParams, isEditMode]);
 
   const [rating, setRating] = useState(0);
   const [content, setContent] = useState("");
@@ -205,6 +239,24 @@ function WriteContent() {
     setError("");
 
     try {
+      // ── 수정 모드 ──
+      if (isEditMode && reviewId) {
+        const res = await authFetch(`${API_BASE}/api/reviews/${reviewId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: composedContent, rating }),
+        });
+        if (res.status === 401) { router.push("/auth/login"); return; }
+        if (res.ok) {
+          router.push(`/reviews/${reviewId}`);
+        } else {
+          const data = await res.json().catch(() => ({}));
+          setError((data as { message?: string }).message ?? "수정에 실패했습니다.");
+        }
+        return;
+      }
+
+      // ── 신규 작성 ──
       const res = await authFetch(`${API_BASE}/api/reviews`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -256,10 +308,22 @@ function WriteContent() {
       )}
 
       <div className="flex items-center gap-4 mb-5">
-        <Link href="/" className="text-sm text-brown-400 hover:text-brown-600 transition-colors">
-          ← 피드로
-        </Link>
-        <h1 className="font-serif text-2xl font-bold text-brown-800">독후감 쓰기</h1>
+        {isEditMode ? (
+          <button
+            type="button"
+            onClick={() => router.push(`/reviews/${reviewId}`)}
+            className="text-sm text-brown-400 hover:text-brown-600 transition-colors"
+          >
+            ← 독후감으로
+          </button>
+        ) : (
+          <Link href="/" className="text-sm text-brown-400 hover:text-brown-600 transition-colors">
+            ← 피드로
+          </Link>
+        )}
+        <h1 className="font-serif text-2xl font-bold text-brown-800">
+          {isEditMode ? "독후감 수정" : "독후감 쓰기"}
+        </h1>
       </div>
 
       {draftRestored && (
@@ -285,13 +349,15 @@ function WriteContent() {
                 <p className="font-medium text-brown-800">{selectedBook.title}</p>
                 <p className="text-sm text-brown-400 mt-0.5">{selectedBook.author} · {selectedBook.publisher}</p>
               </div>
-              <button
-                type="button"
-                onClick={() => { setSelectedBook(null); setResults([]); setQuery(""); }}
-                className="text-xs text-brown-400 hover:text-brown-600 transition-colors ml-2 flex-shrink-0"
-              >
-                변경
-              </button>
+              {!isEditMode && (
+                <button
+                  type="button"
+                  onClick={() => { setSelectedBook(null); setResults([]); setQuery(""); }}
+                  className="text-xs text-brown-400 hover:text-brown-600 transition-colors ml-2 flex-shrink-0"
+                >
+                  변경
+                </button>
+              )}
             </div>
           ) : (
             <>
@@ -414,20 +480,22 @@ function WriteContent() {
                   className="h-5 w-5 rounded border-cream-300 text-brown-700 focus:ring-brown-300"
                 />
               </label>
-              <label className="flex items-center justify-between gap-3 rounded-xl bg-cream-50 px-4 py-3">
-                <span>
-                  <span className="block text-sm font-medium text-brown-700">AI 독서카드 만들기</span>
-                  <span className="mt-0.5 block text-xs text-brown-400">
-                    저장 후 AI가 감정 키워드·추천 독자·인상적인 구절을 정리합니다.
+              {!isEditMode && (
+                <label className="flex items-center justify-between gap-3 rounded-xl bg-cream-50 px-4 py-3">
+                  <span>
+                    <span className="block text-sm font-medium text-brown-700">AI 독서카드 만들기</span>
+                    <span className="mt-0.5 block text-xs text-brown-400">
+                      저장 후 AI가 감정 키워드·추천 독자·인상적인 구절을 정리합니다.
+                    </span>
                   </span>
-                </span>
-                <input
-                  type="checkbox"
-                  checked={generateAiSummary}
-                  onChange={(event) => setGenerateAiSummary(event.target.checked)}
-                  className="h-5 w-5 rounded border-cream-300 text-brown-700 focus:ring-brown-300"
-                />
-              </label>
+                  <input
+                    type="checkbox"
+                    checked={generateAiSummary}
+                    onChange={(event) => setGenerateAiSummary(event.target.checked)}
+                    className="h-5 w-5 rounded border-cream-300 text-brown-700 focus:ring-brown-300"
+                  />
+                </label>
+              )}
             </div>
           </div>
         </section>
@@ -460,7 +528,7 @@ function WriteContent() {
           disabled={submitting}
           className="hidden sm:block w-full py-3 bg-brown-600 text-white rounded-xl font-medium hover:bg-brown-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {submitting ? "저장 중..." : "독후감 올리기"}
+          {submitting ? "저장 중..." : isEditMode ? "수정 완료" : "독후감 올리기"}
         </button>
 
         <div className="fixed left-0 right-0 bottom-0 z-40 bg-white/95 backdrop-blur border-t border-cream-200 px-4 py-3 sm:hidden">
@@ -469,7 +537,7 @@ function WriteContent() {
             disabled={submitting}
             className="w-full py-3 bg-brown-700 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {submitting ? "저장 중..." : "독후감 올리기"}
+            {submitting ? "저장 중..." : isEditMode ? "수정 완료" : "독후감 올리기"}
           </button>
         </div>
       </form>

@@ -31,7 +31,7 @@ export default function ReviewOwnerActions({
   return (
     <div className="mb-4 flex justify-end">
       <Link
-        href={`/reviews/${reviewId}/edit`}
+        href={`/write?reviewId=${reviewId}`}
         className="rounded-full border border-brown-200 bg-white px-4 py-1.5 text-xs text-brown-500 hover:border-brown-400 hover:text-brown-800"
       >
         독후감 수정

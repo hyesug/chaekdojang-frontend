@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import BackButton from "../../components/BackButton";
 import BookReturnLink from "../../components/BookReturnLink";
 import ReviewAiSummaryCard from "../../components/ReviewAiSummaryCard";
+import ReviewOwnerActions from "../../components/ReviewOwnerActions";
 import ReviewEngagement from "../../components/ReviewEngagement";
 import ReviewCard, { type Review } from "../../components/ReviewCard";
 import ReviewReturnMemory from "../../components/ReviewReturnMemory";
@@ -194,6 +195,7 @@ export default async function PublicReviewPage({ params, searchParams }: Props) 
           </div>
 
           <div className="px-5 sm:px-8 py-6">
+            <ReviewOwnerActions reviewId={review.id} authorId={review.author.id ?? null} />
             <div className="mb-6 flex items-center justify-between gap-3 text-sm">
               {review.author.id != null ? (
                 <Link

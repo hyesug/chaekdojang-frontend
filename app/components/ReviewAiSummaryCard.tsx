@@ -396,54 +396,72 @@ function StatusBox({ text, compact = false }: { text: string; compact?: boolean 
 }
 
 function SummaryView({ card }: { card: AiReadingCardData }) {
+  const hasExtra = !!(card.recommendedFor || card.impressivePoint);
   return (
     <div
       className="relative overflow-hidden rounded-2xl shadow-md"
-      style={{ background: "linear-gradient(145deg, #fdf6f0 0%, #f5e8d4 60%, #ede0cc 100%)" }}
+      style={{ background: "linear-gradient(150deg, #fef8f0 0%, #f3e6cc 55%, #e5cca8 100%)" }}
     >
+      {/* 장식용 따옴표 */}
       <span
-        className="pointer-events-none absolute left-2 top-0 select-none font-serif font-bold leading-none text-[#c47f56]"
-        style={{ fontSize: "120px", opacity: 0.08 }}
+        className="pointer-events-none absolute left-1 top-[-10px] select-none font-serif font-bold leading-none text-[#c47f56]"
+        style={{ fontSize: "140px", opacity: 0.07 }}
         aria-hidden
       >
         "
       </span>
-      <div className="relative px-5 py-4">
+
+      <div className="relative px-5 pb-4 pt-4">
+        {/* 헤더 */}
         <div className="flex items-center justify-between">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-[#c47f56]">AI Reading Card</p>
-          <p className="text-[9px] text-[#b8956d]">chaekdojang</p>
+          <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#c47f56]">AI Reading Card</p>
+          <p className="font-serif text-[9px] text-[#b8956d]">chaekdojang</p>
         </div>
-        <p className="mt-1 truncate font-serif text-sm font-bold text-[#1a0f07]">{card.bookTitle}</p>
-        <div className="my-2.5 h-0.5 w-7 bg-[#c47f56] opacity-60" />
-        <p className="font-serif text-[21px] font-bold leading-snug text-[#1a0f07] sm:text-[24px]">
+
+        {/* 책 제목 */}
+        <p className="mt-1.5 line-clamp-2 font-serif text-sm font-bold leading-snug text-[#1a0f07]">
+          {card.bookTitle}
+        </p>
+
+        {/* 포인트 구분선 */}
+        <div className="my-3 h-[2px] w-8 rounded-full bg-[#c47f56] opacity-70" />
+
+        {/* 한줄 감상 — 히어로 */}
+        <p className="font-serif text-[22px] font-bold leading-snug text-[#1a0f07] sm:text-[27px]">
           {card.oneLineReview}
         </p>
-        <div className="mt-2.5 flex flex-wrap gap-1">
+
+        {/* 감정 키워드 */}
+        <div className="mt-3 flex flex-wrap gap-1.5">
           {card.emotionKeywords.slice(0, 4).map((keyword) => (
             <span
               key={keyword}
-              className="rounded-full border border-[#d4a87c] bg-white/60 px-2.5 py-0.5 text-[10px] font-medium text-[#7a5a42]"
+              className="rounded-full border border-[#c47f56]/30 bg-white/50 px-3 py-0.5 text-[10px] font-medium text-[#7a5a42]"
             >
               {keyword}
             </span>
           ))}
         </div>
-        <div className="mt-3 border-t border-[#e2cdb5] pt-3">
-          <div className="grid grid-cols-2 gap-3">
-            {card.recommendedFor && (
-              <div>
-                <p className="text-[8px] font-semibold uppercase tracking-widest text-[#c47f56]">추천 대상</p>
-                <p className="mt-0.5 text-[10px] text-[#5c3d28]">{card.recommendedFor}</p>
-              </div>
-            )}
-            {card.impressivePoint && (
-              <div>
-                <p className="text-[8px] font-semibold uppercase tracking-widest text-[#c47f56]">인상적인 구절</p>
-                <p className="mt-0.5 text-[10px] text-[#5c3d28]">{card.impressivePoint}</p>
-              </div>
-            )}
-          </div>
-          <div className="mt-2 flex items-center justify-between">
+
+        {/* 하단 섹션 */}
+        <div className="mt-4 border-t border-[#d4a87c]/30 pt-3">
+          {hasExtra && (
+            <div className="mb-2.5 grid grid-cols-2 gap-3">
+              {card.recommendedFor && (
+                <div>
+                  <p className="text-[7px] font-bold uppercase tracking-widest text-[#c47f56]">추천 대상</p>
+                  <p className="mt-0.5 text-[10px] leading-snug text-[#5c3d28]">{card.recommendedFor}</p>
+                </div>
+              )}
+              {card.impressivePoint && (
+                <div>
+                  <p className="text-[7px] font-bold uppercase tracking-widest text-[#c47f56]">인상적인 구절</p>
+                  <p className="mt-0.5 text-[10px] leading-snug text-[#5c3d28]">{card.impressivePoint}</p>
+                </div>
+              )}
+            </div>
+          )}
+          <div className="flex items-center justify-between">
             <span className="text-[9px] text-[#b8956d]">by {card.authorName || card.authorNickname}</span>
             <span className="font-serif text-[9px] font-bold text-[#7a5a42]">책도장 · chaekdojang.com</span>
           </div>

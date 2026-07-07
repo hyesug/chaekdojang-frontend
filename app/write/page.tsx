@@ -27,11 +27,6 @@ type ReviewDraft = {
   content?: string;
   oneLineReview?: string;
   emotionKeywords?: string[];
-  impressivePoint?: string;
-  goodPoint?: string;
-  disappointingPoint?: string;
-  recommendedFor?: string;
-  lifeApplication?: string;
   isPublic?: boolean;
   generateAiSummary?: boolean;
 };
@@ -40,14 +35,7 @@ function getReviewDraftKey(userId: number | "anonymous", bookId?: number | null)
   return `${REVIEW_DRAFT_KEY_PREFIX}:${userId}:${bookId ?? "general"}`;
 }
 
-/* 별점 선택 컴포넌트 — hover 시 색상 미리보기 */
-function StarPicker({
-  value,
-  onChange,
-}: {
-  value: number;
-  onChange: (v: number) => void;
-}) {
+function StarPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const [hover, setHover] = useState(0);
   const LABELS = ["", "별로예요", "그저 그래요", "괜찮아요", "좋아요", "최고예요"];
 
@@ -69,9 +57,7 @@ function StarPicker({
           </button>
         ))}
       </div>
-      <p className="mt-1.5 text-sm text-brown-400 h-5">
-        {LABELS[hover || value]}
-      </p>
+      <p className="mt-1.5 text-sm text-brown-400 h-5">{LABELS[hover || value]}</p>
     </div>
   );
 }
@@ -81,14 +67,12 @@ function WriteContent() {
   const searchParams = useSearchParams();
   const restoredKeyRef = useRef<string | null>(null);
 
-  /* 책 검색 상태 */
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<BookResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [selectedBook, setSelectedBook] = useState<BookResult | null>(null);
   const [currentUserId, setCurrentUserId] = useState<number | "anonymous" | null>(null);
 
-  /* 검색 페이지에서 넘어온 경우 책 자동 선택 */
   useEffect(() => {
     const bookId = searchParams.get("bookId");
     const title = searchParams.get("title");
@@ -106,35 +90,24 @@ function WriteContent() {
     }
   }, [searchParams]);
 
-  /* 독후감 상태 */
   const [rating, setRating] = useState(0);
   const [content, setContent] = useState("");
   const [oneLineReview, setOneLineReview] = useState("");
   const [emotionInput, setEmotionInput] = useState("");
   const [selectedEmotions, setSelectedEmotions] = useState<string[]>([]);
-  const [impressivePoint, setImpressivePoint] = useState("");
-  const [goodPoint, setGoodPoint] = useState("");
-  const [disappointingPoint, setDisappointingPoint] = useState("");
-  const [recommendedFor, setRecommendedFor] = useState("");
-  const [lifeApplication, setLifeApplication] = useState("");
   const [isPublic, setIsPublic] = useState(true);
-  const [generateAiSummary, setGenerateAiSummary] = useState(false);
+  const [generateAiSummary, setGenerateAiSummary] = useState(true);
   const [draftRestored, setDraftRestored] = useState(false);
   const [draftReadyKey, setDraftReadyKey] = useState<string | null>(null);
 
-  /* 제출 상태 */
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     localStorage.removeItem(LEGACY_REVIEW_DRAFT_KEY);
-
     authFetch(`${API_BASE}/api/users/me`, { cache: "no-store" })
       .then(async (res) => {
-        if (!res.ok) {
-          setCurrentUserId("anonymous");
-          return;
-        }
+        if (!res.ok) { setCurrentUserId("anonymous"); return; }
         const json = await res.json().catch(() => null);
         const userId = json?.data?.id;
         setCurrentUserId(typeof userId === "number" ? userId : "anonymous");
@@ -144,7 +117,6 @@ function WriteContent() {
 
   useEffect(() => {
     if (currentUserId === null) return;
-
     const draftKey = getReviewDraftKey(currentUserId, selectedBook?.id);
     if (restoredKeyRef.current === draftKey) return;
 
@@ -164,11 +136,6 @@ function WriteContent() {
       if (typeof draft.content === "string") setContent(draft.content);
       if (typeof draft.oneLineReview === "string") setOneLineReview(draft.oneLineReview);
       if (Array.isArray(draft.emotionKeywords)) setSelectedEmotions(draft.emotionKeywords);
-      if (typeof draft.impressivePoint === "string") setImpressivePoint(draft.impressivePoint);
-      if (typeof draft.goodPoint === "string") setGoodPoint(draft.goodPoint);
-      if (typeof draft.disappointingPoint === "string") setDisappointingPoint(draft.disappointingPoint);
-      if (typeof draft.recommendedFor === "string") setRecommendedFor(draft.recommendedFor);
-      if (typeof draft.lifeApplication === "string") setLifeApplication(draft.lifeApplication);
       if (typeof draft.isPublic === "boolean") setIsPublic(draft.isPublic);
       if (typeof draft.generateAiSummary === "boolean") setGenerateAiSummary(draft.generateAiSummary);
       setDraftRestored(true);
@@ -183,20 +150,10 @@ function WriteContent() {
     if (draftReadyKey !== draftKey) return;
     if (!selectedBook && rating === 0 && !content.trim() && !oneLineReview.trim()) return;
     localStorage.setItem(draftKey, JSON.stringify({
-      selectedBook,
-      rating,
-      content,
-      oneLineReview,
-      emotionKeywords: selectedEmotions,
-      impressivePoint,
-      goodPoint,
-      disappointingPoint,
-      recommendedFor,
-      lifeApplication,
-      isPublic,
-      generateAiSummary,
+      selectedBook, rating, content, oneLineReview,
+      emotionKeywords: selectedEmotions, isPublic, generateAiSummary,
     }));
-  }, [currentUserId, draftReadyKey, selectedBook, rating, content, oneLineReview, selectedEmotions, impressivePoint, goodPoint, disappointingPoint, recommendedFor, lifeApplication, isPublic, generateAiSummary]);
+  }, [currentUserId, draftReadyKey, selectedBook, rating, content, oneLineReview, selectedEmotions, isPublic, generateAiSummary]);
 
   function toggleEmotion(keyword: string) {
     setSelectedEmotions((prev) =>
@@ -211,33 +168,20 @@ function WriteContent() {
     setEmotionInput("");
   }
 
+  // 레이블 없이 한줄 감상 + 본문만 합침
   function buildReviewContent() {
-    const sections = [
-      ["이 책을 한 줄로 말하면?", oneLineReview],
-      ["읽고 난 감정은?", selectedEmotions.join(", ")],
-      ["가장 인상 깊었던 부분은?", impressivePoint],
-      ["좋았던 점은?", goodPoint],
-      ["아쉬웠던 점은?", disappointingPoint],
-      ["누구에게 추천하고 싶은가?", recommendedFor],
-      ["내 삶에 적용할 점은?", lifeApplication],
-      ["본문 독후감", content],
-    ];
-    return sections
-      .map(([label, value]) => [label, value.trim()] as const)
-      .filter(([, value]) => value.length > 0)
-      .map(([label, value]) => `${label}\n${value}`)
-      .join("\n\n");
+    const parts: string[] = [];
+    if (oneLineReview.trim()) parts.push(oneLineReview.trim());
+    if (content.trim()) parts.push(content.trim());
+    return parts.join("\n\n");
   }
 
   async function searchBooks() {
     if (!query.trim()) return;
     setSearching(true);
     try {
-      const res = await fetch(
-        `${API_BASE}/api/books/search?q=${encodeURIComponent(query)}`
-      );
+      const res = await fetch(`${API_BASE}/api/books/search?q=${encodeURIComponent(query)}`);
       if (res.ok) {
-        /* 백엔드 응답: { success, data: BookResponse[], message } */
         const json = await res.json();
         setResults(json.data ?? json);
       } else {
@@ -255,26 +199,20 @@ function WriteContent() {
     if (!selectedBook) { setError("책을 선택해주세요."); return; }
     if (rating === 0) { setError("별점을 선택해주세요."); return; }
     if (!oneLineReview.trim()) { setError("한 줄 감상을 입력해주세요."); return; }
-    const composedContent = buildReviewContent();
-    if (!composedContent.trim()) { setError("독후감 내용을 입력해주세요."); return; }
 
+    const composedContent = buildReviewContent();
     setSubmitting(true);
     setError("");
 
     try {
       const res = await authFetch(`${API_BASE}/api/reviews`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ bookId: selectedBook.id, rating, content: composedContent, generateAiSummary }),
       });
 
-      if (res.status === 401) {
-        
-        router.push("/auth/login");
-        return;
-      }
+      if (res.status === 401) { router.push("/auth/login"); return; }
+
       if (res.ok) {
         const json = await res.json().catch(() => null);
         const createdReview = json?.data ?? json;
@@ -312,13 +250,11 @@ function WriteContent() {
           <div className="w-full max-w-xs rounded-2xl border border-cream-200 bg-white p-6 text-center shadow-lg">
             <div className="mx-auto mb-4 h-8 w-8 rounded-full border-2 border-brown-200 border-t-brown-600 animate-spin" />
             <p className="font-serif text-lg font-bold text-brown-800">독후감 등록 중</p>
-            <p className="mt-2 text-sm text-brown-400">
-              저장이 끝나면 피드로 이동해요. 잠시만 기다려 주세요.
-            </p>
+            <p className="mt-2 text-sm text-brown-400">저장이 끝나면 피드로 이동해요. 잠시만 기다려 주세요.</p>
           </div>
         </div>
       )}
-      {/* 페이지 헤더 */}
+
       <div className="flex items-center gap-4 mb-5">
         <Link href="/" className="text-sm text-brown-400 hover:text-brown-600 transition-colors">
           ← 피드로
@@ -333,14 +269,12 @@ function WriteContent() {
       )}
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-        {/* STEP 1: 책 검색 */}
+
+        {/* 1. 책 선택 */}
         <section className="bg-white rounded-lg border border-cream-200 p-5 sm:p-6 shadow-sm">
-          <h2 className="font-serif text-lg font-bold text-brown-700 mb-4">
-            1. 어떤 책을 읽었나요?
-          </h2>
+          <h2 className="font-serif text-lg font-bold text-brown-700 mb-4">1. 어떤 책을 읽었나요?</h2>
 
           {selectedBook ? (
-            /* 선택된 책 표시 */
             <div className="flex items-center gap-3 bg-cream-50 rounded-xl px-4 py-3 border border-cream-200">
               {selectedBook.thumbnail ? (
                 <img src={selectedBook.thumbnail} alt="" className="w-10 h-14 object-cover rounded flex-shrink-0 shadow-sm" />
@@ -349,9 +283,7 @@ function WriteContent() {
               )}
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-brown-800">{selectedBook.title}</p>
-                <p className="text-sm text-brown-400 mt-0.5">
-                  {selectedBook.author} · {selectedBook.publisher}
-                </p>
+                <p className="text-sm text-brown-400 mt-0.5">{selectedBook.author} · {selectedBook.publisher}</p>
               </div>
               <button
                 type="button"
@@ -363,7 +295,6 @@ function WriteContent() {
             </div>
           ) : (
             <>
-              {/* 검색 입력 */}
               <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="text"
@@ -382,8 +313,6 @@ function WriteContent() {
                   {searching ? "..." : "검색"}
                 </button>
               </div>
-
-              {/* 검색 결과 */}
               {results.length > 0 && (
                 <ul className="mt-2 border border-cream-200 rounded-xl overflow-hidden">
                   {results.map((book) => (
@@ -414,27 +343,34 @@ function WriteContent() {
           )}
         </section>
 
-        {/* STEP 2: 빠른 도장 찍기 */}
+        {/* 2. 이 책 어땠나요? */}
         <section className="bg-white rounded-lg border border-cream-200 p-5 sm:p-6 shadow-sm">
-          <h2 className="font-serif text-lg font-bold text-brown-700 mb-4">
-            2. 빠른 도장 찍기
-          </h2>
+          <h2 className="font-serif text-lg font-bold text-brown-700 mb-4">2. 이 책 어땠나요?</h2>
           <div className="space-y-5">
+
             <div>
-              <label className="mb-2 block text-sm font-medium text-brown-600">이 책을 한 줄로 말하면?</label>
+              <label className="mb-2 block text-sm font-medium text-brown-600">
+                한 줄 감상 <span className="text-red-400">*</span>
+              </label>
               <input
                 value={oneLineReview}
                 onChange={(event) => setOneLineReview(event.target.value)}
-                placeholder="짧은 감상을 남겨주세요"
+                placeholder="이 책을 한 마디로 표현하면?"
                 className="w-full rounded-xl border border-cream-300 bg-cream-50 px-4 py-3 text-sm text-brown-800 placeholder:text-brown-300 focus:border-brown-400 focus:outline-none focus:ring-2 focus:ring-brown-100"
               />
             </div>
+
             <div>
-              <p className="mb-2 text-sm font-medium text-brown-600">별점</p>
+              <p className="mb-2 text-sm font-medium text-brown-600">
+                별점 <span className="text-red-400">*</span>
+              </p>
               <StarPicker value={rating} onChange={setRating} />
             </div>
+
             <div>
-              <p className="mb-2 text-sm font-medium text-brown-600">읽고 난 감정은?</p>
+              <p className="mb-2 text-sm font-medium text-brown-600">
+                읽고 난 감정 <span className="text-xs font-normal text-brown-400">(선택)</span>
+              </p>
               <div className="flex flex-wrap gap-2">
                 {["성장", "혼란", "위로", "성찰", "흥미", "먹먹함", "기쁨", "분노"].map((keyword) => (
                   <button
@@ -464,73 +400,55 @@ function WriteContent() {
                 </button>
               </div>
             </div>
-            <label className="flex items-center justify-between gap-3 rounded-xl bg-cream-50 px-4 py-3">
-              <span>
-                <span className="block text-sm font-medium text-brown-700">공개 여부</span>
-                <span className="mt-0.5 block text-xs text-brown-400">
-                  공개하면 책 상세와 피드에 표시됩니다.
+
+            <div className="space-y-2 border-t border-cream-100 pt-4">
+              <label className="flex items-center justify-between gap-3 rounded-xl bg-cream-50 px-4 py-3">
+                <span>
+                  <span className="block text-sm font-medium text-brown-700">공개 여부</span>
+                  <span className="mt-0.5 block text-xs text-brown-400">공개하면 책 상세와 피드에 표시됩니다.</span>
                 </span>
-              </span>
-              <input
-                type="checkbox"
-                checked={isPublic}
-                onChange={(event) => setIsPublic(event.target.checked)}
-                className="h-5 w-5 rounded border-cream-300 text-brown-700 focus:ring-brown-300"
-              />
-            </label>
+                <input
+                  type="checkbox"
+                  checked={isPublic}
+                  onChange={(event) => setIsPublic(event.target.checked)}
+                  className="h-5 w-5 rounded border-cream-300 text-brown-700 focus:ring-brown-300"
+                />
+              </label>
+              <label className="flex items-center justify-between gap-3 rounded-xl bg-cream-50 px-4 py-3">
+                <span>
+                  <span className="block text-sm font-medium text-brown-700">AI 독서카드 만들기</span>
+                  <span className="mt-0.5 block text-xs text-brown-400">
+                    저장 후 AI가 감정 키워드·추천 독자·인상적인 구절을 정리합니다.
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={generateAiSummary}
+                  onChange={(event) => setGenerateAiSummary(event.target.checked)}
+                  className="h-5 w-5 rounded border-cream-300 text-brown-700 focus:ring-brown-300"
+                />
+              </label>
+            </div>
           </div>
         </section>
 
-        {/* STEP 3: 자세히 쓰기 */}
+        {/* 3. 자세히 쓰기 (선택) */}
         <section className="bg-white rounded-lg border border-cream-200 p-5 sm:p-6 shadow-sm">
-          <h2 className="font-serif text-lg font-bold text-brown-700 mb-4">
-            3. 자세히 쓰기
+          <h2 className="font-serif text-lg font-bold text-brown-700 mb-1">
+            3. 자세히 쓰기{" "}
+            <span className="text-sm font-normal text-brown-400">(선택)</span>
           </h2>
-          <div className="mb-4 grid gap-3">
-            {[
-              ["가장 인상 깊었던 부분은?", impressivePoint, setImpressivePoint],
-              ["좋았던 점은?", goodPoint, setGoodPoint],
-              ["아쉬웠던 점은?", disappointingPoint, setDisappointingPoint],
-              ["누구에게 추천하고 싶은가?", recommendedFor, setRecommendedFor],
-              ["내 삶에 적용할 점은?", lifeApplication, setLifeApplication],
-            ].map(([label, value, setter]) => (
-              <input
-                key={label as string}
-                value={value as string}
-                onChange={(event) => (setter as (value: string) => void)(event.target.value)}
-                placeholder={label as string}
-                className="w-full rounded-xl border border-cream-300 bg-cream-50 px-4 py-3 text-sm text-brown-800 placeholder:text-brown-300 focus:border-brown-400 focus:outline-none focus:ring-2 focus:ring-brown-100"
-              />
-            ))}
-          </div>
+          <p className="mb-4 text-xs text-brown-400">
+            인상 깊었던 구절, 느낀 점, 추천 이유 등을 자유롭게 적어주세요.
+          </p>
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder="본문 독후감은 자유롭게 적어주세요."
+            placeholder="더 깊은 감상이 있다면 자유롭게 적어주세요."
             rows={10}
             className="w-full min-h-[42vh] sm:min-h-0 px-4 py-3 rounded-xl border border-cream-300 text-base sm:text-sm text-brown-800 bg-cream-50 placeholder:text-brown-300 focus:outline-none focus:border-brown-400 focus:ring-2 focus:ring-brown-100 transition resize-none leading-relaxed"
           />
           <p className="mt-1.5 text-xs text-brown-300 text-right">{content.length}자</p>
-        </section>
-
-        {/* STEP 4: AI 독서카드 */}
-        <section className="bg-white rounded-lg border border-cream-200 p-5 sm:p-6 shadow-sm">
-          <label className="flex items-start gap-3">
-            <input
-              type="checkbox"
-              checked={generateAiSummary}
-              onChange={(event) => setGenerateAiSummary(event.target.checked)}
-              className="mt-1 h-4 w-4 rounded border-cream-300 text-brown-700 focus:ring-brown-300"
-            />
-            <span>
-              <span className="block font-serif text-lg font-bold text-brown-700">
-                AI 독서카드도 만들기
-              </span>
-              <span className="mt-1 block text-sm leading-6 text-brown-400">
-                저장 후 AI가 한 줄 감상, 감정 키워드, 추천 대상을 정리합니다.
-              </span>
-            </span>
-          </label>
         </section>
 
         {error && (

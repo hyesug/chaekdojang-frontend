@@ -786,41 +786,44 @@ export default function ReviewCard({
           </p>
         )}
 
-        {/* 본문 */}
-        {canOpenHiddenDetail ? (
-          <button
-            type="button"
-            className="mt-3 text-left w-full group block"
-            onClick={() => setShowDetail(true)}
-          >
-            <p className="text-sm text-brown-600 leading-relaxed line-clamp-3 group-hover:text-brown-800 transition-colors">
-              {displayContent}
-            </p>
-            <span className="text-xs text-brown-300 group-hover:text-brown-500 transition-colors mt-1 inline-block">
-              더 보기
-            </span>
-          </button>
-        ) : (
-          <Link
-            href={hidden ? "#" : reviewHref}
-            className="mt-3 text-left w-full group block"
-            onClick={(e) => {
-              if (hidden) {
-                e.preventDefault();
-                return;
-              }
-              onNavigateToDetail?.();
-              rememberReturnTo();
-            }}
-          >
-            <p className="text-sm text-brown-600 leading-relaxed line-clamp-3 group-hover:text-brown-800 transition-colors">
-              {displayContent}
-            </p>
-            <span className="text-xs text-brown-300 group-hover:text-brown-500 transition-colors mt-1 inline-block">
-              더 보기
-            </span>
-          </Link>
-        )}
+        {/* 본문 — AI 한줄 있으면 첫 문단(한줄 감상) 건너뜀 */}
+        {(() => {
+          const bodyText = post.aiSummary?.oneLineReview
+            ? displayContent.split("\n\n").slice(1).join("\n\n").trim()
+            : displayContent;
+          if (!bodyText) return null;
+          return canOpenHiddenDetail ? (
+            <button
+              type="button"
+              className="mt-3 text-left w-full group block"
+              onClick={() => setShowDetail(true)}
+            >
+              <p className="text-sm text-brown-600 leading-relaxed line-clamp-3 group-hover:text-brown-800 transition-colors">
+                {bodyText}
+              </p>
+              <span className="text-xs text-brown-300 group-hover:text-brown-500 transition-colors mt-1 inline-block">
+                더 보기
+              </span>
+            </button>
+          ) : (
+            <Link
+              href={hidden ? "#" : reviewHref}
+              className="mt-3 text-left w-full group block"
+              onClick={(e) => {
+                if (hidden) { e.preventDefault(); return; }
+                onNavigateToDetail?.();
+                rememberReturnTo();
+              }}
+            >
+              <p className="text-sm text-brown-600 leading-relaxed line-clamp-3 group-hover:text-brown-800 transition-colors">
+                {bodyText}
+              </p>
+              <span className="text-xs text-brown-300 group-hover:text-brown-500 transition-colors mt-1 inline-block">
+                더 보기
+              </span>
+            </Link>
+          );
+        })()}
 
         {/* 좋아요 / 댓글 버튼 */}
         <div className="flex items-center gap-5 mt-3 pt-3 border-t border-cream-100">

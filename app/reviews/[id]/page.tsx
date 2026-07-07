@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import BackButton from "../../components/BackButton";
 import BookReturnLink from "../../components/BookReturnLink";
+import ReviewAiSummaryCard from "../../components/ReviewAiSummaryCard";
 import ReviewEngagement from "../../components/ReviewEngagement";
 import ReviewCard, { type Review } from "../../components/ReviewCard";
 import ReviewReturnMemory from "../../components/ReviewReturnMemory";
@@ -232,6 +233,17 @@ export default async function PublicReviewPage({ params, searchParams }: Props) 
               </div>
             )}
           </div>
+        </div>
+
+        <div className="mt-6">
+          <ReviewAiSummaryCard
+            reviewId={review.id}
+            authorId={review.author.id ?? null}
+            bookTitle={review.book?.title ?? ""}
+            bookAuthor={review.book?.author}
+            bookThumbnail={review.book?.thumbnail}
+            authorNickname={review.author.nickname}
+          />
         </div>
 
         {relatedReviews.length > 0 && (

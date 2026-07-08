@@ -342,7 +342,7 @@ export default function ReviewAiSummaryCard({
           <SummaryInput
             label="한 줄 감상"
             value={form.oneLineReview}
-            maxLength={60}
+            maxLength={180}
             onChange={(value) => setForm((prev) => ({ ...prev, oneLineReview: value }))}
           />
           <SummaryInput
@@ -355,13 +355,13 @@ export default function ReviewAiSummaryCard({
             label="추천 대상"
             value={form.recommendedFor}
             placeholder="자기만의 속도를 찾고 싶은 사람"
-            maxLength={120}
+            maxLength={200}
             onChange={(value) => setForm((prev) => ({ ...prev, recommendedFor: value }))}
           />
           <SummaryInput
             label="인상 깊은 지점"
             value={form.impressivePoint}
-            maxLength={100}
+            maxLength={300}
             onChange={(value) => setForm((prev) => ({ ...prev, impressivePoint: value }))}
           />
           <div className="flex justify-end gap-2">

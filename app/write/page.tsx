@@ -439,30 +439,6 @@ function WriteContent() {
         </p>
       )}
 
-      <section className="mb-5 rounded-md border border-brown-100 bg-white p-4 shadow-sm">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-brown-800">도장 코멘트</p>
-            <p className="mt-1 text-xs leading-5 text-brown-400">
-              자세히 쓰기 본문을 {feedbackConfig.minChars}자 이상 작성하면 저장 전에 AI 코멘트를 받을 수 있어요.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={requestFeedback}
-            disabled={!canRequestFeedback}
-            className="rounded-xl border border-brown-200 bg-cream-50 px-4 py-2.5 text-sm font-medium text-brown-700 transition-colors hover:bg-cream-100 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {feedbackLoading ? "코멘트 작성 중..." : "도장 코멘트 받기"}
-          </button>
-        </div>
-        {isFeedbackTooShort && (
-          <p className="mt-2 text-xs text-brown-400">
-            현재 {feedbackCharCount}자예요. {feedbackConfig.minChars - feedbackCharCount}자 더 쓰면 버튼이 활성화돼요.
-          </p>
-        )}
-      </section>
-
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
 
         {/* 1. 책 선택 */}

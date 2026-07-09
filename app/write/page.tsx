@@ -69,6 +69,14 @@ function getReviewDraftKey(userId: number | "anonymous", bookId?: number | null)
   return `${REVIEW_DRAFT_KEY_PREFIX}:${userId}:${bookId ?? "general"}`;
 }
 
+function normalizeFeedbackText(value: string) {
+  return value.replace(/[\s.,!?;:'"“”‘’()[\]{}·…-]/g, "").trim();
+}
+
+function hasMeaningfulRewrite(item: FeedbackImprovement) {
+  return normalizeFeedbackText(item.before) !== normalizeFeedbackText(item.after);
+}
+
 function StarPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const [hover, setHover] = useState(0);
   const LABELS = ["", "별로예요", "그저 그래요", "괜찮아요", "좋아요", "최고예요"];
@@ -713,22 +721,27 @@ function WriteContent() {
                     <div>
                       <h4 className="mb-2 font-semibold text-brown-800">보완할 점</h4>
                       <div className="space-y-2">
-                        {feedback.improvements.map((item, index) => (
-                          <div key={`improvement-${index}`} className="rounded-lg border border-cream-100 bg-cream-50 px-3 py-3">
-                            <p className="font-medium leading-6 text-brown-800">{item.point}</p>
-                            <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                              <div className="rounded-md bg-white px-3 py-2">
-                                <p className="text-xs font-medium text-brown-400">기존 표현</p>
-                                <p className="mt-1 leading-6">{item.before}</p>
-                              </div>
-                              <div className="rounded-md bg-white px-3 py-2">
-                                <p className="text-xs font-medium text-brown-400">바꿔볼 표현</p>
-                                <p className="mt-1 leading-6">{item.after}</p>
-                              </div>
+                        {feedback.improvements.map((item, index) => {
+                          const showRewrite = hasMeaningfulRewrite(item);
+                          return (
+                            <div key={`improvement-${index}`} className="rounded-lg border border-cream-100 bg-cream-50 px-3 py-3">
+                              <p className="font-medium leading-6 text-brown-800">{item.point}</p>
+                              {showRewrite && (
+                                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                                  <div className="rounded-md bg-white px-3 py-2">
+                                    <p className="text-xs font-medium text-brown-400">기존 표현</p>
+                                    <p className="mt-1 leading-6">{item.before}</p>
+                                  </div>
+                                  <div className="rounded-md bg-white px-3 py-2">
+                                    <p className="text-xs font-medium text-brown-400">바꿔볼 표현</p>
+                                    <p className="mt-1 leading-6">{item.after}</p>
+                                  </div>
+                                </div>
+                              )}
+                              <p className="mt-2 text-xs leading-5 text-brown-500">{item.reason}</p>
                             </div>
-                            <p className="mt-2 text-xs leading-5 text-brown-500">{item.reason}</p>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}

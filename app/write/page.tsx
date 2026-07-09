@@ -133,11 +133,15 @@ function WriteContent() {
             source: "edit",
           });
         }
-        // content = "한줄감상\n\n본문" 구조이므로 분리
         const fullContent: string = data.content ?? "";
-        const parts = fullContent.split("\n\n");
-        setOneLineReview(parts[0] ?? "");
-        setContent(parts.slice(1).join("\n\n"));
+        if (fullContent.includes("\n\n")) {
+          const parts = fullContent.split("\n\n");
+          setOneLineReview(parts[0] ?? "");
+          setContent(parts.slice(1).join("\n\n"));
+        } else {
+          setOneLineReview("");
+          setContent(fullContent);
+        }
         setRating(data.rating ?? 0);
       })
       .catch(() => {});
@@ -288,9 +292,9 @@ function WriteContent() {
     e.preventDefault();
     if (!selectedBook) { setError("책을 선택해주세요."); return; }
     if (rating === 0) { setError("별점을 선택해주세요."); return; }
-    if (!oneLineReview.trim()) { setError("한 줄 감상을 입력해주세요."); return; }
 
     const composedContent = buildReviewContent();
+    if (!composedContent) { setError("감상을 입력해주세요."); return; }
     setSubmitting(true);
     setError("");
 
@@ -473,7 +477,7 @@ function WriteContent() {
 
             <div>
               <label className="mb-2 block text-sm font-medium text-brown-600">
-                한 줄 감상 <span className="text-red-400">*</span>
+                짧은 감상 <span className="text-xs font-normal text-brown-400">(선택)</span>
               </label>
               <input
                 value={oneLineReview}

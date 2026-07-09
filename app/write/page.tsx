@@ -134,14 +134,8 @@ function WriteContent() {
           });
         }
         const fullContent: string = data.content ?? "";
-        if (fullContent.includes("\n\n")) {
-          const parts = fullContent.split("\n\n");
-          setOneLineReview(parts[0] ?? "");
-          setContent(parts.slice(1).join("\n\n"));
-        } else {
-          setOneLineReview("");
-          setContent(fullContent);
-        }
+        setOneLineReview("");
+        setContent(fullContent);
         setRating(data.rating ?? 0);
         setIsPublic(!data.hidden);
         setGenerateAiSummary(false);

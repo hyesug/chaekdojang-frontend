@@ -39,12 +39,19 @@ type FeedbackSentenceExample = {
   after: string;
 };
 
+type FeedbackImprovement = {
+  point: string;
+  before: string;
+  after: string;
+  reason: string;
+};
+
 type FeedbackResult = {
   notReview: boolean;
   message?: string;
   coreTheme?: string;
   strengths?: string[];
-  improvements?: string[];
+  improvements?: FeedbackImprovement[];
   sentenceExamples?: FeedbackSentenceExample[];
   titleSuggestions?: string[];
   deepQuestion?: string;
@@ -704,12 +711,25 @@ function WriteContent() {
 
                   {feedback.improvements && feedback.improvements.length > 0 && (
                     <div>
-                      <h4 className="mb-1 font-semibold text-brown-800">보완할 점</h4>
-                      <ul className="space-y-1">
+                      <h4 className="mb-2 font-semibold text-brown-800">보완할 점</h4>
+                      <div className="space-y-2">
                         {feedback.improvements.map((item, index) => (
-                          <li key={`improvement-${index}`} className="leading-6">- {item}</li>
+                          <div key={`improvement-${index}`} className="rounded-lg border border-cream-100 bg-cream-50 px-3 py-3">
+                            <p className="font-medium leading-6 text-brown-800">{item.point}</p>
+                            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                              <div className="rounded-md bg-white px-3 py-2">
+                                <p className="text-xs font-medium text-brown-400">기존 표현</p>
+                                <p className="mt-1 leading-6">{item.before}</p>
+                              </div>
+                              <div className="rounded-md bg-white px-3 py-2">
+                                <p className="text-xs font-medium text-brown-400">바꿔볼 표현</p>
+                                <p className="mt-1 leading-6">{item.after}</p>
+                              </div>
+                            </div>
+                            <p className="mt-2 text-xs leading-5 text-brown-500">{item.reason}</p>
+                          </div>
                         ))}
-                      </ul>
+                      </div>
                     </div>
                   )}
 

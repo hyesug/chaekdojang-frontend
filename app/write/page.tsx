@@ -1,15 +1,18 @@
 "use client";
 
-import { Suspense, useState, useEffect, useRef } from "react";
+import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { API_BASE } from "../lib/api";
 import { authFetch } from "../lib/auth";
+import { getSessionId, trackMetric } from "../components/AnalyticsTracker";
 
 const FEED_STATE_KEY = "chaekdojang:feed-state";
 const PENDING_REVIEW_KEY = "chaekdojang:pending-review";
 const LEGACY_REVIEW_DRAFT_KEY = "chaekdojang:review-draft";
 const REVIEW_DRAFT_KEY_PREFIX = "chaekdojang:review-draft:v2";
+const DEFAULT_FEEDBACK_MIN_CHARS = 150;
+const DEFAULT_FEEDBACK_MAX_CHARS = 6000;
 
 type BookResult = {
   id: number;
@@ -21,18 +24,54 @@ type BookResult = {
   source: string;
 };
 
-type ReviewDraft = {
-  selectedBook?: BookResult | null;
-  rating?: number;
-  content?: string;
-  oneLineReview?: string;
-  emotionKeywords?: string[];
-  isPublic?: boolean;
-  generateAiSummary?: boolean;
+type FeedbackSentenceExample = {
+  before: string;
+  after: string;
 };
 
-function getReviewDraftKey(userId: number | "anonymous", bookId?: number | null) {
-  return `${REVIEW_DRAFT_KEY_PREFIX}:${userId}:${bookId ?? "general"}`;
+type FeedbackImprovement = {
+  point: string;
+  before: string;
+  direction: string;
+  after: string;
+  reason: string;
+};
+
+type FeedbackResult = {
+  notReview: boolean;
+  message?: string;
+  coreTheme?: string;
+  strengths?: string[];
+  improvements?: FeedbackImprovement[];
+  sentenceExamples?: FeedbackSentenceExample[];
+  titleSuggestions?: string[];
+  deepQuestion?: string;
+};
+
+type FeedbackConfig = {
+  minChars: number;
+  maxChars: number;
+  boundaryMessage?: string | null;
+  betaApplyUrl?: string | null;
+  dailyLimitEnabled?: boolean;
+};
+
+function normalizeFeedbackText(value: string) {
+  return value.replace(/[\s.,!?;:'"“”‘’()[\]{}·…-]/g, "").trim();
+}
+
+function hasMeaningfulRewrite(item: FeedbackImprovement) {
+  return normalizeFeedbackText(item.before) !== normalizeFeedbackText(item.after);
+}
+
+function clearReviewDraftStorage() {
+  localStorage.removeItem(LEGACY_REVIEW_DRAFT_KEY);
+  for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+    const key = localStorage.key(index);
+    if (key?.startsWith(REVIEW_DRAFT_KEY_PREFIX)) {
+      localStorage.removeItem(key);
+    }
+  }
 }
 
 function StarPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
@@ -65,7 +104,6 @@ function StarPicker({ value, onChange }: { value: number; onChange: (v: number) 
 function WriteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const restoredKeyRef = useRef<string | null>(null);
 
   // 수정 모드: ?reviewId=123 이 있으면 기존 독후감 수정
   const reviewId = searchParams.get("reviewId");
@@ -75,7 +113,6 @@ function WriteContent() {
   const [results, setResults] = useState<BookResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [selectedBook, setSelectedBook] = useState<BookResult | null>(null);
-  const [currentUserId, setCurrentUserId] = useState<number | "anonymous" | null>(null);
 
   // 수정 모드: 기존 독후감 데이터 로드
   useEffect(() => {
@@ -96,12 +133,18 @@ function WriteContent() {
             source: "edit",
           });
         }
-        // content = "한줄감상\n\n본문" 구조이므로 분리
         const fullContent: string = data.content ?? "";
-        const parts = fullContent.split("\n\n");
-        setOneLineReview(parts[0] ?? "");
-        setContent(parts.slice(1).join("\n\n"));
+        if (fullContent.includes("\n\n")) {
+          const parts = fullContent.split("\n\n");
+          setOneLineReview(parts[0] ?? "");
+          setContent(parts.slice(1).join("\n\n"));
+        } else {
+          setOneLineReview("");
+          setContent(fullContent);
+        }
         setRating(data.rating ?? 0);
+        setIsPublic(!data.hidden);
+        setGenerateAiSummary(false);
       })
       .catch(() => {});
   }, [reviewId]);
@@ -131,63 +174,34 @@ function WriteContent() {
   const [selectedEmotions, setSelectedEmotions] = useState<string[]>([]);
   const [isPublic, setIsPublic] = useState(true);
   const [generateAiSummary, setGenerateAiSummary] = useState(true);
-  const [draftRestored, setDraftRestored] = useState(false);
-  const [draftReadyKey, setDraftReadyKey] = useState<string | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [feedbackConfig, setFeedbackConfig] = useState<FeedbackConfig>({
+    minChars: DEFAULT_FEEDBACK_MIN_CHARS,
+    maxChars: DEFAULT_FEEDBACK_MAX_CHARS,
+  });
+  const [feedback, setFeedback] = useState<FeedbackResult | null>(null);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [feedbackError, setFeedbackError] = useState("");
+  const [feedbackUsedForCurrentDraft, setFeedbackUsedForCurrentDraft] = useState(false);
 
   useEffect(() => {
-    localStorage.removeItem(LEGACY_REVIEW_DRAFT_KEY);
-    authFetch(`${API_BASE}/api/users/me`, { cache: "no-store" })
-      .then(async (res) => {
-        if (!res.ok) { setCurrentUserId("anonymous"); return; }
-        const json = await res.json().catch(() => null);
-        const userId = json?.data?.id;
-        setCurrentUserId(typeof userId === "number" ? userId : "anonymous");
-      })
-      .catch(() => setCurrentUserId("anonymous"));
+    clearReviewDraftStorage();
   }, []);
 
   useEffect(() => {
-    if (currentUserId === null) return;
-    const draftKey = getReviewDraftKey(currentUserId, selectedBook?.id);
-    if (restoredKeyRef.current === draftKey) return;
-
-    restoredKeyRef.current = draftKey;
-    setDraftReadyKey(draftKey);
-    setDraftRestored(false);
-
-    const hasCurrentInput = rating > 0 || content.trim().length > 0 || oneLineReview.trim().length > 0;
-    if (hasCurrentInput) return;
-
-    const raw = localStorage.getItem(draftKey);
-    if (!raw) return;
-    try {
-      const draft = JSON.parse(raw) as ReviewDraft;
-      if (draft.selectedBook) setSelectedBook(draft.selectedBook);
-      if (typeof draft.rating === "number") setRating(draft.rating);
-      if (typeof draft.content === "string") setContent(draft.content);
-      if (typeof draft.oneLineReview === "string") setOneLineReview(draft.oneLineReview);
-      if (Array.isArray(draft.emotionKeywords)) setSelectedEmotions(draft.emotionKeywords);
-      if (typeof draft.isPublic === "boolean") setIsPublic(draft.isPublic);
-      if (typeof draft.generateAiSummary === "boolean") setGenerateAiSummary(draft.generateAiSummary);
-      setDraftRestored(true);
-    } catch {
-      localStorage.removeItem(draftKey);
-    }
-  }, [content, currentUserId, generateAiSummary, oneLineReview, rating, selectedBook?.id]);
-
-  useEffect(() => {
-    if (currentUserId === null) return;
-    const draftKey = getReviewDraftKey(currentUserId, selectedBook?.id);
-    if (draftReadyKey !== draftKey) return;
-    if (!selectedBook && rating === 0 && !content.trim() && !oneLineReview.trim()) return;
-    localStorage.setItem(draftKey, JSON.stringify({
-      selectedBook, rating, content, oneLineReview,
-      emotionKeywords: selectedEmotions, isPublic, generateAiSummary,
-    }));
-  }, [currentUserId, draftReadyKey, selectedBook, rating, content, oneLineReview, selectedEmotions, isPublic, generateAiSummary]);
+    authFetch(`${API_BASE}/api/feedback/config`, { cache: "no-store" })
+      .then(async (res) => {
+        if (!res.ok) return;
+        const json = await res.json().catch(() => null);
+        const data = json?.data;
+        if (typeof data?.minChars === "number" && typeof data?.maxChars === "number") {
+          setFeedbackConfig(data);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   function toggleEmotion(keyword: string) {
     setSelectedEmotions((prev) =>
@@ -228,13 +242,61 @@ function WriteContent() {
     }
   }
 
+  async function requestFeedback() {
+    const trimmedContent = content.trim();
+    if (trimmedContent.length < feedbackConfig.minChars || trimmedContent.length > feedbackConfig.maxChars) return;
+
+    setFeedbackLoading(true);
+    setFeedbackError("");
+    setFeedback(null);
+
+    try {
+      const res = await authFetch(`${API_BASE}/api/feedback/review-comment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: trimmedContent,
+          sessionId: getSessionId(),
+        }),
+      });
+
+      if (res.status === 401) {
+        router.push("/auth/login");
+        return;
+      }
+
+      if (res.ok) {
+        const json = await res.json().catch(() => null);
+        const data = json?.data;
+        if (data?.feedback) {
+          setFeedback(data.feedback);
+          setFeedbackConfig((prev) => ({
+            ...prev,
+            minChars: data.minChars ?? prev.minChars,
+            maxChars: data.maxChars ?? prev.maxChars,
+            boundaryMessage: data.boundaryMessage ?? prev.boundaryMessage,
+            betaApplyUrl: data.betaApplyUrl ?? prev.betaApplyUrl,
+          }));
+          setFeedbackUsedForCurrentDraft(true);
+        }
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setFeedbackError((data as { message?: string }).message ?? "도장 코멘트를 만들지 못했습니다. 잠시 후 다시 시도해주세요.");
+      }
+    } catch {
+      setFeedbackError("서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setFeedbackLoading(false);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedBook) { setError("책을 선택해주세요."); return; }
     if (rating === 0) { setError("별점을 선택해주세요."); return; }
-    if (!oneLineReview.trim()) { setError("한 줄 감상을 입력해주세요."); return; }
 
     const composedContent = buildReviewContent();
+    if (!composedContent) { setError("감상을 입력해주세요."); return; }
     setSubmitting(true);
     setError("");
 
@@ -244,10 +306,19 @@ function WriteContent() {
         const res = await authFetch(`${API_BASE}/api/reviews/${reviewId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: composedContent, rating }),
+          body: JSON.stringify({
+            bookId: selectedBook.id,
+            content: composedContent,
+            rating,
+            hidden: !isPublic,
+            generateAiSummary,
+          }),
         });
         if (res.status === 401) { router.push("/auth/login"); return; }
         if (res.ok) {
+          if (feedbackUsedForCurrentDraft) {
+            trackMetric("revision_saved", "/write", 0, { reviewId: Number(reviewId), mode: "edit" });
+          }
           router.push(`/reviews/${reviewId}`);
         } else {
           const data = await res.json().catch(() => ({}));
@@ -260,7 +331,7 @@ function WriteContent() {
       const res = await authFetch(`${API_BASE}/api/reviews`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bookId: selectedBook.id, rating, content: composedContent, generateAiSummary }),
+        body: JSON.stringify({ bookId: selectedBook.id, rating, content: composedContent, generateAiSummary, hidden: !isPublic }),
       });
 
       if (res.status === 401) { router.push("/auth/login"); return; }
@@ -268,20 +339,12 @@ function WriteContent() {
       if (res.ok) {
         const json = await res.json().catch(() => null);
         const createdReview = json?.data ?? json;
-        if (createdReview?.id && !isPublic) {
-          await authFetch(`${API_BASE}/api/reviews/${createdReview.id}/hidden`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ hidden: true }),
-          }).catch(() => null);
-        }
-        if (currentUserId !== null) {
-          localStorage.removeItem(getReviewDraftKey(currentUserId, selectedBook.id));
-        }
-        localStorage.removeItem(LEGACY_REVIEW_DRAFT_KEY);
         sessionStorage.removeItem(FEED_STATE_KEY);
-        if (createdReview?.id) {
+        if (createdReview?.id && !createdReview.hidden) {
           sessionStorage.setItem(PENDING_REVIEW_KEY, JSON.stringify(createdReview));
+        }
+        if (feedbackUsedForCurrentDraft) {
+          trackMetric("revision_saved", "/write", 0, { reviewId: createdReview?.id ?? null, mode: "create" });
         }
         router.push("/");
       } else {
@@ -294,6 +357,11 @@ function WriteContent() {
       setSubmitting(false);
     }
   }
+
+  const feedbackCharCount = content.trim().length;
+  const isFeedbackTooShort = feedbackCharCount < feedbackConfig.minChars;
+  const isFeedbackTooLong = feedbackCharCount > feedbackConfig.maxChars;
+  const canRequestFeedback = !feedbackLoading && !isFeedbackTooShort && !isFeedbackTooLong;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 sm:py-8 pb-28 sm:pb-8">
@@ -326,12 +394,6 @@ function WriteContent() {
         </h1>
       </div>
 
-      {draftRestored && (
-        <p className="mb-4 rounded-xl border border-cream-200 bg-cream-50 px-4 py-3 text-sm text-brown-500">
-          이전에 쓰던 독후감을 불러왔어요.
-        </p>
-      )}
-
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
 
         {/* 1. 책 선택 */}
@@ -349,15 +411,13 @@ function WriteContent() {
                 <p className="font-medium text-brown-800">{selectedBook.title}</p>
                 <p className="text-sm text-brown-400 mt-0.5">{selectedBook.author} · {selectedBook.publisher}</p>
               </div>
-              {!isEditMode && (
-                <button
-                  type="button"
-                  onClick={() => { setSelectedBook(null); setResults([]); setQuery(""); }}
-                  className="text-xs text-brown-400 hover:text-brown-600 transition-colors ml-2 flex-shrink-0"
-                >
-                  변경
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => { setSelectedBook(null); setResults([]); setQuery(""); }}
+                className="text-xs text-brown-400 hover:text-brown-600 transition-colors ml-2 flex-shrink-0"
+              >
+                변경
+              </button>
             </div>
           ) : (
             <>
@@ -416,7 +476,7 @@ function WriteContent() {
 
             <div>
               <label className="mb-2 block text-sm font-medium text-brown-600">
-                한 줄 감상 <span className="text-red-400">*</span>
+                짧은 감상 <span className="text-xs font-normal text-brown-400">(선택)</span>
               </label>
               <input
                 value={oneLineReview}
@@ -480,22 +540,24 @@ function WriteContent() {
                   className="h-5 w-5 rounded border-cream-300 text-brown-700 focus:ring-brown-300"
                 />
               </label>
-              {!isEditMode && (
-                <label className="flex items-center justify-between gap-3 rounded-xl bg-cream-50 px-4 py-3">
-                  <span>
-                    <span className="block text-sm font-medium text-brown-700">AI 독서카드 만들기</span>
-                    <span className="mt-0.5 block text-xs text-brown-400">
-                      저장 후 AI가 감정 키워드·추천 독자·인상적인 구절을 정리합니다.
-                    </span>
+              <label className="flex items-center justify-between gap-3 rounded-xl bg-cream-50 px-4 py-3">
+                <span>
+                  <span className="block text-sm font-medium text-brown-700">
+                    {isEditMode ? "AI 독서카드 다시 만들기" : "AI 독서카드 만들기"}
                   </span>
-                  <input
-                    type="checkbox"
-                    checked={generateAiSummary}
-                    onChange={(event) => setGenerateAiSummary(event.target.checked)}
-                    className="h-5 w-5 rounded border-cream-300 text-brown-700 focus:ring-brown-300"
-                  />
-                </label>
-              )}
+                  <span className="mt-0.5 block text-xs text-brown-400">
+                    {isEditMode
+                      ? "수정한 내용으로 감정 키워드·추천 독자·인상적인 구절을 다시 정리합니다."
+                      : "저장 후 AI가 감정 키워드·추천 독자·인상적인 구절을 정리합니다."}
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={generateAiSummary}
+                  onChange={(event) => setGenerateAiSummary(event.target.checked)}
+                  className="h-5 w-5 rounded border-cream-300 text-brown-700 focus:ring-brown-300"
+                />
+              </label>
             </div>
           </div>
         </section>
@@ -509,6 +571,38 @@ function WriteContent() {
           <p className="mb-4 text-xs text-brown-400">
             인상 깊었던 구절, 느낀 점, 추천 이유 등을 자유롭게 적어주세요.
           </p>
+          <div className="mb-4 rounded-md border border-cream-200 bg-cream-50 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-brown-700">저장 전 도움 받기</p>
+                <p className="mt-1 text-xs leading-5 text-brown-400">
+                  본문을 {feedbackConfig.minChars}자 이상 쓰면 도장 코멘트를 받을 수 있어요.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={requestFeedback}
+                disabled={!canRequestFeedback}
+                className="rounded-xl bg-brown-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brown-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {feedbackLoading ? "코멘트 작성 중..." : "도장 코멘트 받기"}
+              </button>
+            </div>
+
+            {isFeedbackTooShort && (
+              <p className="mt-3 text-xs text-brown-400">
+                {feedbackConfig.minChars - feedbackCharCount}자 더 쓰면 활성화돼요.
+              </p>
+            )}
+            {isFeedbackTooLong && (
+              <p className="mt-3 text-xs text-red-500">
+                도장 코멘트는 최대 {feedbackConfig.maxChars}자까지 받을 수 있어요.
+              </p>
+            )}
+            {feedbackError && (
+              <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-500">{feedbackError}</p>
+            )}
+          </div>
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
@@ -516,7 +610,143 @@ function WriteContent() {
             rows={10}
             className="w-full min-h-[42vh] sm:min-h-0 px-4 py-3 rounded-xl border border-cream-300 text-base sm:text-sm text-brown-800 bg-cream-50 placeholder:text-brown-300 focus:outline-none focus:border-brown-400 focus:ring-2 focus:ring-brown-100 transition resize-none leading-relaxed"
           />
-          <p className="mt-1.5 text-xs text-brown-300 text-right">{content.length}자</p>
+          <div className="mt-1.5 flex flex-col gap-1 text-xs sm:flex-row sm:items-center sm:justify-between">
+            <p className={isFeedbackTooShort || isFeedbackTooLong ? "text-amber-600" : "text-brown-300"}>
+              도장 코멘트 기준: {feedbackCharCount}자 / {feedbackConfig.minChars}-{feedbackConfig.maxChars}자
+            </p>
+            <p className="text-brown-300 sm:text-right">{content.length}자</p>
+          </div>
+
+          {feedback && (
+            <section className="mt-4 rounded-md border border-brown-100 bg-white p-4">
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="font-serif text-lg font-bold text-brown-800">도장 코멘트</h3>
+                  <p className="mt-1 text-xs text-brown-400">코멘트를 참고해서 본문을 직접 다듬어보세요.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFeedback(null)}
+                  className="rounded-lg px-2 py-1 text-xs text-brown-400 hover:bg-cream-50 hover:text-brown-600"
+                >
+                  닫기
+                </button>
+              </div>
+
+              {feedback.notReview ? (
+                <p className="rounded-lg bg-cream-50 px-3 py-3 text-sm text-brown-600">
+                  {feedback.message ?? "독후감을 입력해주시면 코멘트를 드릴 수 있어요."}
+                </p>
+              ) : (
+                <div className="space-y-4 text-sm text-brown-700">
+                  {feedback.coreTheme && (
+                    <div>
+                      <h4 className="mb-1 font-semibold text-brown-800">핵심 주제</h4>
+                      <p className="leading-6">{feedback.coreTheme}</p>
+                    </div>
+                  )}
+
+                  {feedback.strengths && feedback.strengths.length > 0 && (
+                    <div>
+                      <h4 className="mb-1 font-semibold text-brown-800">좋은 점</h4>
+                      <ul className="space-y-1">
+                        {feedback.strengths.map((item, index) => (
+                          <li key={`strength-${index}`} className="leading-6">- {item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {feedback.improvements && feedback.improvements.length > 0 && (
+                    <div>
+                      <h4 className="mb-2 font-semibold text-brown-800">보완할 점</h4>
+                      <div className="space-y-2">
+                        {feedback.improvements.map((item, index) => {
+                          const showRewrite = hasMeaningfulRewrite(item);
+                          return (
+                            <div key={`improvement-${index}`} className="rounded-lg border border-cream-100 bg-cream-50 px-3 py-3">
+                              <p className="font-medium leading-6 text-brown-800">{item.point}</p>
+                              {item.direction && (
+                                <div className="mt-2 rounded-md bg-white px-3 py-2">
+                                  <p className="text-xs font-medium text-brown-400">수정 방향</p>
+                                  <p className="mt-1 leading-6">{item.direction}</p>
+                                </div>
+                              )}
+                              {showRewrite && (
+                                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                                  <div className="rounded-md bg-white px-3 py-2">
+                                    <p className="text-xs font-medium text-brown-400">기존 표현</p>
+                                    <p className="mt-1 leading-6">{item.before}</p>
+                                  </div>
+                                  <div className="rounded-md bg-white px-3 py-2">
+                                    <p className="text-xs font-medium text-brown-400">바꿔볼 표현</p>
+                                    <p className="mt-1 leading-6">{item.after}</p>
+                                  </div>
+                                </div>
+                              )}
+                              <p className="mt-2 text-xs leading-5 text-brown-500">{item.reason}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {feedback.sentenceExamples && feedback.sentenceExamples.length > 0 && (
+                    <div>
+                      <h4 className="mb-2 font-semibold text-brown-800">문장 개선 예시</h4>
+                      <div className="space-y-2">
+                        {feedback.sentenceExamples.map((item, index) => (
+                          <div key={`sentence-${index}`} className="rounded-lg bg-cream-50 px-3 py-2">
+                            <p className="text-xs font-medium text-brown-400">before</p>
+                            <p className="mt-1 leading-6">{item.before}</p>
+                            <p className="mt-2 text-xs font-medium text-brown-400">after</p>
+                            <p className="mt-1 leading-6">{item.after}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {feedback.titleSuggestions && feedback.titleSuggestions.length > 0 && (
+                    <div>
+                      <h4 className="mb-1 font-semibold text-brown-800">제목 추천</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {feedback.titleSuggestions.map((item, index) => (
+                          <span key={`title-${index}`} className="rounded-full bg-cream-100 px-3 py-1 text-xs text-brown-600">
+                            {item}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {feedback.deepQuestion && (
+                    <div>
+                      <h4 className="mb-1 font-semibold text-brown-800">깊이 질문</h4>
+                      <p className="leading-6">{feedback.deepQuestion}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {feedbackConfig.boundaryMessage && (
+                <p className="mt-4 border-t border-cream-100 pt-3 text-xs leading-5 text-brown-400">
+                  {feedbackConfig.boundaryMessage}
+                </p>
+              )}
+              {feedbackConfig.betaApplyUrl && (
+                <a
+                  href={feedbackConfig.betaApplyUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-3 inline-flex rounded-xl border border-brown-200 px-4 py-2 text-sm font-medium text-brown-700 hover:bg-cream-50"
+                >
+                  1:1 독후감 첨삭 베타 신청
+                </a>
+              )}
+            </section>
+          )}
         </section>
 
         {error && (
@@ -532,6 +762,15 @@ function WriteContent() {
         </button>
 
         <div className="fixed left-0 right-0 bottom-0 z-40 bg-white/95 backdrop-blur border-t border-cream-200 px-4 py-3 sm:hidden">
+          <div className="grid grid-cols-[0.9fr_1.1fr] gap-2">
+            <button
+              type="button"
+              onClick={requestFeedback}
+              disabled={!canRequestFeedback}
+              className="py-3 rounded-xl border border-brown-200 bg-white text-sm font-medium text-brown-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {feedbackLoading ? "작성 중..." : "코멘트"}
+            </button>
           <button
             type="submit"
             disabled={submitting}
@@ -539,6 +778,7 @@ function WriteContent() {
           >
             {submitting ? "저장 중..." : isEditMode ? "수정 완료" : "독후감 올리기"}
           </button>
+          </div>
         </div>
       </form>
     </div>

@@ -278,7 +278,7 @@ export default function ReviewDetailModal({ reviewId, onClose, onEngagementChang
             )}
             {!loading && review && myId === review.author.id && !editing && (
               <button
-                onClick={() => { setEditContent(review.content); setEditRating(review.rating); setEditing(true); }}
+                onClick={() => router.push(`/write?reviewId=${review.id}`)}
                 className="text-xs text-brown-400 hover:text-brown-700 transition-colors"
               >
                 수정

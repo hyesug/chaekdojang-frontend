@@ -720,7 +720,7 @@ export default function ReviewCard({
                       {visibilitySaving ? "저장 중" : hidden ? "비공개" : "공개"}
                     </button>
                     <button
-                      onClick={() => setEditing(true)}
+                      onClick={() => router.push(`/write?reviewId=${post.id}`)}
                       className="text-xs text-brown-400 hover:text-brown-700 transition-colors"
                     >
                       수정

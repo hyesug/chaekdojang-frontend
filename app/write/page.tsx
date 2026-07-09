@@ -143,6 +143,8 @@ function WriteContent() {
           setContent(fullContent);
         }
         setRating(data.rating ?? 0);
+        setIsPublic(!data.hidden);
+        setGenerateAiSummary(false);
       })
       .catch(() => {});
   }, [reviewId]);
@@ -304,7 +306,13 @@ function WriteContent() {
         const res = await authFetch(`${API_BASE}/api/reviews/${reviewId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: composedContent, rating }),
+          body: JSON.stringify({
+            bookId: selectedBook.id,
+            content: composedContent,
+            rating,
+            hidden: !isPublic,
+            generateAiSummary,
+          }),
         });
         if (res.status === 401) { router.push("/auth/login"); return; }
         if (res.ok) {
@@ -403,15 +411,13 @@ function WriteContent() {
                 <p className="font-medium text-brown-800">{selectedBook.title}</p>
                 <p className="text-sm text-brown-400 mt-0.5">{selectedBook.author} · {selectedBook.publisher}</p>
               </div>
-              {!isEditMode && (
-                <button
-                  type="button"
-                  onClick={() => { setSelectedBook(null); setResults([]); setQuery(""); }}
-                  className="text-xs text-brown-400 hover:text-brown-600 transition-colors ml-2 flex-shrink-0"
-                >
-                  변경
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => { setSelectedBook(null); setResults([]); setQuery(""); }}
+                className="text-xs text-brown-400 hover:text-brown-600 transition-colors ml-2 flex-shrink-0"
+              >
+                변경
+              </button>
             </div>
           ) : (
             <>
@@ -534,22 +540,24 @@ function WriteContent() {
                   className="h-5 w-5 rounded border-cream-300 text-brown-700 focus:ring-brown-300"
                 />
               </label>
-              {!isEditMode && (
-                <label className="flex items-center justify-between gap-3 rounded-xl bg-cream-50 px-4 py-3">
-                  <span>
-                    <span className="block text-sm font-medium text-brown-700">AI 독서카드 만들기</span>
-                    <span className="mt-0.5 block text-xs text-brown-400">
-                      저장 후 AI가 감정 키워드·추천 독자·인상적인 구절을 정리합니다.
-                    </span>
+              <label className="flex items-center justify-between gap-3 rounded-xl bg-cream-50 px-4 py-3">
+                <span>
+                  <span className="block text-sm font-medium text-brown-700">
+                    {isEditMode ? "AI 독서카드 다시 만들기" : "AI 독서카드 만들기"}
                   </span>
-                  <input
-                    type="checkbox"
-                    checked={generateAiSummary}
-                    onChange={(event) => setGenerateAiSummary(event.target.checked)}
-                    className="h-5 w-5 rounded border-cream-300 text-brown-700 focus:ring-brown-300"
-                  />
-                </label>
-              )}
+                  <span className="mt-0.5 block text-xs text-brown-400">
+                    {isEditMode
+                      ? "수정한 내용으로 감정 키워드·추천 독자·인상적인 구절을 다시 정리합니다."
+                      : "저장 후 AI가 감정 키워드·추천 독자·인상적인 구절을 정리합니다."}
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={generateAiSummary}
+                  onChange={(event) => setGenerateAiSummary(event.target.checked)}
+                  className="h-5 w-5 rounded border-cream-300 text-brown-700 focus:ring-brown-300"
+                />
+              </label>
             </div>
           </div>
         </section>

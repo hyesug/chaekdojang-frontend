@@ -32,6 +32,7 @@ type FeedbackSentenceExample = {
 type FeedbackImprovement = {
   point: string;
   before: string;
+  direction: string;
   after: string;
   reason: string;
 };
@@ -660,6 +661,12 @@ function WriteContent() {
                           return (
                             <div key={`improvement-${index}`} className="rounded-lg border border-cream-100 bg-cream-50 px-3 py-3">
                               <p className="font-medium leading-6 text-brown-800">{item.point}</p>
+                              {item.direction && (
+                                <div className="mt-2 rounded-md bg-white px-3 py-2">
+                                  <p className="text-xs font-medium text-brown-400">수정 방향</p>
+                                  <p className="mt-1 leading-6">{item.direction}</p>
+                                </div>
+                              )}
                               {showRewrite && (
                                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
                                   <div className="rounded-md bg-white px-3 py-2">

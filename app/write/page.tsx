@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useEffect, useRef } from "react";
+import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { API_BASE } from "../lib/api";
@@ -22,16 +22,6 @@ type BookResult = {
   publisher: string;
   thumbnail: string | null;
   source: string;
-};
-
-type ReviewDraft = {
-  selectedBook?: BookResult | null;
-  rating?: number;
-  content?: string;
-  oneLineReview?: string;
-  emotionKeywords?: string[];
-  isPublic?: boolean;
-  generateAiSummary?: boolean;
 };
 
 type FeedbackSentenceExample = {
@@ -65,16 +55,22 @@ type FeedbackConfig = {
   dailyLimitEnabled?: boolean;
 };
 
-function getReviewDraftKey(userId: number | "anonymous", bookId?: number | null) {
-  return `${REVIEW_DRAFT_KEY_PREFIX}:${userId}:${bookId ?? "general"}`;
-}
-
 function normalizeFeedbackText(value: string) {
   return value.replace(/[\s.,!?;:'"“”‘’()[\]{}·…-]/g, "").trim();
 }
 
 function hasMeaningfulRewrite(item: FeedbackImprovement) {
   return normalizeFeedbackText(item.before) !== normalizeFeedbackText(item.after);
+}
+
+function clearReviewDraftStorage() {
+  localStorage.removeItem(LEGACY_REVIEW_DRAFT_KEY);
+  for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+    const key = localStorage.key(index);
+    if (key?.startsWith(REVIEW_DRAFT_KEY_PREFIX)) {
+      localStorage.removeItem(key);
+    }
+  }
 }
 
 function StarPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
@@ -107,7 +103,6 @@ function StarPicker({ value, onChange }: { value: number; onChange: (v: number) 
 function WriteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const restoredKeyRef = useRef<string | null>(null);
 
   // 수정 모드: ?reviewId=123 이 있으면 기존 독후감 수정
   const reviewId = searchParams.get("reviewId");
@@ -117,7 +112,6 @@ function WriteContent() {
   const [results, setResults] = useState<BookResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [selectedBook, setSelectedBook] = useState<BookResult | null>(null);
-  const [currentUserId, setCurrentUserId] = useState<number | "anonymous" | null>(null);
 
   // 수정 모드: 기존 독후감 데이터 로드
   useEffect(() => {
@@ -173,8 +167,6 @@ function WriteContent() {
   const [selectedEmotions, setSelectedEmotions] = useState<string[]>([]);
   const [isPublic, setIsPublic] = useState(true);
   const [generateAiSummary, setGenerateAiSummary] = useState(true);
-  const [draftRestored, setDraftRestored] = useState(false);
-  const [draftReadyKey, setDraftReadyKey] = useState<string | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -188,15 +180,7 @@ function WriteContent() {
   const [feedbackUsedForCurrentDraft, setFeedbackUsedForCurrentDraft] = useState(false);
 
   useEffect(() => {
-    localStorage.removeItem(LEGACY_REVIEW_DRAFT_KEY);
-    authFetch(`${API_BASE}/api/users/me`, { cache: "no-store" })
-      .then(async (res) => {
-        if (!res.ok) { setCurrentUserId("anonymous"); return; }
-        const json = await res.json().catch(() => null);
-        const userId = json?.data?.id;
-        setCurrentUserId(typeof userId === "number" ? userId : "anonymous");
-      })
-      .catch(() => setCurrentUserId("anonymous"));
+    clearReviewDraftStorage();
   }, []);
 
   useEffect(() => {
@@ -211,46 +195,6 @@ function WriteContent() {
       })
       .catch(() => {});
   }, []);
-
-  useEffect(() => {
-    if (currentUserId === null) return;
-    const draftKey = getReviewDraftKey(currentUserId, selectedBook?.id);
-    if (restoredKeyRef.current === draftKey) return;
-
-    restoredKeyRef.current = draftKey;
-    setDraftReadyKey(draftKey);
-    setDraftRestored(false);
-
-    const hasCurrentInput = rating > 0 || content.trim().length > 0 || oneLineReview.trim().length > 0;
-    if (hasCurrentInput) return;
-
-    const raw = localStorage.getItem(draftKey);
-    if (!raw) return;
-    try {
-      const draft = JSON.parse(raw) as ReviewDraft;
-      if (draft.selectedBook) setSelectedBook(draft.selectedBook);
-      if (typeof draft.rating === "number") setRating(draft.rating);
-      if (typeof draft.content === "string") setContent(draft.content);
-      if (typeof draft.oneLineReview === "string") setOneLineReview(draft.oneLineReview);
-      if (Array.isArray(draft.emotionKeywords)) setSelectedEmotions(draft.emotionKeywords);
-      if (typeof draft.isPublic === "boolean") setIsPublic(draft.isPublic);
-      if (typeof draft.generateAiSummary === "boolean") setGenerateAiSummary(draft.generateAiSummary);
-      setDraftRestored(true);
-    } catch {
-      localStorage.removeItem(draftKey);
-    }
-  }, [content, currentUserId, generateAiSummary, oneLineReview, rating, selectedBook?.id]);
-
-  useEffect(() => {
-    if (currentUserId === null) return;
-    const draftKey = getReviewDraftKey(currentUserId, selectedBook?.id);
-    if (draftReadyKey !== draftKey) return;
-    if (!selectedBook && rating === 0 && !content.trim() && !oneLineReview.trim()) return;
-    localStorage.setItem(draftKey, JSON.stringify({
-      selectedBook, rating, content, oneLineReview,
-      emotionKeywords: selectedEmotions, isPublic, generateAiSummary,
-    }));
-  }, [currentUserId, draftReadyKey, selectedBook, rating, content, oneLineReview, selectedEmotions, isPublic, generateAiSummary]);
 
   function toggleEmotion(keyword: string) {
     setSelectedEmotions((prev) =>
@@ -389,10 +333,6 @@ function WriteContent() {
             body: JSON.stringify({ hidden: true }),
           }).catch(() => null);
         }
-        if (currentUserId !== null) {
-          localStorage.removeItem(getReviewDraftKey(currentUserId, selectedBook.id));
-        }
-        localStorage.removeItem(LEGACY_REVIEW_DRAFT_KEY);
         sessionStorage.removeItem(FEED_STATE_KEY);
         if (createdReview?.id) {
           sessionStorage.setItem(PENDING_REVIEW_KEY, JSON.stringify(createdReview));
@@ -447,12 +387,6 @@ function WriteContent() {
           {isEditMode ? "독후감 수정" : "독후감 쓰기"}
         </h1>
       </div>
-
-      {draftRestored && (
-        <p className="mb-4 rounded-xl border border-cream-200 bg-cream-50 px-4 py-3 text-sm text-brown-500">
-          이전에 쓰던 독후감을 불러왔어요.
-        </p>
-      )}
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
 

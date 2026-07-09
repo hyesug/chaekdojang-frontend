@@ -323,7 +323,7 @@ function WriteContent() {
       const res = await authFetch(`${API_BASE}/api/reviews`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bookId: selectedBook.id, rating, content: composedContent, generateAiSummary }),
+        body: JSON.stringify({ bookId: selectedBook.id, rating, content: composedContent, generateAiSummary, hidden: !isPublic }),
       });
 
       if (res.status === 401) { router.push("/auth/login"); return; }
@@ -331,15 +331,8 @@ function WriteContent() {
       if (res.ok) {
         const json = await res.json().catch(() => null);
         const createdReview = json?.data ?? json;
-        if (createdReview?.id && !isPublic) {
-          await authFetch(`${API_BASE}/api/reviews/${createdReview.id}/hidden`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ hidden: true }),
-          }).catch(() => null);
-        }
         sessionStorage.removeItem(FEED_STATE_KEY);
-        if (createdReview?.id) {
+        if (createdReview?.id && !createdReview.hidden) {
           sessionStorage.setItem(PENDING_REVIEW_KEY, JSON.stringify(createdReview));
         }
         if (feedbackUsedForCurrentDraft) {

@@ -616,26 +616,12 @@ function WriteContent() {
           <p className="mb-4 text-xs text-brown-400">
             인상 깊었던 구절, 느낀 점, 추천 이유 등을 자유롭게 적어주세요.
           </p>
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="더 깊은 감상이 있다면 자유롭게 적어주세요."
-            rows={10}
-            className="w-full min-h-[42vh] sm:min-h-0 px-4 py-3 rounded-xl border border-cream-300 text-base sm:text-sm text-brown-800 bg-cream-50 placeholder:text-brown-300 focus:outline-none focus:border-brown-400 focus:ring-2 focus:ring-brown-100 transition resize-none leading-relaxed"
-          />
-          <div className="mt-1.5 flex flex-col gap-1 text-xs sm:flex-row sm:items-center sm:justify-between">
-            <p className={isFeedbackTooShort || isFeedbackTooLong ? "text-amber-600" : "text-brown-300"}>
-              도장 코멘트 기준: {feedbackCharCount}자 / {feedbackConfig.minChars}-{feedbackConfig.maxChars}자
-            </p>
-            <p className="text-brown-300 sm:text-right">{content.length}자</p>
-          </div>
-
-          <div className="mt-4 rounded-md border border-cream-200 bg-cream-50 p-4">
+          <div className="mb-4 rounded-md border border-cream-200 bg-cream-50 p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-semibold text-brown-700">저장 전 도움 받기</p>
                 <p className="mt-1 text-xs leading-5 text-brown-400">
-                  글의 구조와 문장을 가볍게 점검해드려요.
+                  본문을 {feedbackConfig.minChars}자 이상 쓰면 도장 코멘트를 받을 수 있어요.
                 </p>
               </div>
               <button
@@ -650,7 +636,7 @@ function WriteContent() {
 
             {isFeedbackTooShort && (
               <p className="mt-3 text-xs text-brown-400">
-                {feedbackConfig.minChars - feedbackCharCount}자 더 쓰면 도장 코멘트를 받을 수 있어요.
+                {feedbackConfig.minChars - feedbackCharCount}자 더 쓰면 활성화돼요.
               </p>
             )}
             {isFeedbackTooLong && (
@@ -661,6 +647,19 @@ function WriteContent() {
             {feedbackError && (
               <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-500">{feedbackError}</p>
             )}
+          </div>
+          <textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="더 깊은 감상이 있다면 자유롭게 적어주세요."
+            rows={10}
+            className="w-full min-h-[42vh] sm:min-h-0 px-4 py-3 rounded-xl border border-cream-300 text-base sm:text-sm text-brown-800 bg-cream-50 placeholder:text-brown-300 focus:outline-none focus:border-brown-400 focus:ring-2 focus:ring-brown-100 transition resize-none leading-relaxed"
+          />
+          <div className="mt-1.5 flex flex-col gap-1 text-xs sm:flex-row sm:items-center sm:justify-between">
+            <p className={isFeedbackTooShort || isFeedbackTooLong ? "text-amber-600" : "text-brown-300"}>
+              도장 코멘트 기준: {feedbackCharCount}자 / {feedbackConfig.minChars}-{feedbackConfig.maxChars}자
+            </p>
+            <p className="text-brown-300 sm:text-right">{content.length}자</p>
           </div>
 
           {feedback && (

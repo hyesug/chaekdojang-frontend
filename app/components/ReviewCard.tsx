@@ -786,11 +786,15 @@ export default function ReviewCard({
           </p>
         )}
 
-        {/* 본문 — AI 한줄 있으면 첫 문단(한줄 감상) 건너뜀 */}
+        {/* 본문 — 짧은 감상과 본문이 함께 저장된 경우에만 첫 문단을 건너뜀 */}
         {(() => {
-          const bodyText = post.aiSummary?.oneLineReview
-            ? displayContent.split("\n\n").slice(1).join("\n\n").trim()
-            : displayContent;
+          const paragraphs = displayContent.split("\n\n");
+          const bodyWithoutShortReview = paragraphs.length > 1
+            ? paragraphs.slice(1).join("\n\n").trim()
+            : "";
+          const bodyText = post.aiSummary?.oneLineReview && bodyWithoutShortReview
+            ? bodyWithoutShortReview
+            : displayContent.trim();
           if (!bodyText) return null;
           return canOpenHiddenDetail ? (
             <button

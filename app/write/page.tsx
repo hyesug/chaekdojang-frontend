@@ -5,11 +5,14 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { API_BASE } from "../lib/api";
 import { authFetch } from "../lib/auth";
+import { getSessionId, trackMetric } from "../components/AnalyticsTracker";
 
 const FEED_STATE_KEY = "chaekdojang:feed-state";
 const PENDING_REVIEW_KEY = "chaekdojang:pending-review";
 const LEGACY_REVIEW_DRAFT_KEY = "chaekdojang:review-draft";
 const REVIEW_DRAFT_KEY_PREFIX = "chaekdojang:review-draft:v2";
+const DEFAULT_FEEDBACK_MIN_CHARS = 150;
+const DEFAULT_FEEDBACK_MAX_CHARS = 6000;
 
 type BookResult = {
   id: number;
@@ -29,6 +32,30 @@ type ReviewDraft = {
   emotionKeywords?: string[];
   isPublic?: boolean;
   generateAiSummary?: boolean;
+};
+
+type FeedbackSentenceExample = {
+  before: string;
+  after: string;
+};
+
+type FeedbackResult = {
+  notReview: boolean;
+  message?: string;
+  coreTheme?: string;
+  strengths?: string[];
+  improvements?: string[];
+  sentenceExamples?: FeedbackSentenceExample[];
+  titleSuggestions?: string[];
+  deepQuestion?: string;
+};
+
+type FeedbackConfig = {
+  minChars: number;
+  maxChars: number;
+  boundaryMessage?: string | null;
+  betaApplyUrl?: string | null;
+  dailyLimitEnabled?: boolean;
 };
 
 function getReviewDraftKey(userId: number | "anonymous", bookId?: number | null) {
@@ -136,6 +163,14 @@ function WriteContent() {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [feedbackConfig, setFeedbackConfig] = useState<FeedbackConfig>({
+    minChars: DEFAULT_FEEDBACK_MIN_CHARS,
+    maxChars: DEFAULT_FEEDBACK_MAX_CHARS,
+  });
+  const [feedback, setFeedback] = useState<FeedbackResult | null>(null);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [feedbackError, setFeedbackError] = useState("");
+  const [feedbackUsedForCurrentDraft, setFeedbackUsedForCurrentDraft] = useState(false);
 
   useEffect(() => {
     localStorage.removeItem(LEGACY_REVIEW_DRAFT_KEY);
@@ -147,6 +182,19 @@ function WriteContent() {
         setCurrentUserId(typeof userId === "number" ? userId : "anonymous");
       })
       .catch(() => setCurrentUserId("anonymous"));
+  }, []);
+
+  useEffect(() => {
+    authFetch(`${API_BASE}/api/feedback/config`, { cache: "no-store" })
+      .then(async (res) => {
+        if (!res.ok) return;
+        const json = await res.json().catch(() => null);
+        const data = json?.data;
+        if (typeof data?.minChars === "number" && typeof data?.maxChars === "number") {
+          setFeedbackConfig(data);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -228,6 +276,54 @@ function WriteContent() {
     }
   }
 
+  async function requestFeedback() {
+    const trimmedContent = content.trim();
+    if (trimmedContent.length < feedbackConfig.minChars || trimmedContent.length > feedbackConfig.maxChars) return;
+
+    setFeedbackLoading(true);
+    setFeedbackError("");
+    setFeedback(null);
+
+    try {
+      const res = await authFetch(`${API_BASE}/api/feedback/review-comment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: trimmedContent,
+          sessionId: getSessionId(),
+        }),
+      });
+
+      if (res.status === 401) {
+        router.push("/auth/login");
+        return;
+      }
+
+      if (res.ok) {
+        const json = await res.json().catch(() => null);
+        const data = json?.data;
+        if (data?.feedback) {
+          setFeedback(data.feedback);
+          setFeedbackConfig((prev) => ({
+            ...prev,
+            minChars: data.minChars ?? prev.minChars,
+            maxChars: data.maxChars ?? prev.maxChars,
+            boundaryMessage: data.boundaryMessage ?? prev.boundaryMessage,
+            betaApplyUrl: data.betaApplyUrl ?? prev.betaApplyUrl,
+          }));
+          setFeedbackUsedForCurrentDraft(true);
+        }
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setFeedbackError((data as { message?: string }).message ?? "도장 코멘트를 만들지 못했습니다. 잠시 후 다시 시도해주세요.");
+      }
+    } catch {
+      setFeedbackError("서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setFeedbackLoading(false);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedBook) { setError("책을 선택해주세요."); return; }
@@ -248,6 +344,9 @@ function WriteContent() {
         });
         if (res.status === 401) { router.push("/auth/login"); return; }
         if (res.ok) {
+          if (feedbackUsedForCurrentDraft) {
+            trackMetric("revision_saved", "/write", 0, { reviewId: Number(reviewId), mode: "edit" });
+          }
           router.push(`/reviews/${reviewId}`);
         } else {
           const data = await res.json().catch(() => ({}));
@@ -283,6 +382,9 @@ function WriteContent() {
         if (createdReview?.id) {
           sessionStorage.setItem(PENDING_REVIEW_KEY, JSON.stringify(createdReview));
         }
+        if (feedbackUsedForCurrentDraft) {
+          trackMetric("revision_saved", "/write", 0, { reviewId: createdReview?.id ?? null, mode: "create" });
+        }
         router.push("/");
       } else {
         const data = await res.json().catch(() => ({}));
@@ -294,6 +396,11 @@ function WriteContent() {
       setSubmitting(false);
     }
   }
+
+  const feedbackCharCount = content.trim().length;
+  const isFeedbackTooShort = feedbackCharCount < feedbackConfig.minChars;
+  const isFeedbackTooLong = feedbackCharCount > feedbackConfig.maxChars;
+  const canRequestFeedback = !feedbackLoading && !isFeedbackTooShort && !isFeedbackTooLong;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 sm:py-8 pb-28 sm:pb-8">
@@ -516,7 +623,152 @@ function WriteContent() {
             rows={10}
             className="w-full min-h-[42vh] sm:min-h-0 px-4 py-3 rounded-xl border border-cream-300 text-base sm:text-sm text-brown-800 bg-cream-50 placeholder:text-brown-300 focus:outline-none focus:border-brown-400 focus:ring-2 focus:ring-brown-100 transition resize-none leading-relaxed"
           />
-          <p className="mt-1.5 text-xs text-brown-300 text-right">{content.length}자</p>
+          <div className="mt-1.5 flex flex-col gap-1 text-xs sm:flex-row sm:items-center sm:justify-between">
+            <p className={isFeedbackTooShort || isFeedbackTooLong ? "text-amber-600" : "text-brown-300"}>
+              도장 코멘트 기준: {feedbackCharCount}자 / {feedbackConfig.minChars}-{feedbackConfig.maxChars}자
+            </p>
+            <p className="text-brown-300 sm:text-right">{content.length}자</p>
+          </div>
+
+          <div className="mt-4 rounded-md border border-cream-200 bg-cream-50 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-brown-700">저장 전 도움 받기</p>
+                <p className="mt-1 text-xs leading-5 text-brown-400">
+                  글의 구조와 문장을 가볍게 점검해드려요.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={requestFeedback}
+                disabled={!canRequestFeedback}
+                className="rounded-xl bg-brown-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brown-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {feedbackLoading ? "코멘트 작성 중..." : "도장 코멘트 받기"}
+              </button>
+            </div>
+
+            {isFeedbackTooShort && (
+              <p className="mt-3 text-xs text-brown-400">
+                {feedbackConfig.minChars - feedbackCharCount}자 더 쓰면 도장 코멘트를 받을 수 있어요.
+              </p>
+            )}
+            {isFeedbackTooLong && (
+              <p className="mt-3 text-xs text-red-500">
+                도장 코멘트는 최대 {feedbackConfig.maxChars}자까지 받을 수 있어요.
+              </p>
+            )}
+            {feedbackError && (
+              <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-500">{feedbackError}</p>
+            )}
+          </div>
+
+          {feedback && (
+            <section className="mt-4 rounded-md border border-brown-100 bg-white p-4">
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="font-serif text-lg font-bold text-brown-800">도장 코멘트</h3>
+                  <p className="mt-1 text-xs text-brown-400">코멘트를 참고해서 본문을 직접 다듬어보세요.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFeedback(null)}
+                  className="rounded-lg px-2 py-1 text-xs text-brown-400 hover:bg-cream-50 hover:text-brown-600"
+                >
+                  닫기
+                </button>
+              </div>
+
+              {feedback.notReview ? (
+                <p className="rounded-lg bg-cream-50 px-3 py-3 text-sm text-brown-600">
+                  {feedback.message ?? "독후감을 입력해주시면 코멘트를 드릴 수 있어요."}
+                </p>
+              ) : (
+                <div className="space-y-4 text-sm text-brown-700">
+                  {feedback.coreTheme && (
+                    <div>
+                      <h4 className="mb-1 font-semibold text-brown-800">핵심 주제</h4>
+                      <p className="leading-6">{feedback.coreTheme}</p>
+                    </div>
+                  )}
+
+                  {feedback.strengths && feedback.strengths.length > 0 && (
+                    <div>
+                      <h4 className="mb-1 font-semibold text-brown-800">좋은 점</h4>
+                      <ul className="space-y-1">
+                        {feedback.strengths.map((item, index) => (
+                          <li key={`strength-${index}`} className="leading-6">- {item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {feedback.improvements && feedback.improvements.length > 0 && (
+                    <div>
+                      <h4 className="mb-1 font-semibold text-brown-800">보완할 점</h4>
+                      <ul className="space-y-1">
+                        {feedback.improvements.map((item, index) => (
+                          <li key={`improvement-${index}`} className="leading-6">- {item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {feedback.sentenceExamples && feedback.sentenceExamples.length > 0 && (
+                    <div>
+                      <h4 className="mb-2 font-semibold text-brown-800">문장 개선 예시</h4>
+                      <div className="space-y-2">
+                        {feedback.sentenceExamples.map((item, index) => (
+                          <div key={`sentence-${index}`} className="rounded-lg bg-cream-50 px-3 py-2">
+                            <p className="text-xs font-medium text-brown-400">before</p>
+                            <p className="mt-1 leading-6">{item.before}</p>
+                            <p className="mt-2 text-xs font-medium text-brown-400">after</p>
+                            <p className="mt-1 leading-6">{item.after}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {feedback.titleSuggestions && feedback.titleSuggestions.length > 0 && (
+                    <div>
+                      <h4 className="mb-1 font-semibold text-brown-800">제목 추천</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {feedback.titleSuggestions.map((item, index) => (
+                          <span key={`title-${index}`} className="rounded-full bg-cream-100 px-3 py-1 text-xs text-brown-600">
+                            {item}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {feedback.deepQuestion && (
+                    <div>
+                      <h4 className="mb-1 font-semibold text-brown-800">깊이 질문</h4>
+                      <p className="leading-6">{feedback.deepQuestion}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {feedbackConfig.boundaryMessage && (
+                <p className="mt-4 border-t border-cream-100 pt-3 text-xs leading-5 text-brown-400">
+                  {feedbackConfig.boundaryMessage}
+                </p>
+              )}
+              {feedbackConfig.betaApplyUrl && (
+                <a
+                  href={feedbackConfig.betaApplyUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-3 inline-flex rounded-xl border border-brown-200 px-4 py-2 text-sm font-medium text-brown-700 hover:bg-cream-50"
+                >
+                  1:1 독후감 첨삭 베타 신청
+                </a>
+              )}
+            </section>
+          )}
         </section>
 
         {error && (

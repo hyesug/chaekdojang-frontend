@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { API_BASE } from "../lib/api";
 
-function getSessionId() {
+export function getSessionId() {
   const key = "chaekdojang_session_id";
   const existing = sessionStorage.getItem(key);
   if (existing) return existing;
@@ -20,7 +20,7 @@ function deviceType() {
   return "desktop";
 }
 
-export function trackMetric(eventType: string, path?: string, durationMs = 0) {
+export function trackMetric(eventType: string, path?: string, durationMs = 0, meta?: Record<string, unknown>) {
   if (typeof window === "undefined") return;
   const currentPath = path ?? window.location.pathname;
   if (currentPath.startsWith("/admin")) return;
@@ -32,6 +32,7 @@ export function trackMetric(eventType: string, path?: string, durationMs = 0) {
     referrer: document.referrer || null,
     durationMs,
     device: deviceType(),
+    meta,
   });
 
   const token: string | null = "cookie-session";
@@ -44,6 +45,7 @@ export function trackMetric(eventType: string, path?: string, durationMs = 0) {
     method: "POST",
     headers,
     body,
+    credentials: "include",
     keepalive: true,
   }).catch(() => {});
 }

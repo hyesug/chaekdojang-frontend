@@ -559,10 +559,10 @@ function classifyErrorLike(method: string, uri: string, status: number) {
   if (method === "GET" && path.startsWith("/api/books/public/") && status === 404) {
     return {
       label: "공개 책 상세 조회 실패",
-      description: "없는 책 ID/slug 접근, 삭제된 책, 비공개 책, 오래된 링크, 봇 접근 가능성이 있습니다.",
-      impact: "사용자가 책 상세 페이지에서 404를 봤을 수 있습니다.",
+      description: "없는 책 ID/slug, 삭제·비공개 책, 오래된 링크에서 발생할 수 있는 정상적인 404 응답입니다.",
+      impact: "서비스 장애가 아니며 일반 사용자 영향은 낮습니다.",
       botSuspected: false,
-      userImpactLikely: true,
+      userImpactLikely: false,
     };
   }
   if ([".env", ".git", "wp-login.php", "xmlrpc.php", "phpmyadmin", ".php", ".bak", ".sql", "swagger-ui", "v3/api-docs", "actuator"].some((needle) => lower.includes(needle))) {
@@ -608,6 +608,12 @@ function classifyErrorLike(method: string, uri: string, status: number) {
     botSuspected: false,
     userImpactLikely: status >= 400,
   };
+}
+
+function securitySeverity(method: string, uri: string, status: number) {
+  const path = normalizePath(uri);
+  if (method === "GET" && path.startsWith("/api/books/public/") && status === 404) return "정보";
+  return status >= 500 ? "오류" : "주의";
 }
 
 function getActionDescription(
@@ -983,7 +989,7 @@ export default function AdminPage() {
       const key = `error:${type}:${normalizePath(error.uri)}:${error.ip ?? ""}`;
       const item = map.get(key) ?? {
         key,
-        severity: error.status >= 500 ? "오류" : "주의",
+        severity: securitySeverity(error.method, error.uri, error.status),
         type,
         uri: normalizePath(error.uri),
         count: 0,
@@ -1002,7 +1008,7 @@ export default function AdminPage() {
         const key = `access:${type}:${normalizePath(log.uri)}:${log.ip}`;
         const item = map.get(key) ?? {
           key,
-          severity: log.status >= 500 ? "오류" : "주의",
+          severity: securitySeverity(log.method, log.uri, log.status),
           type,
           uri: normalizePath(log.uri),
           count: 0,
@@ -1086,7 +1092,7 @@ export default function AdminPage() {
       const previous = map.get(key);
       const item: SecurityEvent = {
         key,
-        severity: log.status >= 500 ? "오류" : "주의",
+        severity: securitySeverity(log.method, log.uri, log.status),
         source: "error",
         type: suspiciousType(log.uri, log.status),
         method: log.method,
@@ -1117,7 +1123,7 @@ export default function AdminPage() {
         const previous = map.get(key);
         const item: SecurityEvent = {
           key,
-          severity: log.status >= 500 ? "오류" : "주의",
+          severity: securitySeverity(log.method, log.uri, log.status),
           source: "access",
           type: suspiciousType(log.uri, log.status),
           method: log.method,
@@ -2034,7 +2040,7 @@ export default function AdminPage() {
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className={`rounded-full px-2 py-0.5 text-xs ${item.severity === "오류" ? "bg-red-50 text-red-500" : "bg-yellow-50 text-yellow-600"}`}>{item.severity}</span>
+                          <span className={`rounded-full px-2 py-0.5 text-xs ${item.severity === "오류" ? "bg-red-50 text-red-500" : item.severity === "주의" ? "bg-yellow-50 text-yellow-600" : "bg-cream-100 text-brown-500"}`}>{item.severity}</span>
                           <span className="rounded-full bg-cream-100 px-2 py-0.5 text-xs text-brown-500">{item.status}</span>
                           {info.botSuspected && <span className="rounded-full bg-cream-100 px-2 py-0.5 text-xs text-brown-500">봇 의심</span>}
                           {info.userImpactLikely && <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs text-red-500">사용자 영향 가능</span>}

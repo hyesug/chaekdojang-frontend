@@ -6,10 +6,11 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import ProfileAvatar from "../components/ProfileAvatar";
 import { API_BASE } from "../lib/api";
+import { authFetch } from "../lib/auth";
 import { buildSearchLinks } from "../lib/purchaseLinks";
 import { trackMetric } from "../components/AnalyticsTracker";
 
-type SearchTab = "books" | "users";
+type SearchTab = "books" | "webNovels" | "users";
 
 type BookResult = {
   id: number;
@@ -31,7 +32,18 @@ type UserResult = {
   profileImage: string | null;
 };
 
+type WebNovelResult = {
+  title: string;
+  author: string;
+  platform: "NAVER_SERIES" | "KAKAO_PAGE" | "RIDI" | "MUNPIA";
+  platformLabel: string;
+  sourceUrl: string;
+  externalId: string;
+  description: string;
+};
+
 type AddingState = Record<string, "idle" | "loading" | "done" | "error">;
+type RegisteringState = Record<string, "idle" | "loading" | "error">;
 type BookGroup = {
   key: string;
   workTitle: string;
@@ -142,17 +154,25 @@ function SearchContent() {
   const [authorQuery, setAuthorQuery] = useState("");
   const [publisherQuery, setPublisherQuery] = useState("");
   const [results, setResults] = useState<BookResult[]>([]);
+  const [webNovelResults, setWebNovelResults] = useState<WebNovelResult[]>([]);
   const [userResults, setUserResults] = useState<UserResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
   const [adding, setAdding] = useState<AddingState>({});
+  const [registering, setRegistering] = useState<RegisteringState>({});
+  const [webNovelError, setWebNovelError] = useState("");
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const q = searchParams.get("q") ?? "";
     const author = searchParams.get("author") ?? "";
     const publisher = searchParams.get("publisher") ?? "";
-    const nextTab = searchParams.get("tab") === "users" ? "users" : "books";
+    const requestedTab = searchParams.get("tab");
+    const nextTab: SearchTab = requestedTab === "users"
+      ? "users"
+      : requestedTab === "webNovels"
+      ? "webNovels"
+      : "books";
     if (!q && !author && !publisher) return;
     setTab(nextTab);
     setQuery(q);
@@ -165,7 +185,7 @@ function SearchContent() {
     const trimmed = rawQuery.trim();
     const trimmedAuthor = rawAuthor.trim();
     const trimmedPublisher = rawPublisher.trim();
-    if (targetTab === "users" && !trimmed) return;
+    if ((targetTab === "users" || targetTab === "webNovels") && !trimmed) return;
     if (targetTab === "books" && !trimmed && !trimmedAuthor && !trimmedPublisher) return;
     if (updateUrl) {
       const params = new URLSearchParams({ tab: targetTab });
@@ -176,6 +196,7 @@ function SearchContent() {
     }
     setSearching(true);
     setSearched(true);
+    setWebNovelError("");
 
     try {
       if (targetTab === "users") {
@@ -187,6 +208,17 @@ function SearchContent() {
           setUserResults(json.data ?? []);
         } else {
           setUserResults([]);
+        }
+      } else if (targetTab === "webNovels") {
+        trackMetric("web_novel_search", `/search?q=${encodeURIComponent(trimmed)}`);
+        const res = await fetch(
+          `${BASE}/api/books/web-novels/search?q=${encodeURIComponent(trimmed)}`
+        );
+        if (res.ok) {
+          const json = await res.json();
+          setWebNovelResults(json.data ?? []);
+        } else {
+          setWebNovelResults([]);
         }
       } else {
         const params = new URLSearchParams();
@@ -206,6 +238,7 @@ function SearchContent() {
       }
     } catch {
       if (targetTab === "users") setUserResults([]);
+      else if (targetTab === "webNovels") setWebNovelResults([]);
       else setResults([]);
     } finally {
       setSearching(false);
@@ -218,6 +251,48 @@ function SearchContent() {
   }
 
   const groupedResults = groupBooks(results);
+
+  async function startWebNovelReview(novel: WebNovelResult) {
+    const key = `${novel.platform}:${novel.externalId}`;
+    setRegistering((prev) => ({ ...prev, [key]: "loading" }));
+    setWebNovelError("");
+    try {
+      const res = await authFetch(`${BASE}/api/books/web-novels`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: novel.title,
+          author: novel.author,
+          platform: novel.platform,
+          sourceUrl: novel.sourceUrl,
+        }),
+      });
+      if (res.status === 401) {
+        router.push("/auth/login");
+        return;
+      }
+      if (!res.ok) {
+        setRegistering((prev) => ({ ...prev, [key]: "error" }));
+        setWebNovelError("작품을 등록하지 못했습니다. 잠시 후 다시 시도해주세요.");
+        return;
+      }
+      const json = await res.json();
+      const book = json.data ?? json;
+      const params = new URLSearchParams({
+        bookId: String(book.id),
+        title: book.title,
+        author: book.author ?? "",
+        publisher: book.publisher ?? novel.platformLabel,
+        source: book.source ?? novel.platform,
+        contentType: "WEB_NOVEL",
+        sourceUrl: book.sourceUrl ?? novel.sourceUrl,
+      });
+      router.push(`/write?${params.toString()}`);
+    } catch {
+      setRegistering((prev) => ({ ...prev, [key]: "error" }));
+      setWebNovelError("서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.");
+    }
+  }
 
   async function addToLibrary(book: BookResult) {
     const key = book.isbn13 || String(book.id);
@@ -267,6 +342,7 @@ function SearchContent() {
         {(
           [
             { value: "books", label: "📚 책" },
+            { value: "webNovels", label: "📱 웹소설" },
             { value: "users", label: "👤 사람" },
           ] as const
         ).map(({ value, label }) => (
@@ -276,7 +352,9 @@ function SearchContent() {
               setTab(value);
               setSearched(false);
               setResults([]);
+              setWebNovelResults([]);
               setUserResults([]);
+              setWebNovelError("");
               setAuthorQuery("");
               setPublisherQuery("");
               router.replace("/search", { scroll: false });
@@ -297,7 +375,7 @@ function SearchContent() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={tab === "users" ? "닉네임으로 검색" : "책 제목 또는 ISBN"}
+            placeholder={tab === "users" ? "닉네임으로 검색" : tab === "webNovels" ? "웹소설 제목" : "책 제목 또는 ISBN"}
             className="w-full px-4 py-3 rounded-xl border border-cream-300 text-sm text-brown-800 bg-white placeholder:text-brown-300 focus:outline-none focus:border-brown-400 focus:ring-2 focus:ring-brown-100 transition"
           />
           {tab === "books" && (
@@ -328,6 +406,12 @@ function SearchContent() {
         </button>
       </form>
 
+      {tab === "webNovels" && (
+        <p className="mb-4 text-xs leading-5 text-brown-400">
+          네이버 시리즈·카카오페이지·리디·문피아의 공식 작품 페이지를 찾아요.
+        </p>
+      )}
+
       {/* 검색 중 */}
       {searching && (
         <div className="text-center py-12 text-brown-400">
@@ -338,13 +422,20 @@ function SearchContent() {
       {/* 결과 없음 */}
       {!searching && searched && (
         (tab === "books" && results.length === 0) ||
+        (tab === "webNovels" && webNovelResults.length === 0) ||
         (tab === "users" && userResults.length === 0)
       ) && (
         <div className="text-center py-12 text-brown-400">
           <p className="text-4xl mb-3">🔍</p>
           <p>검색 결과가 없습니다.</p>
-          <p className="text-sm mt-1">다른 키워드로 검색해보세요.</p>
+          <p className="text-sm mt-1">
+            {tab === "webNovels" ? "작품명을 정확히 입력해도 일반 웹에 색인되지 않은 작품은 찾지 못할 수 있어요." : "다른 키워드로 검색해보세요."}
+          </p>
         </div>
+      )}
+
+      {webNovelError && (
+        <p className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-500">{webNovelError}</p>
       )}
 
       {/* 사람 검색 결과 */}
@@ -364,6 +455,56 @@ function SearchContent() {
               <span className="text-brown-300 text-sm">›</span>
             </Link>
           ))}
+        </div>
+      )}
+
+      {/* 웹소설 검색 결과 */}
+      {!searching && tab === "webNovels" && webNovelResults.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <p className="mb-1 text-sm text-brown-400">공식 작품 {webNovelResults.length}개를 찾았어요</p>
+          {webNovelResults.map((novel) => {
+            const key = `${novel.platform}:${novel.externalId}`;
+            const state = registering[key] ?? "idle";
+            return (
+              <article key={key} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-[88px] w-[60px] flex-shrink-0 items-center justify-center rounded-lg bg-brown-600 text-sm font-bold text-white">
+                    웹소설
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-cream-200 px-2 py-0.5 text-[11px] font-medium text-sage-600">
+                        {novel.platformLabel}
+                      </span>
+                      <h2 className="font-serif font-bold leading-snug text-brown-800">{novel.title}</h2>
+                    </div>
+                    <p className="mt-1 text-sm text-brown-400">{novel.author || "작가 정보 없음"}</p>
+                    {novel.description && (
+                      <p className="mt-2 line-clamp-2 text-xs leading-5 text-brown-400">{novel.description}</p>
+                    )}
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => startWebNovelReview(novel)}
+                        disabled={state === "loading"}
+                        className="rounded-full bg-brown-600 px-3 py-1.5 text-xs text-white hover:bg-brown-700 disabled:opacity-50"
+                      >
+                        {state === "loading" ? "작품 등록 중..." : state === "error" ? "다시 시도" : "독후감 쓰기"}
+                      </button>
+                      <a
+                        href={novel.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-full border border-brown-300 px-3 py-1.5 text-xs text-brown-600 hover:border-brown-500"
+                      >
+                        공식 페이지 확인 →
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
         </div>
       )}
 

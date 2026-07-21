@@ -178,7 +178,9 @@ function WriteContent() {
         publisher: searchParams.get("publisher") ?? "",
         thumbnail: searchParams.get("thumbnail"),
         isbn13: "",
-        source: "",
+        source: searchParams.get("source") ?? "",
+        contentType: searchParams.get("contentType") === "WEB_NOVEL" ? "WEB_NOVEL" : "BOOK",
+        sourceUrl: searchParams.get("sourceUrl"),
       });
     }
   }, [searchParams, isEditMode]);

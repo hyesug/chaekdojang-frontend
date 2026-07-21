@@ -21,6 +21,7 @@ type MyReview = {
   id: number;
   content: string;
   rating: number;
+  hidden: boolean;
   attached: boolean;
   createdAt: string;
 };
@@ -29,7 +30,7 @@ function getToken() {
   return getValidToken();
 }
 
-export default function GroupManageClient({ slug, manager, member, joinPolicy, books }: { slug: string; manager: boolean; member: boolean; joinPolicy: JoinPolicy; books: GroupBook[] }) {
+export default function GroupManageClient({ slug, manager, member, visibility, joinPolicy, books }: { slug: string; manager: boolean; member: boolean; visibility: "PUBLIC" | "PRIVATE"; joinPolicy: JoinPolicy; books: GroupBook[] }) {
   const router = useRouter();
   const [bookId, setBookId] = useState("");
   const [note, setNote] = useState("");
@@ -138,7 +139,7 @@ export default function GroupManageClient({ slug, manager, member, joinPolicy, b
       await loadMyReviews();
       router.refresh();
     } catch {
-      setMessage("독후감을 연결하지 못했어요. 내 공개 독후감이고 같은 책인지 확인해주세요.");
+      setMessage(visibility === "PRIVATE" ? "독후감을 연결하지 못했어요. 내 독후감이고 같은 책인지 확인해주세요." : "독후감을 연결하지 못했어요. 내 공개 독후감이고 같은 책인지 확인해주세요.");
     } finally {
       setLoading(false);
     }
@@ -196,7 +197,11 @@ export default function GroupManageClient({ slug, manager, member, joinPolicy, b
   return (
     <section className="mt-8 rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
       <h2 className="font-serif text-lg font-bold text-brown-900">모임 관리</h2>
-      <p className="mt-1 text-sm text-brown-400">모임장이 선정 책을 검색해서 추가하고, 멤버는 자신의 공개 독후감을 연결할 수 있습니다.</p>
+      <p className="mt-1 text-sm text-brown-400">
+        {visibility === "PRIVATE"
+          ? "모임장이 선정 책을 검색해서 추가하고, 멤버는 자신의 공개/비공개 독후감을 연결할 수 있습니다."
+          : "모임장이 선정 책을 검색해서 추가하고, 멤버는 자신의 공개 독후감을 연결할 수 있습니다."}
+      </p>
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         {manager && (
           <div className="space-y-3 rounded-2xl bg-cream-50 p-4">
@@ -291,7 +296,9 @@ export default function GroupManageClient({ slug, manager, member, joinPolicy, b
             </select>
             {reviewsLoading && <p className="rounded-xl bg-white px-3 py-4 text-sm text-brown-400">내 독후감을 불러오는 중...</p>}
             {!reviewsLoading && myReviews.length === 0 && (
-              <p className="rounded-xl bg-white px-3 py-4 text-sm text-brown-400">이 책에 작성한 공개 독후감이 없어요.</p>
+              <p className="rounded-xl bg-white px-3 py-4 text-sm text-brown-400">
+                {visibility === "PRIVATE" ? "이 책에 작성한 독후감이 없어요." : "이 책에 작성한 공개 독후감이 없어요."}
+              </p>
             )}
             {!reviewsLoading && myReviews.length > 0 && (
               <div className="max-h-64 space-y-2 overflow-y-auto">
@@ -312,6 +319,7 @@ export default function GroupManageClient({ slug, manager, member, joinPolicy, b
                         <div className="flex flex-wrap items-center gap-2 text-xs text-brown-400">
                           <span>별점 {review.rating}</span>
                           <span>{new Date(review.createdAt).toLocaleDateString("ko-KR")}</span>
+                          {review.hidden && <span className="font-medium text-red-500">비공개</span>}
                           {review.attached && <span className="font-medium text-green-600">이미 연결됨</span>}
                         </div>
                         <p className="mt-1 line-clamp-2 leading-5">{review.content}</p>

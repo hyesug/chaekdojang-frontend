@@ -128,7 +128,7 @@ export default async function GroupPage({ params }: Props) {
       </section>
 
       {!privateContentLocked && (
-        <GroupManageClient slug={group.slug} manager={group.manager} member={group.member} joinPolicy={group.joinPolicy} books={group.books.map((book) => ({ id: book.id, title: book.title, bookId: book.bookId }))} />
+        <GroupManageClient slug={group.slug} manager={group.manager} member={group.member} visibility={group.visibility} joinPolicy={group.joinPolicy} books={group.books.map((book) => ({ id: book.id, title: book.title, bookId: book.bookId }))} />
       )}
 
       {!privateContentLocked && <section className="mt-8">

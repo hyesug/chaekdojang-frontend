@@ -20,6 +20,7 @@ type ReadingGroup = {
   name: string;
   slug: string;
   description: string | null;
+  visibility: "PUBLIC" | "PRIVATE";
   books: ReadingGroupBook[];
 };
 
@@ -35,6 +36,7 @@ type GroupReview = {
   bookThumbnail: string | null;
   content: string;
   rating: number;
+  hidden: boolean;
   viewCount: number;
   createdAt: string;
 };
@@ -104,21 +106,38 @@ export default async function GroupBookReviewsPage({ params }: Props) {
       </section>
 
       <section className="mt-6 space-y-4">
-        {reviews.map((review) => (
-          <Link
-            key={review.id}
-            href={`/reviews/${review.reviewId}?returnTo=${encodeURIComponent(currentGroupBookPath)}`}
-            className="block rounded-2xl border border-cream-200 bg-white p-5 shadow-sm hover:bg-cream-50"
-          >
-            <div className="flex items-center gap-2 text-sm text-brown-400">
-              <span>{review.authorNickname}</span>
-              <span>·</span>
-              <span>{new Date(review.createdAt).toLocaleDateString("ko-KR")}</span>
-            </div>
-            <div className="mt-2 text-yellow-400">{"★".repeat(review.rating)}<span className="text-cream-300">{"★".repeat(Math.max(0, 5 - review.rating))}</span></div>
-            <p className="mt-3 line-clamp-4 text-sm leading-6 text-brown-700">{review.content}</p>
-          </Link>
-        ))}
+        {reviews.map((review) => {
+          const content = (
+            <>
+              <div className="flex items-center gap-2 text-sm text-brown-400">
+                <span>{review.authorNickname}</span>
+                <span>·</span>
+                <span>{new Date(review.createdAt).toLocaleDateString("ko-KR")}</span>
+                {review.hidden && (
+                  <>
+                    <span>·</span>
+                    <span className="font-medium text-red-500">비공개</span>
+                  </>
+                )}
+              </div>
+              <div className="mt-2 text-yellow-400">{"★".repeat(review.rating)}<span className="text-cream-300">{"★".repeat(Math.max(0, 5 - review.rating))}</span></div>
+              <p className={`mt-3 text-sm leading-6 text-brown-700 ${review.hidden ? "whitespace-pre-line" : "line-clamp-4"}`}>{review.content}</p>
+            </>
+          );
+          return review.hidden ? (
+            <article key={review.id} className="rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+              {content}
+            </article>
+          ) : (
+            <Link
+              key={review.id}
+              href={`/reviews/${review.reviewId}?returnTo=${encodeURIComponent(currentGroupBookPath)}`}
+              className="block rounded-2xl border border-cream-200 bg-white p-5 shadow-sm hover:bg-cream-50"
+            >
+              {content}
+            </Link>
+          );
+        })}
         {reviews.length === 0 && (
           <div className="rounded-2xl border border-cream-200 bg-white py-16 text-center text-brown-400">
             <p>아직 이 모임에 연결된 독후감이 없어요.</p>

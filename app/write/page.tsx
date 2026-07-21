@@ -16,12 +16,27 @@ const DEFAULT_FEEDBACK_MAX_CHARS = 6000;
 
 type BookResult = {
   id: number;
-  isbn13: string;
+  isbn13: string | null;
   title: string;
   author: string;
   publisher: string;
   thumbnail: string | null;
   source: string;
+  contentType?: "BOOK" | "WEB_NOVEL";
+  externalId?: string | null;
+  sourceUrl?: string | null;
+};
+
+type SearchMode = "BOOK" | "WEB_NOVEL";
+
+type WebNovelResult = {
+  title: string;
+  author: string;
+  platform: "NAVER_SERIES" | "KAKAO_PAGE" | "RIDI" | "MUNPIA";
+  platformLabel: string;
+  sourceUrl: string;
+  externalId: string;
+  description: string;
 };
 
 type FeedbackSentenceExample = {
@@ -111,8 +126,15 @@ function WriteContent() {
 
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<BookResult[]>([]);
+  const [webNovelResults, setWebNovelResults] = useState<WebNovelResult[]>([]);
+  const [searchMode, setSearchMode] = useState<SearchMode>("BOOK");
   const [searching, setSearching] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
   const [selectedBook, setSelectedBook] = useState<BookResult | null>(null);
+  const [webNovelCandidate, setWebNovelCandidate] = useState<WebNovelResult | null>(null);
+  const [webNovelTitle, setWebNovelTitle] = useState("");
+  const [webNovelAuthor, setWebNovelAuthor] = useState("");
+  const [registeringWebNovel, setRegisteringWebNovel] = useState(false);
 
   // 수정 모드: 기존 독후감 데이터 로드
   useEffect(() => {
@@ -221,18 +243,98 @@ function WriteContent() {
   async function searchBooks() {
     if (!query.trim()) return;
     setSearching(true);
+    setHasSearched(false);
+    setWebNovelCandidate(null);
     try {
-      const res = await fetch(`${API_BASE}/api/books/search?q=${encodeURIComponent(query)}`);
+      const endpoint = searchMode === "WEB_NOVEL"
+        ? `${API_BASE}/api/books/web-novels/search?q=${encodeURIComponent(query.trim())}`
+        : `${API_BASE}/api/books/search?q=${encodeURIComponent(query.trim())}`;
+      const res = await fetch(endpoint);
       if (res.ok) {
         const json = await res.json();
-        setResults(json.data ?? json);
+        if (searchMode === "WEB_NOVEL") {
+          setWebNovelResults(json.data ?? json);
+          setResults([]);
+        } else {
+          setResults(json.data ?? json);
+          setWebNovelResults([]);
+        }
       } else {
         setResults([]);
+        setWebNovelResults([]);
       }
     } catch {
       setResults([]);
+      setWebNovelResults([]);
     } finally {
       setSearching(false);
+      setHasSearched(true);
+    }
+  }
+
+  function changeSearchMode(mode: SearchMode) {
+    setSearchMode(mode);
+    setQuery("");
+    setResults([]);
+    setWebNovelResults([]);
+    setWebNovelCandidate(null);
+    setHasSearched(false);
+    setError("");
+  }
+
+  function chooseWebNovelCandidate(candidate: WebNovelResult) {
+    setWebNovelCandidate(candidate);
+    setWebNovelTitle(candidate.title);
+    setWebNovelAuthor(candidate.author);
+    setError("");
+  }
+
+  async function registerWebNovel() {
+    if (!webNovelCandidate || !webNovelTitle.trim()) return;
+    setRegisteringWebNovel(true);
+    setError("");
+    try {
+      const res = await authFetch(`${API_BASE}/api/books/web-novels`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: webNovelTitle.trim(),
+          author: webNovelAuthor.trim(),
+          platform: webNovelCandidate.platform,
+          sourceUrl: webNovelCandidate.sourceUrl,
+        }),
+      });
+      if (res.status === 401) {
+        router.push("/auth/login");
+        return;
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError((data as { message?: string }).message ?? "웹소설을 등록하지 못했습니다.");
+        return;
+      }
+      const json = await res.json();
+      const book = json.data ?? json;
+      setSelectedBook({
+        id: book.id,
+        isbn13: book.isbn13 ?? null,
+        title: book.title,
+        author: book.author ?? "",
+        publisher: book.publisher ?? webNovelCandidate.platformLabel,
+        thumbnail: book.thumbnail ?? null,
+        source: book.source,
+        contentType: book.contentType,
+        externalId: book.externalId,
+        sourceUrl: book.sourceUrl,
+      });
+      setResults([]);
+      setWebNovelResults([]);
+      setWebNovelCandidate(null);
+      setQuery("");
+    } catch {
+      setError("웹소설을 등록하는 중 서버에 연결할 수 없습니다.");
+    } finally {
+      setRegisteringWebNovel(false);
     }
   }
 
@@ -390,24 +492,49 @@ function WriteContent() {
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
 
-        {/* 1. 책 선택 */}
+        {/* 1. 작품 선택 */}
         <section className="bg-white rounded-lg border border-cream-200 p-5 sm:p-6 shadow-sm">
-          <h2 className="font-serif text-lg font-bold text-brown-700 mb-4">1. 어떤 책을 읽었나요?</h2>
+          <h2 className="font-serif text-lg font-bold text-brown-700 mb-4">1. 어떤 작품을 읽었나요?</h2>
 
           {selectedBook ? (
             <div className="flex items-center gap-3 bg-cream-50 rounded-xl px-4 py-3 border border-cream-200">
               {selectedBook.thumbnail ? (
                 <img src={selectedBook.thumbnail} alt="" className="w-10 h-14 object-cover rounded flex-shrink-0 shadow-sm" />
               ) : (
-                <div className="w-10 h-14 bg-brown-300 rounded flex-shrink-0" />
+                <div className="w-10 h-14 bg-brown-300 rounded flex flex-shrink-0 items-center justify-center text-xs font-bold text-white">
+                  {selectedBook.contentType === "WEB_NOVEL" ? "웹" : "책"}
+                </div>
               )}
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-brown-800">{selectedBook.title}</p>
-                <p className="text-sm text-brown-400 mt-0.5">{selectedBook.author} · {selectedBook.publisher}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-medium text-brown-800">{selectedBook.title}</p>
+                  {selectedBook.contentType === "WEB_NOVEL" && (
+                    <span className="rounded-full bg-cream-200 px-2 py-0.5 text-[11px] font-medium text-sage-600">웹소설</span>
+                  )}
+                </div>
+                <p className="text-sm text-brown-400 mt-0.5">
+                  {selectedBook.author || "작가 정보 없음"} · {selectedBook.publisher}
+                </p>
+                {selectedBook.sourceUrl && (
+                  <a
+                    href={selectedBook.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1 inline-block text-xs text-brown-400 underline-offset-2 hover:text-brown-600 hover:underline"
+                  >
+                    원문 플랫폼에서 확인 →
+                  </a>
+                )}
               </div>
               <button
                 type="button"
-                onClick={() => { setSelectedBook(null); setResults([]); setQuery(""); }}
+                onClick={() => {
+                  setSelectedBook(null);
+                  setResults([]);
+                  setWebNovelResults([]);
+                  setQuery("");
+                  setHasSearched(false);
+                }}
                 className="text-xs text-brown-400 hover:text-brown-600 transition-colors ml-2 flex-shrink-0"
               >
                 변경
@@ -415,13 +542,34 @@ function WriteContent() {
             </div>
           ) : (
             <>
+              <div className="mb-3 grid grid-cols-2 rounded-xl bg-cream-100 p-1" role="tablist" aria-label="작품 종류">
+                {(["BOOK", "WEB_NOVEL"] as SearchMode[]).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    role="tab"
+                    aria-selected={searchMode === mode}
+                    onClick={() => changeSearchMode(mode)}
+                    className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                      searchMode === mode ? "bg-white text-brown-700 shadow-sm" : "text-brown-400 hover:text-brown-600"
+                    }`}
+                  >
+                    {mode === "BOOK" ? "책" : "웹소설"}
+                  </button>
+                ))}
+              </div>
+              {searchMode === "WEB_NOVEL" && (
+                <p className="mb-3 text-xs leading-5 text-brown-400">
+                  네이버 시리즈·카카오페이지·리디·문피아의 공식 작품 페이지를 한 번에 찾아요.
+                </p>
+              )}
               <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="text"
                   value={query}
-                  onChange={(e) => setQuery(e.target.value)}
+                  onChange={(e) => { setQuery(e.target.value); setHasSearched(false); }}
                   onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), searchBooks())}
-                  placeholder="책 제목 또는 저자 검색"
+                  placeholder={searchMode === "BOOK" ? "책 제목 또는 저자 검색" : "웹소설 제목 검색"}
                   className="flex-1 px-4 py-2.5 rounded-xl border border-cream-300 text-sm text-brown-800 bg-cream-50 placeholder:text-brown-300 focus:outline-none focus:border-brown-400 focus:ring-2 focus:ring-brown-100 transition"
                 />
                 <button
@@ -436,7 +584,7 @@ function WriteContent() {
               {results.length > 0 && (
                 <ul className="mt-2 border border-cream-200 rounded-xl overflow-hidden">
                   {results.map((book) => (
-                    <li key={`${book.isbn13}-${book.source}`} className="border-b border-cream-100 last:border-0">
+                    <li key={`${book.isbn13 ?? book.id}-${book.source}`} className="border-b border-cream-100 last:border-0">
                       <button
                         type="button"
                         onClick={() => { setSelectedBook(book); setResults([]); }}
@@ -456,16 +604,101 @@ function WriteContent() {
                   ))}
                 </ul>
               )}
-              {results.length === 0 && query && !searching && (
-                <p className="mt-2 text-sm text-brown-400 text-center py-3">검색 결과가 없습니다.</p>
+              {searchMode === "WEB_NOVEL" && webNovelCandidate && (
+                <div className="mt-3 rounded-xl border border-sage-300 bg-cream-50 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <span className="rounded-full bg-white px-2 py-1 text-xs font-medium text-sage-600">
+                        {webNovelCandidate.platformLabel}
+                      </span>
+                      <p className="mt-2 text-xs text-brown-400">검색 결과를 한 번 확인한 뒤 작품으로 선택해주세요.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setWebNovelCandidate(null)}
+                      className="text-xs text-brown-400 hover:text-brown-600"
+                    >
+                      다른 결과
+                    </button>
+                  </div>
+                  <div className="mt-3 space-y-3">
+                    <label className="block text-xs font-medium text-brown-600">
+                      작품명
+                      <input
+                        value={webNovelTitle}
+                        onChange={(event) => setWebNovelTitle(event.target.value)}
+                        className="mt-1 w-full rounded-lg border border-cream-300 bg-white px-3 py-2 text-sm text-brown-800 focus:border-brown-400 focus:outline-none"
+                      />
+                    </label>
+                    <label className="block text-xs font-medium text-brown-600">
+                      작가명 <span className="font-normal text-brown-400">(검색 결과에 없으면 비워도 돼요)</span>
+                      <input
+                        value={webNovelAuthor}
+                        onChange={(event) => setWebNovelAuthor(event.target.value)}
+                        placeholder="작가명"
+                        className="mt-1 w-full rounded-lg border border-cream-300 bg-white px-3 py-2 text-sm text-brown-800 placeholder:text-brown-300 focus:border-brown-400 focus:outline-none"
+                      />
+                    </label>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={registerWebNovel}
+                      disabled={registeringWebNovel || !webNovelTitle.trim()}
+                      className="rounded-lg bg-brown-600 px-4 py-2 text-sm font-medium text-white hover:bg-brown-700 disabled:opacity-50"
+                    >
+                      {registeringWebNovel ? "등록 중..." : "이 작품 선택"}
+                    </button>
+                    <a
+                      href={webNovelCandidate.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-brown-400 hover:text-brown-600 hover:underline"
+                    >
+                      공식 페이지 확인 →
+                    </a>
+                  </div>
+                </div>
+              )}
+              {searchMode === "WEB_NOVEL" && !webNovelCandidate && webNovelResults.length > 0 && (
+                <ul className="mt-2 overflow-hidden rounded-xl border border-cream-200">
+                  {webNovelResults.map((novel) => (
+                    <li key={`${novel.platform}-${novel.externalId}`} className="border-b border-cream-100 last:border-0">
+                      <button
+                        type="button"
+                        onClick={() => chooseWebNovelCandidate(novel)}
+                        className="w-full px-4 py-3 text-left transition-colors hover:bg-cream-50"
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-full bg-cream-200 px-2 py-0.5 text-[11px] font-medium text-sage-600">
+                            {novel.platformLabel}
+                          </span>
+                          <p className="text-sm font-medium text-brown-800">{novel.title}</p>
+                        </div>
+                        <p className="mt-1 text-xs text-brown-400">{novel.author || "작가 정보는 선택 후 입력할 수 있어요"}</p>
+                        {novel.description && (
+                          <p className="mt-1 line-clamp-2 text-xs leading-5 text-brown-400">{novel.description}</p>
+                        )}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {hasSearched && !searching && results.length === 0 && webNovelResults.length === 0 && (
+                <div className="mt-2 py-4 text-center text-sm text-brown-400">
+                  <p>검색 결과가 없습니다.</p>
+                  {searchMode === "WEB_NOVEL" && (
+                    <p className="mt-1 text-xs">일반 웹 검색에 아직 등록되지 않은 작품 페이지는 찾지 못할 수 있어요.</p>
+                  )}
+                </div>
               )}
             </>
           )}
         </section>
 
-        {/* 2. 이 책 어땠나요? */}
+        {/* 2. 감상 작성 */}
         <section className="bg-white rounded-lg border border-cream-200 p-5 sm:p-6 shadow-sm">
-          <h2 className="font-serif text-lg font-bold text-brown-700 mb-4">2. 이 책 어땠나요?</h2>
+          <h2 className="font-serif text-lg font-bold text-brown-700 mb-4">2. 이 작품 어땠나요?</h2>
           <div className="space-y-5">
 
             <div>

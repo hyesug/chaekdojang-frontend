@@ -11,13 +11,16 @@ const BASE = API_BASE;
 
 export type Book = {
   id: number;
-  isbn13?: string;
+  isbn13?: string | null;
   title: string;
   author: string;
   publisher: string;
   thumbnail: string | null;
   category: string | null;
   reviewCount?: number;
+  source?: string;
+  contentType?: "BOOK" | "WEB_NOVEL";
+  sourceUrl?: string | null;
 };
 
 type LibraryStatus = "READING" | "FINISHED" | "WISHLIST";
@@ -30,7 +33,7 @@ type LibraryState = {
 
 export type PurchaseLink = {
   id: number | null;
-  provider: "COUPANG" | "KYOBO";
+  provider: "COUPANG" | "KYOBO" | "NAVER_SERIES" | "KAKAO_PAGE" | "RIDI" | "MUNPIA";
   url: string;
 };
 
@@ -152,6 +155,10 @@ export default function BookDetailClient({
   const providerLabels: Record<PurchaseLink["provider"], string> = {
     COUPANG: "쿠팡에서 보기",
     KYOBO: "교보문고에서 보기",
+    NAVER_SERIES: "네이버 시리즈에서 읽기",
+    KAKAO_PAGE: "카카오페이지에서 읽기",
+    RIDI: "리디에서 읽기",
+    MUNPIA: "문피아에서 읽기",
   };
 
   function recordPurchaseLinkClick(linkId: number | null) {

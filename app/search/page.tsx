@@ -13,12 +13,14 @@ type SearchTab = "books" | "users";
 
 type BookResult = {
   id: number;
-  isbn13: string;
+  isbn13: string | null;
   title: string;
   author: string;
   publisher: string;
   thumbnail: string | null;
   source: string;
+  contentType?: "BOOK" | "WEB_NOVEL";
+  sourceUrl?: string | null;
   category?: string;
   reviewCount: number;
 };
@@ -110,7 +112,7 @@ function representativeEdition(editions: BookResult[]): BookResult {
 
 function editionScore(book: BookResult) {
   let score = (book.reviewCount ?? 0) * 1000;
-  if (/^\d{13}$/.test(book.isbn13)) score += 100;
+  if (book.isbn13 && /^\d{13}$/.test(book.isbn13)) score += 100;
   if (book.thumbnail) score += 20;
   if (book.publisher?.trim()) score += 10;
   if (book.source === "KAKAO") score += 5;
@@ -468,7 +470,7 @@ function SearchContent() {
 
                     {/* 구매 링크 */}
                     <div className="flex gap-2 mt-2">
-                      {buildSearchLinks(group.workTitle).map((link, idx) => (
+                      {buildSearchLinks(group.workTitle, book.source, book.sourceUrl).map((link, idx) => (
                         <span key={link.provider} className="contents">
                           {idx > 0 && <span className="text-brown-200 text-xs">|</span>}
                           <a

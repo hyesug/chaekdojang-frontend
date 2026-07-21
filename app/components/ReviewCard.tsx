@@ -13,7 +13,15 @@ import { bookReturnStorageKey } from "../lib/returnMemory";
 export type Review = {
   id: number;
   author: { id?: number | null; nickname: string; profileImage: string | null };
-  book?: { id?: number; title: string; author: string; thumbnail: string | null } | null;
+  book?: {
+    id?: number;
+    title: string;
+    author: string;
+    thumbnail: string | null;
+    source?: string;
+    contentType?: "BOOK" | "WEB_NOVEL";
+    sourceUrl?: string | null;
+  } | null;
   aiSummary?: {
     oneLineReview: string;
     emotionKeywords: string[];
@@ -758,7 +766,7 @@ export default function ReviewCard({
                 <p className="text-xs text-brown-400 mb-0.5">{post.book.author}</p>
                 {/* 구매 링크 */}
                 <div className="flex items-center gap-2 mb-1">
-                  {buildSearchLinks(post.book.title).map((link, idx) => (
+                  {buildSearchLinks(post.book.title, post.book.source, post.book.sourceUrl).map((link, idx) => (
                     <span key={link.provider} className="contents">
                       {idx > 0 && <span className="text-brown-200 text-xs">|</span>}
                       <a
@@ -768,7 +776,7 @@ export default function ReviewCard({
                         className="text-xs text-brown-300 hover:text-brown-500 hover:underline transition-colors"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        {link.provider === "COUPANG" ? "쿠팡" : "교보문고"} →
+                        {link.label} →
                       </a>
                     </span>
                   ))}

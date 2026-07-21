@@ -17,6 +17,9 @@ export type ReviewDetail = {
     title: string;
     author: string;
     thumbnail: string | null;
+    source?: string;
+    contentType?: "BOOK" | "WEB_NOVEL";
+    sourceUrl?: string | null;
   } | null;
   aiSummary?: {
     oneLineReview: string;
@@ -36,13 +39,16 @@ export type ReviewDetail = {
 
 export type BookDetail = {
   id: number;
-  isbn13: string;
+  isbn13: string | null;
   title: string;
   author: string;
   publisher: string;
   thumbnail: string | null;
   slug?: string | null;
   source: string;
+  contentType?: "BOOK" | "WEB_NOVEL";
+  externalId?: string | null;
+  sourceUrl?: string | null;
   category: string | null;
   reviewCount: number;
 };

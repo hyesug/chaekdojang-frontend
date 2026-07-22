@@ -39,6 +39,32 @@ type WebNovelResult = {
   description: string;
 };
 
+type DirectWebNovelPlatform = Pick<WebNovelResult, "platform" | "platformLabel">;
+
+function detectWebNovelPlatform(rawUrl: string): DirectWebNovelPlatform | null {
+  try {
+    const host = new URL(rawUrl.trim()).hostname.toLowerCase();
+    if (["novel.naver.com", "m.novel.naver.com"].includes(host)) {
+      return { platform: "NAVER_SERIES", platformLabel: "네이버 웹소설" };
+    }
+    if (["series.naver.com", "m.series.naver.com"].includes(host)) {
+      return { platform: "NAVER_SERIES", platformLabel: "네이버 시리즈" };
+    }
+    if (host === "page.kakao.com") {
+      return { platform: "KAKAO_PAGE", platformLabel: "카카오페이지" };
+    }
+    if (["ridibooks.com", "www.ridibooks.com"].includes(host)) {
+      return { platform: "RIDI", platformLabel: "리디" };
+    }
+    if (["novel.munpia.com", "www.munpia.com", "m.munpia.com", "mm.munpia.com"].includes(host)) {
+      return { platform: "MUNPIA", platformLabel: "문피아" };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 type FeedbackSentenceExample = {
   before: string;
   after: string;
@@ -136,12 +162,12 @@ function WriteContent() {
   const [webNovelCandidate, setWebNovelCandidate] = useState<WebNovelResult | null>(null);
   const [webNovelTitle, setWebNovelTitle] = useState("");
   const [webNovelAuthor, setWebNovelAuthor] = useState("");
-  const [showDirectNaverRegister, setShowDirectNaverRegister] = useState(
-    () => searchParams.get("direct") === "naver"
+  const [showDirectRegister, setShowDirectRegister] = useState(
+    () => ["naver", "platform"].includes(searchParams.get("direct") ?? "")
   );
-  const [directNaverUrl, setDirectNaverUrl] = useState("");
-  const [directNaverTitle, setDirectNaverTitle] = useState(() => searchParams.get("title") ?? "");
-  const [directNaverAuthor, setDirectNaverAuthor] = useState(() => searchParams.get("author") ?? "");
+  const [directWorkUrl, setDirectWorkUrl] = useState("");
+  const [directWorkTitle, setDirectWorkTitle] = useState(() => searchParams.get("title") ?? "");
+  const [directWorkAuthor, setDirectWorkAuthor] = useState(() => searchParams.get("author") ?? "");
 
   // 수정 모드: 기존 독후감 데이터 로드
   useEffect(() => {
@@ -287,7 +313,7 @@ function WriteContent() {
     setResults([]);
     setWebNovelResults([]);
     setWebNovelCandidate(null);
-    setShowDirectNaverRegister(false);
+    setShowDirectRegister(false);
     setHasSearched(false);
     setError("");
   }
@@ -296,7 +322,7 @@ function WriteContent() {
     setWebNovelCandidate(candidate);
     setWebNovelTitle(candidate.title);
     setWebNovelAuthor(candidate.author);
-    setShowDirectNaverRegister(false);
+    setShowDirectRegister(false);
     setError("");
   }
 
@@ -322,8 +348,8 @@ function WriteContent() {
       }
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(res.status === 400 && candidate.platform === "NAVER_SERIES"
-          ? "네이버 웹소설 또는 네이버 시리즈의 작품 목록 주소인지 확인해주세요."
+        setError(res.status === 400
+          ? "지원하는 플랫폼의 작품 상세 주소인지 확인해주세요."
           : (data as { message?: string }).message ?? "웹소설을 등록하지 못했습니다.");
         return null;
       }
@@ -397,23 +423,26 @@ function WriteContent() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const directCandidate = directNaverUrl.trim() && directNaverTitle.trim()
+    const directPlatform = detectWebNovelPlatform(directWorkUrl);
+    const directCandidate = directPlatform && directWorkUrl.trim() && directWorkTitle.trim()
       ? {
-          title: directNaverTitle.trim(),
-          author: directNaverAuthor.trim(),
-          platform: "NAVER_SERIES" as const,
-          platformLabel: "네이버 웹소설",
-          sourceUrl: directNaverUrl.trim(),
-          externalId: directNaverUrl.trim(),
+          title: directWorkTitle.trim(),
+          author: directWorkAuthor.trim(),
+          platform: directPlatform.platform,
+          platformLabel: directPlatform.platformLabel,
+          sourceUrl: directWorkUrl.trim(),
+          externalId: directWorkUrl.trim(),
           description: "",
         }
       : null;
     const pendingWebNovel = webNovelCandidate ?? directCandidate;
-    const pendingTitle = webNovelCandidate ? webNovelTitle : directNaverTitle;
-    const pendingAuthor = webNovelCandidate ? webNovelAuthor : directNaverAuthor;
+    const pendingTitle = webNovelCandidate ? webNovelTitle : directWorkTitle;
+    const pendingAuthor = webNovelCandidate ? webNovelAuthor : directWorkAuthor;
     if (!selectedBook && !pendingWebNovel) {
-      setError(directNaverUrl.trim() || directNaverTitle.trim()
-        ? "네이버 작품 URL과 작품명을 모두 입력해주세요."
+      setError(directWorkUrl.trim() && !directPlatform
+        ? "네이버·카카오페이지·리디·문피아의 작품 URL인지 확인해주세요."
+        : directWorkUrl.trim() || directWorkTitle.trim()
+        ? "작품 URL과 작품명을 모두 입력해주세요."
         : "작품을 선택해주세요.");
       return;
     }
@@ -720,27 +749,30 @@ function WriteContent() {
                   <button
                     type="button"
                     onClick={() => {
-                      setShowDirectNaverRegister((visible) => !visible);
-                      if (!directNaverTitle.trim()) setDirectNaverTitle(query.trim());
+                      setShowDirectRegister((visible) => !visible);
+                      if (!directWorkTitle.trim()) setDirectWorkTitle(query.trim());
                     }}
                     className="text-sm font-medium text-brown-600 hover:text-brown-800"
                   >
-                    {showDirectNaverRegister
+                    {showDirectRegister
                       ? "작품 URL 직접 입력 닫기"
                       : "찾는 작품이 없나요? 작품 URL로 직접 입력 →"}
                   </button>
-                  {showDirectNaverRegister && (
+                  {showDirectRegister && (
                     <div className="mt-4 space-y-3 border-t border-cream-200 pt-4">
                       <p className="text-xs leading-5 text-brown-400">
                         URL·작품명·작가명을 입력하면 독후감 올리기 때 작품도 함께 등록됩니다.
                       </p>
+                      <p className="text-xs leading-5 text-brown-400">
+                        네이버 웹소설·시리즈, 카카오페이지, 리디, 문피아 주소를 지원해요.
+                      </p>
                       <label className="block text-xs font-medium text-brown-600">
-                        네이버 웹소설·시리즈 작품 URL
+                        작품 URL
                         <input
                           type="url"
-                          value={directNaverUrl}
-                          onChange={(event) => setDirectNaverUrl(event.target.value)}
-                          placeholder="https://novel.naver.com/best/list?novelId=..."
+                          value={directWorkUrl}
+                          onChange={(event) => setDirectWorkUrl(event.target.value)}
+                          placeholder="https://..."
                           className="mt-1 w-full rounded-lg border border-cream-300 bg-white px-3 py-2 text-sm text-brown-800 placeholder:text-brown-300 focus:border-brown-400 focus:outline-none"
                         />
                       </label>
@@ -748,8 +780,8 @@ function WriteContent() {
                         <label className="block text-xs font-medium text-brown-600">
                           작품명
                           <input
-                            value={directNaverTitle}
-                            onChange={(event) => setDirectNaverTitle(event.target.value)}
+                            value={directWorkTitle}
+                            onChange={(event) => setDirectWorkTitle(event.target.value)}
                             placeholder="작품명"
                             className="mt-1 w-full rounded-lg border border-cream-300 bg-white px-3 py-2 text-sm text-brown-800 placeholder:text-brown-300 focus:border-brown-400 focus:outline-none"
                           />
@@ -757,8 +789,8 @@ function WriteContent() {
                         <label className="block text-xs font-medium text-brown-600">
                           작가명 <span className="font-normal text-brown-400">(선택)</span>
                           <input
-                            value={directNaverAuthor}
-                            onChange={(event) => setDirectNaverAuthor(event.target.value)}
+                            value={directWorkAuthor}
+                            onChange={(event) => setDirectWorkAuthor(event.target.value)}
                             placeholder="작가명"
                             className="mt-1 w-full rounded-lg border border-cream-300 bg-white px-3 py-2 text-sm text-brown-800 placeholder:text-brown-300 focus:border-brown-400 focus:outline-none"
                           />

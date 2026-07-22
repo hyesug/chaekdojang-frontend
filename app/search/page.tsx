@@ -413,7 +413,7 @@ function SearchContent() {
             href={`/write?contentType=WEB_NOVEL&direct=naver${query.trim() ? `&title=${encodeURIComponent(query.trim())}` : ""}`}
             className="mt-1 inline-block font-medium text-brown-600 hover:text-brown-800 hover:underline"
           >
-            검색 결과에 없나요? 네이버 작품 URL 직접 입력 →
+            검색 결과에 없나요? 작품 URL 직접 입력 →
           </Link>
         </div>
       )}

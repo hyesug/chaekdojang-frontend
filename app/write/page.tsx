@@ -124,10 +124,12 @@ function WriteContent() {
   const reviewId = searchParams.get("reviewId");
   const isEditMode = !!reviewId;
 
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(() => searchParams.get("title") ?? "");
   const [results, setResults] = useState<BookResult[]>([]);
   const [webNovelResults, setWebNovelResults] = useState<WebNovelResult[]>([]);
-  const [searchMode, setSearchMode] = useState<SearchMode>("BOOK");
+  const [searchMode, setSearchMode] = useState<SearchMode>(() =>
+    searchParams.get("contentType") === "WEB_NOVEL" ? "WEB_NOVEL" : "BOOK"
+  );
   const [searching, setSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedBook, setSelectedBook] = useState<BookResult | null>(null);
@@ -135,6 +137,12 @@ function WriteContent() {
   const [webNovelTitle, setWebNovelTitle] = useState("");
   const [webNovelAuthor, setWebNovelAuthor] = useState("");
   const [registeringWebNovel, setRegisteringWebNovel] = useState(false);
+  const [showDirectNaverRegister, setShowDirectNaverRegister] = useState(
+    () => searchParams.get("direct") === "naver"
+  );
+  const [directNaverUrl, setDirectNaverUrl] = useState("");
+  const [directNaverTitle, setDirectNaverTitle] = useState(() => searchParams.get("title") ?? "");
+  const [directNaverAuthor, setDirectNaverAuthor] = useState(() => searchParams.get("author") ?? "");
 
   // 수정 모드: 기존 독후감 데이터 로드
   useEffect(() => {
@@ -280,6 +288,7 @@ function WriteContent() {
     setResults([]);
     setWebNovelResults([]);
     setWebNovelCandidate(null);
+    setShowDirectNaverRegister(false);
     setHasSearched(false);
     setError("");
   }
@@ -291,8 +300,12 @@ function WriteContent() {
     setError("");
   }
 
-  async function registerWebNovel() {
-    if (!webNovelCandidate || !webNovelTitle.trim()) return;
+  async function registerWebNovel(
+    candidate: WebNovelResult | null = webNovelCandidate,
+    title = webNovelTitle,
+    author = webNovelAuthor
+  ) {
+    if (!candidate || !title.trim()) return;
     setRegisteringWebNovel(true);
     setError("");
     try {
@@ -300,10 +313,10 @@ function WriteContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: webNovelTitle.trim(),
-          author: webNovelAuthor.trim(),
-          platform: webNovelCandidate.platform,
-          sourceUrl: webNovelCandidate.sourceUrl,
+          title: title.trim(),
+          author: author.trim(),
+          platform: candidate.platform,
+          sourceUrl: candidate.sourceUrl,
         }),
       });
       if (res.status === 401) {
@@ -322,7 +335,7 @@ function WriteContent() {
         isbn13: book.isbn13 ?? null,
         title: book.title,
         author: book.author ?? "",
-        publisher: book.publisher ?? webNovelCandidate.platformLabel,
+        publisher: book.publisher ?? candidate.platformLabel,
         thumbnail: book.thumbnail ?? null,
         source: book.source,
         contentType: book.contentType,
@@ -332,6 +345,8 @@ function WriteContent() {
       setResults([]);
       setWebNovelResults([]);
       setWebNovelCandidate(null);
+      setShowDirectNaverRegister(false);
+      setDirectNaverUrl("");
       setQuery("");
     } catch {
       setError("웹소설을 등록하는 중 서버에 연결할 수 없습니다.");
@@ -645,7 +660,7 @@ function WriteContent() {
                   <div className="mt-3 flex flex-wrap items-center gap-3">
                     <button
                       type="button"
-                      onClick={registerWebNovel}
+                      onClick={() => registerWebNovel()}
                       disabled={registeringWebNovel || !webNovelTitle.trim()}
                       className="rounded-lg bg-brown-600 px-4 py-2 text-sm font-medium text-white hover:bg-brown-700 disabled:opacity-50"
                     >
@@ -685,6 +700,73 @@ function WriteContent() {
                     </li>
                   ))}
                 </ul>
+              )}
+              {searchMode === "WEB_NOVEL" && !webNovelCandidate && (
+                <div className="mt-3 rounded-xl border border-cream-200 bg-cream-50 p-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowDirectNaverRegister((visible) => !visible);
+                      if (!directNaverTitle.trim()) setDirectNaverTitle(query.trim());
+                    }}
+                    className="text-sm font-medium text-brown-600 hover:text-brown-800"
+                  >
+                    검색 결과에 없나요? 네이버 시리즈 URL로 직접 등록 {showDirectNaverRegister ? "접기" : "→"}
+                  </button>
+                  {showDirectNaverRegister && (
+                    <div className="mt-4 space-y-3 border-t border-cream-200 pt-4">
+                      <p className="text-xs leading-5 text-brown-400">
+                        네이버 시리즈 작품 상세 페이지에서 주소를 복사해 입력해주세요.
+                      </p>
+                      <label className="block text-xs font-medium text-brown-600">
+                        네이버 시리즈 작품 URL
+                        <input
+                          type="url"
+                          value={directNaverUrl}
+                          onChange={(event) => setDirectNaverUrl(event.target.value)}
+                          placeholder="https://series.naver.com/novel/detail.series?productNo=..."
+                          className="mt-1 w-full rounded-lg border border-cream-300 bg-white px-3 py-2 text-sm text-brown-800 placeholder:text-brown-300 focus:border-brown-400 focus:outline-none"
+                        />
+                      </label>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <label className="block text-xs font-medium text-brown-600">
+                          작품명
+                          <input
+                            value={directNaverTitle}
+                            onChange={(event) => setDirectNaverTitle(event.target.value)}
+                            placeholder="작품명"
+                            className="mt-1 w-full rounded-lg border border-cream-300 bg-white px-3 py-2 text-sm text-brown-800 placeholder:text-brown-300 focus:border-brown-400 focus:outline-none"
+                          />
+                        </label>
+                        <label className="block text-xs font-medium text-brown-600">
+                          작가명 <span className="font-normal text-brown-400">(선택)</span>
+                          <input
+                            value={directNaverAuthor}
+                            onChange={(event) => setDirectNaverAuthor(event.target.value)}
+                            placeholder="작가명"
+                            className="mt-1 w-full rounded-lg border border-cream-300 bg-white px-3 py-2 text-sm text-brown-800 placeholder:text-brown-300 focus:border-brown-400 focus:outline-none"
+                          />
+                        </label>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => registerWebNovel({
+                          title: directNaverTitle.trim(),
+                          author: directNaverAuthor.trim(),
+                          platform: "NAVER_SERIES",
+                          platformLabel: "네이버 시리즈",
+                          sourceUrl: directNaverUrl.trim(),
+                          externalId: directNaverUrl.trim(),
+                          description: "",
+                        }, directNaverTitle, directNaverAuthor)}
+                        disabled={registeringWebNovel || !directNaverUrl.trim() || !directNaverTitle.trim()}
+                        className="rounded-lg bg-brown-600 px-4 py-2 text-sm font-medium text-white hover:bg-brown-700 disabled:opacity-50"
+                      >
+                        {registeringWebNovel ? "등록 중..." : "이 작품 선택"}
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
               {hasSearched && !searching && results.length === 0 && webNovelResults.length === 0 && (
                 <div className="mt-2 py-4 text-center text-sm text-brown-400">

@@ -407,9 +407,15 @@ function SearchContent() {
       </form>
 
       {tab === "webNovels" && (
-        <p className="mb-4 text-xs leading-5 text-brown-400">
-          네이버 시리즈·카카오페이지·리디·문피아의 공식 작품 페이지를 찾아요.
-        </p>
+        <div className="mb-4 text-xs leading-5 text-brown-400">
+          <p>네이버 시리즈·카카오페이지·리디·문피아의 공식 작품 페이지를 찾아요.</p>
+          <Link
+            href={`/write?contentType=WEB_NOVEL&direct=naver${query.trim() ? `&title=${encodeURIComponent(query.trim())}` : ""}`}
+            className="mt-1 inline-block font-medium text-brown-600 hover:text-brown-800 hover:underline"
+          >
+            검색 결과에 없나요? 네이버 시리즈 URL로 직접 등록 →
+          </Link>
+        </div>
       )}
 
       {/* 검색 중 */}

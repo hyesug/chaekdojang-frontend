@@ -296,6 +296,7 @@ function WriteContent() {
     setWebNovelCandidate(candidate);
     setWebNovelTitle(candidate.title);
     setWebNovelAuthor(candidate.author);
+    setShowDirectNaverRegister(false);
     setError("");
   }
 
@@ -724,7 +725,9 @@ function WriteContent() {
                     }}
                     className="text-sm font-medium text-brown-600 hover:text-brown-800"
                   >
-                    검색 결과에 없나요? 네이버 웹소설·시리즈 URL 직접 입력 {showDirectNaverRegister ? "접기" : "→"}
+                    {showDirectNaverRegister
+                      ? "네이버 작품 URL 직접 입력 닫기"
+                      : "찾는 작품이 없나요? 네이버 작품 URL로 직접 입력 →"}
                   </button>
                   {showDirectNaverRegister && (
                     <div className="mt-4 space-y-3 border-t border-cream-200 pt-4">

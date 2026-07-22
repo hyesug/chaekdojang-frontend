@@ -174,7 +174,22 @@ function SearchContent() {
       : requestedTab === "webNovels"
       ? "webNovels"
       : "books";
-    if (!q && !author && !publisher) return;
+    if (!q && !author && !publisher) {
+      setTab(nextTab);
+      setQuery("");
+      setAuthorQuery("");
+      setPublisherQuery("");
+      setResults([]);
+      setWebNovelResults([]);
+      setUserResults([]);
+      setSearching(false);
+      setSearched(false);
+      setAdding({});
+      setRegistering({});
+      setWebNovelError("");
+      setExpandedGroups({});
+      return;
+    }
     setTab(nextTab);
     setQuery(q);
     setAuthorQuery(author);

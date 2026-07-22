@@ -40,6 +40,7 @@ type WebNovelResult = {
   sourceUrl: string;
   externalId: string;
   description: string;
+  thumbnail: string | null;
 };
 
 type AddingState = Record<string, "idle" | "loading" | "done" | "error">;
@@ -287,6 +288,7 @@ function SearchContent() {
         contentType: "WEB_NOVEL",
         sourceUrl: book.sourceUrl ?? novel.sourceUrl,
       });
+      if (book.thumbnail) params.set("thumbnail", book.thumbnail);
       router.push(`/write?${params.toString()}`);
     } catch {
       setRegistering((prev) => ({ ...prev, [key]: "error" }));
@@ -474,9 +476,19 @@ function SearchContent() {
             return (
               <article key={key} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
                 <div className="flex items-start gap-4">
-                  <div className="flex h-[88px] w-[60px] flex-shrink-0 items-center justify-center rounded-lg bg-brown-600 text-sm font-bold text-white">
-                    웹소설
-                  </div>
+                  {novel.thumbnail ? (
+                    <Image
+                      src={novel.thumbnail}
+                      alt={`${novel.title} 표지`}
+                      width={60}
+                      height={88}
+                      className="h-[88px] w-[60px] flex-shrink-0 rounded-lg object-cover shadow-sm"
+                    />
+                  ) : (
+                    <div className="flex h-[88px] w-[60px] flex-shrink-0 items-center justify-center rounded-lg bg-brown-600 text-sm font-bold text-white">
+                      웹소설
+                    </div>
+                  )}
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="rounded-full bg-cream-200 px-2 py-0.5 text-[11px] font-medium text-sage-600">

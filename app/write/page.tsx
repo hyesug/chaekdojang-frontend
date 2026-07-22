@@ -37,6 +37,7 @@ type WebNovelResult = {
   sourceUrl: string;
   externalId: string;
   description: string;
+  thumbnail: string | null;
 };
 
 type DirectWebNovelPlatform = Pick<WebNovelResult, "platform" | "platformLabel">;
@@ -433,6 +434,7 @@ function WriteContent() {
           sourceUrl: directWorkUrl.trim(),
           externalId: directWorkUrl.trim(),
           description: "",
+          thumbnail: null,
         }
       : null;
     const pendingWebNovel = webNovelCandidate ?? directCandidate;
@@ -672,14 +674,27 @@ function WriteContent() {
               )}
               {searchMode === "WEB_NOVEL" && webNovelCandidate && (
                 <div className="mt-3 rounded-xl border border-sage-300 bg-cream-50 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-start gap-3">
+                      {webNovelCandidate.thumbnail ? (
+                        <img
+                          src={webNovelCandidate.thumbnail}
+                          alt={`${webNovelCandidate.title} 표지`}
+                          className="h-[88px] w-[60px] flex-shrink-0 rounded-lg object-cover shadow-sm"
+                        />
+                      ) : (
+                        <div className="flex h-[88px] w-[60px] flex-shrink-0 items-center justify-center rounded-lg bg-brown-600 text-xs font-bold text-white">
+                          웹소설
+                        </div>
+                      )}
+                      <div>
                       <span className="rounded-full bg-white px-2 py-1 text-xs font-medium text-sage-600">
                         {webNovelCandidate.platformLabel}
                       </span>
                       <p className="mt-2 text-xs text-brown-400">
                         작품 등록은 아래에서 독후감 올리기를 누를 때 함께 처리됩니다.
                       </p>
+                      </div>
                     </div>
                     <button
                       type="button"
@@ -727,18 +742,31 @@ function WriteContent() {
                       <button
                         type="button"
                         onClick={() => chooseWebNovelCandidate(novel)}
-                        className="w-full px-4 py-3 text-left transition-colors hover:bg-cream-50"
+                        className="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-cream-50"
                       >
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-full bg-cream-200 px-2 py-0.5 text-[11px] font-medium text-sage-600">
-                            {novel.platformLabel}
-                          </span>
-                          <p className="text-sm font-medium text-brown-800">{novel.title}</p>
-                        </div>
-                        <p className="mt-1 text-xs text-brown-400">{novel.author || "작가 정보는 선택 후 입력할 수 있어요"}</p>
-                        {novel.description && (
-                          <p className="mt-1 line-clamp-2 text-xs leading-5 text-brown-400">{novel.description}</p>
+                        {novel.thumbnail ? (
+                          <img
+                            src={novel.thumbnail}
+                            alt={`${novel.title} 표지`}
+                            className="h-16 w-11 flex-shrink-0 rounded object-cover shadow-sm"
+                          />
+                        ) : (
+                          <div className="flex h-16 w-11 flex-shrink-0 items-center justify-center rounded bg-brown-600 text-[10px] font-bold text-white">
+                            웹소설
+                          </div>
                         )}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-cream-200 px-2 py-0.5 text-[11px] font-medium text-sage-600">
+                              {novel.platformLabel}
+                            </span>
+                            <p className="text-sm font-medium text-brown-800">{novel.title}</p>
+                          </div>
+                          <p className="mt-1 text-xs text-brown-400">{novel.author || "작가 정보는 선택 후 입력할 수 있어요"}</p>
+                          {novel.description && (
+                            <p className="mt-1 line-clamp-2 text-xs leading-5 text-brown-400">{novel.description}</p>
+                          )}
+                        </div>
                       </button>
                     </li>
                   ))}

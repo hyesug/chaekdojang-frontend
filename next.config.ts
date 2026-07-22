@@ -41,6 +41,12 @@ const nextConfig: NextConfig = {
       { hostname: "t1.daumcdn.net" },
       { hostname: "books.google.com" },
       { hostname: "cdn.chaekdojang.com" },
+      { hostname: "novel-phinf.pstatic.net" },
+      { hostname: "comicthumb-phinf.pstatic.net" },
+      { hostname: "page-images.kakaoentcdn.com" },
+      { hostname: "dn-img-page.kakao.com" },
+      { hostname: "img.ridicdn.net" },
+      { hostname: "cdn1.munpia.com" },
     ],
   },
   async headers() {

@@ -155,7 +155,7 @@ export default function BookDetailClient({
   const providerLabels: Record<PurchaseLink["provider"], string> = {
     COUPANG: "쿠팡에서 보기",
     KYOBO: "교보문고에서 보기",
-    NAVER_SERIES: "네이버 시리즈에서 읽기",
+    NAVER_SERIES: "네이버에서 읽기",
     KAKAO_PAGE: "카카오페이지에서 읽기",
     RIDI: "리디에서 읽기",
     MUNPIA: "문피아에서 읽기",

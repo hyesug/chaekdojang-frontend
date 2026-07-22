@@ -136,7 +136,6 @@ function WriteContent() {
   const [webNovelCandidate, setWebNovelCandidate] = useState<WebNovelResult | null>(null);
   const [webNovelTitle, setWebNovelTitle] = useState("");
   const [webNovelAuthor, setWebNovelAuthor] = useState("");
-  const [registeringWebNovel, setRegisteringWebNovel] = useState(false);
   const [showDirectNaverRegister, setShowDirectNaverRegister] = useState(
     () => searchParams.get("direct") === "naver"
   );
@@ -301,13 +300,10 @@ function WriteContent() {
   }
 
   async function registerWebNovel(
-    candidate: WebNovelResult | null = webNovelCandidate,
-    title = webNovelTitle,
-    author = webNovelAuthor
-  ) {
-    if (!candidate || !title.trim()) return;
-    setRegisteringWebNovel(true);
-    setError("");
+    candidate: WebNovelResult,
+    title: string,
+    author: string
+  ): Promise<BookResult | null> {
     try {
       const res = await authFetch(`${API_BASE}/api/books/web-novels`, {
         method: "POST",
@@ -321,16 +317,18 @@ function WriteContent() {
       });
       if (res.status === 401) {
         router.push("/auth/login");
-        return;
+        return null;
       }
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError((data as { message?: string }).message ?? "웹소설을 등록하지 못했습니다.");
-        return;
+        setError(res.status === 400 && candidate.platform === "NAVER_SERIES"
+          ? "네이버 웹소설 또는 네이버 시리즈의 작품 목록 주소인지 확인해주세요."
+          : (data as { message?: string }).message ?? "웹소설을 등록하지 못했습니다.");
+        return null;
       }
       const json = await res.json();
       const book = json.data ?? json;
-      setSelectedBook({
+      return {
         id: book.id,
         isbn13: book.isbn13 ?? null,
         title: book.title,
@@ -341,17 +339,10 @@ function WriteContent() {
         contentType: book.contentType,
         externalId: book.externalId,
         sourceUrl: book.sourceUrl,
-      });
-      setResults([]);
-      setWebNovelResults([]);
-      setWebNovelCandidate(null);
-      setShowDirectNaverRegister(false);
-      setDirectNaverUrl("");
-      setQuery("");
+      };
     } catch {
       setError("웹소설을 등록하는 중 서버에 연결할 수 없습니다.");
-    } finally {
-      setRegisteringWebNovel(false);
+      return null;
     }
   }
 
@@ -405,7 +396,26 @@ function WriteContent() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedBook) { setError("책을 선택해주세요."); return; }
+    const directCandidate = directNaverUrl.trim() && directNaverTitle.trim()
+      ? {
+          title: directNaverTitle.trim(),
+          author: directNaverAuthor.trim(),
+          platform: "NAVER_SERIES" as const,
+          platformLabel: "네이버 웹소설",
+          sourceUrl: directNaverUrl.trim(),
+          externalId: directNaverUrl.trim(),
+          description: "",
+        }
+      : null;
+    const pendingWebNovel = webNovelCandidate ?? directCandidate;
+    const pendingTitle = webNovelCandidate ? webNovelTitle : directNaverTitle;
+    const pendingAuthor = webNovelCandidate ? webNovelAuthor : directNaverAuthor;
+    if (!selectedBook && !pendingWebNovel) {
+      setError(directNaverUrl.trim() || directNaverTitle.trim()
+        ? "네이버 작품 URL과 작품명을 모두 입력해주세요."
+        : "작품을 선택해주세요.");
+      return;
+    }
     if (rating === 0) { setError("별점을 선택해주세요."); return; }
 
     const composedContent = buildReviewContent();
@@ -416,6 +426,10 @@ function WriteContent() {
     try {
       // ── 수정 모드 ──
       if (isEditMode && reviewId) {
+        if (!selectedBook) {
+          setError("기존 작품 정보를 불러오지 못했습니다.");
+          return;
+        }
         const res = await authFetch(`${API_BASE}/api/reviews/${reviewId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -441,10 +455,15 @@ function WriteContent() {
       }
 
       // ── 신규 작성 ──
+      const reviewBook = selectedBook ?? (pendingWebNovel
+        ? await registerWebNovel(pendingWebNovel, pendingTitle, pendingAuthor)
+        : null);
+      if (!reviewBook) return;
+
       const res = await authFetch(`${API_BASE}/api/reviews`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bookId: selectedBook.id, rating, content: composedContent, generateAiSummary, hidden: !isPublic }),
+        body: JSON.stringify({ bookId: reviewBook.id, rating, content: composedContent, generateAiSummary, hidden: !isPublic }),
       });
 
       if (res.status === 401) { router.push("/auth/login"); return; }
@@ -577,7 +596,7 @@ function WriteContent() {
               </div>
               {searchMode === "WEB_NOVEL" && (
                 <p className="mb-3 text-xs leading-5 text-brown-400">
-                  네이버 시리즈·카카오페이지·리디·문피아의 공식 작품 페이지를 한 번에 찾아요.
+                  네이버 웹소설·시리즈·카카오페이지·리디·문피아의 공식 작품 페이지를 한 번에 찾아요.
                 </p>
               )}
               <div className="flex flex-col sm:flex-row gap-2">
@@ -628,7 +647,9 @@ function WriteContent() {
                       <span className="rounded-full bg-white px-2 py-1 text-xs font-medium text-sage-600">
                         {webNovelCandidate.platformLabel}
                       </span>
-                      <p className="mt-2 text-xs text-brown-400">검색 결과를 한 번 확인한 뒤 작품으로 선택해주세요.</p>
+                      <p className="mt-2 text-xs text-brown-400">
+                        작품 등록은 아래에서 독후감 올리기를 누를 때 함께 처리됩니다.
+                      </p>
                     </div>
                     <button
                       type="button"
@@ -658,14 +679,6 @@ function WriteContent() {
                     </label>
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => registerWebNovel()}
-                      disabled={registeringWebNovel || !webNovelTitle.trim()}
-                      className="rounded-lg bg-brown-600 px-4 py-2 text-sm font-medium text-white hover:bg-brown-700 disabled:opacity-50"
-                    >
-                      {registeringWebNovel ? "등록 중..." : "이 작품 선택"}
-                    </button>
                     <a
                       href={webNovelCandidate.sourceUrl}
                       target="_blank"
@@ -711,20 +724,20 @@ function WriteContent() {
                     }}
                     className="text-sm font-medium text-brown-600 hover:text-brown-800"
                   >
-                    검색 결과에 없나요? 네이버 시리즈 URL로 직접 등록 {showDirectNaverRegister ? "접기" : "→"}
+                    검색 결과에 없나요? 네이버 웹소설·시리즈 URL 직접 입력 {showDirectNaverRegister ? "접기" : "→"}
                   </button>
                   {showDirectNaverRegister && (
                     <div className="mt-4 space-y-3 border-t border-cream-200 pt-4">
                       <p className="text-xs leading-5 text-brown-400">
-                        네이버 시리즈 작품 상세 페이지에서 주소를 복사해 입력해주세요.
+                        URL·작품명·작가명을 입력하면 독후감 올리기 때 작품도 함께 등록됩니다.
                       </p>
                       <label className="block text-xs font-medium text-brown-600">
-                        네이버 시리즈 작품 URL
+                        네이버 웹소설·시리즈 작품 URL
                         <input
                           type="url"
                           value={directNaverUrl}
                           onChange={(event) => setDirectNaverUrl(event.target.value)}
-                          placeholder="https://series.naver.com/novel/detail.series?productNo=..."
+                          placeholder="https://novel.naver.com/best/list?novelId=..."
                           className="mt-1 w-full rounded-lg border border-cream-300 bg-white px-3 py-2 text-sm text-brown-800 placeholder:text-brown-300 focus:border-brown-400 focus:outline-none"
                         />
                       </label>
@@ -748,22 +761,6 @@ function WriteContent() {
                           />
                         </label>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => registerWebNovel({
-                          title: directNaverTitle.trim(),
-                          author: directNaverAuthor.trim(),
-                          platform: "NAVER_SERIES",
-                          platformLabel: "네이버 시리즈",
-                          sourceUrl: directNaverUrl.trim(),
-                          externalId: directNaverUrl.trim(),
-                          description: "",
-                        }, directNaverTitle, directNaverAuthor)}
-                        disabled={registeringWebNovel || !directNaverUrl.trim() || !directNaverTitle.trim()}
-                        className="rounded-lg bg-brown-600 px-4 py-2 text-sm font-medium text-white hover:bg-brown-700 disabled:opacity-50"
-                      >
-                        {registeringWebNovel ? "등록 중..." : "이 작품 선택"}
-                      </button>
                     </div>
                   )}
                 </div>

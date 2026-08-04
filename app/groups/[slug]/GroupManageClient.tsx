@@ -36,6 +36,8 @@ export default function GroupManageClient({ slug, manager, member, visibility, j
   const [bookId, setBookId] = useState("");
   const [note, setNote] = useState("");
   const [noticeText, setNoticeText] = useState(notice ?? "");
+  const [savedNotice, setSavedNotice] = useState(notice ?? "");
+  const [noticeEditing, setNoticeEditing] = useState(!notice);
   const [groupBookId, setGroupBookId] = useState(books[0]?.id ? String(books[0].id) : "");
   const [selectedReviewId, setSelectedReviewId] = useState("");
   const [myReviews, setMyReviews] = useState<MyReview[]>([]);
@@ -69,6 +71,13 @@ export default function GroupManageClient({ slug, manager, member, visibility, j
   useEffect(() => {
     loadMembers();
   }, [loadMembers]);
+
+  useEffect(() => {
+    const nextNotice = notice ?? "";
+    setSavedNotice(nextNotice);
+    setNoticeText(nextNotice);
+    setNoticeEditing(!nextNotice);
+  }, [notice]);
 
   const loadMyReviews = useCallback(async () => {
     if (!member || !groupBookId) return;
@@ -131,10 +140,39 @@ export default function GroupManageClient({ slug, manager, member, visibility, j
         body: JSON.stringify({ notice: noticeText.trim() || null }),
       });
       if (!res.ok) throw new Error(await res.text());
-      setMessage(noticeText.trim() ? "모임장 공지를 저장했어요." : "모임장 공지를 내렸어요.");
+      const nextNotice = noticeText.trim();
+      setSavedNotice(nextNotice);
+      setNoticeText(nextNotice);
+      setNoticeEditing(false);
+      setMessage(savedNotice ? "모임장 공지를 수정했어요." : "모임장 공지를 등록했어요.");
       router.refresh();
     } catch {
       setMessage("모임장 공지를 저장하지 못했어요.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function deleteNotice() {
+    const token = getToken();
+    if (!token) { router.push("/auth/login"); return; }
+    if (!window.confirm("모임장 공지를 삭제할까요?")) return;
+    setLoading(true);
+    setMessage("");
+    try {
+      const res = await authFetch(`${API_BASE}/api/groups/${slug}/notice`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notice: null }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setSavedNotice("");
+      setNoticeText("");
+      setNoticeEditing(true);
+      setMessage("모임장 공지를 삭제했어요.");
+      router.refresh();
+    } catch {
+      setMessage("모임장 공지를 삭제하지 못했어요.");
     } finally {
       setLoading(false);
     }
@@ -252,7 +290,33 @@ export default function GroupManageClient({ slug, manager, member, visibility, j
           : "모임장이 선정 책을 검색해서 추가하고, 멤버는 자신의 공개 독후감을 연결할 수 있습니다."}
       </p>
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        {manager && (
+        {manager && savedNotice && !noticeEditing && (
+          <div className="space-y-3 rounded-2xl bg-yellow-50 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-brown-700">모임장 공지</p>
+              <span className="rounded-full bg-white px-2 py-1 text-xs text-brown-400">상단 고정 중</span>
+            </div>
+            <p className="whitespace-pre-line rounded-xl bg-white px-3 py-3 text-sm leading-6 text-brown-700">{savedNotice}</p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setNoticeEditing(true)}
+                className="rounded-xl border border-cream-300 bg-white px-4 py-2 text-sm font-semibold text-brown-600 hover:bg-cream-50"
+              >
+                공지 수정
+              </button>
+              <button
+                type="button"
+                onClick={deleteNotice}
+                disabled={loading}
+                className="rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-500 hover:bg-red-50 disabled:opacity-50"
+              >
+                공지 삭제
+              </button>
+            </div>
+          </div>
+        )}
+        {manager && (!savedNotice || noticeEditing) && (
           <form onSubmit={updateNotice} className="space-y-3 rounded-2xl bg-yellow-50 p-4">
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-semibold text-brown-700">모임장 공지</p>
@@ -268,9 +332,23 @@ export default function GroupManageClient({ slug, manager, member, visibility, j
             />
             <div className="flex items-center justify-between gap-3">
               <span className="text-xs text-brown-400">{noticeText.length}/2000</span>
-              <button disabled={loading} className="rounded-xl bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800 disabled:opacity-50">
-                공지 저장
-              </button>
+              <div className="flex gap-2">
+                {savedNotice && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNoticeText(savedNotice);
+                      setNoticeEditing(false);
+                    }}
+                    className="rounded-xl border border-cream-300 bg-white px-4 py-2 text-sm font-semibold text-brown-600 hover:bg-cream-50"
+                  >
+                    취소
+                  </button>
+                )}
+                <button disabled={loading || !noticeText.trim()} className="rounded-xl bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800 disabled:opacity-50">
+                  {savedNotice ? "수정 저장" : "공지 등록"}
+                </button>
+              </div>
             </div>
           </form>
         )}

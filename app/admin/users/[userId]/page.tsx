@@ -10,6 +10,7 @@ interface TimelineEvent {
   eventType: string;
   label: string;
   description: string;
+  path: string;
   createdAt: string;
   ip: string | null;
   deviceId: string | null;
@@ -52,7 +53,7 @@ interface UserActivityDetail {
 }
 
 const eventOptions = [
-  ["", "전체 활동"],
+  ["", "주요 활동 전체"],
   ["user_registered", "회원가입"],
   ["login_succeeded", "로그인 성공"],
   ["reading_group_created", "독서모임 생성"],
@@ -65,6 +66,8 @@ const eventOptions = [
   ["profile_updated", "프로필 수정"],
   ["official_profile_applied", "공식 프로필 신청"],
   ["page_view", "페이지 조회"],
+  ["heartbeat", "체류 신호(기술 로그)"],
+  ["session_end", "세션 종료(기술 로그)"],
 ];
 
 function formatDate(value: string | null) {
@@ -79,6 +82,7 @@ export default function AdminUserActivityPage() {
   const [eventType, setEventType] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [includeTechnical, setIncludeTechnical] = useState(false);
   const [loading, setLoading] = useState(true);
 
   async function loadActivity() {
@@ -93,6 +97,7 @@ export default function AdminUserActivityPage() {
       if (eventType) query.set("eventType", eventType);
       if (from) query.set("from", from);
       if (to) query.set("to", to);
+      if (includeTechnical) query.set("includeTechnical", "true");
       const response = await authFetch(`/api/admin/users/${params.userId}/activity?${query.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -123,7 +128,7 @@ export default function AdminUserActivityPage() {
     <div className="mx-auto max-w-5xl space-y-5 px-4 py-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <Link href="/admin" className="text-sm text-brown-400 hover:text-brown-600">← 관리자 회원 목록</Link>
+          <Link href="/admin?tab=users" className="text-sm text-brown-400 hover:text-brown-600">← 관리자 회원 목록</Link>
           <h1 className="mt-2 font-serif text-3xl font-bold text-brown-900">{detail.basic.nickname} 활동 상세</h1>
           <p className="mt-1 text-sm text-brown-400">사용자 ID {detail.basic.id} · 가입 {formatDate(detail.basic.createdAt)}</p>
         </div>
@@ -177,23 +182,37 @@ export default function AdminUserActivityPage() {
       </section>
 
       <section className="space-y-3">
-        <form onSubmit={(event) => { event.preventDefault(); loadActivity(); }} className="grid gap-2 rounded-2xl border border-cream-200 bg-white p-4 sm:grid-cols-4">
-          <select value={eventType} onChange={(event) => setEventType(event.target.value)} className="rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-700">
+        <form onSubmit={(event) => { event.preventDefault(); loadActivity(); }} className="grid gap-2 rounded-2xl border border-cream-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-5">
+          <select value={eventType} onChange={(event) => {
+            const value = event.target.value;
+            setEventType(value);
+            if (value === "heartbeat" || value === "session_end") setIncludeTechnical(true);
+          }} className="rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-700">
             {eventOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
           <input type="date" value={from} onChange={(event) => setFrom(event.target.value)} className="rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-700" />
           <input type="date" value={to} onChange={(event) => setTo(event.target.value)} className="rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-700" />
+          <label className="flex items-center gap-2 rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-600">
+            <input type="checkbox" checked={includeTechnical} onChange={(event) => {
+              const checked = event.target.checked;
+              setIncludeTechnical(checked);
+              if (!checked && (eventType === "heartbeat" || eventType === "session_end")) setEventType("");
+            }} />
+            기술 로그 포함
+          </label>
           <button disabled={loading} className="rounded-xl bg-brown-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">활동 필터 적용</button>
+          <p className="text-xs leading-5 text-brown-400 sm:col-span-2 lg:col-span-5">기본값은 실제 사용자 행동을 보기 쉽게 보여주며, 체류 신호와 세션 종료 기록은 숨깁니다.</p>
         </form>
 
         <div className="rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
           <h2 className="font-serif text-xl font-bold text-brown-900">활동 타임라인</h2>
-          <p className="mt-1 text-xs text-brown-400">조건에 맞는 기록 {detail.timeline.totalElements}건 · 최신 100건 표시</p>
+          <p className="mt-1 text-xs text-brown-400">조건에 맞는 {includeTechnical ? "전체 기록" : "주요 활동"} {detail.timeline.totalElements}건 · 최신 100건 표시</p>
           <div className="mt-4 space-y-3">
             {detail.timeline.content.map((event) => (
               <div key={event.id} className="border-l-2 border-cream-300 pl-4">
                 <p className="text-xs text-brown-300">{formatDate(event.createdAt)}</p>
                 <p className="mt-1 font-medium text-brown-900">{event.description}</p>
+                {event.eventType === "page_view" && event.path && <p className="mt-1 break-all font-mono text-xs text-brown-300">{event.path}</p>}
                 <p className="mt-1 text-xs text-brown-400">{event.label} · IP {event.ip ?? "-"} · {[event.device, event.browser, event.operatingSystem].filter(Boolean).join(" · ") || "기기 정보 없음"}</p>
                 {event.deviceId && <p className="mt-1 break-all font-mono text-xs text-brown-300">기기 {event.deviceId}</p>}
               </div>

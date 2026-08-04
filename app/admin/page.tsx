@@ -1092,6 +1092,13 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
+    const requestedTab = new URLSearchParams(window.location.search).get("tab");
+    if (tabs.some(({ key }) => key === requestedTab)) {
+      setTab(requestedTab as Tab);
+    }
+  }, []);
+
+  useEffect(() => {
     if (tab !== "actions") return;
     const timer = window.setTimeout(() => {
       loadActionPage(actionsPage, query);
@@ -1611,6 +1618,11 @@ export default function AdminPage() {
               onClick={() => {
                 setTab(key);
                 setQuery("");
+                window.history.replaceState(
+                  window.history.state,
+                  "",
+                  key === "dashboard" ? "/admin" : `/admin?tab=${key}`
+                );
               }}
               className={`min-h-10 shrink-0 rounded-lg px-3 py-2 text-xs font-medium whitespace-nowrap transition-colors sm:flex-1 sm:px-2 ${
                 tab === key ? "bg-white text-brown-900 shadow-sm" : "text-brown-500 hover:text-brown-700"

@@ -28,6 +28,18 @@ interface User {
   createdGroupCount: number;
 }
 
+interface UserSearchFilters {
+  q: string;
+  ip: string;
+  deviceId: string;
+  joinedFrom: string;
+  joinedTo: string;
+  activeFrom: string;
+  activeTo: string;
+  hasRelated: string;
+  createdGroup: string;
+}
+
 interface Review {
   id: number;
   authorNickname: string;
@@ -752,6 +764,7 @@ export default function AdminPage() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("dashboard");
   const [users, setUsers] = useState<User[]>([]);
+  const [usersTotal, setUsersTotal] = useState(0);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [bookStats, setBookStats] = useState<BookStat[]>([]);
   const [readingGroups, setReadingGroups] = useState<AdminReadingGroup[]>([]);
@@ -804,6 +817,18 @@ export default function AdminPage() {
   const [userRelatedFilter, setUserRelatedFilter] = useState("");
   const [userCreatedGroupFilter, setUserCreatedGroupFilter] = useState("");
   const [userSearching, setUserSearching] = useState(false);
+  const userFiltersRef = useRef<UserSearchFilters>({
+    q: "",
+    ip: "",
+    deviceId: "",
+    joinedFrom: "",
+    joinedTo: "",
+    activeFrom: "",
+    activeTo: "",
+    hasRelated: "",
+    createdGroup: "",
+  });
+  const usersRequestId = useRef(0);
   const actionsRequestId = useRef(0);
 
   function getToken() {
@@ -928,6 +953,38 @@ export default function AdminPage() {
     };
   }
 
+  function getUserSearchPath(page: number, filters: UserSearchFilters) {
+    const params = new URLSearchParams({
+      page: String(page),
+      size: String(LIST_PAGE_SIZE),
+      sort: "createdAt,desc",
+    });
+    if (filters.q) params.set("q", filters.q);
+    if (filters.ip) params.set("ip", filters.ip);
+    if (filters.deviceId) params.set("deviceId", filters.deviceId);
+    if (filters.joinedFrom) params.set("joinedFrom", filters.joinedFrom);
+    if (filters.joinedTo) params.set("joinedTo", filters.joinedTo);
+    if (filters.activeFrom) params.set("activeFrom", filters.activeFrom);
+    if (filters.activeTo) params.set("activeTo", filters.activeTo);
+    if (filters.hasRelated) params.set("hasRelated", filters.hasRelated);
+    if (filters.createdGroup) params.set("createdGroup", filters.createdGroup);
+    return `/api/admin/users?${params.toString()}`;
+  }
+
+  async function loadUserPage(page: number, filters = userFiltersRef.current) {
+    const requestId = ++usersRequestId.current;
+    setUserSearching(true);
+    try {
+      const result = await fetchAdmin<PageResponse<User>>(getUserSearchPath(page, filters));
+      if (requestId !== usersRequestId.current || !result) return;
+      setUsers(result.content ?? []);
+      setUsersTotal(result.totalElements ?? 0);
+      setUsersPage(page);
+    } finally {
+      if (requestId === usersRequestId.current) setUserSearching(false);
+    }
+  }
+
   async function loadAll() {
     setLoading(true);
     try {
@@ -947,7 +1004,7 @@ export default function AdminPage() {
         nextSecurity,
         nextPublicReadAlerts,
       ] = await Promise.all([
-        fetchFirstPage<User>("/api/admin/users?size=100"),
+        fetchAdmin<PageResponse<User>>(getUserSearchPath(0, userFiltersRef.current)),
         fetchFirstPage<Review>("/api/admin/reviews?size=100"),
         fetchAdmin<BookStat[]>("/api/admin/reviews/stats"),
         fetchFirstPage<AdminReadingGroup>("/api/admin/groups?size=100"),
@@ -963,7 +1020,9 @@ export default function AdminPage() {
         fetchAdmin<PublicReadAlert[]>("/api/admin/security/public-read-alerts"),
       ]);
       const nextContentLookups = await fetchContentLookups(nextMetrics, nextReviews, nextStats ?? []);
-      setUsers(nextUsers);
+      setUsers(nextUsers?.content ?? []);
+      setUsersTotal(nextUsers?.totalElements ?? 0);
+      setUsersPage(0);
       setReviews(nextReviews);
       setBookStats(nextStats ?? []);
       setReadingGroups(nextReadingGroups);
@@ -986,24 +1045,19 @@ export default function AdminPage() {
 
   async function searchAdminUsers(event?: React.FormEvent) {
     event?.preventDefault();
-    setUserSearching(true);
-    try {
-      const params = new URLSearchParams({ size: "200", sort: "createdAt,desc" });
-      if (query.trim()) params.set("q", query.trim());
-      if (userIpFilter.trim()) params.set("ip", userIpFilter.trim());
-      if (userDeviceFilter.trim()) params.set("deviceId", userDeviceFilter.trim());
-      if (userJoinedFrom) params.set("joinedFrom", userJoinedFrom);
-      if (userJoinedTo) params.set("joinedTo", userJoinedTo);
-      if (userActiveFrom) params.set("activeFrom", userActiveFrom);
-      if (userActiveTo) params.set("activeTo", userActiveTo);
-      if (userRelatedFilter) params.set("hasRelated", userRelatedFilter);
-      if (userCreatedGroupFilter) params.set("createdGroup", userCreatedGroupFilter);
-      const nextUsers = await fetchFirstPage<User>(`/api/admin/users?${params.toString()}`);
-      setUsers(nextUsers);
-      setUsersPage(0);
-    } finally {
-      setUserSearching(false);
-    }
+    const filters: UserSearchFilters = {
+      q: query.trim(),
+      ip: userIpFilter.trim(),
+      deviceId: userDeviceFilter.trim(),
+      joinedFrom: userJoinedFrom,
+      joinedTo: userJoinedTo,
+      activeFrom: userActiveFrom,
+      activeTo: userActiveTo,
+      hasRelated: userRelatedFilter,
+      createdGroup: userCreatedGroupFilter,
+    };
+    userFiltersRef.current = filters;
+    await loadUserPage(0, filters);
   }
 
   async function loadActionPage(page: number, searchQuery: string) {
@@ -1048,7 +1102,6 @@ export default function AdminPage() {
   }, [tab, actionsPage, query]);
 
   useEffect(() => {
-    setUsersPage(0);
     setReviewsPage(0);
     setGroupsPage(0);
     setInquiriesPage(0);
@@ -1150,11 +1203,6 @@ export default function AdminPage() {
       lastAt: item.lastAt,
     }));
   }, [aggregatedSecurity, rawSecuritySummaries]);
-
-  const filteredUsers = users.filter((user) => {
-    const text = `${user.id} ${user.nickname} ${user.email ?? ""} ${user.role} ${user.recentIp ?? ""} ${user.recentDeviceId ?? ""}`.toLowerCase();
-    return text.includes(query.toLowerCase());
-  });
 
   const filteredReviews = reviews.filter((review) => {
     const text = `${review.authorNickname} ${review.bookTitle} ${review.content}`.toLowerCase();
@@ -1344,7 +1392,6 @@ export default function AdminPage() {
   const scannerSecurityEvents = filteredSecurityEvents.filter((item) => classifyErrorLike(item.method, item.uri, item.status).botSuspected).slice(0, 5);
   const sessionRefreshEvents = filteredSecurityEvents.filter((item) => classifyErrorLike(item.method, item.uri, item.status).label === "세션 갱신 실패").slice(0, 5);
 
-  const pagedUsers = paginate(filteredUsers, usersPage);
   const pagedReviews = paginate(filteredReviews, reviewsPage);
   const pagedReadingGroups = paginate(filteredReadingGroups, groupsPage);
   const pagedInquiries = paginate(filteredInquiries, inquiriesPage);
@@ -1738,7 +1785,7 @@ export default function AdminPage() {
                     <tr><th className="px-4 py-3">회원</th><th className="px-4 py-3">이메일</th><th className="px-4 py-3">가입·최근 활동</th><th className="px-4 py-3">최근 접속</th><th className="px-4 py-3">참고 신호</th><th className="px-4 py-3"></th></tr>
                   </thead>
                   <tbody>
-                    {pagedUsers.map((user) => (
+                    {users.map((user) => (
                       <tr key={user.id} className="border-t border-cream-100 hover:bg-cream-50">
                         <td className="px-4 py-3 font-medium">
                           <Link href={`/admin/users/${user.id}`} className="text-brown-800 hover:text-brown-600 hover:underline">{user.nickname}</Link>
@@ -1771,8 +1818,8 @@ export default function AdminPage() {
                     ))}
                   </tbody>
                 </table>
-                <PaginationControls page={usersPage} total={filteredUsers.length} onChange={setUsersPage} />
-                {filteredUsers.length === 0 && <div className="border-t border-cream-100 py-8 text-center text-sm text-brown-300">조건에 맞는 회원이 없어요</div>}
+                <PaginationControls page={usersPage} total={usersTotal} onChange={(page) => void loadUserPage(page)} />
+                {users.length === 0 && <div className="border-t border-cream-100 py-8 text-center text-sm text-brown-300">조건에 맞는 회원이 없어요</div>}
               </section>
             </div>
           )}

@@ -463,13 +463,6 @@ const groupMemberRoleLabels: Record<AdminReadingGroupDetail["members"][number]["
   MEMBER: "멤버",
 };
 
-const groupMemberStatusLabels: Record<AdminReadingGroupDetail["members"][number]["status"], string> = {
-  PENDING: "승인 대기",
-  APPROVED: "승인됨",
-  REJECTED: "거절됨",
-  BLOCKED: "차단됨",
-};
-
 function visitorKey(event: MetricEvent) {
   return event.userId != null ? `u:${event.userId}` : event.sessionId || event.ip || `event:${event.id}`;
 }
@@ -1688,7 +1681,7 @@ export default function AdminPage() {
                         onClick={() => toggleGroupDetail(group)}
                         className="rounded-lg border border-cream-300 px-3 py-1.5 text-xs text-brown-600 hover:bg-cream-50"
                       >
-                        {expandedGroupId === group.id ? "상세 닫기" : "상세 보기"}
+                        {expandedGroupId === group.id ? "멤버·책 닫기" : "멤버·책 보기"}
                       </button>
                       <button
                         type="button"
@@ -1713,6 +1706,7 @@ export default function AdminPage() {
                       )}
                       {readingGroupDetails[group.id] && (() => {
                         const detail = readingGroupDetails[group.id];
+                        const approvedMembers = detail.members.filter((member) => member.status === "APPROVED");
                         const pendingMembers = detail.members.filter((member) => member.status === "PENDING");
                         return (
                           <div className="space-y-4">
@@ -1753,26 +1747,22 @@ export default function AdminPage() {
 
                             <div className="rounded-xl border border-cream-100 p-3">
                               <div className="flex items-center justify-between gap-2">
-                                <h3 className="font-semibold text-brown-900">전체 멤버</h3>
-                                <span className="text-xs text-brown-300">{detail.members.length}명</span>
+                                <h3 className="font-semibold text-brown-900">승인 멤버</h3>
+                                <span className="text-xs text-brown-300">{approvedMembers.length}명</span>
                               </div>
                               <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                                {detail.members.map((member) => (
+                                {approvedMembers.map((member) => (
                                   <Link key={member.id} href={`/users/${member.userId}`} className="rounded-lg bg-cream-50 px-3 py-2 text-sm hover:bg-cream-100">
                                     <div className="flex items-center justify-between gap-2">
                                       <span className="font-medium text-brown-800">{member.nickname}</span>
-                                      <span className={`rounded-full px-2 py-0.5 text-[11px] ${
-                                        member.status === "APPROVED" ? "bg-green-50 text-green-600" :
-                                        member.status === "PENDING" ? "bg-yellow-50 text-yellow-700" :
-                                        "bg-red-50 text-red-500"
-                                      }`}>
-                                        {groupMemberStatusLabels[member.status]}
+                                      <span className="rounded-full bg-green-50 px-2 py-0.5 text-[11px] text-green-600">
+                                        승인됨
                                       </span>
                                     </div>
                                     <p className="mt-1 text-xs text-brown-400">{groupMemberRoleLabels[member.role]} · 가입 {formatLogTime(member.createdAt)}</p>
                                   </Link>
                                 ))}
-                                {detail.members.length === 0 && <p className="py-3 text-center text-sm text-brown-300 sm:col-span-2">멤버가 없어요</p>}
+                                {approvedMembers.length === 0 && <p className="py-3 text-center text-sm text-brown-300 sm:col-span-2">승인된 멤버가 없어요</p>}
                               </div>
                             </div>
 

@@ -8,8 +8,10 @@ export async function fetchGroupApiData<T>(
   try {
     const headers = new Headers(options.headers);
     headers.set("X-Chaekdojang-Internal-Request", "web-ssr");
-    const cookieHeader = (await cookies()).toString();
-    if (cookieHeader) headers.set("Cookie", cookieHeader);
+    const cookieStore = await cookies();
+    const loggedOut = cookieStore.get("chaekdojang_logged_out")?.value === "true";
+    const cookieHeader = cookieStore.toString();
+    if (!loggedOut && cookieHeader) headers.set("Cookie", cookieHeader);
 
     const res = await fetch(`${SERVER_API_BASE}${path}`, {
       ...options,

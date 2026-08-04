@@ -1,6 +1,7 @@
 import { activityHeaders } from "./activity";
 
 const LOGGED_OUT_KEY = "chaekdojang:logged-out";
+const LOGGED_OUT_COOKIE = "chaekdojang_logged_out";
 const AUTH_STATE_KEY = "chaekdojang:authenticated";
 const REFRESH_FAILURE_COOLDOWN_MS = 10_000;
 
@@ -8,7 +9,18 @@ let refreshInFlight: Promise<boolean> | null = null;
 let lastRefreshFailureAt = 0;
 
 function isLogoutBlocked() {
-  return typeof window !== "undefined" && sessionStorage.getItem(LOGGED_OUT_KEY) === "true";
+  return typeof window !== "undefined" && localStorage.getItem(LOGGED_OUT_KEY) === "true";
+}
+
+function setLogoutMarker(loggedOut: boolean) {
+  if (typeof window === "undefined") return;
+  if (loggedOut) {
+    localStorage.setItem(LOGGED_OUT_KEY, "true");
+  } else {
+    localStorage.removeItem(LOGGED_OUT_KEY);
+  }
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${LOGGED_OUT_COOKIE}=${loggedOut ? "true; Max-Age=31536000" : "; Max-Age=0"}; Path=/; SameSite=Lax${secure}`;
 }
 
 function setAuthState(authenticated: boolean) {
@@ -18,7 +30,7 @@ function setAuthState(authenticated: boolean) {
 
 export function markLoggedIn() {
   if (typeof window === "undefined") return;
-  sessionStorage.removeItem(LOGGED_OUT_KEY);
+  setLogoutMarker(false);
   setAuthState(true);
 }
 
@@ -34,7 +46,8 @@ export function clearToken() {
 
 export async function logout() {
   if (typeof window !== "undefined") {
-    sessionStorage.setItem(LOGGED_OUT_KEY, "true");
+    setLogoutMarker(true);
+    setAuthState(false);
   }
 
   const logoutTargets = ["/api/auth/logout"];

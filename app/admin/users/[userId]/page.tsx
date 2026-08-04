@@ -66,6 +66,12 @@ const eventOptions = [
   ["profile_updated", "프로필 수정"],
   ["official_profile_applied", "공식 프로필 신청"],
   ["page_view", "페이지 조회"],
+  ["review_write_click", "독후감 작성 시작"],
+  ["book_search", "책 검색"],
+  ["web_novel_search", "웹소설 검색"],
+  ["book_click_search", "검색 결과 책 선택"],
+  ["share_click", "공유"],
+  ["revision_saved", "독후감 저장"],
   ["heartbeat", "체류 신호(기술 로그)"],
   ["session_end", "세션 종료(기술 로그)"],
 ];

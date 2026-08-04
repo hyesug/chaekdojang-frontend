@@ -38,7 +38,7 @@ export default function AiReadingCard({
         style={{ fontSize: compact ? "100px" : "200px", opacity: 0.08 }}
         aria-hidden
       >
-        "
+        &ldquo;
       </span>
 
       <div className={`relative flex h-full flex-col ${compact ? "p-5" : "p-7 sm:p-8"}`}>

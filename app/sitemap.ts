@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { fetchApiData, SITE_URL, type BookDetail, type ReviewDetail } from "./lib/serverApi";
+import { bookPathSegment, fetchApiData, SITE_URL, type BookDetail, type ReviewDetail } from "./lib/serverApi";
 
 type ReviewPage = {
   content: ReviewDetail[];
@@ -49,7 +49,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   });
 
   const bookRoutes = (publicBooks ?? []).map((book) => ({
-    url: `${SITE_URL}/books/${encodeSegment(book.slug || book.id)}`,
+    url: `${SITE_URL}/books/${encodeSegment(bookPathSegment(book.id, book.slug))}`,
     lastModified: now,
     changeFrequency: "weekly" as const,
     priority: 0.5,

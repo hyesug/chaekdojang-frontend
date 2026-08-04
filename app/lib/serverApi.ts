@@ -8,6 +8,13 @@ export const SITE_URL = (
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.chaekdojang.com"
 ).replace(/\/$/, "");
 
+export function bookPathSegment(bookId: number | string, slug?: string | null) {
+  const normalizedSlug = slug?.trim();
+  return normalizedSlug && !/^\d+$/.test(normalizedSlug)
+    ? normalizedSlug
+    : String(bookId);
+}
+
 export type ReviewDetail = {
   id: number;
   author: { id: number | null; nickname: string; profileImage: string | null };

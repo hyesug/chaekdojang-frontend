@@ -6,6 +6,7 @@ import BackButton from "../../components/BackButton";
 import BookReturnMemory from "../../components/BookReturnMemory";
 import ReviewCard from "../../components/ReviewCard";
 import {
+  bookPathSegment,
   fetchApiData,
   shareText,
   SITE_URL,
@@ -45,7 +46,7 @@ function normalizeSort(value?: string): SortType {
 }
 
 function bookUrl(book: PublicBookDetail) {
-  return `${SITE_URL}/books/${book.slug || book.id}`;
+  return `${SITE_URL}/books/${bookPathSegment(book.id, book.slug)}`;
 }
 
 function descriptionFor(book: PublicBookDetail) {
@@ -127,7 +128,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: { absolute: title },
     description,
     keywords,
-    alternates: { canonical: `/books/${book.slug || book.id}` },
+    alternates: { canonical: `/books/${bookPathSegment(book.id, book.slug)}` },
     openGraph: {
       type: "book",
       locale: "ko_KR",

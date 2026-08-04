@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import BackButton from "../../components/BackButton";
-import { SITE_URL } from "../../lib/serverApi";
+import { bookPathSegment, SITE_URL } from "../../lib/serverApi";
 import { fetchGroupApiData } from "../groupServerApi";
 import GroupDetailClient from "./GroupDetailClient";
 import GroupManageClient from "./GroupManageClient";
@@ -160,7 +160,7 @@ export default async function GroupPage({ params }: Props) {
                     <Link href={`/groups/${group.slug}/books/${item.id}`} className="rounded-full bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800">
                       그룹 독후감 {item.reviewCount}개 보기
                     </Link>
-                    <Link href={`/books/${item.slug || item.bookId}`} className="rounded-full border border-cream-300 px-4 py-2 text-sm text-brown-600 hover:bg-cream-50">
+                    <Link href={`/books/${bookPathSegment(item.bookId, item.slug)}`} className="rounded-full border border-cream-300 px-4 py-2 text-sm text-brown-600 hover:bg-cream-50">
                       책 상세
                     </Link>
                   </div>

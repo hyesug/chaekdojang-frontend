@@ -61,6 +61,8 @@ const eventOptions = [
   ["reading_group_join_requested", "독서모임 가입 요청"],
   ["reading_group_member_approved", "독서모임 가입 승인"],
   ["reading_group_book_added", "독서모임 책 추가"],
+  ["reading_group_notice_updated", "독서모임 공지 수정"],
+  ["reading_group_book_progress_updated", "책 진행 상태 수정"],
   ["reading_group_review_attached", "모임 독후감 연결"],
   ["review_created", "독후감 작성"],
   ["profile_updated", "프로필 수정"],

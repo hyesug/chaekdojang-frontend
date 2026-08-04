@@ -8,6 +8,8 @@ type ReadingGroupBook = {
   title: string;
   author: string;
   thumbnail: string | null;
+  status: "UPCOMING" | "READING" | "COMPLETED";
+  deadline: string | null;
   reviewCount: number;
 };
 

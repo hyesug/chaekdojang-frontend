@@ -25,7 +25,7 @@ const securityHeaders = [
       "frame-ancestors 'none'",
       "object-src 'none'",
       "img-src 'self' data: blob: https:",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://t1.kakaocdn.net",
       "style-src 'self' 'unsafe-inline'",
       "connect-src 'self' https: wss:",
       "font-src 'self' data:",

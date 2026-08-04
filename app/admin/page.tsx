@@ -430,6 +430,8 @@ function getMetricEventLabel(eventType: string) {
   if (eventType === "reading_group_join_requested") return "독서모임 가입 요청";
   if (eventType === "reading_group_member_approved") return "독서모임 가입 승인";
   if (eventType === "reading_group_book_added") return "독서모임 책 추가";
+  if (eventType === "reading_group_notice_updated") return "독서모임 공지 수정";
+  if (eventType === "reading_group_book_progress_updated") return "책 진행 상태 수정";
   if (eventType === "reading_group_review_attached") return "모임 독후감 연결";
   if (eventType === "profile_updated") return "프로필 수정";
   if (eventType === "official_profile_applied") return "공식 프로필 신청";

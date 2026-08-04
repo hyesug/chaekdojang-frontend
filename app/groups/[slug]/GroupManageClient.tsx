@@ -6,7 +6,8 @@ import { API_BASE } from "../../lib/api";
 import { authFetch, getValidToken } from "../../lib/auth";
 import BookSearchSelect from "./BookSearchSelect";
 
-type GroupBook = { id: number; title: string; bookId: number };
+type GroupBookStatus = "UPCOMING" | "READING" | "COMPLETED";
+type GroupBook = { id: number; title: string; bookId: number; status: GroupBookStatus; deadline: string | null };
 type GroupMember = {
   id: number;
   userId: number;
@@ -30,10 +31,11 @@ function getToken() {
   return getValidToken();
 }
 
-export default function GroupManageClient({ slug, manager, member, visibility, joinPolicy, books }: { slug: string; manager: boolean; member: boolean; visibility: "PUBLIC" | "PRIVATE"; joinPolicy: JoinPolicy; books: GroupBook[] }) {
+export default function GroupManageClient({ slug, manager, member, visibility, joinPolicy, notice, books }: { slug: string; manager: boolean; member: boolean; visibility: "PUBLIC" | "PRIVATE"; joinPolicy: JoinPolicy; notice: string | null; books: GroupBook[] }) {
   const router = useRouter();
   const [bookId, setBookId] = useState("");
   const [note, setNote] = useState("");
+  const [noticeText, setNoticeText] = useState(notice ?? "");
   const [groupBookId, setGroupBookId] = useState(books[0]?.id ? String(books[0].id) : "");
   const [selectedReviewId, setSelectedReviewId] = useState("");
   const [myReviews, setMyReviews] = useState<MyReview[]>([]);
@@ -111,6 +113,53 @@ export default function GroupManageClient({ slug, manager, member, visibility, j
       router.refresh();
     } catch {
       setMessage("책을 추가하지 못했어요. 권한이나 중복 등록 여부를 확인해주세요.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function updateNotice(event: React.FormEvent) {
+    event.preventDefault();
+    const token = getToken();
+    if (!token) { router.push("/auth/login"); return; }
+    setLoading(true);
+    setMessage("");
+    try {
+      const res = await authFetch(`${API_BASE}/api/groups/${slug}/notice`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notice: noticeText.trim() || null }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setMessage(noticeText.trim() ? "모임장 공지를 저장했어요." : "모임장 공지를 내렸어요.");
+      router.refresh();
+    } catch {
+      setMessage("모임장 공지를 저장하지 못했어요.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function updateBookProgress(event: React.FormEvent<HTMLFormElement>, groupBookId: number) {
+    event.preventDefault();
+    const token = getToken();
+    if (!token) { router.push("/auth/login"); return; }
+    const formData = new FormData(event.currentTarget);
+    const status = String(formData.get("status")) as GroupBookStatus;
+    const deadline = String(formData.get("deadline") ?? "");
+    setLoading(true);
+    setMessage("");
+    try {
+      const res = await authFetch(`${API_BASE}/api/groups/${slug}/books/${groupBookId}/progress`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status, deadline: deadline || null }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setMessage("책 진행 상태를 저장했어요.");
+      router.refresh();
+    } catch {
+      setMessage("책 진행 상태를 저장하지 못했어요.");
     } finally {
       setLoading(false);
     }
@@ -204,6 +253,28 @@ export default function GroupManageClient({ slug, manager, member, visibility, j
       </p>
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         {manager && (
+          <form onSubmit={updateNotice} className="space-y-3 rounded-2xl bg-yellow-50 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-brown-700">모임장 공지</p>
+              <span className="rounded-full bg-white px-2 py-1 text-xs text-brown-400">상단 고정</span>
+            </div>
+            <textarea
+              value={noticeText}
+              onChange={(event) => setNoticeText(event.target.value)}
+              maxLength={2000}
+              rows={4}
+              placeholder="모임 일정, 준비물, 변경사항을 알려주세요."
+              className="w-full resize-y rounded-xl border border-yellow-200 bg-white px-3 py-2 text-sm leading-6 text-brown-800 focus:border-brown-400 focus:outline-none"
+            />
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs text-brown-400">{noticeText.length}/2000</span>
+              <button disabled={loading} className="rounded-xl bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800 disabled:opacity-50">
+                공지 저장
+              </button>
+            </div>
+          </form>
+        )}
+        {manager && (
           <div className="space-y-3 rounded-2xl bg-cream-50 p-4">
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-semibold text-brown-700">멤버 관리</p>
@@ -287,6 +358,38 @@ export default function GroupManageClient({ slug, manager, member, visibility, j
             <input value={note} onChange={(event) => setNote(event.target.value)} placeholder="회차/기간 메모" className="w-full rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm text-brown-800 focus:border-brown-400 focus:outline-none" />
             <button disabled={loading} className="w-full rounded-xl bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800 disabled:opacity-50">책 추가</button>
           </form>
+        )}
+        {manager && books.length > 0 && (
+          <div className="space-y-3 rounded-2xl bg-cream-50 p-4 lg:col-span-2">
+            <div>
+              <p className="text-sm font-semibold text-brown-700">책 진행 상태</p>
+              <p className="mt-1 text-xs text-brown-400">선정 책마다 다음 책·읽는 중·완독 상태와 마감일을 설정할 수 있어요.</p>
+            </div>
+            <div className="grid gap-3 lg:grid-cols-2">
+              {books.map((book) => (
+                <form key={book.id} onSubmit={(event) => updateBookProgress(event, book.id)} className="space-y-3 rounded-xl bg-white p-3">
+                  <p className="truncate text-sm font-semibold text-brown-800">{book.title}</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <label className="space-y-1 text-xs text-brown-500">
+                      <span>진행 상태</span>
+                      <select name="status" defaultValue={book.status} className="w-full rounded-lg border border-cream-300 bg-white px-3 py-2 text-sm text-brown-700 focus:border-brown-400 focus:outline-none">
+                        <option value="UPCOMING">다음 책</option>
+                        <option value="READING">읽는 중</option>
+                        <option value="COMPLETED">완독</option>
+                      </select>
+                    </label>
+                    <label className="space-y-1 text-xs text-brown-500">
+                      <span>마감일</span>
+                      <input name="deadline" type="date" defaultValue={book.deadline ?? ""} className="w-full rounded-lg border border-cream-300 bg-white px-3 py-2 text-sm text-brown-700 focus:border-brown-400 focus:outline-none" />
+                    </label>
+                  </div>
+                  <button disabled={loading} className="w-full rounded-lg border border-cream-300 px-3 py-2 text-sm font-semibold text-brown-600 hover:bg-cream-100 disabled:opacity-50">
+                    상태 저장
+                  </button>
+                </form>
+              ))}
+            </div>
+          </div>
         )}
         {member && books.length > 0 && (
           <form onSubmit={attachReview} className="space-y-3 rounded-2xl bg-cream-50 p-4">

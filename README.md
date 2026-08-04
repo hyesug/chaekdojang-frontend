@@ -61,6 +61,7 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
 BACKEND_URL=http://localhost:8080
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 NEXT_PUBLIC_GA_MEASUREMENT_ID=
+NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY=
 ```
 
 스테이징 예시:
@@ -70,6 +71,7 @@ NEXT_PUBLIC_API_BASE_URL=https://staging-api.chaekdojang.com
 BACKEND_URL=https://staging-api.chaekdojang.com
 NEXT_PUBLIC_SITE_URL=https://staging.chaekdojang.com
 NEXT_PUBLIC_GA_MEASUREMENT_ID=G-BM572DG5WW
+NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY=
 ```
 
 ## 주요 명령

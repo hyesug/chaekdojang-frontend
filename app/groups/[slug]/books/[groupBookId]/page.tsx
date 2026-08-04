@@ -12,6 +12,8 @@ type ReadingGroupBook = {
   title: string;
   author: string;
   thumbnail: string | null;
+  status: "UPCOMING" | "READING" | "COMPLETED";
+  deadline: string | null;
   reviewCount: number;
 };
 
@@ -94,6 +96,12 @@ export default async function GroupBookReviewsPage({ params }: Props) {
             <p className="text-sm text-brown-400">{group.name}</p>
             <h1 className="mt-1 font-serif text-2xl font-bold text-brown-900">{book.title} 독후감</h1>
             <p className="mt-1 text-sm text-brown-500">{book.author}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-medium">
+              <span className="rounded-full bg-green-50 px-2.5 py-1 text-green-700">
+                {book.status === "READING" ? "읽는 중" : book.status === "COMPLETED" ? "완독" : "다음 책"}
+              </span>
+              {book.deadline && <span className="text-brown-500">마감일 {book.deadline.replaceAll("-", ". ")}</span>}
+            </div>
             <p className="mt-3 text-sm text-brown-400">이 모임 멤버들이 남긴 독후감 {reviews.length}개</p>
             {reviews.length > 0 ? (
               <Link

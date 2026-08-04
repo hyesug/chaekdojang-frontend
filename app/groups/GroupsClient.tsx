@@ -13,6 +13,8 @@ type ReadingGroupBook = {
   title: string;
   author: string;
   thumbnail: string | null;
+  status: "UPCOMING" | "READING" | "COMPLETED";
+  deadline: string | null;
   reviewCount: number;
 };
 
@@ -101,6 +103,9 @@ export default function GroupsClient({ initialGroups }: { initialGroups: Reading
       {filteredGroups.map((group) => {
         const isMine = group.member || group.manager;
         const privateContentLocked = group.visibility === "PRIVATE" && !isMine;
+        const activeBook = group.books.find((book) => book.status === "READING")
+          ?? group.books.find((book) => book.status === "UPCOMING")
+          ?? null;
         return (
           <Link key={group.id} href={`/groups/${group.slug}`} className="block rounded-2xl border border-cream-200 bg-white p-5 shadow-sm hover:bg-cream-50">
             <div className="flex items-start justify-between gap-4">
@@ -131,6 +136,15 @@ export default function GroupsClient({ initialGroups }: { initialGroups: Reading
                   </p>
                 )}
                 {group.description && <p className="mt-3 line-clamp-2 text-sm leading-6 text-brown-600">{group.description}</p>}
+                {!privateContentLocked && activeBook && (
+                  <p className="mt-3 text-sm font-medium text-brown-700">
+                    {activeBook.status === "READING" ? "읽는 중" : "다음 책"} · {activeBook.title}
+                    {activeBook.deadline ? ` · 마감 ${activeBook.deadline.replaceAll("-", ". ")}` : ""}
+                  </p>
+                )}
+                {!privateContentLocked && group.books.length > 0 && !activeBook && (
+                  <p className="mt-3 text-sm font-medium text-green-700">선정 책 모두 완독</p>
+                )}
               </div>
               <span className="shrink-0 rounded-full bg-cream-100 px-3 py-1 text-xs text-brown-500">
                 {group.joinPolicy === "OPEN" ? "바로 가입" : "승인제"}

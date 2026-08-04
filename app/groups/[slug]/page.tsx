@@ -6,6 +6,7 @@ import BackButton from "../../components/BackButton";
 import { bookPathSegment, SITE_URL } from "../../lib/serverApi";
 import { fetchGroupApiData } from "../groupServerApi";
 import GroupDetailClient from "./GroupDetailClient";
+import GroupInviteShare from "./GroupInviteShare";
 import GroupManageClient from "./GroupManageClient";
 
 type ReadingGroupBook = {
@@ -17,6 +18,8 @@ type ReadingGroupBook = {
   thumbnail: string | null;
   slug: string | null;
   note: string | null;
+  status: "UPCOMING" | "READING" | "COMPLETED";
+  deadline: string | null;
   reviewCount: number;
   createdAt: string;
 };
@@ -26,6 +29,7 @@ type ReadingGroup = {
   name: string;
   slug: string;
   description: string | null;
+  notice: string | null;
   imageUrl: string | null;
   visibility: "PUBLIC" | "PRIVATE";
   joinPolicy: "OPEN" | "APPROVAL";
@@ -40,6 +44,27 @@ type ReadingGroup = {
 };
 
 type Props = { params: Promise<{ slug: string }> };
+
+const STATUS_LABEL = {
+  UPCOMING: "다음 책",
+  READING: "읽는 중",
+  COMPLETED: "완독",
+} as const;
+
+function formatDeadline(value: string) {
+  return new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeZone: "Asia/Seoul" })
+    .format(new Date(`${value}T00:00:00+09:00`));
+}
+
+function deadlineBadge(value: string) {
+  const target = new Date(`${value}T00:00:00+09:00`).getTime();
+  const now = new Date();
+  const today = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+  today.setHours(0, 0, 0, 0);
+  const days = Math.round((target - today.getTime()) / 86_400_000);
+  if (days === 0) return "D-day";
+  return days > 0 ? `D-${days}` : `D+${Math.abs(days)}`;
+}
 
 async function getGroup(slug: string) {
   return fetchGroupApiData<ReadingGroup>(`/api/groups/${encodeURIComponent(slug)}`);
@@ -71,6 +96,15 @@ export default async function GroupPage({ params }: Props) {
   const group = await getGroup(slug);
   if (!group) notFound();
   const privateContentLocked = group.visibility === "PRIVATE" && !group.member && !group.manager;
+  const readingBook = group.books.find((book) => book.status === "READING") ?? null;
+  const upcomingBook = group.books.find((book) => book.status === "UPCOMING") ?? null;
+  const progressLabel = readingBook
+    ? "읽는 중"
+    : upcomingBook
+      ? "다음 책 준비"
+      : group.books.length > 0
+        ? "모든 책 완독"
+        : "책 선정 전";
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
@@ -94,6 +128,11 @@ export default async function GroupPage({ params }: Props) {
               <span className="rounded-full bg-cream-100 px-2 py-0.5 text-xs text-brown-500">
                 {group.joinPolicy === "OPEN" ? "바로 가입" : "승인제"}
               </span>
+              {!privateContentLocked && (
+                <span className="rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
+                  {progressLabel}
+                </span>
+              )}
               {!group.joinEnabled && (
                 <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs text-red-500">
                   가입 중지
@@ -123,12 +162,31 @@ export default async function GroupPage({ params }: Props) {
                 showMemberCount={false}
               />
             </div>
+            {(group.manager || group.member) && (
+              <div className="mt-3">
+                <GroupInviteShare
+                  slug={group.slug}
+                  name={group.name}
+                  description={group.description}
+                  imageUrl={group.imageUrl}
+                  currentBook={readingBook?.title ?? upcomingBook?.title ?? null}
+                  deadline={readingBook?.deadline ?? upcomingBook?.deadline ?? null}
+                />
+              </div>
+            )}
           </div>
         </div>
       </section>
 
+      {!privateContentLocked && group.notice && (
+        <section className="mt-5 rounded-2xl border border-yellow-200 bg-yellow-50 px-5 py-4">
+          <p className="text-xs font-semibold text-yellow-800">📢 모임장 공지</p>
+          <p className="mt-2 whitespace-pre-line text-sm leading-6 text-brown-700">{group.notice}</p>
+        </section>
+      )}
+
       {!privateContentLocked && (
-        <GroupManageClient slug={group.slug} manager={group.manager} member={group.member} visibility={group.visibility} joinPolicy={group.joinPolicy} books={group.books.map((book) => ({ id: book.id, title: book.title, bookId: book.bookId }))} />
+        <GroupManageClient slug={group.slug} manager={group.manager} member={group.member} visibility={group.visibility} joinPolicy={group.joinPolicy} notice={group.notice} books={group.books.map((book) => ({ id: book.id, title: book.title, bookId: book.bookId, status: book.status, deadline: book.deadline }))} />
       )}
 
       {!privateContentLocked && <section className="mt-8">
@@ -153,8 +211,18 @@ export default async function GroupPage({ params }: Props) {
                   <div className="h-28 w-[72px] shrink-0 rounded bg-cream-200" />
                 )}
                 <div className="min-w-0 flex-1">
-                  <h3 className="font-serif text-lg font-bold text-brown-900">{item.title}</h3>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-serif text-lg font-bold text-brown-900">{item.title}</h3>
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${item.status === "READING" ? "bg-green-50 text-green-700" : item.status === "COMPLETED" ? "bg-brown-100 text-brown-700" : "bg-yellow-50 text-yellow-700"}`}>
+                      {STATUS_LABEL[item.status]}
+                    </span>
+                  </div>
                   <p className="mt-1 text-sm text-brown-500">{item.author}</p>
+                  {item.deadline && (
+                    <p className="mt-2 text-sm font-medium text-brown-600">
+                      마감일 {formatDeadline(item.deadline)} · {deadlineBadge(item.deadline)}
+                    </p>
+                  )}
                   {item.note && <p className="mt-2 text-sm text-brown-400">{item.note}</p>}
                   <div className="mt-4 flex flex-wrap gap-2">
                     <Link href={`/groups/${group.slug}/books/${item.id}`} className="rounded-full bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800">

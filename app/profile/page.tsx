@@ -24,7 +24,6 @@ type RecommendedUser = {
   nickname: string;
   profileImage: string | null;
   bio: string | null;
-  score: number;
 };
 
 type LifeBook = {

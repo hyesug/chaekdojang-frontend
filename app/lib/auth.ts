@@ -1,3 +1,5 @@
+import { activityHeaders } from "./activity";
+
 const LOGGED_OUT_KEY = "chaekdojang:logged-out";
 const AUTH_STATE_KEY = "chaekdojang:authenticated";
 const REFRESH_FAILURE_COOLDOWN_MS = 10_000;
@@ -95,7 +97,13 @@ export async function refreshSession() {
 }
 
 export async function authFetch(input: RequestInfo | URL, init: RequestInit = {}) {
-  const requestInit = { ...init, credentials: init.credentials ?? "include" } satisfies RequestInit;
+  const headers = new Headers(init.headers);
+  Object.entries(activityHeaders()).forEach(([key, value]) => headers.set(key, value));
+  const requestInit = {
+    ...init,
+    headers,
+    credentials: init.credentials ?? "include",
+  } satisfies RequestInit;
   const res = await fetch(input, requestInit);
   if (res.status !== 401) return res;
 

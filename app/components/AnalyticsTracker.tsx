@@ -3,15 +3,9 @@
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { API_BASE } from "../lib/api";
+import { getDeviceId, getSessionId } from "../lib/activity";
 
-export function getSessionId() {
-  const key = "chaekdojang_session_id";
-  const existing = sessionStorage.getItem(key);
-  if (existing) return existing;
-  const id = crypto.randomUUID();
-  sessionStorage.setItem(key, id);
-  return id;
-}
+export { getSessionId } from "../lib/activity";
 
 function deviceType() {
   const width = window.innerWidth;
@@ -32,6 +26,7 @@ export function trackMetric(eventType: string, path?: string, durationMs = 0, me
     referrer: document.referrer || null,
     durationMs,
     device: deviceType(),
+    deviceId: getDeviceId(),
     meta,
   });
 

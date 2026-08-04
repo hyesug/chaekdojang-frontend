@@ -6,7 +6,6 @@ import type { AiReadingCardData } from "../lib/aiReadingCard";
 import { authFetch } from "../lib/auth";
 
 type SummaryStatus = "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | "EDITED";
-type SummarySource = "AI" | "USER_EDITED" | "MANUAL";
 
 export type ReviewAiSummary = {
   reviewId: number;
@@ -15,13 +14,8 @@ export type ReviewAiSummary = {
   recommendedFor: string | null;
   impressivePoint: string | null;
   status: SummaryStatus;
-  retryCount: number;
-  errorMessage: string | null;
-  summarySource: SummarySource;
   userEdited: boolean;
-  createdAt: string;
   updatedAt: string;
-  completedAt: string | null;
 };
 
 type Me = { id: number };
@@ -226,17 +220,12 @@ export default function ReviewAiSummaryCard({
     const now = new Date().toISOString();
     return {
       reviewId,
-      retryCount: base?.retryCount ?? 0,
-      errorMessage: base?.errorMessage ?? null,
-      createdAt: base?.createdAt ?? now,
-      completedAt: base?.completedAt ?? now,
       ...base,
       oneLineReview: payload.oneLineReview,
       emotionKeywords: payload.emotionKeywords,
       recommendedFor: payload.recommendedFor,
       impressivePoint: payload.impressivePoint,
       status: "EDITED",
-      summarySource: "USER_EDITED",
       userEdited: true,
       updatedAt: base?.updatedAt ?? now,
     };

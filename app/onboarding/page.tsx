@@ -10,7 +10,6 @@ type Recommendation = {
   nickname: string;
   profileImage: string | null;
   bio: string | null;
-  score: number;
 };
 
 const GENRES = ["문학", "에세이", "인문", "사회", "과학", "경제", "역사", "철학", "시", "추리", "판타지", "자기계발"];

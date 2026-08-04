@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import ReviewDetailModal from "../components/ReviewDetailModal";
@@ -21,6 +21,11 @@ interface User {
   email: string | null;
   role: string;
   createdAt: string;
+  recentActivityAt: string | null;
+  recentIp: string | null;
+  recentDeviceId: string | null;
+  relatedAccountExists: boolean;
+  createdGroupCount: number;
 }
 
 interface Review {
@@ -174,8 +179,24 @@ interface MetricEvent {
   referrer: string | null;
   durationMs: number;
   device: string | null;
+  deviceId: string | null;
+  browser: string | null;
+  operatingSystem: string | null;
   ip: string | null;
+  meta: Record<string, unknown> | null;
   createdAt: string;
+}
+
+interface PublicReadAlert {
+  actorKey: string;
+  userId: number | null;
+  nickname: string | null;
+  ip: string;
+  requestCount: number;
+  windowMinutes: number;
+  categories: string[];
+  lastAt: string;
+  message: string;
 }
 
 interface ErrorLog {
@@ -381,6 +402,8 @@ function getRouteLabel(value: string) {
 }
 
 function getMetricEventLabel(eventType: string) {
+  if (eventType === "user_registered") return "회원가입";
+  if (eventType === "login_succeeded") return "로그인 성공";
   if (eventType === "page_view") return "페이지 조회";
   if (eventType === "login_success") return "로그인 성공";
   if (eventType === "review_write_click") return "독후감 작성 클릭";
@@ -390,6 +413,14 @@ function getMetricEventLabel(eventType: string) {
   if (eventType === "share_click") return "공유 클릭";
   if (eventType === "heartbeat") return "체류 신호";
   if (eventType === "session_end") return "페이지 이탈";
+  if (eventType === "reading_group_created") return "독서모임 생성";
+  if (eventType === "reading_group_joined") return "독서모임 가입";
+  if (eventType === "reading_group_join_requested") return "독서모임 가입 요청";
+  if (eventType === "reading_group_member_approved") return "독서모임 가입 승인";
+  if (eventType === "reading_group_book_added") return "독서모임 책 추가";
+  if (eventType === "reading_group_review_attached") return "모임 독후감 연결";
+  if (eventType === "profile_updated") return "프로필 수정";
+  if (eventType === "official_profile_applied") return "공식 프로필 신청";
   return eventType;
 }
 
@@ -681,6 +712,14 @@ function PaginationControls({
       <button
         type="button"
         disabled={page <= 0}
+        onClick={() => onChange(0)}
+        className="rounded-xl border border-cream-300 px-3 py-1.5 text-xs text-brown-500 transition hover:border-brown-400 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        처음
+      </button>
+      <button
+        type="button"
+        disabled={page <= 0}
         onClick={() => onChange(page - 1)}
         className="rounded-xl border border-cream-300 px-3 py-1.5 text-xs text-brown-500 transition hover:border-brown-400 disabled:cursor-not-allowed disabled:opacity-40"
       >
@@ -696,6 +735,14 @@ function PaginationControls({
         className="rounded-xl border border-cream-300 px-3 py-1.5 text-xs text-brown-500 transition hover:border-brown-400 disabled:cursor-not-allowed disabled:opacity-40"
       >
         다음
+      </button>
+      <button
+        type="button"
+        disabled={page >= pageCount - 1}
+        onClick={() => onChange(pageCount - 1)}
+        className="rounded-xl border border-cream-300 px-3 py-1.5 text-xs text-brown-500 transition hover:border-brown-400 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        마지막
       </button>
     </div>
   );
@@ -716,10 +763,14 @@ export default function AdminPage() {
   const [officialProfiles, setOfficialProfiles] = useState<OfficialProfile[]>([]);
   const [accessLogs, setAccessLogs] = useState<AccessLog[]>([]);
   const [metricEvents, setMetricEvents] = useState<MetricEvent[]>([]);
+  const [actionEvents, setActionEvents] = useState<MetricEvent[]>([]);
+  const [actionsTotal, setActionsTotal] = useState(0);
+  const [actionsLoading, setActionsLoading] = useState(false);
   const [errorLogs, setErrorLogs] = useState<ErrorLog[]>([]);
   const [auditLogs, setAuditLogs] = useState<AdminAuditLog[]>([]);
   const [dashboardSummary, setDashboardSummary] = useState<DashboardSummary | null>(null);
   const [aggregatedSecurity, setAggregatedSecurity] = useState<AggregatedSecurity[]>([]);
+  const [publicReadAlerts, setPublicReadAlerts] = useState<PublicReadAlert[]>([]);
   const [loading, setLoading] = useState(true);
   const [unauthorized, setUnauthorized] = useState(false);
   const [query, setQuery] = useState("");
@@ -744,6 +795,16 @@ export default function AdminPage() {
   const [securityAudienceFilter, setSecurityAudienceFilter] = useState("");
   const [securityGroupBy, setSecurityGroupBy] = useState("default");
   const [expandedSecurityKey, setExpandedSecurityKey] = useState<string | null>(null);
+  const [userIpFilter, setUserIpFilter] = useState("");
+  const [userDeviceFilter, setUserDeviceFilter] = useState("");
+  const [userJoinedFrom, setUserJoinedFrom] = useState("");
+  const [userJoinedTo, setUserJoinedTo] = useState("");
+  const [userActiveFrom, setUserActiveFrom] = useState("");
+  const [userActiveTo, setUserActiveTo] = useState("");
+  const [userRelatedFilter, setUserRelatedFilter] = useState("");
+  const [userCreatedGroupFilter, setUserCreatedGroupFilter] = useState("");
+  const [userSearching, setUserSearching] = useState(false);
+  const actionsRequestId = useRef(0);
 
   function getToken() {
     return getValidToken();
@@ -884,6 +945,7 @@ export default function AdminPage() {
         nextAudit,
         nextDashboard,
         nextSecurity,
+        nextPublicReadAlerts,
       ] = await Promise.all([
         fetchFirstPage<User>("/api/admin/users?size=100"),
         fetchFirstPage<Review>("/api/admin/reviews?size=100"),
@@ -898,6 +960,7 @@ export default function AdminPage() {
         fetchFirstPage<AdminAuditLog>("/api/admin/audit-logs?size=120"),
         fetchAdmin<DashboardSummary>("/api/admin/dashboard/summary"),
         fetchAdmin<AggregatedSecurity[]>("/api/admin/security/summary"),
+        fetchAdmin<PublicReadAlert[]>("/api/admin/security/public-read-alerts"),
       ]);
       const nextContentLookups = await fetchContentLookups(nextMetrics, nextReviews, nextStats ?? []);
       setUsers(nextUsers);
@@ -915,14 +978,74 @@ export default function AdminPage() {
       setReviewMetaByPath(nextContentLookups.reviews);
       setDashboardSummary(nextDashboard);
       setAggregatedSecurity(nextSecurity ?? []);
+      setPublicReadAlerts(nextPublicReadAlerts ?? []);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function searchAdminUsers(event?: React.FormEvent) {
+    event?.preventDefault();
+    setUserSearching(true);
+    try {
+      const params = new URLSearchParams({ size: "200", sort: "createdAt,desc" });
+      if (query.trim()) params.set("q", query.trim());
+      if (userIpFilter.trim()) params.set("ip", userIpFilter.trim());
+      if (userDeviceFilter.trim()) params.set("deviceId", userDeviceFilter.trim());
+      if (userJoinedFrom) params.set("joinedFrom", userJoinedFrom);
+      if (userJoinedTo) params.set("joinedTo", userJoinedTo);
+      if (userActiveFrom) params.set("activeFrom", userActiveFrom);
+      if (userActiveTo) params.set("activeTo", userActiveTo);
+      if (userRelatedFilter) params.set("hasRelated", userRelatedFilter);
+      if (userCreatedGroupFilter) params.set("createdGroup", userCreatedGroupFilter);
+      const nextUsers = await fetchFirstPage<User>(`/api/admin/users?${params.toString()}`);
+      setUsers(nextUsers);
+      setUsersPage(0);
+    } finally {
+      setUserSearching(false);
+    }
+  }
+
+  async function loadActionPage(page: number, searchQuery: string) {
+    const requestId = ++actionsRequestId.current;
+    setActionsLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: String(page),
+        size: String(LIST_PAGE_SIZE),
+        sort: "createdAt,desc",
+        excludeBackground: "true",
+      });
+      if (searchQuery.trim()) params.set("q", searchQuery.trim());
+      const result = await fetchAdmin<PageResponse<MetricEvent>>(`/api/admin/metrics?${params.toString()}`);
+      if (requestId !== actionsRequestId.current) return;
+
+      const events = result?.content ?? [];
+      setActionEvents(events);
+      setActionsTotal(result?.totalElements ?? 0);
+
+      const lookups = await fetchContentLookups(events, reviews, bookStats);
+      if (requestId !== actionsRequestId.current) return;
+      setBookMetaByPath((previous) => ({ ...previous, ...lookups.books }));
+      setReviewMetaByPath((previous) => ({ ...previous, ...lookups.reviews }));
+    } finally {
+      if (requestId === actionsRequestId.current) setActionsLoading(false);
     }
   }
 
   useEffect(() => {
     loadAll();
   }, []);
+
+  useEffect(() => {
+    if (tab !== "actions") return;
+    const timer = window.setTimeout(() => {
+      loadActionPage(actionsPage, query);
+    }, 250);
+    return () => window.clearTimeout(timer);
+    // 검색어 입력 시 짧게 기다린 뒤 서버의 해당 페이지를 조회합니다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, actionsPage, query]);
 
   useEffect(() => {
     setUsersPage(0);
@@ -1029,7 +1152,7 @@ export default function AdminPage() {
   }, [aggregatedSecurity, rawSecuritySummaries]);
 
   const filteredUsers = users.filter((user) => {
-    const text = `${user.nickname} ${user.email ?? ""} ${user.role}`.toLowerCase();
+    const text = `${user.id} ${user.nickname} ${user.email ?? ""} ${user.role} ${user.recentIp ?? ""} ${user.recentDeviceId ?? ""}`.toLowerCase();
     return text.includes(query.toLowerCase());
   });
 
@@ -1063,13 +1186,7 @@ export default function AdminPage() {
     return text.includes(query.toLowerCase());
   });
 
-  const filteredActions = visibleMetrics
-    .filter((event) => !["heartbeat", "session_end"].includes(event.eventType))
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .filter((event) => {
-      const text = `${getActionDescription(event, bookMetaByPath, reviewMetaByPath)} ${getActionContext(event, bookMetaByPath, reviewMetaByPath)} ${getMetricEventLabel(event.eventType)} ${event.nickname ?? ""} ${event.path} ${event.ip ?? ""}`.toLowerCase();
-      return text.includes(query.toLowerCase());
-    });
+  const filteredActions = actionEvents;
 
   const securityEvents = useMemo(() => {
     const map = new Map<string, SecurityEvent>();
@@ -1233,7 +1350,7 @@ export default function AdminPage() {
   const pagedInquiries = paginate(filteredInquiries, inquiriesPage);
   const pagedOfficialApplications = paginate(filteredOfficialApplications, officialApplicationsPage);
   const pagedOfficialProfiles = paginate(filteredOfficialProfiles, officialProfilesPage);
-  const pagedActions = paginate(filteredActions, actionsPage);
+  const pagedActions = filteredActions;
   const pagedSecurityEvents = paginate(filteredSecurityEvents, securityPage);
   const pagedAuditLogs = paginate(filteredAuditLogs, auditPage);
 
@@ -1592,36 +1709,72 @@ export default function AdminPage() {
           )}
 
           {tab === "users" && (
-            <section className="rounded-2xl border border-cream-200 bg-white shadow-sm overflow-x-auto">
-              <table className="w-full min-w-[720px] text-sm">
-                <thead className="bg-cream-100 text-left text-brown-600">
-                  <tr><th className="px-4 py-3">닉네임</th><th className="px-4 py-3">이메일</th><th className="px-4 py-3">역할</th><th className="px-4 py-3">가입일</th><th className="px-4 py-3"></th></tr>
-                </thead>
-                <tbody>
-                  {pagedUsers.map((user) => (
-                    <tr key={user.id} className="border-t border-cream-100 hover:bg-cream-50">
-                      <td className="px-4 py-3 font-medium">
-                        <Link href={`/users/${user.id}`} className="text-brown-800 hover:text-brown-600 hover:underline">
-                          {user.nickname}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-3 text-brown-500">{user.email ?? "-"}</td>
-                      <td className="px-4 py-3"><span className="rounded-full bg-cream-100 px-2 py-0.5 text-xs text-brown-600">{user.role}</span></td>
-                      <td className="px-4 py-3 text-brown-400">{new Date(user.createdAt).toLocaleDateString("ko-KR")}</td>
-                      <td className="px-4 py-3 text-right">
-                        {user.role !== "SUPER_ADMIN" && (
-                          <button onClick={() => setRole(user.id, user.role === "ADMIN" ? "USER" : "ADMIN")} className="rounded-lg border border-cream-300 px-3 py-1 text-xs text-brown-500 hover:bg-cream-50">
-                            {user.role === "ADMIN" ? "권한 해제" : "관리자 지정"}
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <PaginationControls page={usersPage} total={filteredUsers.length} onChange={setUsersPage} />
-              {filteredUsers.length === 0 && <div className="border-t border-cream-100 py-8 text-center text-sm text-brown-300">회원이 없어요</div>}
-            </section>
+            <div className="space-y-3">
+              <form onSubmit={searchAdminUsers} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+                <p className="text-sm font-semibold text-brown-800">회원 활동 검색·필터</p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                  <input value={userIpFilter} onChange={(event) => setUserIpFilter(event.target.value)} placeholder="IP" className="rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm" />
+                  <input value={userDeviceFilter} onChange={(event) => setUserDeviceFilter(event.target.value)} placeholder="기기 ID" className="rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm" />
+                  <label className="text-xs text-brown-400">가입 시작<input type="date" value={userJoinedFrom} onChange={(event) => setUserJoinedFrom(event.target.value)} className="mt-1 w-full rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-700" /></label>
+                  <label className="text-xs text-brown-400">가입 종료<input type="date" value={userJoinedTo} onChange={(event) => setUserJoinedTo(event.target.value)} className="mt-1 w-full rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-700" /></label>
+                  <label className="text-xs text-brown-400">활동 시작<input type="date" value={userActiveFrom} onChange={(event) => setUserActiveFrom(event.target.value)} className="mt-1 w-full rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-700" /></label>
+                  <label className="text-xs text-brown-400">활동 종료<input type="date" value={userActiveTo} onChange={(event) => setUserActiveTo(event.target.value)} className="mt-1 w-full rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-700" /></label>
+                  <select value={userRelatedFilter} onChange={(event) => setUserRelatedFilter(event.target.value)} className="rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-700">
+                    <option value="">연관 계정 전체</option><option value="true">연관 신호 있음</option><option value="false">연관 신호 없음</option>
+                  </select>
+                  <select value={userCreatedGroupFilter} onChange={(event) => setUserCreatedGroupFilter(event.target.value)} className="rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-700">
+                    <option value="">모임 생성 전체</option><option value="true">모임 생성함</option><option value="false">모임 생성 안 함</option>
+                  </select>
+                </div>
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <p className="text-xs text-brown-400">위 검색창에는 닉네임 또는 사용자 ID를 입력할 수 있습니다.</p>
+                  <button type="submit" disabled={userSearching} className="rounded-xl bg-brown-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{userSearching ? "검색 중" : "필터 적용"}</button>
+                </div>
+              </form>
+
+              <section className="overflow-x-auto rounded-2xl border border-cream-200 bg-white shadow-sm">
+                <table className="w-full min-w-[1040px] text-sm">
+                  <thead className="bg-cream-100 text-left text-brown-600">
+                    <tr><th className="px-4 py-3">회원</th><th className="px-4 py-3">이메일</th><th className="px-4 py-3">가입·최근 활동</th><th className="px-4 py-3">최근 접속</th><th className="px-4 py-3">참고 신호</th><th className="px-4 py-3"></th></tr>
+                  </thead>
+                  <tbody>
+                    {pagedUsers.map((user) => (
+                      <tr key={user.id} className="border-t border-cream-100 hover:bg-cream-50">
+                        <td className="px-4 py-3 font-medium">
+                          <Link href={`/admin/users/${user.id}`} className="text-brown-800 hover:text-brown-600 hover:underline">{user.nickname}</Link>
+                          <p className="mt-1 text-xs text-brown-300">ID {user.id} · {user.role}</p>
+                        </td>
+                        <td className="px-4 py-3 text-brown-500">{user.email ?? "-"}</td>
+                        <td className="px-4 py-3 text-xs text-brown-400">
+                          <p>가입 {formatLogTime(user.createdAt)}</p>
+                          <p className="mt-1">활동 {user.recentActivityAt ? formatLogTime(user.recentActivityAt) : "-"}</p>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-brown-400">
+                          <p>IP {user.recentIp ?? "-"}</p>
+                          <p className="mt-1 font-mono">기기 {user.recentDeviceId ? user.recentDeviceId.slice(0, 8) : "-"}</p>
+                        </td>
+                        <td className="px-4 py-3 text-xs">
+                          {user.relatedAccountExists && <span className="rounded-full bg-yellow-50 px-2 py-1 text-yellow-700">연관 신호 있음</span>}
+                          <p className="mt-2 text-brown-400">생성 모임 {user.createdGroupCount}개</p>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex justify-end gap-2">
+                            <Link href={`/admin/users/${user.id}`} className="rounded-lg border border-cream-300 px-3 py-1 text-xs text-brown-600 hover:bg-cream-50">활동 상세</Link>
+                            {user.role !== "SUPER_ADMIN" && (
+                              <button onClick={() => setRole(user.id, user.role === "ADMIN" ? "USER" : "ADMIN")} className="rounded-lg border border-cream-300 px-3 py-1 text-xs text-brown-500 hover:bg-cream-50">
+                                {user.role === "ADMIN" ? "권한 해제" : "관리자 지정"}
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <PaginationControls page={usersPage} total={filteredUsers.length} onChange={setUsersPage} />
+                {filteredUsers.length === 0 && <div className="border-t border-cream-100 py-8 text-center text-sm text-brown-300">조건에 맞는 회원이 없어요</div>}
+              </section>
+            </div>
           )}
 
           {tab === "reviews" && (
@@ -1970,6 +2123,7 @@ export default function AdminPage() {
 
           {tab === "actions" && (
             <section className="space-y-3">
+              <p className="text-xs text-brown-400">전체 기록을 서버에서 50건씩 조회합니다. 검색 결과도 마지막 페이지까지 확인할 수 있습니다.</p>
               {pagedActions.map((event) => (
                 <div key={event.id} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -1990,13 +2144,33 @@ export default function AdminPage() {
                   </div>
                 </div>
               ))}
-              <PaginationControls page={actionsPage} total={filteredActions.length} onChange={setActionsPage} />
-              {filteredActions.length === 0 && <EmptyState>유입·사용자 행동 기록이 없어요</EmptyState>}
+              <PaginationControls page={actionsPage} total={actionsTotal} onChange={setActionsPage} />
+              {actionsLoading && <div className="py-3 text-center text-sm text-brown-300">기록을 불러오는 중...</div>}
+              {!actionsLoading && filteredActions.length === 0 && <EmptyState>유입·사용자 행동 기록이 없어요</EmptyState>}
             </section>
           )}
 
           {tab === "security" && (
             <section className="space-y-3">
+              <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="font-serif text-lg font-bold text-yellow-900">공개 API 반복 조회 참고 경고</h2>
+                    <p className="mt-1 text-xs leading-5 text-yellow-700">일반 이용을 제한하지 않으며, 설정된 시간·횟수 임계값을 넘은 경우에만 표시합니다.</p>
+                  </div>
+                  <span className="rounded-full bg-white px-3 py-1 text-sm font-bold text-yellow-800">{publicReadAlerts.length}건</span>
+                </div>
+                <div className="mt-3 space-y-2">
+                  {publicReadAlerts.map((alert) => (
+                    <div key={alert.actorKey} className="rounded-xl bg-white p-3 text-sm text-brown-700">
+                      <p className="font-semibold">{alert.nickname ? `${alert.nickname} · ID ${alert.userId}` : `IP ${alert.ip}`}</p>
+                      <p className="mt-1 text-xs text-brown-500">IP {alert.ip} · {alert.windowMinutes}분 동안 {alert.requestCount}회 · {alert.categories.join(", ")} · 마지막 {formatLogTime(alert.lastAt)}</p>
+                      <p className="mt-1 text-xs text-brown-400">{alert.message}</p>
+                    </div>
+                  ))}
+                  {publicReadAlerts.length === 0 && <p className="py-3 text-center text-sm text-yellow-700">현재 임계값을 넘은 반복 조회가 없습니다.</p>}
+                </div>
+              </div>
               <div className="grid gap-2 rounded-2xl border border-cream-200 bg-white p-3 sm:grid-cols-4">
                 <select value={securityTypeFilter} onChange={(event) => setSecurityTypeFilter(event.target.value)} className="rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-700">
                   <option value="">전체 오류 유형</option>

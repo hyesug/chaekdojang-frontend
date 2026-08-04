@@ -10,7 +10,7 @@ export default function PrivacyPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-10 text-brown-700">
       <h1 className="font-serif text-3xl font-bold text-brown-800 mb-4">개인정보처리방침</h1>
-      <p className="text-sm text-brown-400 mb-8">시행일: 2026년 6월 19일</p>
+      <p className="text-sm text-brown-400 mb-8">시행일: 2026년 8월 4일</p>
 
       <div className="space-y-7 leading-7">
         <section>
@@ -35,8 +35,9 @@ export default function PrivacyPage() {
           </ul>
           <p className="mt-3">
             서비스 이용 과정에서 사용자가 직접 입력한 닉네임, 프로필 소개, 독후감, 댓글, 서재 기록,
-            팔로우, 좋아요, 북마크, 알림 설정, 문의 내용이 처리될 수 있습니다. 접속기록, IP 일부,
-            브라우저와 기기 정보, 쿠키 또는 유사 식별자, 오류 로그도 서비스 운영 과정에서 생성될 수 있습니다.
+            팔로우, 좋아요, 북마크, 알림 설정, 문의 내용이 처리될 수 있습니다. 접속 IP, 접속·활동 시각,
+            세션 ID, User-Agent, 브라우저와 운영체제, 기기 유형, 책도장 도메인에서 임의로 생성한 UUID 형식의
+            기기 식별자, 오류 로그도 서비스 운영 과정에서 생성될 수 있습니다.
           </p>
         </section>
 
@@ -74,6 +75,11 @@ export default function PrivacyPage() {
             있으며, 목적 달성 후에는 지체 없이 삭제하거나 식별할 수 없는 형태로 처리합니다. 관계 법령에 따라
             보관이 필요한 정보는 해당 법령에서 정한 기간 동안 분리 보관한 뒤 파기합니다.
           </p>
+          <p className="mt-2">
+            접속 IP, 임의 기기 식별자, User-Agent와 세부 활동 기록은 서비스 운영·보안 확인 목적으로 원칙적으로
+            생성일로부터 90일간 보관한 뒤 자동 삭제합니다. 관계 법령 준수 또는 사고 조사에 별도 보관이 필요한
+            경우에는 해당 목적에 필요한 범위와 기간에 한해 보관할 수 있습니다.
+          </p>
         </section>
 
         <section>
@@ -94,7 +100,8 @@ export default function PrivacyPage() {
           <p>
             책도장은 로그인 상태 유지, 보안, 오류 분석, 서비스 이용 통계 확인을 위해 쿠키 또는 유사 기술과
             접속 기록을 사용할 수 있습니다. 사용자는 브라우저 설정을 통해 쿠키 저장을 제한할 수 있으나,
-            이 경우 일부 기능 이용이 제한될 수 있습니다.
+            이 경우 일부 기능 이용이 제한될 수 있습니다. 기기 식별자는 책도장 도메인에서 생성한 임의 UUID를
+            사용하며, 브라우저 하드웨어 지문은 수집하지 않습니다.
           </p>
         </section>
 

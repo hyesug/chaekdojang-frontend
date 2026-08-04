@@ -77,7 +77,7 @@ export default function GroupInviteShare({
   const [loading, setLoading] = useState(false);
 
   function inviteUrl() {
-    return `${window.location.origin}/groups/${encodeURIComponent(slug)}`;
+    return `${window.location.origin}/invite/groups/${encodeURIComponent(slug)}`;
   }
 
   function shareDescription() {

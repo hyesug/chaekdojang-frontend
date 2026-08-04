@@ -18,6 +18,7 @@ jobs:
       NEXT_PUBLIC_API_BASE_URL: https://staging-api.chaekdojang.com
       NEXT_PUBLIC_SITE_URL: https://staging.chaekdojang.com
       NEXT_PUBLIC_GA_MEASUREMENT_ID: ${{ secrets.NEXT_PUBLIC_GA_MEASUREMENT_ID_STAGING }}
+      NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY: ${{ secrets.NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY_STAGING }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4

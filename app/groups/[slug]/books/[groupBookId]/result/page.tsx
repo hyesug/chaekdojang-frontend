@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import AiReadingCard from "../../../../../components/AiReadingCard";
 import type { AiReadingCardData } from "../../../../../lib/aiReadingCard";
-import { fetchApiData } from "../../../../../lib/serverApi";
+import { fetchAuthenticatedApiData } from "../../../../../lib/serverApi";
 
 type Props = {
   params: Promise<{ slug: string; groupBookId: string }>;
@@ -34,7 +34,7 @@ type GroupBookResult = {
 
 export default async function GroupBookResultPage({ params }: Props) {
   const { slug, groupBookId } = await params;
-  const result = await fetchApiData<GroupBookResult>(
+  const result = await fetchAuthenticatedApiData<GroupBookResult>(
     `/api/groups/${encodeURIComponent(slug)}/books/${encodeURIComponent(groupBookId)}/result`,
     { cache: "no-store" }
   );

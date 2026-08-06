@@ -22,7 +22,7 @@ type BookResult = {
   source: string;
   contentType?: "BOOK" | "WEB_NOVEL";
   sourceUrl?: string | null;
-  category?: string;
+  category?: string | null;
   reviewCount: number;
 };
 
@@ -567,33 +567,44 @@ function SearchContent() {
                 <div className="flex gap-4">
                   {/* 대표 표지 */}
                   {book.thumbnail ? (
-                    <Image
-                      src={book.thumbnail}
-                      alt={book.title}
-                      width={72}
-                      height={108}
-                      className="w-[72px] h-[108px] rounded shadow-sm object-contain flex-shrink-0 bg-white"
-                    />
+                    <Link href={`/books/${book.id}`} className="flex-shrink-0">
+                      <Image
+                        src={book.thumbnail}
+                        alt={book.title}
+                        width={72}
+                        height={108}
+                        className="w-[72px] h-[108px] rounded shadow-sm object-contain bg-white"
+                      />
+                    </Link>
                   ) : (
-                    <div
-                      className="w-[72px] h-[108px] rounded shadow-sm flex-shrink-0 flex items-center justify-center text-white text-xs font-bold"
-                      style={{ backgroundColor: COVER_COLORS[i % COVER_COLORS.length] }}
-                    >
-                      {book.title[0]}
-                    </div>
+                    <Link href={`/books/${book.id}`} className="flex-shrink-0">
+                      <div
+                        className="w-[72px] h-[108px] rounded shadow-sm flex items-center justify-center text-white text-xs font-bold"
+                        style={{ backgroundColor: COVER_COLORS[i % COVER_COLORS.length] }}
+                      >
+                        {book.title[0]}
+                      </div>
+                    </Link>
                   )}
 
                   {/* 작품 정보 */}
                   <div className="flex-1 min-w-0">
-                    <p className="font-serif font-bold text-brown-800 leading-snug">{group.workTitle}</p>
-                    <p className="text-sm text-brown-400 mt-0.5">{group.workAuthor}</p>
-                    <p className="text-xs text-brown-300 mt-0.5">
-                      대표 판본: {book.publisher}
+                    <Link
+                      href={`/books/${book.id}`}
+                      className="font-serif font-bold text-brown-800 leading-snug hover:text-brown-600 hover:underline"
+                    >
+                      {group.workTitle}
+                    </Link>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                      <p className="text-sm text-brown-400">{group.workAuthor}</p>
                       {book.category && (
-                        <span className="ml-2 px-1.5 py-0.5 bg-cream-200 text-brown-500 rounded text-xs">
-                          {book.category}
+                        <span className="rounded-full bg-cream-200 px-2 py-0.5 text-[11px] font-medium text-brown-500">
+                          #{book.category}
                         </span>
                       )}
+                    </div>
+                    <p className="text-xs text-brown-300 mt-0.5">
+                      대표 판본: {book.publisher}
                       <span className="ml-2 px-1.5 py-0.5 bg-cream-200 text-brown-500 rounded text-xs">
                         {group.editions.length}개 판본
                       </span>
@@ -687,8 +698,20 @@ function SearchContent() {
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-brown-800 leading-snug">{edition.title}</p>
-                            <p className="text-xs text-brown-400 mt-0.5">{edition.publisher}</p>
+                            <Link
+                              href={`/books/${edition.id}`}
+                              className="text-sm font-semibold text-brown-800 leading-snug hover:text-brown-600 hover:underline"
+                            >
+                              {edition.title}
+                            </Link>
+                            <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                              <p className="text-xs text-brown-400">{edition.publisher}</p>
+                              {edition.category && (
+                                <span className="rounded-full bg-cream-200 px-2 py-0.5 text-[11px] font-medium text-brown-500">
+                                  #{edition.category}
+                                </span>
+                              )}
+                            </div>
                             <div className="flex flex-wrap gap-2 mt-2">
                               <Link
                                 href={`/write?bookId=${edition.id}&title=${encodedTitle}&author=${encodeURIComponent(edition.author)}&publisher=${encodeURIComponent(edition.publisher)}${edition.thumbnail ? `&thumbnail=${encodeURIComponent(edition.thumbnail)}` : ""}`}

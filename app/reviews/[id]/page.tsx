@@ -9,10 +9,15 @@ import ReviewOwnerActions from "../../components/ReviewOwnerActions";
 import ReviewEngagement from "../../components/ReviewEngagement";
 import ReviewCard, { type Review } from "../../components/ReviewCard";
 import ReviewReturnMemory from "../../components/ReviewReturnMemory";
+import ReviewRereadHistory from "../../components/ReviewRereadHistory";
+import ReviewContinuations from "../../components/ReviewContinuations";
+import ReviewReflectionPanel from "../../components/ReviewReflectionPanel";
+import SpoilerContent from "../../components/SpoilerContent";
 import ReviewViewTracker from "../../components/ReviewViewTracker";
 import { bookReturnStorageKey } from "../../lib/returnMemory";
 import {
   fetchApiData,
+  fetchAuthenticatedApiData,
   reviewDescription,
   reviewTitle,
   shareText,
@@ -26,7 +31,7 @@ type Props = {
 };
 
 async function getReview(id: string) {
-  return fetchApiData<ReviewDetail>(`/api/reviews/${id}`, { cache: "no-store" });
+  return fetchAuthenticatedApiData<ReviewDetail>(`/api/reviews/${id}`);
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -180,7 +185,13 @@ export default async function PublicReviewPage({ params, searchParams }: Props) 
                 <div className="w-[76px] h-[108px] rounded bg-brown-300 flex-shrink-0" />
               )}
               <div className="min-w-0">
-                <p className="text-xs text-brown-400 mb-1">공개 독후감</p>
+                <p className="text-xs text-brown-400 mb-1">
+                  {review.previousReviewId != null
+                    ? "재독 독후감"
+                    : review.sourceReviewId != null
+                      ? "이어 쓴 독후감"
+                      : "공개 독후감"}
+                </p>
                 <h1 className="font-serif text-2xl sm:text-3xl font-bold text-brown-800 leading-tight">
                   {review.book?.title ?? "독후감"}
                 </h1>
@@ -212,9 +223,31 @@ export default async function PublicReviewPage({ params, searchParams }: Props) 
               </time>
             </div>
 
-            <p className="mt-6 text-base leading-8 text-brown-800 whitespace-pre-wrap">
-              {review.content}
-            </p>
+            {review.keywords && review.keywords.length > 0 && (
+              <div className="mt-5 flex flex-wrap gap-2">
+                {review.keywords.map((keyword) => (
+                  <span key={keyword} className="rounded-full bg-cream-100 px-3 py-1 text-xs text-brown-500">
+                    #{keyword}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {review.spoiler ? (
+              <SpoilerContent content={review.content} />
+            ) : (
+              <p className="mt-6 text-base leading-8 text-brown-800 whitespace-pre-wrap">
+                {review.content}
+              </p>
+            )}
+
+            <ReviewRereadHistory reviewId={review.id} />
+            <ReviewContinuations reviewId={review.id} />
+            <ReviewReflectionPanel
+              reviewId={review.id}
+              authorId={review.author.id ?? null}
+              hasPreviousReview={review.previousReviewId != null}
+            />
 
             <ReviewEngagement
               reviewId={review.id}

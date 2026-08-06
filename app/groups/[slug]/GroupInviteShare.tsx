@@ -2,6 +2,12 @@
 
 import { useState } from "react";
 import { trackMetric } from "../../components/AnalyticsTracker";
+import {
+  COPY_GROUP_INVITE_SOURCE,
+  GROUP_INVITE_SOURCE_PARAM,
+  KAKAO_GROUP_INVITE_SOURCE,
+  type GroupInviteSource,
+} from "../../lib/inviteTracking";
 
 type KakaoSdk = {
   init: (key: string) => void;
@@ -76,8 +82,10 @@ export default function GroupInviteShare({
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  function inviteUrl() {
-    return `${window.location.origin}/invite/groups/${encodeURIComponent(slug)}`;
+  function inviteUrl(source: GroupInviteSource) {
+    const url = new URL(`/invite/groups/${encodeURIComponent(slug)}`, window.location.origin);
+    url.searchParams.set(GROUP_INVITE_SOURCE_PARAM, source);
+    return url.href;
   }
 
   function shareDescription() {
@@ -87,11 +95,17 @@ export default function GroupInviteShare({
     return details || description || "책도장에서 함께 읽고 독후감을 나눠요.";
   }
 
-  async function copyInviteLink() {
+  async function copyInviteLink(
+    source: GroupInviteSource = COPY_GROUP_INVITE_SOURCE,
+    successMessage = "초대 링크를 복사했어요.",
+  ) {
     try {
-      await copyText(inviteUrl());
-      trackMetric("share_click", `/groups/${slug}`, 0, { groupSlug: slug, channel: "copy" });
-      setMessage("초대 링크를 복사했어요.");
+      await copyText(inviteUrl(source));
+      trackMetric("share_click", `/groups/${slug}`, 0, {
+        groupSlug: slug,
+        channel: source === KAKAO_GROUP_INVITE_SOURCE ? "kakao_copy_fallback" : "copy",
+      });
+      setMessage(successMessage);
     } catch {
       setMessage("링크를 복사하지 못했어요. 주소창의 링크를 복사해주세요.");
     }
@@ -102,15 +116,14 @@ export default function GroupInviteShare({
     setMessage("");
     const javascriptKey = process.env.NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY;
     if (!javascriptKey) {
-      await copyInviteLink();
-      setMessage("카카오 설정 전이라 초대 링크를 대신 복사했어요.");
+      await copyInviteLink(KAKAO_GROUP_INVITE_SOURCE, "카카오 설정 전이라 초대 링크를 대신 복사했어요.");
       setLoading(false);
       return;
     }
     try {
       const kakao = await loadKakaoSdk();
       if (!kakao.isInitialized()) kakao.init(javascriptKey);
-      const url = inviteUrl();
+      const url = inviteUrl(KAKAO_GROUP_INVITE_SOURCE);
       kakao.Share.sendDefault({
         objectType: "feed",
         content: {
@@ -128,8 +141,7 @@ export default function GroupInviteShare({
       });
       trackMetric("share_click", `/groups/${slug}`, 0, { groupSlug: slug, channel: "kakao" });
     } catch {
-      await copyInviteLink();
-      setMessage("카카오톡 공유를 열지 못해 초대 링크를 복사했어요.");
+      await copyInviteLink(KAKAO_GROUP_INVITE_SOURCE, "카카오톡 공유를 열지 못해 초대 링크를 복사했어요.");
     } finally {
       setLoading(false);
     }
@@ -148,7 +160,7 @@ export default function GroupInviteShare({
         </button>
         <button
           type="button"
-          onClick={copyInviteLink}
+          onClick={() => void copyInviteLink()}
           className="rounded-full border border-cream-300 px-4 py-2 text-sm font-semibold text-brown-600 hover:bg-cream-50"
         >
           초대 링크 복사

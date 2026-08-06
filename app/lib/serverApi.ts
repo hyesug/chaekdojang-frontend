@@ -1,7 +1,9 @@
 export const SERVER_API_BASE = (
   process.env.BACKEND_URL ??
   process.env.NEXT_PUBLIC_API_BASE_URL ??
-  "https://api.chaekdojang.com"
+  (process.env.NODE_ENV === "development"
+    ? "http://localhost:8080"
+    : "https://api.chaekdojang.com")
 ).replace(/\/$/, "");
 
 export const SITE_URL = (
@@ -42,6 +44,10 @@ export type ReviewDetail = {
   commentCount: number;
   createdAt: string;
   updatedAt: string;
+  previousReviewId?: number | null;
+  sourceReviewId?: number | null;
+  keywords?: string[];
+  spoiler?: boolean;
 };
 
 export type BookDetail = {
@@ -108,6 +114,30 @@ export async function fetchApiData<T>(
   }
 }
 
+export async function fetchAuthenticatedApiData<T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T | null> {
+  try {
+    const headers = new Headers(options.headers);
+    headers.set("X-Chaekdojang-Internal-Request", "web-ssr");
+    const cookieStore = await cookies();
+    const loggedOut = cookieStore.get("chaekdojang_logged_out")?.value === "true";
+    const cookieHeader = cookieStore.toString();
+    if (!loggedOut && cookieHeader) headers.set("Cookie", cookieHeader);
+    const response = await fetch(`${SERVER_API_BASE}${path}`, {
+      ...options,
+      headers,
+      cache: "no-store",
+    });
+    if (!response.ok) return null;
+    const json = await response.json();
+    return (json.data ?? json) as T;
+  } catch {
+    return null;
+  }
+}
+
 export function reviewTitle(review: ReviewDetail): string {
   return review.book?.title
     ? `${review.book.title} 독후감 - ${review.author.nickname} | 책도장`
@@ -126,3 +156,4 @@ export function reviewDescription(review: ReviewDetail): string {
 export function shareText(): string {
   return "읽은 책에 나만의 감상을 찍다";
 }
+import { cookies } from "next/headers";

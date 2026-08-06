@@ -11,7 +11,7 @@ import {
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ sort?: string }>;
+  searchParams?: Promise<{ sort?: string; length?: string; spoiler?: string; keyword?: string }>;
 };
 
 async function getBook(id: string) {
@@ -20,13 +20,19 @@ async function getBook(id: string) {
   });
 }
 
-async function getReviews(id: string, sort?: string) {
+async function getReviews(
+  id: string,
+  filters?: { sort?: string; length?: string; spoiler?: string; keyword?: string },
+) {
   const params = new URLSearchParams();
-  if (sort === "popular" || sort === "rating") params.set("sort", sort);
+  if (filters?.sort === "popular" || filters?.sort === "rating") params.set("sort", filters.sort);
+  if (filters?.length === "short" || filters?.length === "long") params.set("length", filters.length);
+  if (filters?.spoiler === "exclude" || filters?.spoiler === "only") params.set("spoiler", filters.spoiler);
+  if (filters?.keyword) params.set("keyword", filters.keyword);
   const query = params.toString();
   return (
     (await fetchApiData<ReviewDetail[]>(`/api/books/${id}/reviews${query ? `?${query}` : ""}`, {
-      next: { revalidate: 300 },
+      cache: "no-store",
     })) ?? []
   );
 }
@@ -69,9 +75,36 @@ export default async function BookReviewsPage({ params, searchParams }: Props) {
   const { id } = await params;
   const query = searchParams ? await searchParams : undefined;
   const sort = query?.sort === "popular" || query?.sort === "rating" ? query.sort : undefined;
-  const [book, reviews] = await Promise.all([getBook(id), getReviews(id, sort)]);
+  const length = query?.length === "short" || query?.length === "long" ? query.length : undefined;
+  const spoiler = query?.spoiler === "exclude" || query?.spoiler === "only" ? query.spoiler : undefined;
+  const keyword = query?.keyword?.trim() || undefined;
+  const filters = { sort, length, spoiler, keyword };
+  const [book, reviews, allReviews] = await Promise.all([
+    getBook(id),
+    getReviews(id, filters),
+    getReviews(id),
+  ]);
   if (!book) notFound();
-  const returnTo = sort ? `/books/${encodeURIComponent(id)}/reviews?sort=${sort}` : `/books/${encodeURIComponent(id)}/reviews`;
+  const currentParams = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => value && currentParams.set(key, value));
+  const returnTo = `/books/${encodeURIComponent(id)}/reviews${currentParams.size ? `?${currentParams}` : ""}`;
+  const topKeywords = Array.from(
+    allReviews.flatMap((review) => review.keywords ?? []).reduce((counts, value) => {
+      counts.set(value, (counts.get(value) ?? 0) + 1);
+      return counts;
+    }, new Map<string, number>()),
+  )
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ko"))
+    .slice(0, 8);
+
+  function filterHref(next: Record<string, string | undefined>) {
+    const params = new URLSearchParams(currentParams);
+    Object.entries(next).forEach(([key, value]) => {
+      if (value) params.set(key, value);
+      else params.delete(key);
+    });
+    return `/books/${encodeURIComponent(id)}/reviews${params.size ? `?${params}` : ""}`;
+  }
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -106,6 +139,66 @@ export default async function BookReviewsPage({ params, searchParams }: Props) {
         </h1>
         <p className="mt-1 text-sm text-brown-500">{book.author}</p>
       </div>
+
+      <section className="mb-6 rounded-2xl border border-cream-200 bg-white p-4">
+        <div className="flex flex-wrap gap-2 text-xs">
+          {([
+            [undefined, "최신순"],
+            ["popular", "공감순"],
+            ["rating", "별점순"],
+          ] as const).map(([value, label]) => (
+            <Link
+              key={label}
+              href={filterHref({ sort: value })}
+              className={`rounded-full px-3 py-1.5 ${sort === value ? "bg-sage-700 text-white" : "bg-sage-50 text-sage-700"}`}
+            >
+              {label}
+            </Link>
+          ))}
+          {[
+            [undefined, "전체 길이"],
+            ["short", "짧은 기록"],
+            ["long", "긴 기록"],
+          ].map(([value, label]) => (
+            <Link
+              key={label}
+              href={filterHref({ length: value })}
+              className={`rounded-full px-3 py-1.5 ${length === value ? "bg-brown-700 text-white" : "bg-cream-100 text-brown-500"}`}
+            >
+              {label}
+            </Link>
+          ))}
+          {[
+            [undefined, "스포일러 전체"],
+            ["exclude", "스포일러 제외"],
+            ["only", "스포일러만"],
+          ].map(([value, label]) => (
+            <Link
+              key={label}
+              href={filterHref({ spoiler: value })}
+              className={`rounded-full px-3 py-1.5 ${spoiler === value ? "bg-amber-600 text-white" : "bg-amber-50 text-amber-700"}`}
+            >
+              {label}
+            </Link>
+          ))}
+        </div>
+        {topKeywords.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2 border-t border-cream-100 pt-3">
+            <Link href={filterHref({ keyword: undefined })} className={`text-xs ${!keyword ? "font-bold text-brown-700" : "text-brown-400"}`}>
+              키워드 전체
+            </Link>
+            {topKeywords.map(([value, count]) => (
+              <Link
+                key={value}
+                href={filterHref({ keyword: value })}
+                className={`text-xs ${keyword === value ? "font-bold text-brown-700" : "text-brown-400"}`}
+              >
+                #{value} {count}
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
 
       {reviews.length === 0 ? (
         <div className="text-center py-16 text-brown-400">

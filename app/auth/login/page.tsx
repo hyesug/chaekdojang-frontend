@@ -6,6 +6,11 @@ import { OAUTH_BASE } from "../../lib/api";
 import { markLoggedIn } from "../../lib/auth";
 
 const BACKEND = OAUTH_BASE;
+const LOGIN_RETURN_TO_KEY = "chaekdojang:login-return-to";
+
+function safeReturnTo(value: string | null) {
+  return value?.startsWith("/") && !value.startsWith("//") ? value : null;
+}
 
 function LoginContent() {
   const searchParams = useSearchParams();
@@ -22,7 +27,9 @@ function LoginContent() {
 
   useEffect(() => {
     setIsLocal(window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
-  }, []);
+    const returnTo = safeReturnTo(searchParams.get("returnTo"));
+    if (returnTo) sessionStorage.setItem(LOGIN_RETURN_TO_KEY, returnTo);
+  }, [searchParams]);
 
   async function handleDevLogin() {
     const res = await fetch("/api/dev/login", { method: "POST" });
@@ -30,7 +37,9 @@ function LoginContent() {
     await res.json().catch(() => null);
     markLoggedIn();
     window.dispatchEvent(new Event("auth-change"));
-    router.push("/");
+    const returnTo = safeReturnTo(sessionStorage.getItem(LOGIN_RETURN_TO_KEY));
+    sessionStorage.removeItem(LOGIN_RETURN_TO_KEY);
+    router.push(returnTo ?? "/");
     router.refresh();
   }
 

@@ -4,6 +4,14 @@ import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { markLoggedIn } from "../../lib/auth";
 
+const LOGIN_RETURN_TO_KEY = "chaekdojang:login-return-to";
+
+function takeSafeReturnTo() {
+  const value = sessionStorage.getItem(LOGIN_RETURN_TO_KEY);
+  sessionStorage.removeItem(LOGIN_RETURN_TO_KEY);
+  return value?.startsWith("/") && !value.startsWith("//") ? value : "/";
+}
+
 // useSearchParams()는 Next.js에서 반드시 Suspense 안에 있어야 빌드가 통과됨
 function OAuthCallback() {
   const router = useRouter();
@@ -17,13 +25,13 @@ function OAuthCallback() {
     if (token) {
       markLoggedIn();
       window.dispatchEvent(new Event("auth-change"));
-      router.replace(setup === "true" ? "/setup-nickname" : "/");
+      router.replace(setup === "true" ? "/setup-nickname" : takeSafeReturnTo());
     } else if (error) {
       router.replace("/auth/login?error=oauth_failed");
     } else {
       markLoggedIn();
       window.dispatchEvent(new Event("auth-change"));
-      router.replace(setup === "true" ? "/setup-nickname" : "/");
+      router.replace(setup === "true" ? "/setup-nickname" : takeSafeReturnTo());
     }
   }, [router, searchParams]);
 

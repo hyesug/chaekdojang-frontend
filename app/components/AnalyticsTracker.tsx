@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { API_BASE } from "../lib/api";
 import { getDeviceId, getSessionId } from "../lib/activity";
+import { groupInviteTracking } from "../lib/inviteTracking";
 
 export { getSessionId } from "../lib/activity";
 
@@ -18,16 +19,17 @@ export function trackMetric(eventType: string, path?: string, durationMs = 0, me
   if (typeof window === "undefined") return;
   const currentPath = path ?? window.location.pathname;
   if (currentPath.startsWith("/admin")) return;
+  const inviteTracking = groupInviteTracking(window.location.pathname, window.location.search);
 
   const body = JSON.stringify({
     eventType,
     sessionId: getSessionId(),
     path: currentPath,
-    referrer: document.referrer || null,
+    referrer: (inviteTracking?.referrer ?? document.referrer) || null,
     durationMs,
     device: deviceType(),
     deviceId: getDeviceId(),
-    meta,
+    meta: inviteTracking ? { ...meta, inviteSource: inviteTracking.source } : meta,
   });
 
   const token: string | null = "cookie-session";

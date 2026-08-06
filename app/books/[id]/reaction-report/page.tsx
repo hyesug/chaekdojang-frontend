@@ -28,6 +28,11 @@ type BookReactionReport = {
     impressivePoint: string | null;
     rating: number;
   }>;
+  aggregateAvailable: boolean;
+  minimumAggregateReviewCount: number;
+  commonReviewKeywords: Array<{ keyword: string; count: number }>;
+  ratingDistribution: { positive: number; neutral: number; negative: number };
+  perspectiveNotes: string[];
 };
 
 type Props = {
@@ -121,33 +126,68 @@ export default async function BookReactionReportPage({ params }: Props) {
         <EmptyReport title="아직 리포트를 만들 만큼 충분한 AI 독서카드가 없어요." body="공개 독후감에 AI 독서카드가 생성되면 감정 키워드와 추천 독자층이 표시됩니다." />
       )}
 
+      {hasPublicReviews && !report.aggregateAvailable && (
+        <section className="mt-5 rounded-2xl border border-cream-200 bg-cream-50 p-5">
+          <h2 className="font-serif text-lg font-bold text-brown-900">관점 집계는 조금 더 기다릴게요</h2>
+          <p className="mt-2 text-sm leading-6 text-brown-500">
+            서로 다른 독자와 공개 독후감이 각각 {report.minimumAggregateReviewCount}개 이상 쌓였을 때만 공통 키워드와 반응 차이를 표시합니다.
+          </p>
+        </section>
+      )}
+
+      {report.aggregateAvailable && (
+        <section className="mt-5 rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+          <h2 className="font-serif text-lg font-bold text-brown-900">여러 독후감에서 확인된 관점</h2>
+          <p className="mt-1 text-xs text-brown-400">AI의 추측이 아니라 사용자가 직접 선택한 키워드와 별점만 집계합니다.</p>
+          {report.commonReviewKeywords.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {report.commonReviewKeywords.map((item) => (
+                <span key={item.keyword} className="rounded-full bg-cream-100 px-3 py-1 text-sm text-brown-600">#{item.keyword} {item.count}</span>
+              ))}
+            </div>
+          )}
+          <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
+            <div className="rounded-xl bg-sage-50 p-3 text-sage-700">높은 별점<br /><b>{report.ratingDistribution.positive}</b></div>
+            <div className="rounded-xl bg-cream-50 p-3 text-brown-500">중간 별점<br /><b>{report.ratingDistribution.neutral}</b></div>
+            <div className="rounded-xl bg-rose-50 p-3 text-rose-700">낮은 별점<br /><b>{report.ratingDistribution.negative}</b></div>
+          </div>
+          {report.perspectiveNotes.length > 0 && (
+            <ul className="mt-4 space-y-2 text-sm leading-6 text-brown-600">
+              {report.perspectiveNotes.map((note) => <li key={note}>· {note}</li>)}
+            </ul>
+          )}
+        </section>
+      )}
+
       {hasCards && (
         <>
           <section className="mt-5 rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-semibold text-brown-400">대표 반응</p>
+            <p className="text-sm font-semibold text-brown-400">최근 생성된 AI 카드의 한 줄 감상</p>
             <p className="mt-2 font-serif text-xl font-bold leading-8 text-brown-900">
               {report.representativeOneLineReview ?? "대표 한 줄 감상이 아직 없어요."}
             </p>
           </section>
 
-          <section className="mt-5 rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
-            <h2 className="font-serif text-lg font-bold text-brown-900">공통 감정 키워드</h2>
-            {report.commonEmotionKeywords.length === 0 ? (
-              <p className="mt-3 text-sm text-brown-400">아직 집계할 감정 키워드가 없어요.</p>
-            ) : (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {report.commonEmotionKeywords.map((keyword) => (
-                  <span key={keyword} className="rounded-full bg-cream-100 px-3 py-1 text-sm text-brown-600">
-                    {keyword}
-                  </span>
-                ))}
-              </div>
-            )}
-          </section>
+          {report.aggregateAvailable && (
+            <section className="mt-5 rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+              <h2 className="font-serif text-lg font-bold text-brown-900">공통 감정 키워드</h2>
+              {report.commonEmotionKeywords.length === 0 ? (
+                <p className="mt-3 text-sm text-brown-400">아직 반복해서 확인된 감정 키워드가 없어요.</p>
+              ) : (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {report.commonEmotionKeywords.map((keyword) => (
+                    <span key={keyword} className="rounded-full bg-cream-100 px-3 py-1 text-sm text-brown-600">
+                      {keyword}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
 
           <section className="mt-5 grid gap-3">
-            <InsightCard title="독자들이 주목한 지점" body={report.impressivePointSummary} />
-            <InsightCard title="추천 독자층" body={report.recommendedForSummary} />
+            <InsightCard title="최근 AI 카드가 짚은 인상적인 지점" body={report.impressivePointSummary} />
+            <InsightCard title="최근 AI 카드의 추천 독자" body={report.recommendedForSummary} />
           </section>
 
           <section className="mt-8">

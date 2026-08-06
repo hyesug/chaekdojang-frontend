@@ -5,6 +5,7 @@ import Link from "next/link";
 import ReviewCard, { type Review } from "../components/ReviewCard";
 import ProfileAvatar from "../components/ProfileAvatar";
 import { API_BASE } from "../lib/api";
+import { authFetch } from "../lib/auth";
 
 const BASE = API_BASE;
 const PAGE_SIZE = 10;
@@ -17,6 +18,7 @@ type RecommendedUser = {
   profileImage: string | null;
   bio: string | null;
   overlapCount: number;
+  reasons: string[];
 };
 
 function getToken(): string | null {
@@ -71,9 +73,7 @@ export default function ExplorePage() {
   useEffect(() => {
     const token = getToken();
     if (!token) return;
-    fetch(`${BASE}/api/users/me/recommendations`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    authFetch(`${BASE}/api/users/me/recommendations`)
       .then((r) => (r.ok ? r.json() : null))
       .then((json) => {
         if (json) setRecommendedUsers(json.data ?? []);
@@ -170,7 +170,7 @@ export default function ExplorePage() {
             {recommendedUsers.map((user) => (
               <div
                 key={user.id}
-                className="flex-shrink-0 w-40 bg-white rounded-2xl border border-cream-200 p-3 flex flex-col items-center gap-2"
+                className="flex-shrink-0 w-48 bg-white rounded-2xl border border-cream-200 p-3 flex flex-col items-center gap-2"
               >
                 <Link href={`/users/${user.id}`}>
                   <ProfileAvatar src={user.profileImage} name={user.nickname} size="md" />
@@ -184,6 +184,9 @@ export default function ExplorePage() {
                   </Link>
                   {user.overlapCount > 0 && (
                     <span className="text-xs text-brown-400">{user.overlapCount}권 겹침</span>
+                  )}
+                  {user.reasons?.[0] && (
+                    <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-brown-400">{user.reasons[0]}</p>
                   )}
                 </div>
                 <button

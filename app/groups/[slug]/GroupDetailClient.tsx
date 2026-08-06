@@ -47,7 +47,8 @@ export default function GroupDetailClient({
   async function joinGroup() {
     const token = getToken();
     if (!token) {
-      router.push("/auth/login");
+      const returnTo = `${window.location.pathname}${window.location.search}`;
+      router.push(`/auth/login?returnTo=${encodeURIComponent(returnTo)}`);
       return;
     }
     setLoading(true);

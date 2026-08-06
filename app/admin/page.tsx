@@ -557,6 +557,8 @@ function getSearchKeyword(value: string) {
 
 function referrerLabel(referrer: string | null) {
   if (!referrer) return "직접 방문";
+  if (referrer === "chaekdojang://invite/kakao-reading-group") return "카카오 독서모임 초대 유입";
+  if (referrer === "chaekdojang://invite/reading-group-link") return "독서모임 초대 링크 유입";
   try {
     const host = new URL(referrer).hostname.replace(/^www\./, "");
     if (host.includes("brunch")) return "브런치";

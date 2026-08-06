@@ -34,6 +34,10 @@ export type Review = {
   likeCount: number;
   commentCount: number;
   createdAt: string;
+  previousReviewId?: number | null;
+  sourceReviewId?: number | null;
+  keywords?: string[];
+  spoiler?: boolean;
 };
 
 type Comment = {
@@ -407,6 +411,7 @@ export default function ReviewCard({
   const [showShare, setShowShare] = useState(false);
   const [copied, setCopied] = useState(false);
   const [instaCopied, setInstaCopied] = useState(false);
+  const [spoilerRevealed, setSpoilerRevealed] = useState(false);
   const canOpenHiddenDetail = hidden && isOwner;
   const currentReturnTo =
     pathname?.startsWith("/books/")
@@ -794,6 +799,16 @@ export default function ReviewCard({
           </p>
         )}
 
+        {post.keywords && post.keywords.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {post.keywords.map((keyword) => (
+              <span key={keyword} className="rounded-full bg-cream-100 px-2 py-0.5 text-[11px] text-brown-500">
+                #{keyword}
+              </span>
+            ))}
+          </div>
+        )}
+
         {/* 본문 — 짧은 감상과 본문이 함께 저장된 경우에만 첫 문단을 건너뜀 */}
         {(() => {
           const paragraphs = displayContent.split("\n\n");
@@ -804,6 +819,17 @@ export default function ReviewCard({
             ? bodyWithoutShortReview
             : displayContent.trim();
           if (!bodyText) return null;
+          if (post.spoiler && !spoilerRevealed) {
+            return (
+              <button
+                type="button"
+                onClick={() => setSpoilerRevealed(true)}
+                className="mt-3 w-full rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-700"
+              >
+                스포일러 포함 · 눌러서 내용 보기
+              </button>
+            );
+          }
           return canOpenHiddenDetail ? (
             <button
               type="button"

@@ -27,6 +27,16 @@ type BookResult = {
   sourceUrl?: string | null;
 };
 
+type RereadSource = {
+  id: number;
+  createdAt: string;
+  book: BookResult;
+};
+
+type ContinuationSource = RereadSource & {
+  authorNickname: string;
+};
+
 type SearchMode = "BOOK" | "WEB_NOVEL";
 
 type WebNovelResult = {
@@ -150,6 +160,11 @@ function WriteContent() {
   // 수정 모드: ?reviewId=123 이 있으면 기존 독후감 수정
   const reviewId = searchParams.get("reviewId");
   const isEditMode = !!reviewId;
+  const rereadFrom = searchParams.get("rereadFrom");
+  const isRereadMode = !isEditMode && !!rereadFrom;
+  const continueFrom = searchParams.get("continueFrom");
+  const isContinuationMode = !isEditMode && !isRereadMode && !!continueFrom;
+  const isLinkedWriteMode = isRereadMode || isContinuationMode;
 
   const [query, setQuery] = useState(() => searchParams.get("title") ?? "");
   const [results, setResults] = useState<BookResult[]>([]);
@@ -160,6 +175,10 @@ function WriteContent() {
   const [searching, setSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedBook, setSelectedBook] = useState<BookResult | null>(null);
+  const [rereadSource, setRereadSource] = useState<RereadSource | null>(null);
+  const [rereadLoading, setRereadLoading] = useState(isRereadMode);
+  const [continuationSource, setContinuationSource] = useState<ContinuationSource | null>(null);
+  const [continuationLoading, setContinuationLoading] = useState(isContinuationMode);
   const [webNovelCandidate, setWebNovelCandidate] = useState<WebNovelResult | null>(null);
   const [webNovelTitle, setWebNovelTitle] = useState("");
   const [webNovelAuthor, setWebNovelAuthor] = useState("");
@@ -194,13 +213,116 @@ function WriteContent() {
         setContent(fullContent);
         setRating(data.rating ?? 0);
         setIsPublic(!data.hidden);
+        setSelectedEmotions(Array.isArray(data.keywords) ? data.keywords : []);
+        setHasSpoiler(Boolean(data.spoiler));
         setGenerateAiSummary(false);
       })
       .catch(() => {});
   }, [reviewId]);
 
   useEffect(() => {
-    if (isEditMode) return; // 수정 모드에서는 URL 파라미터 책 자동선택 건너뜀
+    if (!isRereadMode || !rereadFrom) return;
+    const sourceId = Number(rereadFrom);
+    if (!Number.isSafeInteger(sourceId) || sourceId <= 0) {
+      setRereadLoading(false);
+      setError("올바르지 않은 이전 독후감 주소입니다.");
+      return;
+    }
+    let cancelled = false;
+    async function loadRereadSource() {
+      setRereadLoading(true);
+      try {
+        await authFetch(`${API_BASE}/api/users/me`, { cache: "no-store" });
+        const response = await authFetch(`${API_BASE}/api/reviews/${sourceId}`, { cache: "no-store" });
+        const json = response.ok ? await response.json() : null;
+        const data = json?.data ?? json;
+        if (!data?.book) {
+          if (!cancelled) setError("이전 독후감의 책 정보를 불러오지 못했습니다.");
+          return;
+        }
+        const book: BookResult = {
+          id: data.book.id,
+          isbn13: data.book.isbn13 ?? null,
+          title: data.book.title ?? "",
+          author: data.book.author ?? "",
+          publisher: data.book.publisher ?? "",
+          thumbnail: data.book.thumbnail ?? null,
+          source: data.book.source ?? "reread",
+          contentType: data.book.contentType === "WEB_NOVEL" ? "WEB_NOVEL" : "BOOK",
+          sourceUrl: data.book.sourceUrl ?? null,
+        };
+        if (!cancelled) {
+          setSelectedBook(book);
+          setSearchMode(book.contentType === "WEB_NOVEL" ? "WEB_NOVEL" : "BOOK");
+          setRereadSource({ id: data.id, createdAt: data.createdAt, book });
+        }
+      } catch {
+        if (!cancelled) setError("이전 독후감을 불러오지 못했습니다.");
+      } finally {
+        if (!cancelled) setRereadLoading(false);
+      }
+    }
+    loadRereadSource();
+    return () => {
+      cancelled = true;
+    };
+  }, [isRereadMode, rereadFrom]);
+
+  useEffect(() => {
+    if (!isContinuationMode || !continueFrom) return;
+    const sourceId = Number(continueFrom);
+    if (!Number.isSafeInteger(sourceId) || sourceId <= 0) {
+      setContinuationLoading(false);
+      setError("올바르지 않은 원문 독후감 주소입니다.");
+      return;
+    }
+    let cancelled = false;
+    async function loadContinuationSource() {
+      setContinuationLoading(true);
+      try {
+        await authFetch(`${API_BASE}/api/users/me`, { cache: "no-store" });
+        const response = await authFetch(`${API_BASE}/api/reviews/${sourceId}`, { cache: "no-store" });
+        const json = response.ok ? await response.json() : null;
+        const data = json?.data ?? json;
+        if (!data?.book || data.hidden) {
+          if (!cancelled) setError("공개된 원문 독후감의 책 정보를 불러오지 못했습니다.");
+          return;
+        }
+        const book: BookResult = {
+          id: data.book.id,
+          isbn13: data.book.isbn13 ?? null,
+          title: data.book.title ?? "",
+          author: data.book.author ?? "",
+          publisher: data.book.publisher ?? "",
+          thumbnail: data.book.thumbnail ?? null,
+          source: data.book.source ?? "continuation",
+          contentType: data.book.contentType === "WEB_NOVEL" ? "WEB_NOVEL" : "BOOK",
+          sourceUrl: data.book.sourceUrl ?? null,
+        };
+        if (!cancelled) {
+          setSelectedBook(book);
+          setSearchMode(book.contentType === "WEB_NOVEL" ? "WEB_NOVEL" : "BOOK");
+          setContinuationSource({
+            id: data.id,
+            createdAt: data.createdAt,
+            authorNickname: data.author?.nickname ?? "다른 독자",
+            book,
+          });
+        }
+      } catch {
+        if (!cancelled) setError("원문 독후감을 불러오지 못했습니다.");
+      } finally {
+        if (!cancelled) setContinuationLoading(false);
+      }
+    }
+    loadContinuationSource();
+    return () => {
+      cancelled = true;
+    };
+  }, [isContinuationMode, continueFrom]);
+
+  useEffect(() => {
+    if (isEditMode || isLinkedWriteMode) return; // 수정·연결 작성에서는 URL 책 자동선택 건너뜀
     const bookId = searchParams.get("bookId");
     const title = searchParams.get("title");
     const author = searchParams.get("author");
@@ -217,7 +339,7 @@ function WriteContent() {
         sourceUrl: searchParams.get("sourceUrl"),
       });
     }
-  }, [searchParams, isEditMode]);
+  }, [searchParams, isEditMode, isLinkedWriteMode]);
 
   const [rating, setRating] = useState(0);
   const [content, setContent] = useState("");
@@ -225,6 +347,7 @@ function WriteContent() {
   const [emotionInput, setEmotionInput] = useState("");
   const [selectedEmotions, setSelectedEmotions] = useState<string[]>([]);
   const [isPublic, setIsPublic] = useState(true);
+  const [hasSpoiler, setHasSpoiler] = useState(false);
   const [generateAiSummary, setGenerateAiSummary] = useState(true);
 
   const [submitting, setSubmitting] = useState(false);
@@ -471,6 +594,8 @@ function WriteContent() {
             rating,
             hidden: !isPublic,
             generateAiSummary,
+            keywords: selectedEmotions,
+            spoiler: hasSpoiler,
           }),
         });
         if (res.status === 401) { router.push("/auth/login"); return; }
@@ -487,6 +612,14 @@ function WriteContent() {
       }
 
       // ── 신규 작성 ──
+      if (isRereadMode && !rereadSource) {
+        setError("이전 독후감을 불러온 뒤 다시 시도해주세요.");
+        return;
+      }
+      if (isContinuationMode && !continuationSource) {
+        setError("원문 독후감을 불러온 뒤 다시 시도해주세요.");
+        return;
+      }
       const reviewBook = selectedBook ?? (pendingWebNovel
         ? await registerWebNovel(pendingWebNovel, pendingTitle, pendingAuthor)
         : null);
@@ -495,7 +628,17 @@ function WriteContent() {
       const res = await authFetch(`${API_BASE}/api/reviews`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bookId: reviewBook.id, rating, content: composedContent, generateAiSummary, hidden: !isPublic }),
+        body: JSON.stringify({
+          bookId: reviewBook.id,
+          rating,
+          content: composedContent,
+          generateAiSummary,
+          hidden: !isPublic,
+          previousReviewId: isRereadMode ? rereadSource?.id : null,
+          sourceReviewId: isContinuationMode ? continuationSource?.id : null,
+          keywords: selectedEmotions,
+          spoiler: hasSpoiler,
+        }),
       });
 
       if (res.status === 401) { router.push("/auth/login"); return; }
@@ -510,7 +653,7 @@ function WriteContent() {
         if (feedbackUsedForCurrentDraft) {
           trackMetric("revision_saved", "/write", 0, { reviewId: createdReview?.id ?? null, mode: "create" });
         }
-        router.push("/");
+        router.push(isLinkedWriteMode && createdReview?.id ? `/reviews/${createdReview.id}` : "/");
       } else {
         const data = await res.json().catch(() => ({}));
         setError((data as { message?: string }).message ?? "저장에 실패했습니다.");
@@ -540,10 +683,10 @@ function WriteContent() {
       )}
 
       <div className="flex items-center gap-4 mb-5">
-        {isEditMode ? (
+        {isEditMode || isLinkedWriteMode ? (
           <button
             type="button"
-            onClick={() => router.push(`/reviews/${reviewId}`)}
+            onClick={() => router.push(`/reviews/${isEditMode ? reviewId : isRereadMode ? rereadFrom : continueFrom}`)}
             className="text-sm text-brown-400 hover:text-brown-600 transition-colors"
           >
             ← 독후감으로
@@ -554,9 +697,41 @@ function WriteContent() {
           </Link>
         )}
         <h1 className="font-serif text-2xl font-bold text-brown-800">
-          {isEditMode ? "독후감 수정" : "독후감 쓰기"}
+          {isEditMode
+            ? "독후감 수정"
+            : isRereadMode
+              ? "다시 읽고 기록하기"
+              : isContinuationMode
+                ? "이 글을 읽고 내 생각 남기기"
+                : "독후감 쓰기"}
         </h1>
       </div>
+
+      {isRereadMode && (
+        <div className="mb-5 rounded-2xl border border-sage-300 bg-cream-50 px-4 py-3 text-sm text-brown-600">
+          <p className="font-semibold text-brown-700">이전 독후감은 그대로 보관됩니다.</p>
+          <p className="mt-1 text-xs leading-5 text-brown-400">
+            {rereadSource
+              ? `${new Date(rereadSource.createdAt).toLocaleDateString("ko-KR")} 기록에 이어 새로운 생각을 남깁니다.`
+              : rereadLoading
+                ? "이전 기록과 책 정보를 불러오는 중입니다."
+                : "이전 기록을 불러오지 못했습니다."}
+          </p>
+        </div>
+      )}
+
+      {isContinuationMode && (
+        <div className="mb-5 rounded-2xl border border-sage-300 bg-sage-50 px-4 py-3 text-sm text-brown-600">
+          <p className="font-semibold text-brown-700">원문을 복사하지 않고 내 독후감을 새로 작성합니다.</p>
+          <p className="mt-1 text-xs leading-5 text-brown-400">
+            {continuationSource
+              ? `${continuationSource.authorNickname}님의 독후감과 같은 책으로 생각을 이어갑니다.`
+              : continuationLoading
+                ? "원문 기록과 책 정보를 불러오는 중입니다."
+                : "원문 기록을 불러오지 못했습니다."}
+          </p>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
 
@@ -594,19 +769,27 @@ function WriteContent() {
                   </a>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedBook(null);
-                  setResults([]);
-                  setWebNovelResults([]);
-                  setQuery("");
-                  setHasSearched(false);
-                }}
-                className="text-xs text-brown-400 hover:text-brown-600 transition-colors ml-2 flex-shrink-0"
-              >
-                변경
-              </button>
+              {!isLinkedWriteMode && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedBook(null);
+                    setResults([]);
+                    setWebNovelResults([]);
+                    setQuery("");
+                    setHasSearched(false);
+                  }}
+                  className="text-xs text-brown-400 hover:text-brown-600 transition-colors ml-2 flex-shrink-0"
+                >
+                  변경
+                </button>
+              )}
+            </div>
+          ) : isLinkedWriteMode ? (
+            <div className="rounded-xl border border-cream-200 bg-cream-50 px-4 py-5 text-sm text-brown-400">
+              {(isRereadMode ? rereadLoading : continuationLoading)
+                ? "연결된 독후감의 책 정보를 불러오는 중입니다."
+                : "책 정보를 불러올 수 없습니다."}
             </div>
           ) : (
             <>
@@ -913,6 +1096,18 @@ function WriteContent() {
               </label>
               <label className="flex items-center justify-between gap-3 rounded-xl bg-cream-50 px-4 py-3">
                 <span>
+                  <span className="block text-sm font-medium text-brown-700">스포일러 포함</span>
+                  <span className="mt-0.5 block text-xs text-brown-400">독자가 직접 열기 전까지 목록과 상세에서 본문을 가립니다.</span>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={hasSpoiler}
+                  onChange={(event) => setHasSpoiler(event.target.checked)}
+                  className="h-5 w-5 rounded border-cream-300 text-brown-700 focus:ring-brown-300"
+                />
+              </label>
+              <label className="flex items-center justify-between gap-3 rounded-xl bg-cream-50 px-4 py-3">
+                <span>
                   <span className="block text-sm font-medium text-brown-700">
                     {isEditMode ? "AI 독서카드 다시 만들기" : "AI 독서카드 만들기"}
                   </span>
@@ -1129,7 +1324,7 @@ function WriteContent() {
           disabled={submitting}
           className="hidden sm:block w-full py-3 bg-brown-600 text-white rounded-xl font-medium hover:bg-brown-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {submitting ? "저장 중..." : isEditMode ? "수정 완료" : "독후감 올리기"}
+          {submitting ? "저장 중..." : isEditMode ? "수정 완료" : isRereadMode ? "재독 기록 남기기" : isContinuationMode ? "내 생각 남기기" : "독후감 올리기"}
         </button>
 
         <div className="fixed left-0 right-0 bottom-0 z-40 bg-white/95 backdrop-blur border-t border-cream-200 px-4 py-3 sm:hidden">
@@ -1147,7 +1342,7 @@ function WriteContent() {
             disabled={submitting}
             className="w-full py-3 bg-brown-700 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {submitting ? "저장 중..." : isEditMode ? "수정 완료" : "독후감 올리기"}
+            {submitting ? "저장 중..." : isEditMode ? "수정 완료" : isRereadMode ? "재독 기록 남기기" : isContinuationMode ? "내 생각 남기기" : "독후감 올리기"}
           </button>
           </div>
         </div>

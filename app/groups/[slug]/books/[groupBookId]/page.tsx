@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import BackButton from "../../../../components/BackButton";
 import { SITE_URL } from "../../../../lib/serverApi";
 import { fetchGroupApiData } from "../../../groupServerApi";
+import ReadingGroupQuestions from "./ReadingGroupQuestions";
 
 type ReadingGroupBook = {
   id: number;
@@ -127,6 +128,8 @@ export default async function GroupBookReviewsPage({ params }: Props) {
           </div>
         </div>
       </section>
+
+      <ReadingGroupQuestions slug={group.slug} groupBookId={groupBookId} />
 
       <section className="mt-6 space-y-4">
         {reviews.map((review) => {

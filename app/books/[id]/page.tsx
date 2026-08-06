@@ -220,11 +220,6 @@ export default async function BookDetailPage({ params, searchParams }: Props) {
             <h1 className="font-serif text-2xl font-bold text-brown-900">{book.title}</h1>
             <p className="mt-1 text-sm text-brown-600">{book.author}</p>
             {book.publisher && <p className="text-sm text-brown-500">{book.publisher}</p>}
-            {book.description && (
-              <p className="mt-3 line-clamp-2 text-sm leading-6 text-brown-600">
-                {book.description}
-              </p>
-            )}
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <Link
                 href={writeHref(book)}
@@ -241,6 +236,20 @@ export default async function BookDetailPage({ params, searchParams }: Props) {
             </div>
           </div>
         </div>
+      </section>
+
+      <section className="mt-5 rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+        <p className="text-xs font-semibold text-brown-400">책 소개</p>
+        <h2 className="mt-1 font-serif text-xl font-bold text-brown-900">책 줄거리</h2>
+        {book.synopsis ? (
+          <p className="mt-3 line-clamp-5 whitespace-pre-line text-sm leading-7 text-brown-600">
+            {book.synopsis}
+          </p>
+        ) : (
+          <p className="mt-3 rounded-xl bg-cream-50 px-4 py-4 text-sm text-brown-400">
+            아직 제공된 줄거리 정보가 없어요.
+          </p>
+        )}
       </section>
 
       <section className="mt-5 space-y-4">

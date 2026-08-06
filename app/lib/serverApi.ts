@@ -75,6 +75,7 @@ export type PublicBookDetail = {
   thumbnail: string | null;
   slug: string | null;
   description: string | null;
+  synopsis: string | null;
   publishedYear: number | null;
   seoTitle: string | null;
   seoDescription: string | null;

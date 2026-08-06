@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import AiReadingCard from "../../../../../components/AiReadingCard";
 import type { AiReadingCardData } from "../../../../../lib/aiReadingCard";
 import { fetchAuthenticatedApiData } from "../../../../../lib/serverApi";
+import GroupAnalysisPanel, { type GroupAnalysis } from "./GroupAnalysisPanel";
 
 type Props = {
   params: Promise<{ slug: string; groupBookId: string }>;
@@ -11,6 +12,7 @@ type Props = {
 type GroupBookResult = {
   groupName: string;
   groupSlug: string;
+  canManage: boolean;
   book: {
     id: number;
     title: string;
@@ -19,8 +21,11 @@ type GroupBookResult = {
   };
   participantCount: number;
   reviewCount: number;
+  averageRating: number;
+  generatedCardCount: number;
   commonEmotionKeywords: string[];
   representativeOneLineReview: string | null;
+  analysis: GroupAnalysis | null;
   cards: Array<{
     reviewId: number;
     authorNickname: string;
@@ -60,7 +65,7 @@ export default async function GroupBookResultPage({ params }: Props) {
           {result.groupName} 독서 결과
         </h1>
         <p className="mt-3 text-sm leading-6 text-brown-500">
-          같은 책을 읽은 사람들이 남긴 독후감을 AI 독서카드로 모았습니다.
+          함께 읽은 독후감의 공통점과 서로 다른 해석을 모임 전체 결과로 정리합니다.
         </p>
       </section>
 
@@ -71,51 +76,46 @@ export default async function GroupBookResultPage({ params }: Props) {
             <h2 className="mt-1 font-serif text-2xl font-bold text-brown-800">{result.book.title}</h2>
             <p className="text-sm text-brown-500">{result.book.author}</p>
           </div>
-          <div className="rounded-lg bg-cream-50 px-4 py-3">
-            <p className="text-xs text-brown-300">참여자 수</p>
-            <p className="mt-1 text-xl font-bold text-brown-800">{result.participantCount}명</p>
-          </div>
         </div>
-        {hasReviews && (
-          <div className="mt-5 grid gap-4 sm:grid-cols-2">
-            <div>
-              <p className="text-xs text-brown-300">대표 한 줄 감상</p>
-              <p className="mt-1 text-sm font-semibold text-brown-700">
-                {result.representativeOneLineReview ?? "아직 생성된 AI 감상이 없어요."}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-brown-300">공통 감정 키워드</p>
-              {result.commonEmotionKeywords.length > 0 ? (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {result.commonEmotionKeywords.map((keyword) => (
-                    <span key={keyword} className="rounded-full bg-cream-100 px-3 py-1 text-sm text-brown-600">
-                      {keyword}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <p className="mt-1 text-sm text-brown-400">아직 생성된 감정 키워드가 없어요.</p>
-              )}
-            </div>
-          </div>
-        )}
+        <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+          <Stat label="참여 독자" value={`${result.participantCount}명`} />
+          <Stat label="독후감" value={`${result.reviewCount}개`} />
+          <Stat label="평균 별점" value={result.reviewCount > 0 ? result.averageRating.toFixed(1) : "0.0"} />
+          <Stat label="AI 분석 완료" value={`${result.generatedCardCount}/${result.reviewCount}`} />
+        </div>
       </section>
+
+      <GroupAnalysisPanel
+        slug={slug}
+        groupBookId={groupBookId}
+        reviewCount={result.reviewCount}
+        canManage={result.canManage}
+        initialAnalysis={result.analysis}
+      />
 
       {!hasReviews ? (
         <section className="rounded-2xl border border-cream-200 bg-white py-16 text-center text-brown-400">
           <p>아직 이 책에 등록된 독후감이 없어요.</p>
           <p className="mt-1 text-sm">독후감이 등록되면 AI 결과를 확인할 수 있어요.</p>
         </section>
-      ) : cards.length > 0 ? (
-        <section className="grid gap-4 md:grid-cols-3">
-          {cards.map((card) => (
-            <AiReadingCard key={`${card.authorNickname}-${card.oneLineReview}`} card={card} compact />
-          ))}
-        </section>
       ) : (
-        <section className="rounded-2xl border border-cream-200 bg-white py-16 text-center text-brown-400">
-          <p>AI 결과가 아직 준비되지 않았어요.</p>
+        <section>
+          <div className="mb-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brown-400">독자별 결과</p>
+            <h2 className="mt-1 font-serif text-2xl font-bold text-brown-900">각자의 AI 독서카드</h2>
+            <p className="mt-2 text-sm text-brown-500">독후감 작성자가 AI 독서카드를 만든 경우에 표시됩니다.</p>
+          </div>
+          {cards.length > 0 ? (
+            <div className="grid gap-5 md:grid-cols-2">
+              {cards.map((card) => (
+                <AiReadingCard key={`${card.authorNickname}-${card.oneLineReview}`} card={card} />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-cream-200 bg-white py-12 text-center text-brown-400">
+              아직 생성된 독자별 AI 독서카드가 없어요.
+            </div>
+          )}
         </section>
       )}
 
@@ -128,5 +128,14 @@ export default async function GroupBookResultPage({ params }: Props) {
         </Link>
       </div>
     </main>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl bg-cream-50 px-4 py-3">
+      <p className="text-xs text-brown-400">{label}</p>
+      <p className="mt-1 font-serif text-xl font-bold text-brown-800">{value}</p>
+    </div>
   );
 }

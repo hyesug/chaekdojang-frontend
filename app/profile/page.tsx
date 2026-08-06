@@ -1021,24 +1021,30 @@ export default function ProfilePage() {
       </div>
 
       {/* 빠른 메뉴 */}
-      <div className="flex gap-2 mb-6">
+      <div className="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Link
           href="/bookmarks"
-          className="flex-1 py-3 rounded-2xl border border-cream-200 bg-white text-center text-sm text-brown-600 hover:bg-cream-50 hover:shadow-sm transition-all"
+          className="py-3 rounded-2xl border border-cream-200 bg-white text-center text-sm text-brown-600 hover:bg-cream-50 hover:shadow-sm transition-all"
         >
           🔖 저장한 독후감
         </Link>
         <Link
           href="/library"
-          className="flex-1 py-3 rounded-2xl border border-cream-200 bg-white text-center text-sm text-brown-600 hover:bg-cream-50 hover:shadow-sm transition-all"
+          className="py-3 rounded-2xl border border-cream-200 bg-white text-center text-sm text-brown-600 hover:bg-cream-50 hover:shadow-sm transition-all"
         >
           📚 내 서재
         </Link>
         <Link
           href="/calendar"
-          className="flex-1 py-3 rounded-2xl border border-cream-200 bg-white text-center text-sm text-brown-600 hover:bg-cream-50 hover:shadow-sm transition-all"
+          className="py-3 rounded-2xl border border-cream-200 bg-white text-center text-sm text-brown-600 hover:bg-cream-50 hover:shadow-sm transition-all"
         >
-          월별 캘린더
+          🗓️ 월별 캘린더
+        </Link>
+        <Link
+          href="/stats"
+          className="py-3 rounded-2xl border border-cream-200 bg-white text-center text-sm text-brown-600 hover:bg-cream-50 hover:shadow-sm transition-all"
+        >
+          🗺️ 독서 인생지도
         </Link>
       </div>
       <Link

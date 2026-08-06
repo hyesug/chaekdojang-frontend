@@ -11,13 +11,14 @@ const navLinks = [
   { href: "/write", label: "독후감 쓰기" },
   { href: "/dojangdan", label: "도장단" },
   { href: "/groups", label: "독서모임" },
+  { href: "/stats", label: "독서 인생지도" },
   { href: "/cs", label: "고객센터" },
 ];
 
 export default function Header() {
   return (
     <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-sm border-b border-cream-200">
-      <div className="max-w-4xl mx-auto px-4 h-16 flex items-center gap-4">
+      <div className="max-w-6xl mx-auto px-4 h-16 flex items-center gap-4">
         <Link
           href="/"
           aria-label="책도장 홈으로 이동"
@@ -27,7 +28,7 @@ export default function Header() {
           책도장
         </Link>
 
-        <nav className="hidden md:flex flex-1 items-center justify-center gap-5">
+        <nav className="hidden md:flex flex-1 items-center justify-center gap-4">
           {navLinks.map(({ href, label }) => (
             <Link
               key={href}

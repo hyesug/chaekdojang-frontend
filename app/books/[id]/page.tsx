@@ -243,7 +243,7 @@ export default async function BookDetailPage({ params, searchParams }: Props) {
         <p className="text-xs font-semibold text-brown-400">{isWebNovel ? "웹소설 소개" : "책 소개"}</p>
         <h2 className="mt-1 font-serif text-xl font-bold text-brown-900">{isWebNovel ? "작품 소개" : "책 줄거리"}</h2>
         {book.synopsis ? (
-          <p className="mt-3 line-clamp-5 whitespace-pre-line text-sm leading-7 text-brown-600">
+          <p className="mt-3 whitespace-pre-line text-sm leading-7 text-brown-600">
             {book.synopsis}
           </p>
         ) : (

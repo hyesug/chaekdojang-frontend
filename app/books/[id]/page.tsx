@@ -286,7 +286,7 @@ export default async function BookDetailPage({ params, searchParams }: Props) {
           <h2 className="font-serif text-lg font-bold text-brown-900">한 줄 감상 모아보기</h2>
           {oneLines.length === 0 ? (
             <p className="mt-3 rounded-xl bg-cream-50 px-4 py-5 text-center text-sm text-brown-400">
-              아직 한 줄 감상이 없습니다. 독후감을 남기면 이 책의 감상 모음에 표시됩니다.
+              아직 한 줄 감상이 없습니다. 독후감을 남기면 이 {isWebNovel ? "작품" : "책"}의 감상 모음에 표시됩니다.
             </p>
           ) : (
             <ul className="mt-3 space-y-2">
@@ -303,7 +303,7 @@ export default async function BookDetailPage({ params, searchParams }: Props) {
       <section className="mt-8">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-serif text-xl font-bold text-brown-900">
-            이 책을 읽은 사람들의 독후감{" "}
+            이 {isWebNovel ? "작품" : "책"}을 읽은 사람들의 독후감{" "}
             <span className="font-sans text-base font-normal text-brown-400">{book.reviewCount}개</span>
           </h2>
           <div className="flex rounded-full border border-cream-200 bg-white p-1">
@@ -343,7 +343,7 @@ export default async function BookDetailPage({ params, searchParams }: Props) {
               href={writeHref(book)}
               className="mt-5 inline-flex rounded-full bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800"
             >
-              나도 이 책에 도장 찍기
+              나도 이 {isWebNovel ? "작품" : "책"}에 도장 찍기
             </Link>
           </div>
         ) : (

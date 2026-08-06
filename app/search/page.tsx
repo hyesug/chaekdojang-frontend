@@ -281,6 +281,7 @@ function SearchContent() {
           author: novel.author,
           platform: novel.platform,
           sourceUrl: novel.sourceUrl,
+          description: novel.description,
         }),
       });
       if (res.status === 401) {

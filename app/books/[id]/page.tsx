@@ -155,6 +155,7 @@ export default async function BookDetailPage({ params, searchParams }: Props) {
   const sort = normalizeSort(query?.sort);
   const book = await getPublicBook(id);
   if (!book) notFound();
+  const isWebNovel = book.contentType === "WEB_NOVEL";
 
   const reviews = await getBookReviews(book.id, sort);
   const emotionKeywords = commonEmotionKeywords(reviews);
@@ -225,7 +226,7 @@ export default async function BookDetailPage({ params, searchParams }: Props) {
                 href={writeHref(book)}
                 className="rounded-full bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800"
               >
-                나도 이 책에 도장 찍기
+                나도 이 {isWebNovel ? "작품" : "책"}에 도장 찍기
               </Link>
               <Link
                 href={`/books/${book.id}/reaction-report`}
@@ -239,15 +240,15 @@ export default async function BookDetailPage({ params, searchParams }: Props) {
       </section>
 
       <section className="mt-5 rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
-        <p className="text-xs font-semibold text-brown-400">책 소개</p>
-        <h2 className="mt-1 font-serif text-xl font-bold text-brown-900">책 줄거리</h2>
+        <p className="text-xs font-semibold text-brown-400">{isWebNovel ? "웹소설 소개" : "책 소개"}</p>
+        <h2 className="mt-1 font-serif text-xl font-bold text-brown-900">{isWebNovel ? "작품 소개" : "책 줄거리"}</h2>
         {book.synopsis ? (
           <p className="mt-3 line-clamp-5 whitespace-pre-line text-sm leading-7 text-brown-600">
             {book.synopsis}
           </p>
         ) : (
           <p className="mt-3 rounded-xl bg-cream-50 px-4 py-4 text-sm text-brown-400">
-            아직 제공된 줄거리 정보가 없어요.
+            아직 제공된 {isWebNovel ? "작품 소개" : "줄거리"} 정보가 없어요.
           </p>
         )}
       </section>
@@ -255,7 +256,7 @@ export default async function BookDetailPage({ params, searchParams }: Props) {
       <section className="mt-5 space-y-4">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <div className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
-            <p className="text-xs font-medium text-brown-400">이 책에 찍힌 도장</p>
+            <p className="text-xs font-medium text-brown-400">이 {isWebNovel ? "작품" : "책"}에 찍힌 도장</p>
             <p className="mt-1 font-serif text-2xl font-bold text-brown-900">{book.reviewCount}개</p>
           </div>
           <div className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">

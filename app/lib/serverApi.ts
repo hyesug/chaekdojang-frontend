@@ -69,6 +69,7 @@ export type BookDetail = {
 export type PublicBookDetail = {
   id: number;
   isbn13?: string;
+  contentType: "BOOK" | "WEB_NOVEL";
   title: string;
   author: string;
   publisher?: string;

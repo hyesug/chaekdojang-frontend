@@ -464,6 +464,7 @@ function WriteContent() {
           author: author.trim(),
           platform: candidate.platform,
           sourceUrl: candidate.sourceUrl,
+          description: candidate.description,
         }),
       });
       if (res.status === 401) {

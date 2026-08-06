@@ -233,12 +233,6 @@ export default async function BookDetailPage({ params, searchParams }: Props) {
                 나도 이 책에 도장 찍기
               </Link>
               <Link
-                href={`/books/${book.id}/reviews`}
-                className="rounded-full border border-brown-300 bg-cream-50 px-3 py-2 text-xs font-semibold text-brown-700 hover:border-brown-500 hover:bg-cream-100"
-              >
-                책별 생각 모아보기
-              </Link>
-              <Link
                 href={`/books/${book.id}/reaction-report`}
                 className="rounded-full border border-cream-300 px-3 py-2 text-xs font-medium text-brown-500 hover:bg-cream-50 hover:text-brown-800"
               >
@@ -279,14 +273,7 @@ export default async function BookDetailPage({ params, searchParams }: Props) {
         )}
 
         <div className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="font-serif text-lg font-bold text-brown-900">한 줄 감상 모아보기</h2>
-            {reviews.length > 5 && (
-              <Link href={`/books/${book.id}/reviews`} className="text-xs font-medium text-brown-400 hover:text-brown-700">
-                더보기
-              </Link>
-            )}
-          </div>
+          <h2 className="font-serif text-lg font-bold text-brown-900">한 줄 감상 모아보기</h2>
           {oneLines.length === 0 ? (
             <p className="mt-3 rounded-xl bg-cream-50 px-4 py-5 text-center text-sm text-brown-400">
               아직 한 줄 감상이 없습니다. 독후감을 남기면 이 책의 감상 모음에 표시됩니다.

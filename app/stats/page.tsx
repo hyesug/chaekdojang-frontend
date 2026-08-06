@@ -159,7 +159,7 @@ export default function StatsPage() {
           <h2 className="font-serif text-xl font-bold text-brown-900">다시 읽고 기록한 책</h2>
           <div className="mt-3 space-y-2">
             {data.rereadBooks.map((book) => (
-              <Link key={book.bookId} href={`/books/${book.bookId}/reviews`} className="flex items-center justify-between rounded-xl border border-cream-200 bg-white px-4 py-3 hover:bg-cream-50">
+              <Link key={book.bookId} href={`/books/${book.bookId}`} className="flex items-center justify-between rounded-xl border border-cream-200 bg-white px-4 py-3 hover:bg-cream-50">
                 <span className="font-medium text-brown-700">{book.title}</span>
                 <span className="text-xs text-brown-400">기록 {book.recordCount}회</span>
               </Link>

@@ -1671,7 +1671,7 @@ export default function AdminPage() {
                   <h2 className="font-serif text-lg font-bold text-brown-900">책별 독후감 TOP 5</h2>
                   <div className="mt-3 space-y-3">
                     {bookStats.slice(0, 5).map((book) => (
-                      <Link key={book.bookId} href={`/books/${book.bookId}/reviews`} className="block rounded-xl bg-cream-50 p-3 hover:bg-cream-100">
+                      <Link key={book.bookId} href={`/books/${book.bookId}`} className="block rounded-xl bg-cream-50 p-3 hover:bg-cream-100">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className="truncate font-medium text-brown-800">{book.title}</p>

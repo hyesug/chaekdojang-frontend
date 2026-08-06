@@ -118,6 +118,7 @@ export default function StatsPage() {
 
         <section className="rounded-2xl border border-cream-200 bg-white p-5">
           <h2 className="font-serif text-lg font-bold text-brown-900">해마다 머문 장르</h2>
+          <p className="mt-1 text-xs leading-5 text-brown-400">책 소개를 바탕으로 넓은 장르로 묶어 보여드려요.</p>
           {data.genreTimeline.length > 0 ? (
             <div className="mt-3 space-y-3">
               {Array.from(new Set(data.genreTimeline.map((item) => item.year))).map((year) => (

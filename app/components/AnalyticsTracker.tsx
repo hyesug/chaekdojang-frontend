@@ -18,7 +18,6 @@ function deviceType() {
 export function trackMetric(eventType: string, path?: string, durationMs = 0, meta?: Record<string, unknown>) {
   if (typeof window === "undefined") return;
   const currentPath = path ?? window.location.pathname;
-  if (currentPath.startsWith("/admin")) return;
   const inviteTracking = groupInviteTracking(window.location.pathname, window.location.search);
 
   const body = JSON.stringify({

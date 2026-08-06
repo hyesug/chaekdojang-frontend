@@ -186,7 +186,7 @@ export default async function GroupPage({ params }: Props) {
       )}
 
       {!privateContentLocked && (
-        <GroupManageClient slug={group.slug} manager={group.manager} member={group.member} visibility={group.visibility} joinPolicy={group.joinPolicy} notice={group.notice} books={group.books.map((book) => ({ id: book.id, title: book.title, bookId: book.bookId, status: book.status, deadline: book.deadline }))} />
+        <GroupManageClient slug={group.slug} manager={group.manager} member={group.member} visibility={group.visibility} joinPolicy={group.joinPolicy} notice={group.notice} books={group.books.map((book) => ({ id: book.id, title: book.title, bookId: book.bookId, status: book.status, deadline: book.deadline, note: book.note }))} />
       )}
 
       {!privateContentLocked && <section className="mt-8">
@@ -226,7 +226,7 @@ export default async function GroupPage({ params }: Props) {
                   {item.note && <p className="mt-2 text-sm text-brown-400">{item.note}</p>}
                   <div className="mt-4 flex flex-wrap gap-2">
                     <Link href={`/groups/${group.slug}/books/${item.id}`} className="rounded-full bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800">
-                      그룹 독후감 {item.reviewCount}개 보기
+                      질문·중간 생각 / 독후감 {item.reviewCount}개
                     </Link>
                     <Link href={`/books/${bookPathSegment(item.bookId, item.slug)}`} className="rounded-full border border-cream-300 px-4 py-2 text-sm text-brown-600 hover:bg-cream-50">
                       책 상세

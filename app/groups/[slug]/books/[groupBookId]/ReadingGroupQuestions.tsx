@@ -150,7 +150,7 @@ export default function ReadingGroupQuestions({ slug, groupBookId }: { slug: str
   if (!data) return null;
 
   return (
-    <section className="mt-6 rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+    <section id="questions" className="mt-6 scroll-mt-24 rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-green-700">함께 읽는 중</p>
         <h2 className="mt-1 font-serif text-xl font-bold text-brown-900">모임 질문과 중간 생각</h2>

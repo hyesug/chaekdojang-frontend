@@ -1,13 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { API_BASE } from "../../lib/api";
 import { authFetch, getValidToken } from "../../lib/auth";
 import BookSearchSelect from "./BookSearchSelect";
 
 type GroupBookStatus = "UPCOMING" | "READING" | "COMPLETED";
-type GroupBook = { id: number; title: string; bookId: number; status: GroupBookStatus; deadline: string | null };
+type GroupBook = { id: number; title: string; bookId: number; status: GroupBookStatus; deadline: string | null; note: string | null };
 type GroupMember = {
   id: number;
   userId: number;
@@ -185,19 +186,41 @@ export default function GroupManageClient({ slug, manager, member, visibility, j
     const formData = new FormData(event.currentTarget);
     const status = String(formData.get("status")) as GroupBookStatus;
     const deadline = String(formData.get("deadline") ?? "");
+    const note = String(formData.get("note") ?? "").trim();
     setLoading(true);
     setMessage("");
     try {
       const res = await authFetch(`${API_BASE}/api/groups/${slug}/books/${groupBookId}/progress`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status, deadline: deadline || null }),
+        body: JSON.stringify({ status, deadline: deadline || null, note: note || null }),
       });
       if (!res.ok) throw new Error(await res.text());
-      setMessage("책 진행 상태를 저장했어요.");
+      setMessage("책 진행 정보와 메모를 저장했어요.");
       router.refresh();
     } catch {
-      setMessage("책 진행 상태를 저장하지 못했어요.");
+      setMessage("책 진행 정보와 메모를 저장하지 못했어요.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function removeBook(groupBookId: number, title: string) {
+    const token = getToken();
+    if (!token) { router.push("/auth/login"); return; }
+    if (!window.confirm(`'${title}' 연결을 끊을까요?\n\n모임에 연결된 독후감과 질문·중간 생각은 모임에서 사라지지만, 독후감 원문은 삭제되지 않습니다.`)) return;
+    setLoading(true);
+    setMessage("");
+    try {
+      const res = await authFetch(`${API_BASE}/api/groups/${slug}/books/${groupBookId}`, {
+        method: "DELETE",
+      });
+      if (res.status === 401) { router.push("/auth/login"); return; }
+      if (!res.ok) throw new Error(await res.text());
+      setMessage("선정 책 연결을 끊었어요.");
+      router.refresh();
+    } catch {
+      setMessage("선정 책 연결을 끊지 못했어요. 권한을 확인해주세요.");
     } finally {
       setLoading(false);
     }
@@ -441,7 +464,7 @@ export default function GroupManageClient({ slug, manager, member, visibility, j
           <div className="space-y-3 rounded-2xl bg-cream-50 p-4 lg:col-span-2">
             <div>
               <p className="text-sm font-semibold text-brown-700">책 진행 상태</p>
-              <p className="mt-1 text-xs text-brown-400">선정 책마다 다음 책·읽는 중·완독 상태와 마감일을 설정할 수 있어요.</p>
+              <p className="mt-1 text-xs text-brown-400">선정 책마다 회차·기간 메모, 진행 상태, 마감일을 수정하거나 연결을 끊을 수 있어요.</p>
             </div>
             <div className="grid gap-3 lg:grid-cols-2">
               {books.map((book) => (
@@ -461,9 +484,21 @@ export default function GroupManageClient({ slug, manager, member, visibility, j
                       <input name="deadline" type="date" defaultValue={book.deadline ?? ""} className="w-full rounded-lg border border-cream-300 bg-white px-3 py-2 text-sm text-brown-700 focus:border-brown-400 focus:outline-none" />
                     </label>
                   </div>
-                  <button disabled={loading} className="w-full rounded-lg border border-cream-300 px-3 py-2 text-sm font-semibold text-brown-600 hover:bg-cream-100 disabled:opacity-50">
-                    상태 저장
-                  </button>
+                  <label className="block space-y-1 text-xs text-brown-500">
+                    <span>회차/기간 메모</span>
+                    <input name="note" type="text" maxLength={200} defaultValue={book.note ?? ""} placeholder="예: 2회차 · 8월 1일~15일" className="w-full rounded-lg border border-cream-300 bg-white px-3 py-2 text-sm text-brown-700 focus:border-brown-400 focus:outline-none" />
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    <button disabled={loading} className="min-w-36 flex-1 rounded-lg border border-cream-300 px-3 py-2 text-sm font-semibold text-brown-600 hover:bg-cream-100 disabled:opacity-50">
+                      수정 저장
+                    </button>
+                    <Link href={`/groups/${encodeURIComponent(slug)}/books/${book.id}#questions`} className="rounded-lg border border-green-200 px-3 py-2 text-sm font-semibold text-green-700 hover:bg-green-50">
+                      질문 관리
+                    </Link>
+                    <button type="button" disabled={loading} onClick={() => removeBook(book.id, book.title)} className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-500 hover:bg-red-50 disabled:opacity-50">
+                      책 연결 끊기
+                    </button>
+                  </div>
                 </form>
               ))}
             </div>

@@ -32,8 +32,10 @@ function getToken() {
   return getValidToken();
 }
 
-export default function GroupManageClient({ slug, manager, member, visibility, joinPolicy, notice, books }: { slug: string; manager: boolean; member: boolean; visibility: "PUBLIC" | "PRIVATE"; joinPolicy: JoinPolicy; notice: string | null; books: GroupBook[] }) {
+export default function GroupManageClient({ slug, manager: initialManager, member: initialMember, visibility, joinPolicy, notice, books }: { slug: string; manager: boolean; member: boolean; visibility: "PUBLIC" | "PRIVATE"; joinPolicy: JoinPolicy; notice: string | null; books: GroupBook[] }) {
   const router = useRouter();
+  const [manager, setManager] = useState(initialManager);
+  const [member, setMember] = useState(initialMember);
   const [bookId, setBookId] = useState("");
   const [note, setNote] = useState("");
   const [noticeText, setNoticeText] = useState(notice ?? "");
@@ -48,6 +50,22 @@ export default function GroupManageClient({ slug, manager, member, visibility, j
   const [pendingMembers, setPendingMembers] = useState<GroupMember[]>([]);
   const [approvedMembers, setApprovedMembers] = useState<GroupMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    authFetch(`${API_BASE}/api/groups/${encodeURIComponent(slug)}`)
+      .then(async (response) => {
+        if (!response.ok) return;
+        const json = await response.json();
+        const group = json.data ?? json;
+        if (!cancelled) {
+          setManager(Boolean(group.manager));
+          setMember(Boolean(group.member) || Boolean(group.manager));
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [slug]);
 
   const loadMembers = useCallback(async () => {
     if (!manager) return;
@@ -208,7 +226,7 @@ export default function GroupManageClient({ slug, manager, member, visibility, j
   async function removeBook(groupBookId: number, title: string) {
     const token = getToken();
     if (!token) { router.push("/auth/login"); return; }
-    if (!window.confirm(`'${title}' 연결을 끊을까요?\n\n모임에 연결된 독후감과 질문·중간 생각은 모임에서 사라지지만, 독후감 원문은 삭제되지 않습니다.`)) return;
+    if (!window.confirm(`'${title}' 선정을 취소할까요?\n\n모임에 연결된 독후감과 질문·중간 생각은 모임에서 사라지지만, 독후감 원문은 삭제되지 않습니다.`)) return;
     setLoading(true);
     setMessage("");
     try {
@@ -217,10 +235,10 @@ export default function GroupManageClient({ slug, manager, member, visibility, j
       });
       if (res.status === 401) { router.push("/auth/login"); return; }
       if (!res.ok) throw new Error(await res.text());
-      setMessage("선정 책 연결을 끊었어요.");
+      setMessage("선정 책을 취소했어요.");
       router.refresh();
     } catch {
-      setMessage("선정 책 연결을 끊지 못했어요. 권한을 확인해주세요.");
+      setMessage("선정 책 취소를 처리하지 못했어요. 권한을 확인해주세요.");
     } finally {
       setLoading(false);
     }
@@ -490,13 +508,13 @@ export default function GroupManageClient({ slug, manager, member, visibility, j
                   </label>
                   <div className="flex flex-wrap gap-2">
                     <button disabled={loading} className="min-w-36 flex-1 rounded-lg border border-cream-300 px-3 py-2 text-sm font-semibold text-brown-600 hover:bg-cream-100 disabled:opacity-50">
-                      수정 저장
+                      저장
                     </button>
                     <Link href={`/groups/${encodeURIComponent(slug)}/books/${book.id}#questions`} className="rounded-lg border border-green-200 px-3 py-2 text-sm font-semibold text-green-700 hover:bg-green-50">
                       질문 관리
                     </Link>
                     <button type="button" disabled={loading} onClick={() => removeBook(book.id, book.title)} className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-500 hover:bg-red-50 disabled:opacity-50">
-                      책 연결 끊기
+                      선정 책 취소
                     </button>
                   </div>
                 </form>

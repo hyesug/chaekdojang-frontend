@@ -46,6 +46,7 @@ async function errorMessage(response: Response, fallback: string) {
 export default function ReadingGroupQuestions({ slug, groupBookId }: { slug: string; groupBookId: string }) {
   const [data, setData] = useState<QuestionList | null>(null);
   const [questionDrafts, setQuestionDrafts] = useState<Record<number, string>>({});
+  const [editingQuestions, setEditingQuestions] = useState<Record<number, boolean>>({});
   const [answerDrafts, setAnswerDrafts] = useState<Record<number, string>>({});
   const [newQuestion, setNewQuestion] = useState("");
   const [loading, setLoading] = useState(true);
@@ -113,11 +114,22 @@ export default function ReadingGroupQuestions({ slug, groupBookId }: { slug: str
   async function updateQuestion(questionId: number) {
     const question = questionDrafts[questionId]?.trim();
     if (!question) return;
-    await request(`/${questionId}`, {
+    const saved = await request(`/${questionId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ question }),
     }, "질문을 수정했어요.");
+    if (saved) setEditingQuestions((current) => ({ ...current, [questionId]: false }));
+  }
+
+  function startEditingQuestion(question: Question) {
+    setQuestionDrafts((current) => ({ ...current, [question.id]: question.question }));
+    setEditingQuestions((current) => ({ ...current, [question.id]: true }));
+  }
+
+  function cancelEditingQuestion(question: Question) {
+    setQuestionDrafts((current) => ({ ...current, [question.id]: question.question }));
+    setEditingQuestions((current) => ({ ...current, [question.id]: false }));
   }
 
   async function publishQuestion(questionId: number) {
@@ -173,7 +185,7 @@ export default function ReadingGroupQuestions({ slug, groupBookId }: { slug: str
             />
             <div className="flex flex-wrap gap-2">
               <button disabled={working || !newQuestion.trim()} className="rounded-full bg-brown-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">
-                직접 작성해 공개
+                질문 공개
               </button>
               <button type="button" disabled={working} onClick={generateAiDraft} className="rounded-full border border-green-300 bg-white px-4 py-2 text-sm font-semibold text-green-700 disabled:opacity-40">
                 AI 질문 초안 제안받기
@@ -203,7 +215,7 @@ export default function ReadingGroupQuestions({ slug, groupBookId }: { slug: str
                 {!question.published && <span className="rounded-full bg-yellow-100 px-2 py-1 text-yellow-800">비공개 초안</span>}
               </div>
 
-              {data.canManage ? (
+              {data.canManage && editingQuestions[question.id] ? (
                 <div className="mt-3">
                   <textarea
                     value={questionDrafts[question.id] ?? question.question}
@@ -213,13 +225,20 @@ export default function ReadingGroupQuestions({ slug, groupBookId }: { slug: str
                     className="w-full rounded-xl border border-cream-300 px-3 py-2 text-sm font-medium leading-6 text-brown-900 outline-none focus:border-green-500"
                   />
                   <div className="mt-2 flex flex-wrap gap-2">
-                    <button type="button" disabled={working} onClick={() => updateQuestion(question.id)} className="rounded-full border border-cream-300 px-3 py-1.5 text-xs font-semibold text-brown-700 disabled:opacity-40">수정 저장</button>
-                    {!question.published && data.canAddQuestions && <button type="button" disabled={working} onClick={() => publishQuestion(question.id)} className="rounded-full bg-green-700 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40">검토 후 공개</button>}
-                    <button type="button" disabled={working} onClick={() => deleteQuestion(question.id)} className="rounded-full px-3 py-1.5 text-xs font-semibold text-red-500 disabled:opacity-40">질문 삭제</button>
+                    <button type="button" disabled={working || !questionDrafts[question.id]?.trim()} onClick={() => updateQuestion(question.id)} className="rounded-full bg-brown-800 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40">저장</button>
+                    <button type="button" disabled={working} onClick={() => cancelEditingQuestion(question)} className="rounded-full border border-cream-300 px-3 py-1.5 text-xs font-semibold text-brown-600 disabled:opacity-40">취소</button>
                   </div>
                 </div>
               ) : (
                 <p className="mt-3 font-medium leading-7 text-brown-900">{question.question}</p>
+              )}
+
+              {data.canManage && !editingQuestions[question.id] && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button type="button" disabled={working} onClick={() => startEditingQuestion(question)} className="rounded-full border border-cream-300 px-3 py-1.5 text-xs font-semibold text-brown-700 disabled:opacity-40">수정</button>
+                  {!question.published && data.canAddQuestions && <button type="button" disabled={working} onClick={() => publishQuestion(question.id)} className="rounded-full bg-green-700 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40">검토 후 공개</button>}
+                  <button type="button" disabled={working} onClick={() => deleteQuestion(question.id)} className="rounded-full px-3 py-1.5 text-xs font-semibold text-red-500 disabled:opacity-40">질문 삭제</button>
+                </div>
               )}
 
               {question.published && (

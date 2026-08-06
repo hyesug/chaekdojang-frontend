@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import BackButton from "../../../../components/BackButton";
 import { SITE_URL } from "../../../../lib/serverApi";
 import { fetchGroupApiData } from "../../../groupServerApi";
+import GroupBookManagePanel from "./GroupBookManagePanel";
 import ReadingGroupQuestions from "./ReadingGroupQuestions";
 
 type ReadingGroupBook = {
@@ -25,6 +26,7 @@ type ReadingGroup = {
   slug: string;
   description: string | null;
   visibility: "PUBLIC" | "PRIVATE";
+  manager: boolean;
   books: ReadingGroupBook[];
 };
 
@@ -130,6 +132,16 @@ export default async function GroupBookReviewsPage({ params }: Props) {
           </div>
         </div>
       </section>
+
+      <GroupBookManagePanel
+        slug={group.slug}
+        groupBookId={groupBookId}
+        title={book.title}
+        status={book.status}
+        deadline={book.deadline}
+        note={book.note}
+        initialManager={group.manager}
+      />
 
       <ReadingGroupQuestions slug={group.slug} groupBookId={groupBookId} />
 

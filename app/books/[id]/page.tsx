@@ -16,15 +16,6 @@ import {
 
 type SortType = "recent" | "popular" | "rating";
 
-type BookConnection = {
-  bookId: number;
-  title: string;
-  author: string;
-  thumbnail: string | null;
-  sharedReaderCount: number;
-  reason: string;
-};
-
 type Props = {
   params: Promise<{ id: string }>;
   searchParams?: Promise<{ sort?: string }>;
@@ -38,7 +29,7 @@ const SORT_OPTIONS: Array<{ value: SortType; label: string }> = [
 
 async function getPublicBook(slug: string) {
   return fetchApiData<PublicBookDetail>(`/api/books/public/${encodeURIComponent(slug)}`, {
-    next: { revalidate: 600 },
+    cache: "no-store",
   });
 }
 
@@ -48,12 +39,6 @@ async function getBookReviews(bookId: number, sort: SortType) {
       cache: "no-store",
     })) ?? []
   );
-}
-
-async function getBookConnections(bookId: number) {
-  return (await fetchApiData<BookConnection[]>(`/api/books/${bookId}/connections`, {
-    next: { revalidate: 600 },
-  })) ?? [];
 }
 
 function normalizeSort(value?: string): SortType {
@@ -171,10 +156,7 @@ export default async function BookDetailPage({ params, searchParams }: Props) {
   const book = await getPublicBook(id);
   if (!book) notFound();
 
-  const [reviews, connections] = await Promise.all([
-    getBookReviews(book.id, sort),
-    getBookConnections(book.id),
-  ]);
+  const reviews = await getBookReviews(book.id, sort);
   const emotionKeywords = commonEmotionKeywords(reviews);
   const oneLines = oneLineReviews(reviews);
   const canonicalUrl = bookUrl(book);
@@ -314,29 +296,6 @@ export default async function BookDetailPage({ params, searchParams }: Props) {
           )}
         </div>
       </section>
-
-      {connections.length > 0 && (
-        <section className="mt-7">
-          <div>
-            <h2 className="font-serif text-xl font-bold text-brown-900">이 책에서 이어진 실제 독서 흐름</h2>
-            <p className="mt-1 text-xs text-brown-400">AI 추천이 아니라, 같은 독자들이 실제로 함께 기록한 책만 보여줍니다.</p>
-          </div>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            {connections.map((item) => (
-              <Link key={item.bookId} href={`/books/${item.bookId}`} className="flex gap-3 rounded-2xl border border-cream-200 bg-white p-3 hover:border-brown-300">
-                {item.thumbnail ? (
-                  <Image src={item.thumbnail} alt={item.title} width={44} height={64} className="h-16 w-11 rounded object-cover" />
-                ) : <div className="h-16 w-11 rounded bg-cream-200" />}
-                <div className="min-w-0">
-                  <p className="line-clamp-2 text-sm font-semibold text-brown-800">{item.title}</p>
-                  <p className="mt-0.5 truncate text-xs text-brown-400">{item.author}</p>
-                  <p className="mt-1 text-[11px] leading-4 text-brown-500">{item.reason}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
 
       <section className="mt-8">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">

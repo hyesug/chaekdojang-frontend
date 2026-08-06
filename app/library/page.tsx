@@ -16,6 +16,7 @@ type LibraryItem = {
     title: string;
     author: string;
     thumbnail: string | null;
+    category: string | null;
   };
   status: LibraryStatus;
   createdAt: string;
@@ -234,7 +235,14 @@ export default function LibraryPage() {
                 >
                   {item.book.title}
                 </Link>
-                <p className="text-sm text-brown-400 mt-0.5">{item.book.author}</p>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <p className="text-sm text-brown-400">{item.book.author}</p>
+                  {item.book.category && (
+                    <span className="rounded-full bg-cream-200 px-2 py-0.5 text-[11px] font-medium text-brown-500">
+                      #{item.book.category}
+                    </span>
+                  )}
+                </div>
 
                 {/* 상태 변경 셀렉터 */}
                 <div className="flex items-center gap-2 mt-3">

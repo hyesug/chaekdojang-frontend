@@ -8,11 +8,28 @@ import { groupInviteTracking } from "../lib/inviteTracking";
 
 export { getSessionId } from "../lib/activity";
 
+const METRIC_REFERRER_MAX_LENGTH = 500;
+
 function deviceType() {
   const width = window.innerWidth;
   if (width < 768) return "mobile";
   if (width < 1024) return "tablet";
   return "desktop";
+}
+
+function normalizeMetricReferrer(referrer: string) {
+  if (!referrer) return null;
+
+  try {
+    const url = new URL(referrer);
+    if (url.protocol === "http:" || url.protocol === "https:") {
+      return `${url.origin}${url.pathname}`.slice(0, METRIC_REFERRER_MAX_LENGTH);
+    }
+  } catch {
+    // Keep non-URL referrers as-is within the storage limit.
+  }
+
+  return referrer.slice(0, METRIC_REFERRER_MAX_LENGTH);
 }
 
 export function trackMetric(eventType: string, path?: string, durationMs = 0, meta?: Record<string, unknown>) {
@@ -24,7 +41,7 @@ export function trackMetric(eventType: string, path?: string, durationMs = 0, me
     eventType,
     sessionId: getSessionId(),
     path: currentPath,
-    referrer: (inviteTracking?.referrer ?? document.referrer) || null,
+    referrer: normalizeMetricReferrer(inviteTracking?.referrer ?? document.referrer),
     durationMs,
     device: deviceType(),
     deviceId: getDeviceId(),

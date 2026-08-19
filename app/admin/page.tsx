@@ -194,6 +194,7 @@ interface MetricEvent {
   deviceId: string | null;
   browser: string | null;
   operatingSystem: string | null;
+  bot: boolean;
   ip: string | null;
   meta: Record<string, unknown> | null;
   createdAt: string;
@@ -253,6 +254,7 @@ interface AdminAuditLog {
 
 interface DashboardSummary {
   todayVisitors: number;
+  todayBotVisitors: number;
   todayPageViews: number;
   todayBookSearches?: number;
   todayBookDetailViews?: number;
@@ -508,8 +510,41 @@ const groupMemberRoleLabels: Record<AdminReadingGroupDetail["members"][number]["
   MEMBER: "멤버",
 };
 
-function visitorKey(event: MetricEvent) {
-  return event.userId != null ? `u:${event.userId}` : event.sessionId || event.ip || `event:${event.id}`;
+function createVisitorKey(events: MetricEvent[]) {
+  const userIdsByDevice = new Map<string, Set<number>>();
+  const userIdsBySession = new Map<string, Set<number>>();
+
+  const addUser = (map: Map<string, Set<number>>, value: string | null, userId: number) => {
+    if (!value) return;
+    const users = map.get(value) ?? new Set<number>();
+    users.add(userId);
+    map.set(value, users);
+  };
+
+  events.forEach((event) => {
+    if (event.userId == null) return;
+    addUser(userIdsByDevice, event.deviceId, event.userId);
+    addUser(userIdsBySession, event.sessionId, event.userId);
+  });
+
+  return (event: MetricEvent) => {
+    if (event.userId != null) return `u:${event.userId}`;
+
+    const linkedUserIds = new Set<number>();
+    if (event.deviceId) userIdsByDevice.get(event.deviceId)?.forEach((userId) => linkedUserIds.add(userId));
+    if (event.sessionId) userIdsBySession.get(event.sessionId)?.forEach((userId) => linkedUserIds.add(userId));
+    if (linkedUserIds.size === 1) return `u:${linkedUserIds.values().next().value}`;
+
+    if (event.deviceId) return `d:${event.deviceId}`;
+    if (event.sessionId) return `s:${event.sessionId}`;
+    if (event.ip) return `ip:${event.ip}`;
+    return `event:${event.id}`;
+  };
+}
+
+function uniqueVisitorCount(events: MetricEvent[]) {
+  const visitorKey = createVisitorKey(events);
+  return new Set(events.map(visitorKey)).size;
 }
 
 function appendPageParam(path: string, page: number) {
@@ -1143,6 +1178,11 @@ export default function AdminPage() {
     [metricEvents, adminIds, adminNicknames]
   );
 
+  const humanMetrics = useMemo(
+    () => visibleMetrics.filter((event) => !event.bot),
+    [visibleMetrics]
+  );
+
   const visibleAccessLogs = useMemo(
     () => accessLogs.filter((log) => {
       if (log.matchedUserId != null && adminIds.has(log.matchedUserId)) return false;
@@ -1245,7 +1285,7 @@ export default function AdminPage() {
     return text.includes(query.toLowerCase());
   });
 
-  const filteredActions = actionEvents;
+  const filteredActions = actionEvents.filter((event) => !event.bot);
 
   const securityEvents = useMemo(() => {
     const map = new Map<string, SecurityEvent>();
@@ -1320,7 +1360,18 @@ export default function AdminPage() {
     return true;
   });
 
-  const todayVisibleMetrics = visibleMetrics.filter((event) => isToday(event.createdAt));
+  const todayVisibleMetrics = useMemo(
+    () => humanMetrics.filter((event) => isToday(event.createdAt)),
+    [humanMetrics]
+  );
+  const todayBotMetrics = useMemo(
+    () => visibleMetrics.filter((event) => event.bot && isToday(event.createdAt)),
+    [visibleMetrics]
+  );
+  const todayVisitorKey = useMemo(
+    () => createVisitorKey(todayVisibleMetrics),
+    [todayVisibleMetrics]
+  );
 
   const todayBookSearches = useMemo(() => {
     const map = new Map<string, ContentViewSummary>();
@@ -1342,12 +1393,12 @@ export default function AdminPage() {
           href: keyword === "검색 페이지" ? "/search" : `/search?q=${encodeURIComponent(keyword)}`,
         };
         item.views += 1;
-        item.visitors.add(visitorKey(event));
+        item.visitors.add(todayVisitorKey(event));
         if (event.createdAt > item.lastAt) item.lastAt = event.createdAt;
         map.set(key, item);
       });
     return Array.from(map.values()).sort((a, b) => b.views - a.views || b.lastAt.localeCompare(a.lastAt)).slice(0, 5);
-  }, [todayVisibleMetrics]);
+  }, [todayVisibleMetrics, todayVisitorKey]);
 
   const todayReviewViews = useMemo(() => {
     const map = new Map<string, ContentViewSummary>();
@@ -1368,12 +1419,12 @@ export default function AdminPage() {
           href: path,
         };
         item.views += 1;
-        item.visitors.add(visitorKey(event));
+        item.visitors.add(todayVisitorKey(event));
         if (event.createdAt > item.lastAt) item.lastAt = event.createdAt;
         map.set(path, item);
       });
     return Array.from(map.values()).sort((a, b) => b.views - a.views || b.lastAt.localeCompare(a.lastAt)).slice(0, 5);
-  }, [todayVisibleMetrics, reviewMetaByPath]);
+  }, [todayVisibleMetrics, reviewMetaByPath, todayVisitorKey]);
 
   const todaySearchCount = todayVisibleMetrics.filter((event) =>
     event.eventType === "book_search" || (event.eventType === "page_view" && normalizePath(event.path) === "/search")
@@ -1412,12 +1463,14 @@ export default function AdminPage() {
   const pagedSecurityEvents = paginate(filteredSecurityEvents, securityPage);
   const pagedAuditLogs = paginate(filteredAuditLogs, auditPage);
 
-  const fallbackTodayVisitors = new Set(visibleMetrics.filter((event) => isToday(event.createdAt)).map(visitorKey)).size;
+  const fallbackTodayVisitors = uniqueVisitorCount(todayVisibleMetrics);
+  const fallbackTodayBotVisitors = uniqueVisitorCount(todayBotMetrics);
   const fallbackTodayReviews = reviews.filter((review) => isTodayReview(review.createdAt)).length;
   const fallbackTodayUsers = users.filter((user) => isToday(user.createdAt)).length;
   const fallbackTodayErrors = visibleErrors.filter((error) => isToday(error.createdAt) && error.status >= 500).length;
   const fallbackTodaySecurity = securitySummaries.filter((item) => isToday(item.lastAt)).reduce((sum, item) => sum + item.count, 0);
   const todayVisitors = dashboardSummary?.todayVisitors ?? fallbackTodayVisitors;
+  const todayBotVisitors = dashboardSummary?.todayBotVisitors ?? fallbackTodayBotVisitors;
   const todayReviews = dashboardSummary?.todayReviews ?? fallbackTodayReviews;
   const todayUsers = dashboardSummary?.todayUsers ?? fallbackTodayUsers;
   const todayErrors = dashboardSummary?.todayServerErrors ?? fallbackTodayErrors;
@@ -1656,7 +1709,7 @@ export default function AdminPage() {
           {tab === "dashboard" && (
             <>
               <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                <StatCard label="오늘 방문자" value={todayVisitors} helper="관리자 제외" />
+                <StatCard label="오늘 방문자" value={todayVisitors} helper={`사람 추정 · 감지된 봇·자동화 ${todayBotVisitors} 제외`} />
                 <StatCard label="책 상세 방문" value={dashboardSummary?.todayBookDetailViews ?? todayBookDetailViewCount} />
                 <StatCard label="독후감 상세 방문" value={dashboardSummary?.todayReviewDetailViews ?? todayReviewDetailViewCount} />
                 <StatCard label="책 검색" value={dashboardSummary?.todayBookSearches ?? todaySearchCount} />

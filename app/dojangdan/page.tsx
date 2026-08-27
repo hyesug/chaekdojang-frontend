@@ -4,6 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "책도장단 베타 문의",
   description: "신간·독립출판·작가의 책을 위한 서평단 모집과 독후감 모음 서비스를 문의하세요.",
+  alternates: { canonical: "/dojangdan" },
 };
 
 const targets = [

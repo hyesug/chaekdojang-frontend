@@ -4,6 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "개인정보처리방침",
   description: "책도장의 개인정보 처리 기준을 안내합니다.",
+  alternates: { canonical: "/privacy" },
 };
 
 export default function PrivacyPage() {

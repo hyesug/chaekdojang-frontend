@@ -4,6 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "이용약관",
   description: "책도장 이용약관을 안내합니다.",
+  alternates: { canonical: "/terms" },
 };
 
 export default function TermsPage() {

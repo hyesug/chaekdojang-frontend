@@ -28,9 +28,6 @@ export const metadata: Metadata = {
     "책 추천",
     "내 서재",
   ],
-  alternates: {
-    canonical: "/",
-  },
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

@@ -640,6 +640,15 @@ function classifyErrorLike(method: string, uri: string, status: number) {
       userImpactLikely: false,
     };
   }
+  if (method === "GET" && /^\/api\/groups\/[^/]+$/.test(path) && status === 404) {
+    return {
+      label: "공개 독서모임 상세 조회 실패",
+      description: "삭제되었거나 존재하지 않는 모임 slug, 오래된 링크에서 발생할 수 있는 정상적인 404 응답입니다.",
+      impact: "서비스 장애가 아니며 일반 사용자 영향은 낮습니다.",
+      botSuspected: false,
+      userImpactLikely: false,
+    };
+  }
   if ([".env", ".git", "wp-login.php", "xmlrpc.php", "phpmyadmin", ".php", ".bak", ".sql", "swagger-ui", "v3/api-docs", "actuator"].some((needle) => lower.includes(needle))) {
     return {
       label: "스캐너 의심 요청",
@@ -688,6 +697,7 @@ function classifyErrorLike(method: string, uri: string, status: number) {
 function securitySeverity(method: string, uri: string, status: number) {
   const path = normalizePath(uri);
   if (method === "GET" && path.startsWith("/api/books/public/") && status === 404) return "정보";
+  if (method === "GET" && /^\/api\/groups\/[^/]+$/.test(path) && status === 404) return "정보";
   return status >= 500 ? "오류" : "주의";
 }
 
@@ -2292,6 +2302,7 @@ export default function AdminPage() {
                   <option value="">전체 오류 유형</option>
                   <option value="세션 갱신 실패">세션 갱신 실패</option>
                   <option value="공개 책 상세 조회 실패">공개 책 상세 조회 실패</option>
+                  <option value="공개 독서모임 상세 조회 실패">공개 독서모임 상세 조회 실패</option>
                   <option value="스캐너 의심 요청">스캐너 의심 요청</option>
                   <option value="서버 오류">서버 오류</option>
                   <option value="권한 없음">권한 없음</option>

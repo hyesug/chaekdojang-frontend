@@ -3,7 +3,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import BackButton from "../../../components/BackButton";
 import { fetchApiData, fetchAuthenticatedApiData, SITE_URL } from "../../../lib/serverApi";
-import { STATUS_LABEL, formatDate, type CampaignDetail } from "../../types";
+import {
+  DELIVERY_TYPE_LABEL,
+  STATUS_LABEL,
+  formatDate,
+  type CampaignDetail,
+} from "../../types";
 import CampaignApplyPanel from "./CampaignApplyPanel";
 
 type Props = { params: Promise<{ id: string }> };
@@ -44,6 +49,9 @@ export default async function CampaignDetailPage({ params }: Props) {
         <div className="flex items-center gap-2">
           <span className="rounded-full bg-cream-100 px-2.5 py-0.5 text-xs font-semibold text-brown-600">
             {STATUS_LABEL[campaign.status]}
+          </span>
+          <span className="rounded-full bg-cream-100 px-2.5 py-0.5 text-xs font-semibold text-brown-600">
+            {DELIVERY_TYPE_LABEL[campaign.deliveryType]}
           </span>
           <Link
             href={`/profiles/${campaign.profileSlug}`}

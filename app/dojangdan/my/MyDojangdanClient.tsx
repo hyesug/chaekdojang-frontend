@@ -14,6 +14,7 @@ import {
   type SubmittableReview,
 } from "../types";
 import ConsentPanel from "./ConsentPanel";
+import EbookAccessPanel from "./EbookAccessPanel";
 
 export default function MyDojangdanClient() {
   const router = useRouter();
@@ -295,6 +296,12 @@ function ApplicationCard({
           </p>
         </div>
       </div>
+
+      {application.status === "SELECTED" && (
+        <div className="mt-3 border-t border-cream-100 pt-3">
+          <EbookAccessPanel applicationId={application.id} onDropped={onChanged} />
+        </div>
+      )}
 
       {application.status === "SELECTED" && (
         <div className="mt-3 border-t border-cream-100 pt-3">

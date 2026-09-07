@@ -1,5 +1,7 @@
 export type CampaignStatus = "DRAFT" | "RECRUITING" | "CLOSED" | "SELECTED" | "COMPLETED";
 
+export type CampaignDeliveryType = "PHYSICAL" | "PDF" | "EPUB";
+
 export type CampaignApplicationStatus =
   | "APPLIED"
   | "SELECTED"
@@ -25,6 +27,8 @@ export type CampaignSummary = {
   reviewDueAt: string;
   priorityInviteHours: number;
   priorityInviteUntil: string | null;
+  deliveryType: CampaignDeliveryType;
+  ebookAccessExtraDays: number;
 };
 
 export type CampaignDetail = {
@@ -85,6 +89,9 @@ export type CampaignApplicant = {
   reviewId: number | null;
   reviewLength: number | null;
   trackRecord: ReaderTrackRecord;
+  ebookOpenCount: number | null;
+  ebookFirstOpenedAt: string | null;
+  ebookExpiresAt: string | null;
 };
 
 export type ManagedProfile = {
@@ -144,6 +151,34 @@ export type CampaignReviewSummary = {
   submittedAt: string;
   reviewUrl: string;
   content: string | null;
+};
+
+export type EbookFile = {
+  id: number;
+  originalFilename: string;
+  byteSize: number;
+  pageCount: number | null;
+  uploadedAt: string;
+};
+
+export type MyEbookAccess = {
+  grantId: number;
+  grantedAt: string;
+  expiresAt: string;
+  readable: boolean;
+  expired: boolean;
+  revoked: boolean;
+  openCount: number;
+  firstOpenedAt: string | null;
+  originalFilename: string | null;
+  pageCount: number | null;
+  byteSize: number | null;
+};
+
+export const DELIVERY_TYPE_LABEL: Record<CampaignDeliveryType, string> = {
+  PHYSICAL: "실물 도서",
+  PDF: "PDF",
+  EPUB: "EPUB",
 };
 
 export const STATUS_LABEL: Record<CampaignStatus, string> = {

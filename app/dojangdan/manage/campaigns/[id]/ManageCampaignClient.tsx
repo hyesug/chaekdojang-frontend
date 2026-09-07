@@ -7,12 +7,14 @@ import { API_BASE } from "../../../../lib/api";
 import { authFetch, getValidToken } from "../../../../lib/auth";
 import {
   APPLICATION_STATUS_LABEL,
+  DELIVERY_TYPE_LABEL,
   STATUS_LABEL,
   formatDate,
   type CampaignApplicant,
   type CampaignStatus,
   type ManageCampaignDetail,
 } from "../../../types";
+import EbookUploadPanel from "./EbookUploadPanel";
 import ExportPanel from "./ExportPanel";
 
 const NEXT_STATUS: Partial<Record<CampaignStatus, { status: CampaignStatus; label: string }>> = {
@@ -144,6 +146,9 @@ export default function ManageCampaignClient({ campaignId }: { campaignId: numbe
           <span className="rounded-full bg-cream-100 px-2.5 py-0.5 text-xs font-semibold text-brown-600">
             {STATUS_LABEL[campaign.status]}
           </span>
+          <span className="rounded-full bg-cream-100 px-2.5 py-0.5 text-xs font-semibold text-brown-600">
+            {DELIVERY_TYPE_LABEL[campaign.deliveryType]}
+          </span>
           <span className="text-xs text-brown-400">{campaign.profileName}</span>
         </div>
         <h1 className="mt-3 font-serif text-2xl font-bold text-brown-900">{campaign.title}</h1>
@@ -252,6 +257,8 @@ export default function ManageCampaignClient({ campaignId }: { campaignId: numbe
         {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
       </section>
 
+      {campaign.deliveryType !== "PHYSICAL" && <EbookUploadPanel campaignId={campaign.id} />}
+
       {detail.submittedCount > 0 && (
         <ExportPanel
           campaignId={campaign.id}
@@ -305,6 +312,16 @@ function ApplicantCard({
             {record.averageReviewLength !== null &&
               ` · 평균 ${record.averageReviewLength.toLocaleString()}자`}
           </p>
+
+          {applicant.ebookOpenCount !== null && (
+            <p className="mt-1 text-xs text-brown-400">
+              전자책 열람 {applicant.ebookOpenCount}회
+              {applicant.ebookFirstOpenedAt
+                ? ` · 첫 열람 ${formatDate(applicant.ebookFirstOpenedAt)}`
+                : " · 아직 열지 않음"}
+              {applicant.ebookExpiresAt && ` · 열람 만료 ${formatDate(applicant.ebookExpiresAt)}`}
+            </p>
+          )}
 
           {applicant.message && (
             <p className="mt-2 whitespace-pre-wrap rounded-xl bg-cream-50 px-3 py-2 text-sm text-brown-600">

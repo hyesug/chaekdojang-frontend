@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { API_BASE } from "../../lib/api";
 import { authFetch } from "../../lib/auth";
-import type { ManagedProfile } from "../types";
+import type { CampaignDeliveryType, ManagedProfile } from "../types";
 
 type BookResult = {
   id: number;
@@ -32,6 +32,8 @@ export default function CampaignCreateForm({ profiles, onCreated }: Props) {
   const [recruitEndAt, setRecruitEndAt] = useState("");
   const [reviewDueAt, setReviewDueAt] = useState("");
   const [priorityInviteHours, setPriorityInviteHours] = useState(24);
+  const [deliveryType, setDeliveryType] = useState<CampaignDeliveryType>("PHYSICAL");
+  const [ebookAccessExtraDays, setEbookAccessExtraDays] = useState(7);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,6 +72,8 @@ export default function CampaignCreateForm({ profiles, onCreated }: Props) {
             recruitEndAt,
             reviewDueAt,
             priorityInviteHours,
+            deliveryType,
+            ebookAccessExtraDays,
           }),
         }
       );
@@ -220,6 +224,51 @@ export default function CampaignCreateForm({ profiles, onCreated }: Props) {
           />
         </Field>
       </div>
+
+      <Field label="배본 방식">
+        <div className="flex gap-2">
+          {(
+            [
+              { value: "PHYSICAL", label: "실물 도서 배송" },
+              { value: "PDF", label: "PDF 제공" },
+            ] as const
+          ).map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setDeliveryType(option.value)}
+              className={`flex-1 rounded-xl border px-3 py-2.5 text-sm font-semibold ${
+                deliveryType === option.value
+                  ? "border-brown-300 bg-cream-50 text-brown-800"
+                  : "border-cream-200 text-brown-500"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        {deliveryType === "PDF" && (
+          <p className="mt-2 text-xs leading-5 text-brown-400">
+            인쇄·배송 없이 서평단을 열 수 있습니다. 캠페인을 만든 뒤 상세 화면에서 PDF를 올리세요.
+            선정자에게는 열람자 정보가 새겨진 파일이 따로 만들어집니다.
+          </p>
+        )}
+      </Field>
+
+      {deliveryType === "PDF" && (
+        <Field label="독후감 마감 후 열람 가능 기간">
+          <select
+            value={ebookAccessExtraDays}
+            onChange={(event) => setEbookAccessExtraDays(Number(event.target.value))}
+            className="w-full rounded-xl border border-cream-200 px-3 py-2 text-sm text-brown-800"
+          >
+            <option value={0}>마감일까지만</option>
+            <option value={7}>마감 후 7일</option>
+            <option value={14}>마감 후 14일</option>
+            <option value={30}>마감 후 30일</option>
+          </select>
+        </Field>
+      )}
 
       <Field label="관심 독자 우선 신청">
         <select

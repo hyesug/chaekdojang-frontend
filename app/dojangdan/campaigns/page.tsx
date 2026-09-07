@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { fetchApiData, SITE_URL } from "../../lib/serverApi";
-import { STATUS_LABEL, formatDate, type CampaignSummary } from "../types";
+import {
+  DELIVERY_TYPE_LABEL,
+  STATUS_LABEL,
+  formatDate,
+  type CampaignSummary,
+} from "../types";
 
 export const metadata = {
   title: "책도장단 모집 - 책도장",
@@ -93,6 +98,11 @@ function CampaignSection({ title, campaigns }: { title: string; campaigns: Campa
                 <span className="rounded-full bg-cream-100 px-2 py-0.5 text-xs font-semibold text-brown-600">
                   {STATUS_LABEL[campaign.status]}
                 </span>
+                {campaign.deliveryType !== "PHYSICAL" && (
+                  <span className="rounded-full bg-cream-100 px-2 py-0.5 text-xs font-semibold text-brown-600">
+                    {DELIVERY_TYPE_LABEL[campaign.deliveryType]}
+                  </span>
+                )}
                 <span className="truncate text-xs text-brown-400">{campaign.profileName}</span>
               </div>
               <p className="mt-1 truncate font-serif text-lg font-bold text-brown-900">

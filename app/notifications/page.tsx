@@ -7,7 +7,7 @@ import { authFetch, getValidToken } from "../lib/auth";
 
 const BASE = API_BASE;
 
-type NotificationType = "LIKE" | "COMMENT" | "FOLLOW" | "SAME_BOOK_REVIEW" | "GROUP_JOIN_REQUEST" | "GROUP_JOINED" | "GROUP_JOIN_APPROVED" | "REVIEW_CONTINUED";
+type NotificationType = "LIKE" | "COMMENT" | "FOLLOW" | "SAME_BOOK_REVIEW" | "GROUP_JOIN_REQUEST" | "GROUP_JOINED" | "GROUP_JOIN_APPROVED" | "REVIEW_CONTINUED" | "CAMPAIGN_SELECTED" | "CAMPAIGN_REJECTED" | "CAMPAIGN_INVITED";
 
 type Notification = {
   id: number;
@@ -35,10 +35,19 @@ function typeIcon(type: NotificationType) {
     case "GROUP_JOINED": return "👥";
     case "GROUP_JOIN_APPROVED": return "✓";
     case "REVIEW_CONTINUED": return "↗";
+    case "CAMPAIGN_SELECTED": return "✓";
+    case "CAMPAIGN_REJECTED": return "📚";
+    case "CAMPAIGN_INVITED": return "✉";
   }
 }
 
 function notificationHref(notification: Notification) {
+  if (notification.targetId !== null && notification.type === "CAMPAIGN_INVITED") {
+    return `/dojangdan/campaigns/${notification.targetId}`;
+  }
+  if (notification.targetId !== null && ["CAMPAIGN_SELECTED", "CAMPAIGN_REJECTED"].includes(notification.type)) {
+    return `/dojangdan/my#campaign-${notification.targetId}`;
+  }
   if (
     notification.targetSlug &&
     ["GROUP_JOIN_REQUEST", "GROUP_JOINED", "GROUP_JOIN_APPROVED"].includes(notification.type)
@@ -58,6 +67,23 @@ export default function NotificationsPage() {
   const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [unsubscribing, setUnsubscribing] = useState<number | null>(null);
+  const [unsubscribed, setUnsubscribed] = useState<number[]>([]);
+  const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
+
+  async function unsubscribeInvitation(id: number) {
+    setUnsubscribing(id);
+    setSubscriptionError(null);
+    try {
+      const res = await authFetch(`${BASE}/api/notifications/${id}/campaign-subscription`, { method: "DELETE" });
+      if (!res.ok) throw new Error("unsubscribe failed");
+      setUnsubscribed((previous) => [...previous, id]);
+    } catch {
+      setSubscriptionError("소식 받기를 해제하지 못했습니다. 다시 시도해주세요.");
+    } finally {
+      setUnsubscribing(null);
+    }
+  }
 
   useEffect(() => {
     const token = getToken();
@@ -167,6 +193,7 @@ export default function NotificationsPage() {
         )}
       </div>
 
+      {subscriptionError && <p role="alert" className="mb-4 text-sm text-red-600">{subscriptionError}</p>}
       {loading ? (
         <div className="text-center py-12 text-brown-400">불러오는 중...</div>
       ) : notifications.length === 0 ? (
@@ -218,6 +245,17 @@ export default function NotificationsPage() {
                     </span>
                   )}
                 </div>
+                {n.type === "CAMPAIGN_INVITED" && (
+                  <button
+                    type="button"
+                    onClick={(event) => { event.stopPropagation(); void unsubscribeInvitation(n.id); }}
+                    onKeyDown={(event) => event.stopPropagation()}
+                    disabled={unsubscribing !== null || unsubscribed.includes(n.id)}
+                    className="mt-2 text-xs text-brown-500 underline disabled:opacity-60"
+                  >
+                    {unsubscribed.includes(n.id) ? "소식 받기를 해제했습니다" : "이 출판사·작가 소식 받지 않기"}
+                  </button>
+                )}
               </div>
 
               {/* 읽지 않음 표시 */}

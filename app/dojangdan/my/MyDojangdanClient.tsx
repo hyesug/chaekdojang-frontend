@@ -52,6 +52,12 @@ export default function MyDojangdanClient() {
     void load();
   }, [load, router]);
 
+  useEffect(() => {
+    if (!loading && window.location.hash.startsWith("#campaign-")) {
+      document.getElementById(window.location.hash.slice(1))?.scrollIntoView({ block: "center" });
+    }
+  }, [loading, applications]);
+
   if (loading) {
     return (
       <main className="mx-auto max-w-3xl px-4 py-10 text-center text-sm text-brown-400">
@@ -265,7 +271,7 @@ function ApplicationCard({
   }
 
   return (
-    <article className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+    <article id={`campaign-${application.campaignId}`} className="scroll-mt-6 rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
       <div className="flex gap-4">
         {application.bookThumbnail ? (
           // eslint-disable-next-line @next/next/no-img-element

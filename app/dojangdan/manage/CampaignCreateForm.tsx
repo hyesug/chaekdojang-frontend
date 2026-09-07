@@ -281,7 +281,7 @@ export default function CampaignCreateForm({ profiles, onCreated }: Props) {
           <option value={48}>48시간 먼저 열기</option>
         </select>
         <p className="mt-2 text-xs leading-5 text-brown-400">
-          모집을 시작하면 이 시간 동안 관심 독자에게만 신청을 열고 알림을 보냅니다. 이후 자동으로
+          입력한 모집 시작일에 알림을 보내고 이 시간 동안 관심 독자에게만 신청을 엽니다. 이후 자동으로
           공개 모집으로 바뀝니다.
         </p>
       </Field>

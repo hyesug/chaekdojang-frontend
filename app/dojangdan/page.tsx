@@ -42,12 +42,20 @@ export default function DojangdanPage() {
         <p className="mt-4 text-sm leading-7 text-brown-600">
           책도장단은 신간·독립출판·작가의 책을 독자에게 소개하고, 독후감을 한곳에 모아 보여주는 서평단 모집 서비스입니다.
         </p>
-        <Link
-          href="/cs"
-          className="mt-6 inline-flex rounded-full bg-brown-700 px-5 py-3 text-sm font-semibold text-white hover:bg-brown-800"
-        >
-          책도장단 베타 문의하기
-        </Link>
+        <div className="mt-6 flex flex-wrap gap-2">
+          <Link
+            href="/dojangdan/campaigns"
+            className="inline-flex rounded-full bg-brown-700 px-5 py-3 text-sm font-semibold text-white hover:bg-brown-800"
+          >
+            모집 중인 서평단 보기
+          </Link>
+          <Link
+            href="/cs"
+            className="inline-flex rounded-full border border-cream-200 px-5 py-3 text-sm font-semibold text-brown-700 hover:bg-cream-50"
+          >
+            책도장단 베타 문의하기
+          </Link>
+        </div>
       </section>
 
       <section className="mt-8">

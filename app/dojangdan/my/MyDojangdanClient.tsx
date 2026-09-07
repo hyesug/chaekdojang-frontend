@@ -12,6 +12,7 @@ import {
   type ReaderTrackRecord,
   type SubmittableReview,
 } from "../types";
+import ConsentPanel from "./ConsentPanel";
 
 export default function MyDojangdanClient() {
   const router = useRouter();
@@ -136,6 +137,7 @@ function ApplicationCard({
   const [candidates, setCandidates] = useState<SubmittableReview[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showConsent, setShowConsent] = useState(false);
 
   async function openPicker() {
     setOpen(true);
@@ -267,6 +269,21 @@ function ApplicationCard({
           </Link>
         </div>
       )}
+
+      <div className="mt-3 border-t border-cream-100 pt-3">
+        <button
+          type="button"
+          onClick={() => setShowConsent((previous) => !previous)}
+          className="text-sm font-semibold text-brown-600 underline"
+        >
+          {showConsent ? "활용 동의 닫기" : "독후감 활용 동의 관리"}
+        </button>
+        {showConsent && (
+          <div className="mt-3">
+            <ConsentPanel applicationId={application.id} />
+          </div>
+        )}
+      </div>
     </article>
   );
 }

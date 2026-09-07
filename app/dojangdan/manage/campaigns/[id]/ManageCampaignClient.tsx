@@ -13,6 +13,7 @@ import {
   type CampaignStatus,
   type ManageCampaignDetail,
 } from "../../../types";
+import ExportPanel from "./ExportPanel";
 
 const NEXT_STATUS: Partial<Record<CampaignStatus, { status: CampaignStatus; label: string }>> = {
   DRAFT: { status: "RECRUITING", label: "모집 시작" },
@@ -242,6 +243,14 @@ export default function ManageCampaignClient({ campaignId }: { campaignId: numbe
 
         {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
       </section>
+
+      {detail.submittedCount > 0 && (
+        <ExportPanel
+          campaignId={campaign.id}
+          submittedCount={detail.submittedCount}
+          consentedReviewCount={detail.consentedReviewCount}
+        />
+      )}
     </main>
   );
 }

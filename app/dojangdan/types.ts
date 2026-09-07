@@ -97,7 +97,33 @@ export type ManageCampaignDetail = {
   selectedCount: number;
   submittedCount: number;
   rejectedCount: number;
+  consentedReviewCount: number;
   completionRate: number | null;
+};
+
+export type ConsentDisplayNameType = "REAL_NICKNAME" | "ANONYMOUS";
+
+export type ReviewUsageConsent = {
+  id: number;
+  applicationId: number;
+  consentPromotional: boolean;
+  consentExcerpt: boolean;
+  displayNameType: ConsentDisplayNameType;
+  termsVersion: string;
+  consentedAt: string;
+  revokedAt: string | null;
+};
+
+export type CampaignReviewSummary = {
+  applicationId: number;
+  reviewId: number;
+  displayName: string;
+  consentPromotional: boolean;
+  consentExcerpt: boolean;
+  reviewLength: number;
+  submittedAt: string;
+  reviewUrl: string;
+  content: string | null;
 };
 
 export const STATUS_LABEL: Record<CampaignStatus, string> = {

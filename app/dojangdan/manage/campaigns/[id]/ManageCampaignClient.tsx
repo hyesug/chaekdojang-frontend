@@ -166,6 +166,14 @@ export default function ManageCampaignClient({ campaignId }: { campaignId: numbe
           {formatDate(campaign.reviewDueAt)}
         </p>
 
+        {campaign.priorityInviteHours > 0 && (
+          <p className="mt-1 text-xs text-brown-400">
+            {campaign.priorityInviteUntil
+              ? `관심 독자 우선 신청 ~ ${new Date(campaign.priorityInviteUntil).toLocaleString("ko-KR")}`
+              : `모집을 시작하면 관심 독자에게 ${campaign.priorityInviteHours}시간 먼저 열립니다`}
+          </p>
+        )}
+
         <div className="mt-5 flex flex-wrap gap-2">
           {nextStatus && (
             <button

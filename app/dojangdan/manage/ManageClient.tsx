@@ -11,6 +11,7 @@ import {
   type CampaignSummary,
   type ManagedProfile,
 } from "../types";
+import AudienceCard from "./AudienceCard";
 import CampaignCreateForm from "./CampaignCreateForm";
 
 export default function ManageClient() {
@@ -105,6 +106,10 @@ export default function ManageClient() {
               }}
             />
           )}
+
+          {profiles.map((profile) => (
+            <AudienceCard key={profile.id} profileId={profile.id} />
+          ))}
         </>
       )}
 

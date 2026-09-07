@@ -98,7 +98,10 @@ export default async function CampaignDetailPage({ params }: Props) {
 
       <CampaignApplyPanel
         campaignId={campaign.id}
+        profileName={campaign.profileName}
         acceptingApplications={detail.acceptingApplications}
+        priorityWindow={detail.priorityWindow}
+        canApplyNow={detail.canApplyNow}
         initialStatus={detail.myApplicationStatus}
       />
     </main>

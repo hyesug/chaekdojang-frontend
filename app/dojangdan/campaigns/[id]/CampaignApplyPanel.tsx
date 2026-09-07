@@ -13,13 +13,19 @@ import {
 
 type Props = {
   campaignId: number;
+  profileName: string;
   acceptingApplications: boolean;
+  priorityWindow: boolean;
+  canApplyNow: boolean;
   initialStatus: CampaignApplicationStatus | null;
 };
 
 export default function CampaignApplyPanel({
   campaignId,
+  profileName,
   acceptingApplications,
+  priorityWindow,
+  canApplyNow,
   initialStatus,
 }: Props) {
   const router = useRouter();
@@ -30,6 +36,7 @@ export default function CampaignApplyPanel({
   const [consentExcerpt, setConsentExcerpt] = useState(false);
   const [displayNameType, setDisplayNameType] =
     useState<ConsentDisplayNameType>("REAL_NICKNAME");
+  const [followIntent, setFollowIntent] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,6 +62,7 @@ export default function CampaignApplyPanel({
           consentPromotional,
           consentExcerpt: consentPromotional ? consentExcerpt : false,
           displayNameType,
+          followIntent,
         }),
       });
       const json = await res.json().catch(() => null);
@@ -96,9 +104,27 @@ export default function CampaignApplyPanel({
     );
   }
 
+  if (priorityWindow && !canApplyNow) {
+    return (
+      <section className="mt-6 rounded-2xl border border-brown-100 bg-white p-5 shadow-sm">
+        <h2 className="font-serif text-lg font-bold text-brown-900">관심 독자 우선 신청 기간</h2>
+        <p className="mt-2 text-sm leading-6 text-brown-500">
+          지금은 {profileName}의 소식을 받기로 한 독자에게 먼저 열려 있습니다. 곧 공개 모집이
+          시작되니 조금만 기다려주세요.
+        </p>
+      </section>
+    );
+  }
+
   return (
     <section className="mt-6 rounded-2xl border border-brown-100 bg-white p-5 shadow-sm">
       <h2 className="font-serif text-lg font-bold text-brown-900">서평단 신청</h2>
+
+      {priorityWindow && (
+        <p className="mt-3 rounded-xl bg-cream-50 px-4 py-2.5 text-sm text-brown-600">
+          관심 독자 우선 신청 기간입니다. 공개 모집보다 먼저 신청할 수 있습니다.
+        </p>
+      )}
 
       <label className="mt-4 block text-sm font-semibold text-brown-700" htmlFor="apply-message">
         신청 사유 (선택)
@@ -181,8 +207,21 @@ export default function CampaignApplyPanel({
           </div>
         )}
 
+        <label className="flex items-start gap-2.5 text-sm text-brown-700">
+          <input
+            type="checkbox"
+            checked={followIntent}
+            onChange={(event) => setFollowIntent(event.target.checked)}
+            className="mt-0.5"
+          />
+          <span>
+            <strong className="text-brown-800">(선택)</strong> 선정되지 않아도 {profileName}의 다음
+            책 소식을 받겠습니다
+          </span>
+        </label>
+
         <p className="text-xs leading-5 text-brown-400">
-          선택 항목에 동의하지 않아도 서평단에 참여할 수 있습니다. 동의는 나중에 &lsquo;내 서평단 현황&rsquo;에서 언제든 바꾸거나 철회할 수 있습니다.
+          선택 항목에 동의하지 않아도 서평단에 참여할 수 있습니다. 동의와 소식 받기는 나중에 &lsquo;내 서평단 현황&rsquo;에서 언제든 바꾸거나 해제할 수 있습니다.
         </p>
       </div>
 

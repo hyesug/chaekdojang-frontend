@@ -23,12 +23,16 @@ export type CampaignSummary = {
   recruitStartAt: string;
   recruitEndAt: string;
   reviewDueAt: string;
+  priorityInviteHours: number;
+  priorityInviteUntil: string | null;
 };
 
 export type CampaignDetail = {
   campaign: CampaignSummary;
   description: string | null;
   acceptingApplications: boolean;
+  priorityWindow: boolean;
+  canApplyNow: boolean;
   myApplicationStatus: CampaignApplicationStatus | null;
   myApplicationId: number | null;
 };
@@ -40,6 +44,7 @@ export type MyCampaignApplication = {
   bookId: number;
   bookTitle: string;
   bookThumbnail: string | null;
+  profileId: number;
   profileName: string;
   status: CampaignApplicationStatus;
   appliedAt: string;
@@ -112,6 +117,21 @@ export type ReviewUsageConsent = {
   termsVersion: string;
   consentedAt: string;
   revokedAt: string | null;
+};
+
+export type MyFollowIntent = {
+  profileId: number;
+  profileName: string;
+  profileSlug: string;
+  createdAt: string;
+};
+
+export type ProfileAudience = {
+  profileId: number;
+  profileName: string;
+  interestedReaderCount: number;
+  campaignExperiencedCount: number;
+  topCategories: Array<{ category: string; count: number }>;
 };
 
 export type CampaignReviewSummary = {

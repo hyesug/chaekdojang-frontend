@@ -31,6 +31,7 @@ export default function CampaignCreateForm({ profiles, onCreated }: Props) {
   const [recruitStartAt, setRecruitStartAt] = useState("");
   const [recruitEndAt, setRecruitEndAt] = useState("");
   const [reviewDueAt, setReviewDueAt] = useState("");
+  const [priorityInviteHours, setPriorityInviteHours] = useState(24);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,6 +69,7 @@ export default function CampaignCreateForm({ profiles, onCreated }: Props) {
             recruitStartAt,
             recruitEndAt,
             reviewDueAt,
+            priorityInviteHours,
           }),
         }
       );
@@ -218,6 +220,22 @@ export default function CampaignCreateForm({ profiles, onCreated }: Props) {
           />
         </Field>
       </div>
+
+      <Field label="관심 독자 우선 신청">
+        <select
+          value={priorityInviteHours}
+          onChange={(event) => setPriorityInviteHours(Number(event.target.value))}
+          className="w-full rounded-xl border border-cream-200 px-3 py-2 text-sm text-brown-800"
+        >
+          <option value={0}>사용하지 않음 (바로 공개 모집)</option>
+          <option value={24}>24시간 먼저 열기</option>
+          <option value={48}>48시간 먼저 열기</option>
+        </select>
+        <p className="mt-2 text-xs leading-5 text-brown-400">
+          모집을 시작하면 이 시간 동안 관심 독자에게만 신청을 열고 알림을 보냅니다. 이후 자동으로
+          공개 모집으로 바뀝니다.
+        </p>
+      </Field>
 
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 

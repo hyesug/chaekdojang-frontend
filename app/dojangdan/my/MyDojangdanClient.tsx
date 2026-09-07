@@ -9,6 +9,7 @@ import {
   APPLICATION_STATUS_LABEL,
   formatDate,
   type MyCampaignApplication,
+  type MyFollowIntent,
   type ReaderTrackRecord,
   type SubmittableReview,
 } from "../types";
@@ -18,12 +19,14 @@ export default function MyDojangdanClient() {
   const router = useRouter();
   const [applications, setApplications] = useState<MyCampaignApplication[]>([]);
   const [trackRecord, setTrackRecord] = useState<ReaderTrackRecord | null>(null);
+  const [followIntents, setFollowIntents] = useState<MyFollowIntent[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const [applicationsRes, trackRecordRes] = await Promise.all([
+    const [applicationsRes, trackRecordRes, intentsRes] = await Promise.all([
       authFetch(`${API_BASE}/api/dojangdan/applications/me`),
       authFetch(`${API_BASE}/api/dojangdan/track-record/me`),
+      authFetch(`${API_BASE}/api/dojangdan/follow-intents/me`),
     ]);
 
     if (applicationsRes.status === 401) {
@@ -33,8 +36,10 @@ export default function MyDojangdanClient() {
 
     const applicationsJson = await applicationsRes.json().catch(() => null);
     const trackRecordJson = await trackRecordRes.json().catch(() => null);
+    const intentsJson = await intentsRes.json().catch(() => null);
     setApplications(applicationsJson?.data ?? []);
     setTrackRecord(trackRecordJson?.data ?? null);
+    setFollowIntents(intentsJson?.data ?? []);
     setLoading(false);
   }, [router]);
 
@@ -75,13 +80,81 @@ export default function MyDojangdanClient() {
               <ApplicationCard
                 key={application.id}
                 application={application}
-                onSubmitted={load}
+                subscribed={followIntents.some(
+                  (intent) => intent.profileId === application.profileId
+                )}
+                onChanged={load}
               />
             ))}
           </div>
         )}
       </section>
+
+      <FollowIntentSection intents={followIntents} onChanged={load} />
     </main>
+  );
+}
+
+function FollowIntentSection({
+  intents,
+  onChanged,
+}: {
+  intents: MyFollowIntent[];
+  onChanged: () => Promise<void>;
+}) {
+  const [busy, setBusy] = useState<number | null>(null);
+
+  async function unsubscribe(profileId: number) {
+    setBusy(profileId);
+    try {
+      await authFetch(`${API_BASE}/api/dojangdan/follow-intents/${profileId}`, {
+        method: "DELETE",
+      });
+      await onChanged();
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <section className="mt-8">
+      <h2 className="font-serif text-lg font-bold text-brown-900">소식 받는 출판사·작가</h2>
+      <p className="mt-1 text-xs text-brown-400">
+        새 서평단이 열리면 공개 모집보다 먼저 알려드립니다. 언제든 해제할 수 있습니다.
+      </p>
+      {intents.length === 0 ? (
+        <p className="mt-4 rounded-2xl border border-cream-200 bg-white p-6 text-center text-sm text-brown-500">
+          아직 소식을 받기로 한 곳이 없습니다.
+        </p>
+      ) : (
+        <ul className="mt-4 space-y-2">
+          {intents.map((intent) => (
+            <li
+              key={intent.profileId}
+              className="flex items-center justify-between gap-3 rounded-2xl border border-cream-200 bg-white px-4 py-3"
+            >
+              <div className="min-w-0">
+                <Link
+                  href={`/profiles/${intent.profileSlug}`}
+                  className="truncate text-sm font-semibold text-brown-800 hover:underline"
+                >
+                  {intent.profileName}
+                </Link>
+                <p className="text-xs text-brown-400">{formatDate(intent.createdAt)}부터</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => unsubscribe(intent.profileId)}
+                disabled={busy === intent.profileId}
+                className="flex-shrink-0 rounded-full border border-cream-200 px-3 py-1.5 text-xs font-semibold text-brown-600 hover:bg-cream-50 disabled:opacity-60"
+              >
+                받지 않기
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 
@@ -128,16 +201,33 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 function ApplicationCard({
   application,
-  onSubmitted,
+  subscribed,
+  onChanged,
 }: {
   application: MyCampaignApplication;
-  onSubmitted: () => Promise<void>;
+  subscribed: boolean;
+  onChanged: () => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
   const [candidates, setCandidates] = useState<SubmittableReview[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showConsent, setShowConsent] = useState(false);
+  const [intentBusy, setIntentBusy] = useState(false);
+
+  async function updateFollowIntent(subscribe: boolean) {
+    setIntentBusy(true);
+    try {
+      await authFetch(`${API_BASE}/api/dojangdan/applications/${application.id}/follow-intent`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subscribe }),
+      });
+      await onChanged();
+    } finally {
+      setIntentBusy(false);
+    }
+  }
 
   async function openPicker() {
     setOpen(true);
@@ -167,7 +257,7 @@ function ApplicationCard({
         return;
       }
       setOpen(false);
-      await onSubmitted();
+      await onChanged();
     } finally {
       setSubmitting(false);
     }
@@ -256,6 +346,33 @@ function ApplicationCard({
             </ul>
           )}
           {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+        </div>
+      )}
+
+      {application.status === "REJECTED" && !subscribed && (
+        <div className="mt-3 border-t border-cream-100 pt-3">
+          <p className="text-sm leading-6 text-brown-600">
+            이번엔 선정되지 않았습니다. {application.profileName}의 다음 책 서평단이 열리면 먼저
+            알려드릴까요?
+          </p>
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              onClick={() => updateFollowIntent(true)}
+              disabled={intentBusy}
+              className="rounded-full bg-brown-700 px-4 py-2 text-xs font-semibold text-white hover:bg-brown-800 disabled:opacity-60"
+            >
+              예, 알려주세요
+            </button>
+            <button
+              type="button"
+              onClick={() => updateFollowIntent(false)}
+              disabled={intentBusy}
+              className="rounded-full border border-cream-200 px-4 py-2 text-xs font-semibold text-brown-600 hover:bg-cream-50 disabled:opacity-60"
+            >
+              괜찮습니다
+            </button>
+          </div>
         </div>
       )}
 

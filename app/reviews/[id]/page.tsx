@@ -31,6 +31,9 @@ type Props = {
 };
 
 async function getReview(id: string) {
+  // 숫자가 아닌 id는 백엔드로 넘기지 않는다.
+  // 봇이 /reviews/null 같은 주소를 긁으면 백엔드에서 400이 나고 오류 로그만 쌓인다.
+  if (!/^\d+$/.test(id)) return null;
   return fetchAuthenticatedApiData<ReviewDetail>(`/api/reviews/${id}`);
 }
 

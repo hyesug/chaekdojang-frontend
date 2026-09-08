@@ -19,8 +19,13 @@ type Props = {
 
 export const dynamic = "force-dynamic";
 
+// 숫자가 아닌 id는 백엔드로 넘기지 않는다. 넘기면 400이 나고 오류 로그만 쌓인다.
+const isNumericId = (id: string) => /^\d+$/.test(id);
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
+  if (!isNumericId(id)) return { title: "책도장단 - 책도장" };
+
   const detail = await fetchApiData<CampaignDetail>(`/api/dojangdan/campaigns/${id}`, {
     cache: "no-store",
   });
@@ -38,6 +43,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function CampaignDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
+  if (!isNumericId(id)) notFound();
+
   const preview = (await searchParams)?.preview === "1";
   const managedDetail = preview
     ? await fetchAuthenticatedApiData<ManageCampaignDetail>(

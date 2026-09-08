@@ -8,10 +8,14 @@ import {
   STATUS_LABEL,
   formatDate,
   type CampaignDetail,
+  type ManageCampaignDetail,
 } from "../../types";
 import CampaignApplyPanel from "./CampaignApplyPanel";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = {
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ preview?: string }>;
+};
 
 export const dynamic = "force-dynamic";
 
@@ -32,18 +36,40 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function CampaignDetailPage({ params }: Props) {
+export default async function CampaignDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
-  const detail = await fetchAuthenticatedApiData<CampaignDetail>(
-    `/api/dojangdan/campaigns/${id}`
-  );
+  const preview = (await searchParams)?.preview === "1";
+  const managedDetail = preview
+    ? await fetchAuthenticatedApiData<ManageCampaignDetail>(
+        `/api/dojangdan/manage/campaigns/${id}`
+      )
+    : null;
+  const detail = preview
+    ? managedDetail && {
+        campaign: managedDetail.campaign,
+        description: managedDetail.description,
+        acceptingApplications: false,
+        priorityWindow: false,
+        canApplyNow: false,
+        myApplicationStatus: null,
+        myApplicationId: null,
+      }
+    : await fetchAuthenticatedApiData<CampaignDetail>(`/api/dojangdan/campaigns/${id}`);
   if (!detail) notFound();
 
   const { campaign } = detail;
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-6">
-      <BackButton fallbackHref="/dojangdan/campaigns" />
+      <BackButton
+        fallbackHref={preview ? `/dojangdan/manage/campaigns/${id}` : "/dojangdan/campaigns"}
+      />
+
+      {preview && (
+        <div className="mt-4 rounded-2xl border border-brown-200 bg-cream-50 px-4 py-3 text-sm text-brown-700">
+          독자 화면 미리보기입니다. 작성 중인 캠페인은 모집을 시작하기 전까지 독자에게 공개되지 않습니다.
+        </div>
+      )}
 
       <section className="mt-4 rounded-3xl border border-cream-200 bg-white p-6 shadow-sm">
         <div className="flex items-center gap-2">
@@ -104,14 +130,20 @@ export default async function CampaignDetailPage({ params }: Props) {
         </section>
       )}
 
-      <CampaignApplyPanel
-        campaignId={campaign.id}
-        profileName={campaign.profileName}
-        acceptingApplications={detail.acceptingApplications}
-        priorityWindow={detail.priorityWindow}
-        canApplyNow={detail.canApplyNow}
-        initialStatus={detail.myApplicationStatus}
-      />
+      {preview ? (
+        <section className="mt-6 rounded-2xl border border-cream-200 bg-white p-5 text-sm text-brown-500 shadow-sm">
+          모집을 시작하면 이곳에 독자용 신청 영역이 표시됩니다.
+        </section>
+      ) : (
+        <CampaignApplyPanel
+          campaignId={campaign.id}
+          profileName={campaign.profileName}
+          acceptingApplications={detail.acceptingApplications}
+          priorityWindow={detail.priorityWindow}
+          canApplyNow={detail.canApplyNow}
+          initialStatus={detail.myApplicationStatus}
+        />
+      )}
     </main>
   );
 }

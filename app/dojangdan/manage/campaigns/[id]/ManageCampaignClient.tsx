@@ -191,7 +191,7 @@ export default function ManageCampaignClient({ campaignId }: { campaignId: numbe
             </button>
           )}
           <Link
-            href={`/dojangdan/campaigns/${campaign.id}`}
+            href={`/dojangdan/campaigns/${campaign.id}?preview=1`}
             className="rounded-full border border-cream-200 px-4 py-2 text-sm font-semibold text-brown-700 hover:bg-cream-50"
           >
             독자 화면으로 보기

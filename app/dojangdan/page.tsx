@@ -50,6 +50,12 @@ export default function DojangdanPage() {
             모집 중인 서평단 보기
           </Link>
           <Link
+            href="/dojangdan/manage"
+            className="inline-flex rounded-full border border-brown-200 px-5 py-3 text-sm font-semibold text-brown-700 hover:bg-cream-50"
+          >
+            출판사·작가 운영실
+          </Link>
+          <Link
             href="/cs"
             className="inline-flex rounded-full border border-cream-200 px-5 py-3 text-sm font-semibold text-brown-700 hover:bg-cream-50"
           >

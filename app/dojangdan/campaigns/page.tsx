@@ -3,7 +3,7 @@ import { fetchApiData, SITE_URL } from "../../lib/serverApi";
 import {
   DELIVERY_TYPE_LABEL,
   STATUS_LABEL,
-  formatDate,
+  formatDateTime,
   type CampaignSummary,
 } from "../types";
 
@@ -113,7 +113,7 @@ function CampaignSection({ title, campaigns }: { title: string; campaigns: Campa
               </p>
               <p className="mt-1 text-xs text-brown-400">
                 {campaign.applicantCount}명 신청 / {campaign.recruitCount}명 모집 · 마감{" "}
-                {formatDate(campaign.recruitEndAt)}
+                {formatDateTime(campaign.recruitEndAt)}
               </p>
             </div>
           </Link>

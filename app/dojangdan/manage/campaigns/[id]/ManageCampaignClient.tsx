@@ -10,6 +10,7 @@ import {
   DELIVERY_TYPE_LABEL,
   STATUS_LABEL,
   formatDate,
+  formatDateTime,
   type CampaignApplicant,
   type CampaignStatus,
   type ManageCampaignDetail,
@@ -169,8 +170,8 @@ export default function ManageCampaignClient({ campaignId }: { campaignId: numbe
         </dl>
 
         <p className="mt-4 text-xs text-brown-400">
-          모집 {formatDate(campaign.recruitStartAt)} ~ {formatDate(campaign.recruitEndAt)} · 독후감 마감{" "}
-          {formatDate(campaign.reviewDueAt)}
+          모집 {formatDateTime(campaign.recruitStartAt)} ~ {formatDateTime(campaign.recruitEndAt)} · 독후감 마감{" "}
+          {formatDateTime(campaign.reviewDueAt)}
         </p>
 
         {campaign.priorityInviteHours > 0 && (

@@ -7,7 +7,7 @@ import { API_BASE } from "../../lib/api";
 import { authFetch, getValidToken } from "../../lib/auth";
 import {
   STATUS_LABEL,
-  formatDate,
+  formatDateTime,
   type CampaignSummary,
   type ManagedProfile,
 } from "../types";
@@ -139,7 +139,7 @@ export default function ManageClient() {
                 <p className="truncate text-sm text-brown-500">{campaign.bookTitle}</p>
                 <p className="mt-1 text-xs text-brown-400">
                   {campaign.applicantCount}명 신청 / {campaign.recruitCount}명 모집 · 모집 마감{" "}
-                  {formatDate(campaign.recruitEndAt)}
+                  {formatDateTime(campaign.recruitEndAt)}
                 </p>
               </Link>
             ))}

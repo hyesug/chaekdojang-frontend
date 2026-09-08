@@ -6,7 +6,7 @@ import { fetchApiData, fetchAuthenticatedApiData, SITE_URL } from "../../../lib/
 import {
   DELIVERY_TYPE_LABEL,
   STATUS_LABEL,
-  formatDate,
+  formatDateTime,
   type CampaignDetail,
   type ManageCampaignDetail,
 } from "../../types";
@@ -120,11 +120,12 @@ export default async function CampaignDetailPage({ params, searchParams }: Props
           </div>
         </div>
 
-        <dl className="mt-5 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+        <dl className="mt-5 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
           <Stat label="모집 인원" value={`${campaign.recruitCount}명`} />
           <Stat label="신청" value={`${campaign.applicantCount}명`} />
-          <Stat label="모집 마감" value={formatDate(campaign.recruitEndAt)} />
-          <Stat label="독후감 마감" value={formatDate(campaign.reviewDueAt)} />
+          <Stat label="모집 시작" value={formatDateTime(campaign.recruitStartAt)} />
+          <Stat label="모집 마감" value={formatDateTime(campaign.recruitEndAt)} />
+          <Stat label="독후감 마감" value={formatDateTime(campaign.reviewDueAt)} />
         </dl>
       </section>
 
@@ -149,6 +150,9 @@ export default async function CampaignDetailPage({ params, searchParams }: Props
           priorityWindow={detail.priorityWindow}
           canApplyNow={detail.canApplyNow}
           initialStatus={detail.myApplicationStatus}
+          campaignStatus={campaign.status}
+          recruitStartAt={campaign.recruitStartAt}
+          recruitEndAt={campaign.recruitEndAt}
         />
       )}
     </main>

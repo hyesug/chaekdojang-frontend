@@ -8,7 +8,9 @@ import { authFetch, getValidToken } from "../../../lib/auth";
 import {
   APPLICATION_STATUS_LABEL,
   type CampaignApplicationStatus,
+  type CampaignStatus,
   type ConsentDisplayNameType,
+  formatDateTime,
 } from "../../types";
 
 type Props = {
@@ -18,6 +20,9 @@ type Props = {
   priorityWindow: boolean;
   canApplyNow: boolean;
   initialStatus: CampaignApplicationStatus | null;
+  campaignStatus: CampaignStatus;
+  recruitStartAt: string;
+  recruitEndAt: string;
 };
 
 export default function CampaignApplyPanel({
@@ -27,6 +32,9 @@ export default function CampaignApplyPanel({
   priorityWindow,
   canApplyNow,
   initialStatus,
+  campaignStatus,
+  recruitStartAt,
+  recruitEndAt,
 }: Props) {
   const router = useRouter();
   const [status, setStatus] = useState(initialStatus);
@@ -97,9 +105,20 @@ export default function CampaignApplyPanel({
   }
 
   if (!acceptingApplications) {
+    const now = Date.now();
+    const start = new Date(recruitStartAt).getTime();
+    const end = new Date(recruitEndAt).getTime();
+    let message = "지금은 신청을 받지 않는 캠페인입니다.";
+    if (campaignStatus === "RECRUITING" && now < start) {
+      message = `신청은 ${formatDateTime(recruitStartAt)}부터 시작됩니다.`;
+    } else if (campaignStatus === "RECRUITING" && now > end) {
+      message = `모집이 ${formatDateTime(recruitEndAt)}에 마감되었습니다.`;
+    } else if (["CLOSED", "SELECTED", "COMPLETED"].includes(campaignStatus)) {
+      message = "모집이 마감된 캠페인입니다.";
+    }
     return (
       <section className="mt-6 rounded-2xl border border-cream-200 bg-cream-50 p-5 text-sm text-brown-500">
-        지금은 신청을 받지 않는 캠페인입니다.
+        {message}
       </section>
     );
   }

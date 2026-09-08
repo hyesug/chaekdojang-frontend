@@ -16,6 +16,7 @@ import {
 } from "../../../types";
 import EbookUploadPanel from "./EbookUploadPanel";
 import ExportPanel from "./ExportPanel";
+import CampaignEditForm from "./CampaignEditForm";
 
 const NEXT_STATUS: Partial<Record<CampaignStatus, { status: CampaignStatus; label: string }>> = {
   DRAFT: { status: "RECRUITING", label: "모집 시작" },
@@ -31,6 +32,7 @@ export default function ManageCampaignClient({ campaignId }: { campaignId: numbe
   const [rejectOthers, setRejectOthers] = useState(true);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -190,6 +192,15 @@ export default function ManageCampaignClient({ campaignId }: { campaignId: numbe
               {nextStatus.label}
             </button>
           )}
+          {campaign.status === "DRAFT" && (
+            <button
+              type="button"
+              onClick={() => setEditing((previous) => !previous)}
+              className="rounded-full border border-cream-200 px-4 py-2 text-sm font-semibold text-brown-700 hover:bg-cream-50"
+            >
+              {editing ? "수정 닫기" : "캠페인 수정"}
+            </button>
+          )}
           <Link
             href={`/dojangdan/campaigns/${campaign.id}?preview=1`}
             className="rounded-full border border-cream-200 px-4 py-2 text-sm font-semibold text-brown-700 hover:bg-cream-50"
@@ -198,6 +209,17 @@ export default function ManageCampaignClient({ campaignId }: { campaignId: numbe
           </Link>
         </div>
       </section>
+
+      {editing && campaign.status === "DRAFT" && (
+        <CampaignEditForm
+          detail={detail}
+          onCancel={() => setEditing(false)}
+          onSaved={async () => {
+            setEditing(false);
+            await load();
+          }}
+        />
+      )}
 
       <section className="mt-8">
         <div className="flex items-center justify-between">

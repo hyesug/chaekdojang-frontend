@@ -26,6 +26,8 @@ export type ContestSummary = {
   submitStartAt: string;
   submitEndAt: string;
   announceAt: string;
+  acceptingEntries: boolean;
+  submitClosed: boolean;
   entryCount: number;
   books: ContestBook[];
 };
@@ -154,6 +156,23 @@ export function formatDateTime(value: string | null) {
   return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, "0")}.${String(
     date.getDate()
   ).padStart(2, "0")}`;
+}
+
+/**
+ * 독자에게 보여줄 상태 이름.
+ * 주최자가 마감 처리를 하지 않아도 접수 기간이 지났으면 '접수 마감'으로 보여준다.
+ * 시각 비교는 서버(한국 시간)가 이미 해서 내려주므로 여기서 다시 계산하지 않는다.
+ */
+export function contestStatusLabel(contest: ContestSummary) {
+  if (contest.status !== "OPEN") return CONTEST_STATUS_LABEL[contest.status];
+  if (contest.acceptingEntries) return "접수 중";
+  return contest.submitClosed ? "접수 마감" : "접수 예정";
+}
+
+/** 책도장이 직접 주최하면 이름과 유형 이름이 같아 중복으로 보이므로 유형을 뺀다. */
+export function hostLabel(name: string, type: HostProfileType) {
+  const label = HOST_TYPE_LABEL[type];
+  return label === name ? name : `${name} · ${label}`;
 }
 
 /** 지정 도서가 없으면 자유주제 공모전이다. */

@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { fetchApiData, SITE_URL } from "../lib/serverApi";
 import {
-  CONTEST_STATUS_LABEL,
   ENTRY_TYPE_LABEL,
-  HOST_TYPE_LABEL,
+  contestStatusLabel,
   formatDateTime,
+  hostLabel,
   topicLabel,
   type ContestSummary,
 } from "./types";
@@ -27,8 +27,11 @@ export default async function ContestListPage() {
   const contests =
     (await fetchApiData<ContestSummary[]>("/api/contests", { cache: "no-store" })) ?? [];
 
-  const open = contests.filter((contest) => contest.status === "OPEN");
-  const judging = contests.filter((contest) => contest.status === "CLOSED");
+  // 주최자가 마감 처리를 미룬 공모전도 접수 기간이 지났으면 접수 중으로 묶지 않는다.
+  const open = contests.filter((contest) => contest.acceptingEntries);
+  const judging = contests.filter(
+    (contest) => !contest.acceptingEntries && contest.status !== "ANNOUNCED"
+  );
   const announced = contests.filter((contest) => contest.status === "ANNOUNCED");
 
   return (
@@ -101,13 +104,13 @@ function ContestSection({ title, contests }: { title: string; contests: ContestS
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full bg-cream-100 px-2 py-0.5 text-xs font-semibold text-brown-600">
-                  {CONTEST_STATUS_LABEL[contest.status]}
+                  {contestStatusLabel(contest)}
                 </span>
                 <span className="rounded-full bg-cream-100 px-2 py-0.5 text-xs font-semibold text-brown-600">
                   {ENTRY_TYPE_LABEL[contest.entryType]}
                 </span>
                 <span className="truncate text-xs text-brown-400">
-                  {contest.hostName} · {HOST_TYPE_LABEL[contest.hostType]}
+                  {hostLabel(contest.hostName, contest.hostType)}
                 </span>
               </div>
               <p className="mt-1 truncate font-serif text-lg font-bold text-brown-900">

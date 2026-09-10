@@ -4,10 +4,10 @@ import { notFound } from "next/navigation";
 import BackButton from "../../components/BackButton";
 import { fetchApiData, fetchAuthenticatedApiData, SITE_URL } from "../../lib/serverApi";
 import {
-  CONTEST_STATUS_LABEL,
   ENTRY_TYPE_LABEL,
-  HOST_TYPE_LABEL,
+  contestStatusLabel,
   formatDateTime,
+  hostLabel,
   topicLabel,
   type ContestDetail,
   type ManageContestDetail,
@@ -78,7 +78,7 @@ export default async function ContestDetailPage({ params, searchParams }: Props)
       <section className="mt-4 rounded-3xl border border-cream-200 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-cream-100 px-2.5 py-0.5 text-xs font-semibold text-brown-600">
-            {CONTEST_STATUS_LABEL[contest.status]}
+            {contestStatusLabel(contest)}
           </span>
           <span className="rounded-full bg-cream-100 px-2.5 py-0.5 text-xs font-semibold text-brown-600">
             {ENTRY_TYPE_LABEL[contest.entryType]}
@@ -92,7 +92,7 @@ export default async function ContestDetailPage({ params, searchParams }: Props)
               href={`/profiles/${contest.hostSlug}`}
               className="text-xs text-brown-400 hover:text-brown-600"
             >
-              {contest.hostName} · {HOST_TYPE_LABEL[contest.hostType]}
+              {hostLabel(contest.hostName, contest.hostType)}
             </Link>
           )}
         </div>

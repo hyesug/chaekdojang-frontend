@@ -5,7 +5,7 @@ import { API_BASE } from "../../lib/api";
 import { authFetch } from "../../lib/auth";
 import {
   ENTRY_TYPE_LABEL,
-  HOST_TYPE_LABEL,
+  hostLabel,
   type ContestBook,
   type ContestEntryType,
   type HostProfile,
@@ -140,7 +140,7 @@ export default function ContestForm({ profiles = [], detail, onSaved, onCancel }
           >
             {profiles.map((profile) => (
               <option key={profile.id} value={profile.id}>
-                {profile.displayName} ({HOST_TYPE_LABEL[profile.type]})
+                {hostLabel(profile.displayName, profile.type)}
               </option>
             ))}
           </select>

@@ -8,8 +8,8 @@ import { authFetch, getValidToken } from "../../lib/auth";
 import {
   CONTEST_STATUS_LABEL,
   ENTRY_TYPE_LABEL,
-  HOST_TYPE_LABEL,
   formatDateTime,
+  hostLabel,
   topicLabel,
   type ContestSummary,
   type HostProfile,
@@ -88,8 +88,8 @@ export default function ManageContestsClient() {
                 <h2 className="font-serif text-lg font-bold text-brown-900">주최 프로필</h2>
                 <p className="mt-1 text-sm text-brown-500">
                   {profiles
-                    .map((profile) => `${profile.displayName}(${HOST_TYPE_LABEL[profile.type]})`)
-                    .join(" · ")}
+                    .map((profile) => hostLabel(profile.displayName, profile.type))
+                    .join(", ")}
                 </p>
               </div>
               <button

@@ -46,7 +46,9 @@ const typeLabels: Record<OfficialProfileType, string> = {
 };
 
 async function getProfile(slug: string) {
-  return fetchApiData<OfficialProfile>(`/api/profiles/${encodeURIComponent(slug)}`, {
+  // 경로 매개변수는 인코딩된 채로 넘어온다. 한글 주소를 그대로 다시 인코딩하면 조회에 실패한다.
+  const decoded = decodeURIComponent(slug);
+  return fetchApiData<OfficialProfile>(`/api/profiles/${encodeURIComponent(decoded)}`, {
     cache: "no-store",
   });
 }

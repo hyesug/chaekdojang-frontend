@@ -10,6 +10,7 @@ const navLinks = [
   { href: "/library", label: "서재" },
   { href: "/write", label: "독후감 쓰기" },
   { href: "/dojangdan", label: "도장단" },
+  { href: "/contests", label: "공모전" },
   { href: "/groups", label: "독서모임" },
   { href: "/stats", label: "독서 인생지도" },
   { href: "/cs", label: "고객센터" },

@@ -118,7 +118,7 @@ interface Inquiry {
   createdAt: string;
 }
 
-type OfficialProfileType = "AUTHOR" | "PUBLISHER" | "BOOKSTORE";
+type OfficialProfileType = "AUTHOR" | "PUBLISHER" | "BOOKSTORE" | "LIBRARY" | "PLATFORM";
 type OfficialProfileApplicationStatus = "PENDING" | "APPROVED" | "REJECTED";
 type OfficialProfileStatus = "DRAFT" | "ACTIVE" | "HIDDEN";
 
@@ -490,6 +490,8 @@ const officialProfileTypeLabels: Record<OfficialProfileType, string> = {
   AUTHOR: "작가",
   PUBLISHER: "출판사",
   BOOKSTORE: "서점",
+  LIBRARY: "도서관",
+  PLATFORM: "책도장",
 };
 
 const officialApplicationStatusLabels: Record<OfficialProfileApplicationStatus, string> = {
@@ -838,6 +840,11 @@ export default function AdminPage() {
   const [query, setQuery] = useState("");
   const [selectedReviewId, setSelectedReviewId] = useState<number | null>(null);
   const [bookSearchProfile, setBookSearchProfile] = useState<OfficialProfile | null>(null);
+  const [newProfileForm, setNewProfileForm] = useState<{ type: OfficialProfileType; displayName: string; contactEmail: string }>({
+    type: "LIBRARY",
+    displayName: "",
+    contactEmail: "",
+  });
   const [bookSearchQuery, setBookSearchQuery] = useState("");
   const [bookSearchResults, setBookSearchResults] = useState<BookSearchResult[]>([]);
   const [bookSearching, setBookSearching] = useState(false);
@@ -1603,6 +1610,25 @@ export default function AdminPage() {
     loadAll();
   }
 
+  async function createOfficialProfile(e?: React.FormEvent) {
+    e?.preventDefault();
+    const token = getToken();
+    if (!token || !newProfileForm.displayName.trim()) return;
+    const res = await authFetch(`${API_BASE}/api/admin/profiles`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: newProfileForm.type,
+        displayName: newProfileForm.displayName.trim(),
+        contactEmail: newProfileForm.contactEmail.trim() || null,
+      }),
+    });
+    if (res.status === 401) { router.replace("/auth/login"); return; }
+    if (res.status === 403) { setUnauthorized(true); return; }
+    setNewProfileForm({ type: "LIBRARY", displayName: "", contactEmail: "" });
+    loadAll();
+  }
+
   async function addOfficialProfileBook(profileId: number, bookId: number) {
     const token = getToken();
     if (!token || !Number.isFinite(bookId) || bookId <= 0) return;
@@ -2190,6 +2216,43 @@ export default function AdminPage() {
 
               <div>
                 <h2 className="mb-3 font-serif text-lg font-bold text-brown-900">공식 프로필</h2>
+                <form onSubmit={createOfficialProfile} className="mb-3 rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+                  <p className="text-sm font-semibold text-brown-800">공식 프로필 직접 만들기</p>
+                  <p className="mt-1 text-xs leading-5 text-brown-400">
+                    도서관 프로필이나 책도장이 직접 공모전을 주최할 프로필은 신청 절차 없이 여기서 만듭니다. 만든 관리자가 그 프로필의 운영자로 등록됩니다.
+                  </p>
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                    <select
+                      value={newProfileForm.type}
+                      onChange={(e) => setNewProfileForm((form) => ({ ...form, type: e.target.value as OfficialProfileType }))}
+                      className="rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-800"
+                    >
+                      <option value="LIBRARY">도서관</option>
+                      <option value="PUBLISHER">출판사</option>
+                      <option value="AUTHOR">작가</option>
+                      <option value="BOOKSTORE">서점</option>
+                      <option value="PLATFORM">책도장 (직접 주최)</option>
+                    </select>
+                    <input
+                      value={newProfileForm.displayName}
+                      onChange={(e) => setNewProfileForm((form) => ({ ...form, displayName: e.target.value }))}
+                      placeholder="표시 이름"
+                      className="flex-1 rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-800"
+                    />
+                    <input
+                      value={newProfileForm.contactEmail}
+                      onChange={(e) => setNewProfileForm((form) => ({ ...form, contactEmail: e.target.value }))}
+                      placeholder="문의 이메일 (선택)"
+                      className="flex-1 rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-800"
+                    />
+                    <button
+                      type="submit"
+                      className="shrink-0 rounded-xl bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800"
+                    >
+                      만들기
+                    </button>
+                  </div>
+                </form>
                 <div className="space-y-3">
                   {pagedOfficialProfiles.map((profile) => (
                     <div key={profile.id} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">

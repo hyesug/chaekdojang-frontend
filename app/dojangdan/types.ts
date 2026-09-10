@@ -98,7 +98,7 @@ export type ManagedProfile = {
   id: number;
   displayName: string;
   slug: string;
-  type: "AUTHOR" | "PUBLISHER" | "BOOKSTORE";
+  type: "AUTHOR" | "PUBLISHER" | "BOOKSTORE" | "LIBRARY" | "PLATFORM";
   verified: boolean;
 };
 

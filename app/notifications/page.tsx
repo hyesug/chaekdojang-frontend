@@ -7,7 +7,7 @@ import { authFetch, getValidToken } from "../lib/auth";
 
 const BASE = API_BASE;
 
-type NotificationType = "LIKE" | "COMMENT" | "FOLLOW" | "SAME_BOOK_REVIEW" | "GROUP_JOIN_REQUEST" | "GROUP_JOINED" | "GROUP_JOIN_APPROVED" | "REVIEW_CONTINUED" | "CAMPAIGN_SELECTED" | "CAMPAIGN_REJECTED" | "CAMPAIGN_INVITED";
+type NotificationType = "LIKE" | "COMMENT" | "FOLLOW" | "SAME_BOOK_REVIEW" | "GROUP_JOIN_REQUEST" | "GROUP_JOINED" | "GROUP_JOIN_APPROVED" | "REVIEW_CONTINUED" | "CAMPAIGN_SELECTED" | "CAMPAIGN_REJECTED" | "CAMPAIGN_INVITED" | "CONTEST_AWARDED" | "CONTEST_NOT_AWARDED";
 
 type Notification = {
   id: number;
@@ -38,6 +38,8 @@ function typeIcon(type: NotificationType) {
     case "CAMPAIGN_SELECTED": return "✓";
     case "CAMPAIGN_REJECTED": return "📚";
     case "CAMPAIGN_INVITED": return "✉";
+    case "CONTEST_AWARDED": return "🏆";
+    case "CONTEST_NOT_AWARDED": return "📄";
   }
 }
 
@@ -47,6 +49,9 @@ function notificationHref(notification: Notification) {
   }
   if (notification.targetId !== null && ["CAMPAIGN_SELECTED", "CAMPAIGN_REJECTED"].includes(notification.type)) {
     return `/dojangdan/my#campaign-${notification.targetId}`;
+  }
+  if (notification.targetId !== null && ["CONTEST_AWARDED", "CONTEST_NOT_AWARDED"].includes(notification.type)) {
+    return `/contests/${notification.targetId}`;
   }
   if (
     notification.targetSlug &&

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { fetchApiData, SITE_URL } from "../../lib/serverApi";
 
-type OfficialProfileType = "AUTHOR" | "PUBLISHER" | "BOOKSTORE";
+type OfficialProfileType = "AUTHOR" | "PUBLISHER" | "BOOKSTORE" | "LIBRARY" | "PLATFORM";
 
 type OfficialProfileBook = {
   id: number;
@@ -41,6 +41,8 @@ const typeLabels: Record<OfficialProfileType, string> = {
   AUTHOR: "작가",
   PUBLISHER: "출판사",
   BOOKSTORE: "서점",
+  LIBRARY: "도서관",
+  PLATFORM: "책도장",
 };
 
 async function getProfile(slug: string) {

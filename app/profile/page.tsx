@@ -79,7 +79,7 @@ function getUploadErrorMessage(message?: string) {
   return message;
 }
 
-type OfficialProfileType = "AUTHOR" | "PUBLISHER" | "BOOKSTORE";
+type OfficialProfileType = "AUTHOR" | "PUBLISHER" | "BOOKSTORE" | "LIBRARY" | "PLATFORM";
 type OfficialProfileApplicationStatus = "PENDING" | "APPROVED" | "REJECTED";
 
 type OfficialProfileApplication = {
@@ -105,6 +105,8 @@ const OFFICIAL_PROFILE_TYPE_LABELS: Record<OfficialProfileType, string> = {
   AUTHOR: "작가",
   PUBLISHER: "출판사",
   BOOKSTORE: "서점",
+  LIBRARY: "도서관",
+  PLATFORM: "책도장",
 };
 
 const APPLICATION_STATUS_LABELS: Record<OfficialProfileApplicationStatus, string> = {
@@ -954,6 +956,7 @@ export default function ProfilePage() {
                 <option value="AUTHOR">작가</option>
                 <option value="PUBLISHER">출판사</option>
                 <option value="BOOKSTORE">서점</option>
+                <option value="LIBRARY">도서관</option>
               </select>
             </div>
             <div>

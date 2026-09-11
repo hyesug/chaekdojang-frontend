@@ -98,7 +98,7 @@ function ContestSection({ title, contests }: { title: string; contests: ContestS
               />
             ) : (
               <div className="flex h-24 w-16 flex-shrink-0 items-center justify-center rounded bg-cream-100 text-xs text-brown-400">
-                자유주제
+                {contest.books.length > 0 ? "표지 없음" : "자유주제"}
               </div>
             )}
             <div className="min-w-0 flex-1">

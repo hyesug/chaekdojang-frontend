@@ -510,3 +510,42 @@ details.pool[open] > summary::before { content: '▾ '; }
   .say { border-bottom: 1px solid #ddd; }
   .cite { color: #666; }
 }
+
+/* ── 일자별 표 ────────────────────────────────────────────────
+   한 달 서른 날. 좁은 화면에서는 가로로 밀어 본다. */
+.daytable-wrap { overflow-x: auto; margin: 0 -4px; }
+.daytable { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 460px; }
+.daytable th {
+  font-size: 11px; font-weight: 600; letter-spacing: .06em; color: var(--ink-3);
+  text-align: left; padding: 0 8px 8px; border-bottom: 1px solid rgba(255,255,255,.1);
+}
+.daytable td { padding: 11px 8px; border-bottom: 1px solid rgba(255,255,255,.05); vertical-align: top; }
+.daytable tr:last-child td { border-bottom: none; }
+.daytable tr.now td { background: rgba(212,175,110,.07); }
+.daytable tr.now .dt { color: var(--gold); font-weight: 700; }
+
+.daytable .dt { white-space: nowrap; font-weight: 600; width: 1%; }
+.daytable .dt small { display: block; font-size: 10.5px; font-weight: 400; color: var(--ink-3); }
+.daytable .sl { width: 1%; white-space: nowrap; }
+.daytable .ln { line-height: 1.6; color: var(--ink-1); }
+.daytable .gd { width: 1%; white-space: nowrap; font-size: 12px; font-weight: 600; text-align: right; }
+
+.sinsal {
+  display: inline-block; font-size: 10.5px; padding: 2px 6px; margin: 0 3px 3px 0;
+  border-radius: 4px; background: rgba(255,255,255,.07); color: var(--ink-2);
+}
+
+/* 등급 — 색으로만 구분하고 숫자는 쓰지 않는다 */
+.gd.g5 { color: var(--mok); }
+.gd.g4 { color: #86c9a0; }
+.gd.g3 { color: var(--ink-3); }
+.gd.g2 { color: var(--gold); }
+.gd.g1 { color: var(--hwa); }
+.gd.g0 { color: var(--hwa); font-weight: 700; }
+
+@media print {
+  .daytable-wrap { overflow: visible; }
+  .daytable { min-width: 0; font-size: 11px; }
+  .daytable td { padding: 6px 6px; border-bottom: 1px solid #ddd; }
+  .sinsal { background: #eee; color: #333; }
+}

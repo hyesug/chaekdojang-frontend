@@ -8,13 +8,13 @@ import { readFortune } from './engine.js';
 import { compareFortune } from './compat.js';
 import { CITIES } from './core/place.js';
 import { lunarToSolar } from './core/lunar.js';
-import { TRAIT_NAMES } from './systems/_base.js';
 import { j } from './core/josa.js';
 import {
   encodeState, decodeState, buildSoloCard, buildCompatCard, downloadCanvas,
 } from './share.js';
 import { pickNumbers } from './lotto.js';
-import { readForecast, AREAS, areaText, areaSources } from './forecast.js';
+import { readForecast, AREAS } from './forecast.js';
+import { lifeReading, monthDays, luckyDays, periodProse } from './reading.js';
 import { aiSection, initAI, initCompatAI } from './ai.js';
 
 /** 방금 본 결과. 이미지 카드와 공유 링크를 만들 때 다시 쓴다 */
@@ -233,112 +233,6 @@ const cite = (names) => names && names.length
 const say = (name, html) =>
   `<div class="say">${name ? `<div class="say-name">${esc(name)}</div>` : ''}<p class="say-text">${html}</p></div>`;
 
-/** 한 시기의 풀이 — 문장만 */
-function flowPane(f, kind, open) {
-  const P = f.period;
-  const gz = kind === 'day' ? P.gz.day : kind === 'month' ? P.gz.month : P.gz.year;
-  return `
-    <div class="flow-pane" data-fp="${kind}" ${open ? '' : 'hidden'}>
-      <p class="lotto-when">${esc(P.label)} · ${esc(gz.hanja)}(${esc(gz.kr)})${
-        kind !== 'year' ? ` · ${P.sajuYear}년 ${esc(P.gz.year.hanja)}` : ''}</p>
-
-      ${AREAS.map((a) => {
-        const x = f.areas[a];
-        if (x.score == null) return '';
-        return say(a, `${esc(areaText(a, x.score, kind))}${cite(areaSources(f, a))}`);
-      }).join('')}
-
-      <details class="pool">
-        <summary>체계별로 이 시기를 어떻게 보는지</summary>
-        <dl class="facts">
-          ${f.results.slice().sort((a, b) => (b.areas?.총운 ?? 0) - (a.areas?.총운 ?? 0)).map((r) => `
-            <div class="fact">
-              <dt>${esc(r.name)}</dt>
-              <dd>${esc(r.headline)}<small>${esc(r.text)}</small></dd>
-            </div>`).join('')}
-        </dl>
-      </details>
-    </div>`;
-}
-/**
- * 이레 화면.
- *
- * 명리에 주(週)가 없어 이레치 일운을 계산해 묶은 것이다. 막대를 걷어낸
- * 자리에는 날짜를 문장으로 적는다 — 주간 운세에서 알고 싶은 건 결국
- * "어느 날에 하면 되나"라서 숫자 없이도 전해진다.
- */
-function weekPane(w, open) {
-  const day = (d) => `${d.on.m}월 ${d.on.d}일(${esc(d.weekday)})`;
-  const sorted = w.days.slice().sort((a, b) => b.score - a.score);
-
-  return `
-    <div class="flow-pane" data-fp="week" ${open ? '' : 'hidden'}>
-      <p class="lotto-when">${esc(w.label)} · 이레</p>
-
-      ${say('어느 날',
-        `${sorted.slice(0, 2).map(day).join(', ')} 쪽이 낫고, ` +
-        `${sorted.slice(-2).reverse().map(day).join(', ')} 쪽이 무겁습니다. ` +
-        `중요한 자리를 잡는다면 앞쪽 날로 미는 편이 낫습니다.` +
-        `<span class="cite">(이레치 일진을 하루씩 계산한 결과입니다)</span>`)}
-
-      ${AREAS.map((a) => {
-        const x = w.areas[a];
-        if (x.score == null) return '';
-        return say(a, `${esc(areaText(a, x.score, 'week'))}${cite(areaSources(w, a))}`);
-      }).join('')}
-
-      <p class="area-src" style="margin-top:14px">
-        명리에는 주(週)라는 단위가 없습니다. 년·월·일·시뿐이라 주건(週建)에 해당하는 간지가
-        없어서, 없는 간지를 지어내는 대신 이레치 일운을 하루씩 계산해 묶었습니다.
-      </p>
-    </div>`;
-}
-/** 오늘·이레·이달·올해. 개인 운세 화면 맨 위에 온다 */
-function timeSection(form, f) {
-  const tl = f.timeline;
-  const sorted = tl.slice().sort((a, b) => b.score - a.score);
-  const lo = sorted[sorted.length - 1];
-  const spread = sorted[0].score - lo.score;
-  const p2 = (n) => String(n).padStart(2, '0');
-
-  return `
-    <div class="section-label">시기 운세</div>
-    <div class="card synth">
-      <h3>${esc(form.name)} 님<span class="hanja">${f.today.y}.${p2(f.today.m)}.${p2(f.today.d)} 기준</span></h3>
-
-      <div class="lotto-tabs" style="margin-top:16px">
-        <button type="button" class="ft on" data-ft="day">오늘</button>
-        <button type="button" class="ft" data-ft="week">이번 주</button>
-        <button type="button" class="ft" data-ft="month">이번 달</button>
-        <button type="button" class="ft" data-ft="year">올해</button>
-      </div>
-
-      ${flowPane(f.day, 'day', true)}
-      ${weekPane(f.week, false)}
-      ${flowPane(f.month, 'month', false)}
-      ${flowPane(f.year, 'year', false)}
-    </div>
-
-    <div class="section-label">${f.day.period.sajuYear}년 열두 달</div>
-    <div class="card">
-      ${say(null,
-        `올해 열두 달 가운데 ${sorted.slice(0, 2).map((m) => m.from.m + '월').join('과 ')} 쪽이 가장 낫고, ` +
-        `${lo.from.m}월이 가장 무겁습니다. ` +
-        (spread >= 25 ? '기복이 큰 해라 시기를 골라 쓰는 편이 낫습니다.'
-          : spread >= 12 ? '기복은 보통입니다.'
-          : '달마다 큰 차이가 없는 평탄한 해입니다.') +
-        `<span class="cite">(달의 경계는 달력 1일이 아니라 절기입니다)</span>`)}
-      <dl class="facts" style="margin-top:6px">
-        ${sorted.slice(0, 2).concat([lo]).map((m, i) => `
-          <div class="fact">
-            <dt>${m.from.m}월 ${esc(m.gz.hanja)}</dt>
-            <dd>${i < 2 ? '좋게 봅니다' : '조심스럽게 봅니다'}<small>${
-              esc((i < 2 ? m.best : m.worst) ?? '')} 쪽이 특히 그렇습니다 · ${m.from.m}월 ${m.from.d}일부터</small></dd>
-          </div>`).join('')}
-      </dl>
-    </div>
-  `;
-}
 
 // ─────────────────────────────────────────────────────────────
 // 궁합 화면
@@ -415,85 +309,91 @@ function renderCompat(formA, formB) {
 
 function render(form) {
   const r = readFortune(form);
-  // 시기 운세도 같은 화면에 들어간다. 여기서 한 번만 계산해 두고
-  // AI 에도 그대로 넘긴다 (읽는 사람이 보는 값과 AI 가 받는 값이 같아야 한다).
   const f = readForecast(form);
   const s = r.synthesis;
   last = { mode: 'solo', formA: form, formB: null, result: r, forecast: f };
-  const p = (n) => String(n).padStart(2, '0');
+
+  const life = lifeReading(r.input, r.chart, s);
+  const days = monthDays(r.input, r.chart, f.today.y, f.today.m);
+  const lucky = luckyDays(days, life.meta.weak);
+  const today = days.find((x) => x.d === f.today.d) ?? days[0];
+
+  const seed = form.day + form.month;
+  const block = (label, text, sources) => text
+    ? `<div class="say"><div class="say-name">${esc(label)}</div>
+         <p class="say-text">${esc(text)}${cite(sources)}</p></div>`
+    : '';
+
+  const period = (blk, label, kind) => {
+    const p = periodProse(blk, seed + label.length);
+    return AREAS.map((a) => p[a]?.text
+      ? block(label === '오늘' ? a : `${label} ${a}`, p[a].text, p[a].sources) : '').join('');
+  };
+
+  const dayRows = days.map((x) => `
+    <tr class="${x.d === f.today.d ? 'now' : ''}">
+      <td class="dt">${x.d}<small>${esc(x.weekday)}</small></td>
+      <td class="sl">${x.sinsal.map((n) => `<span class="sinsal">${esc(n)}</span>`).join('')}</td>
+      <td class="ln">${esc(x.line)}</td>
+      <td class="gd ${x.cls}">${esc(x.grade)}</td>
+    </tr>`).join('');
+
+  const dayList = (arr) => arr.slice().sort((a, b) => a - b).join(', ');
 
   return `
-    ${timeSection(form, f)}
-
-    <div class="section-label">평생 운세</div>
+    <div class="section-label">오늘 — ${f.today.m}월 ${f.today.d}일 (${esc(today.weekday)})</div>
     <div class="card synth">
-      <h3>${esc(form.name)} 님<span class="hanja">${form.year}.${p(form.month)}.${p(form.day)}
-        ${r.input.timeKnown ? `${p(form.hour)}:${p(form.minute)}` : '시간 미상'} · ${esc(form.birthPlace)}</span></h3>
-      <p class="headline">${s.systemCount}개 체계를 돌린 결과입니다</p>
-
-      ${s.summary.map((t) => `<div class="summary-line">${esc(t)}</div>`).join('')}
-
-      ${say(null, `${esc(s.consensus.text)}${cite(s.consensus.from)}`)}
-
-      <div class="section-label" style="margin-top:22px">타고난 바탕</div>
-      ${say(null, `${esc(s.elementAgreement.text)} ` +
-        `${esc(j(s.elements.strongestName, '이'))} 가장 두텁고 ` +
-        `${esc(j(s.elements.weakestName, '이'))} 가장 옅습니다.` +
-        `<span class="cite">(열다섯 체계의 오행을 합산한 것입니다)</span>`)}
-
-      ${say('기질', esc(TRAIT_NAMES.map((k) => {
-        const v = s.traits[k].value;
-        if (Math.abs(v) < 0.2) return `${k}은 한쪽으로 기울지 않습니다`;
-        const how = Math.abs(v) >= 0.5 ? '뚜렷하게' : '조금';
-        return `${k}은 ${how} ${POLES[k][v >= 0 ? 1 : 0]} 쪽입니다`;
-      }).join(', ') + '.'))}
-
-      ${say('힘이 실린 곳',
-        `${esc(s.ranked.slice(0, 2).map((d) => d.label).join('과 '))} 쪽에 힘이 실려 있고, ` +
-        `${esc(s.ranked[s.ranked.length - 1].label)} 쪽이 상대적으로 옅습니다.` +
-        cite(s.ranked[0].speakers))}
-
-      <div class="section-label" style="margin-top:22px">여러 체계가 함께 가리킨 것</div>
-      ${s.sharedTags.length
-        ? say(null, s.sharedTags.map((t) => `<strong>${esc(t.word)}</strong>${cite(t.from)}`).join(', ') +
-            ' — 서로 다른 전통이 같은 곳을 가리킬 때 그나마 믿을 만합니다.')
-        : say(null, '겹치는 항목이 없습니다. 체계마다 다른 면을 비추고 있다는 뜻입니다.')}
-      ${s.soloTags.length
-        ? say(null, `<span style="color:var(--ink-3)">한 체계에서만 나온 것 — ` +
-            `${s.soloTags.map((t) => esc(t.word)).join(', ')}. 참고만 하세요.</span>`)
-        : ''}
+      <h3>${esc(form.name)} 님<span class="hanja">${esc(f.day.period.gz.day.hanja)} · ${esc(today.grade)}</span></h3>
+      ${block('오늘 총평', today.line, [])}
+      ${period(f.day, '오늘', 'day')}
     </div>
-    <div class="section-label">계산에 쓴 값</div>
+
+    <div class="section-label">이번 주</div>
     <div class="card">
-      <dl class="facts">
-        <div class="fact"><dt>진태양시</dt><dd>${r.input.timeKnown
-          ? `${p(r.birth.tst.h)}:${p(r.birth.tst.mi)} <small>벽시계 ${p(form.hour)}:${p(form.minute)}에서 ${r.birth.totalShiftMinutes >= 0 ? '+' : '−'}${Math.abs(r.birth.totalShiftMinutes).toFixed(0)}분</small>`
-          : '<small>시간 미상 — 정오로 가정</small>'}</dd></div>
-        <div class="fact"><dt>음력</dt><dd>${r.lunar.year}.${r.lunar.isLeap ? '윤' : ''}${r.lunar.month}.${r.lunar.day}
-          <small>${r.lunar.isBigMonth ? '큰달' : '작은달'}</small></dd></div>
-        <div class="fact"><dt>사주</dt><dd>${Object.values(r.chart.pillars).filter(Boolean).map((x) => x.hanja).join(' ')}
-          <small>${r.chart.sajuYear}년 ${r.chart.zodiac}띠 · 입춘 기준</small></dd></div>
-        <div class="fact"><dt>거주 방위</dt><dd>${esc(r.input.moveDirection)}
-          <small>${esc(form.birthPlace)} → ${esc(form.homePlace)}</small></dd></div>
-      </dl>
-      <ul class="corrections">${r.birth.corrections.map((c) => `<li>${esc(c)}</li>`).join('')}</ul>
+      ${block('이레', `${f.week.label} 가운데 ${f.week.bestDay.on.m}월 ${f.week.bestDay.on.d}일 쪽이 낫고, ${f.week.worstDay.on.m}월 ${f.week.worstDay.on.d}일 쪽이 무겁습니다. 중요한 자리를 잡는다면 앞쪽 날로 미는 편이 낫습니다.`, [])}
+      ${period(f.week, '이번 주', 'week')}
     </div>
 
-    <div class="section-label">체계별 풀이 — ${r.results.length}개</div>
-    ${r.errors.map((e) => `<div class="error">${esc(e.system)} 계산 실패: ${esc(e.message)}</div>`).join('')}
-    ${renderGroups(r)}
+    <div class="section-label">${f.today.m}월</div>
+    <div class="card">
+      ${period(f.month, '이번 달', 'month')}
+    </div>
 
-    ${r.skipped.length ? `
-      <div class="section-label">계산하지 못한 체계</div>
-      <div class="card">
-        <div class="planned">
-          ${r.skipped.map((x) => `<span>${esc(x.system)}</span>`).join('')}
-        </div>
-        <p style="font-size:12.5px;color:var(--ink-3);margin:14px 0 0">
-          ${esc(r.skipped[0].reason)} 이 체계들은 시각으로 판을 세우기 때문에,
-          시간을 모르면 근사치를 내는 대신 아예 내놓지 않는 편이 정직합니다.
-        </p>
-      </div>` : ''}
+    <div class="section-label">${f.today.m}월 일자별</div>
+    <div class="card">
+      <div class="daytable-wrap">
+        <table class="daytable">
+          <thead><tr><th>날</th><th>신살</th><th>풀이</th><th>등급</th></tr></thead>
+          <tbody>${dayRows}</tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section-label">${f.today.m}월 길일과 처방</div>
+    <div class="card">
+      ${block('좋은 날', `자리 이동이나 이사에 좋은 날은 ${dayList(lucky.move)}일이고, 문서와 계약·면접에 좋은 날은 ${dayList(lucky.contract)}일입니다. 재물의 흐름이 좋은 날은 ${dayList(lucky.money)}일이며, 사람을 만나기 좋은 날은 ${dayList(lucky.love)}일입니다.`, [])}
+      ${lucky.helper.length ? block('귀인이 드는 날', `운의 흐름과 관계없이 돕는 사람이 붙는 날은 ${dayList(lucky.helper)}일입니다. 아쉬운 말을 꺼내야 한다면 이 날을 쓰세요.`, []) : ''}
+      ${block('피해야 할 날', `${dayList(lucky.avoid)}일은 기운이 넘쳐 도리어 다치기 쉬우니 반드시 피하시고, 그다음으로 조심할 날은 ${dayList(lucky.worst)}일입니다.`, [])}
+      ${block('처방', `모자란 기운을 채우는 색은 ${lucky.color.join('·')}이고 숫자는 ${lucky.num.join(', ')}입니다. 방향은 ${lucky.dir}이며, 이름의 첫 자음이 ${lucky.consonant.join('·')}인 사람과 인연이 좋습니다.`, [])}
+    </div>
+
+    <div class="section-label">${f.day.period.sajuYear}년</div>
+    <div class="card">
+      ${period(f.year, '올해', 'year')}
+    </div>
+
+    <div class="section-label">평생</div>
+    <div class="card">
+      ${block('초년운', life.early, [])}
+      ${block('중년운', life.middle, [])}
+      ${block('말년운', life.late, [])}
+      ${block('형제운', life.sibling, [])}
+      ${block('자식운', life.child, [])}
+      ${block('부부운', life.spouse, [])}
+      ${block('직업운', life.career, [])}
+      ${block('나의 체질', life.body, [])}
+      ${s.summary.length ? block('종합', s.summary.join(' '), s.consensus.from) : ''}
+    </div>
 
     ${lottoSection(r.input, r.chart)}
 
@@ -503,79 +403,10 @@ function render(form) {
   `;
 }
 
-const POLES = {
-  주도: ['따라가는', '이끄는'],
-  외향: ['안으로', '밖으로'],
-  감성: ['이성적', '감각적'],
-  안정: ['움직이는', '머무는'],
-  실리: ['이상', '실속'],
-};
 
-/** 체계를 성격별로 묶어 보여준다. 열다섯을 그냥 나열하면 읽기 어렵다 */
-const GROUPS = [
-  ['명반을 세우는 것', ['saju', 'jamidusu', 'astrology', 'vedic']],
-  ['괘와 판을 뽑는 것', ['juyeok', 'yukim', 'hongguk', 'taeeul']],
-  ['주기와 자리를 보는 것', ['gujeong', 'sukyo', 'tojeong']],
-  ['수와 상징으로 보는 것', ['kabbalah', 'mahabote', 'thai', 'tarot']],
-];
 
-function renderGroups(r) {
-  let first = true;
-  return GROUPS.map(([label, ids]) => {
-    const list = ids.map((id) => r.results.find((x) => x.id === id)).filter(Boolean);
-    if (!list.length) return '';
-    const html = list.map((sys) => {
-      const open = first;
-      first = false;
-      return renderSystem(sys, open, r);
-    }).join('');
-    return `<p style="font-size:11.5px;color:var(--ink-3);margin:18px 0 8px">${esc(label)}</p>${html}`;
-  }).join('');
-}
 
-function renderSystem(sys, open, r) {
-  const isSaju = sys.id === 'saju';
-  return `
-    <details class="sys" ${open ? 'open' : ''}>
-      <summary>
-        <span class="nm">${esc(sys.name)}</span>
-        <span class="hd">${esc(sys.headline)}</span>
-        <span class="chev">▾</span>
-      </summary>
-      <div class="body">
-        ${isSaju ? renderPillars(r) : ''}
-        <dl class="facts">
-          ${sys.facts.map((f) => `
-            <div class="fact">
-              <dt>${esc(f.label)}</dt>
-              <dd>${esc(f.value)}${f.note ? `<small>${esc(f.note)}</small>` : ''}</dd>
-            </div>`).join('')}
-        </dl>
-        ${sys.readings.map((x) => `
-          <div class="reading"><h4>${esc(x.title)}</h4>
-            <p class="${x.mono ? 'mono' : ''}">${esc(x.text)}</p></div>
-        `).join('')}
-        ${sys.confidence < 1 ? `
-          <p style="font-size:11.5px;color:var(--ink-3);margin-top:14px">
-            이 체계는 종합에 ${Math.round(sys.confidence * 100)}%만 반영했습니다 —
-            정확히 계산하려면 더 정밀한 출생 시각이 필요합니다.
-          </p>` : ''}
-      </div>
-    </details>`;
-}
 
-function renderPillars(r) {
-  const P = r.chart.pillars;
-  const cells = [['시', P.hour], ['일', P.day], ['월', P.month], ['년', P.year]];
-  return `<div class="pillars">
-    ${cells.map(([pos, g]) => `
-      <div class="pillar ${pos === '일' ? 'me' : ''}">
-        <div class="pos">${pos}주${pos === '일' ? ' · 나' : ''}</div>
-        <div class="gz">${g ? esc(g.hanja) : '—'}</div>
-        <div class="kr">${g ? esc(g.kr) : '시간 미상'}</div>
-      </div>`).join('')}
-  </div>`;
-}
 
 
 // ─────────────────────────────────────────────────────────────

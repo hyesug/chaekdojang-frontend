@@ -18,6 +18,7 @@ import { toJD, toJDN, fromJD, prevSolarTermJD, solarTermSector, solarTermJD } fr
 import { j } from './core/josa.js';
 import { ganzhiName, yearPillar, STEMS_KR, BRANCHES_KR } from './core/ganzhi.js';
 import { prepareInput, SYSTEMS } from './engine.js';
+import { domainWeight } from './systems/_base.js';
 
 /** 여섯 영역. 총운은 나머지를 아우르는 자리다 */
 export const AREAS = ['총운', '애정운', '금전운', '직장운', '학업운', '건강운'];
@@ -146,8 +147,8 @@ export function forecastPeriod(input, chart, period) {
 //   중심을 52.3 으로 옮기고 4.5배로 벌리면 50 중심에 표준편차 12쯤이 된다.
 // 순위는 그대로 두고 눈금만 바꾸는 일이라 없는 차이를 만들지는 않는다.
 // 표를 고칠 때는 scripts/calibrate.mjs 를 다시 돌려 이 값을 갱신할 것.
-const CENTER = 52.3;
-const SPREAD = 4.5;
+const CENTER = 52.2;
+const SPREAD = 4.4;
 const amplify = (v) => Math.max(5, Math.min(95, Math.round(50 + (v - CENTER) * SPREAD)));
 
 /** 여섯 영역으로 모은다 */
@@ -159,9 +160,11 @@ function synthesizeAreas(results, period) {
     for (const r of results) {
       const v = r.areas?.[a];
       if (v == null) continue;
-      const weight = r.weight ?? 1;
+      // 축이 둘이다. r.weight 는 산법을 얼마나 믿느냐, domainWeight 는
+      // 이 질문에 이 체계가 맞느냐. 곱해야 둘 다 반영된다.
+      const weight = (r.weight ?? 1) * domainWeight(r.id, a);
       sum += v * weight; w += weight;
-      voices.push({ name: r.name, score: v });
+      voices.push({ name: r.name, score: v, weight: Math.round(weight * 100) / 100 });
     }
     voices.sort((x, y) => y.score - x.score);
     const raw = w ? sum / w : null;

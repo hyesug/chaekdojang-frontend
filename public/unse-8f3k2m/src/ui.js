@@ -301,6 +301,10 @@ function render(form) {
   const days = monthDays(r.input, r.chart, f.today.y, f.today.m);
   const lucky = luckyDays(days, life.meta.weak);
   const today = days.find((x) => x.d === f.today.d) ?? days[0];
+  const byYearScore = f.timeline.slice().sort((a, b) => a.score - b.score);
+  const byHealthScore = f.timeline.slice().sort((a, b) =>
+    (a.areas.건강운?.score ?? 50) - (b.areas.건강운?.score ?? 50));
+  const periodName = (x) => `${x.from.m}월 ${x.from.d}일 이후`;
 
   const seed = form.day + form.month;
   const block = (label, text, sources) => text
@@ -364,6 +368,8 @@ function render(form) {
     <div class="section-label">${f.day.period.sajuYear}년</div>
     <div class="card">
       ${period(f.year, '올해', 'year')}
+      ${block('한 해의 흐름', `가장 힘이 실리는 때는 ${periodName(byYearScore[byYearScore.length - 1])} 무렵이고, 가장 속도를 조절할 때는 ${periodName(byYearScore[0])} 무렵입니다.`, [])}
+      ${block('몸의 흐름을 살필 때', `연간 흐름과 별개로 ${periodName(byHealthScore[0])}·${periodName(byHealthScore[1])} 무렵은 무리한 일정을 겹치지 않게 잡는 편이 좋습니다.`, [])}
     </div>
 
     ${(st.lines.length || pat.length) ? `

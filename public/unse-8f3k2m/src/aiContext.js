@@ -126,6 +126,14 @@ export function buildContext(form, r, f = null) {
         .map((m) => `${m.from.m}/${m.from.d}~ ${m.gz.hanja} ${m.score}`)
         .join('  ')
     );
+    // 연간 평균이 무난해도 특정 절기에는 건강 흐름이 크게 내려갈 수 있다.
+    // AI가 연간 점수 하나로 그 저점을 지워버리지 않도록 별도 근거로 준다.
+    const healthLow = f.timeline.slice()
+      .sort((a, b) => (a.areas.건강운?.score ?? 50) - (b.areas.건강운?.score ?? 50))
+      .slice(0, 3)
+      .map((m) => `${m.from.m}월 ${m.from.d}일 이후`)
+      .join(' / ');
+    out.push(`올해 건강 흐름이 낮게 잡힌 절기: ${healthLow}. 연간 평균이 무난하더라도 건강 질문에서는 이 구간을 먼저 짚을 것.`);
     out.push('※ 점수는 열다섯 체계 평균을 눈금만 벌린 값이다. 50이 보통. 절대 수치가 아니라 영역끼리·달끼리 견주는 용도다.');
     out.push('');
   }

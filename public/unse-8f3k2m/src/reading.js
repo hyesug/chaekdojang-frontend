@@ -14,7 +14,7 @@
  * 그게 열다섯을 다 돌려서 얻는 것이다.
  */
 
-import { elementDistribution, tenGodDistribution, computeDaeun,
+import { elementDistribution, tenGodDistribution, computeDaeun, branchRelations,
          ELEMENTS, ELEMENT_HANJA } from './core/ganzhi.js';
 import { j } from './core/josa.js';
 
@@ -775,4 +775,107 @@ export function structureReading(input, chart) {
         : '오행과 십신이 비교적 고르게 퍼져 있습니다. 어느 한쪽으로 크게 쏠리지 않아 큰 기복 없이 흘러가는 구성입니다.';
 
   return { level, head, lines, weight };
+}
+
+/* ═══════════════════════════════════════════════════════════
+   자리와 조합
+   ═══════════════════════════════════════════════════════════ */
+
+/**
+ * 여기가 가장 크게 빠져 있던 자리다.
+ *
+ * 엔진은 오행 몇 퍼센트, 십신 몇 개까지는 세고 있었다. 그런데 명리에서
+ * 실제로 사람의 일을 말해주는 건 그 숫자가 아니라 두 가지다.
+ *
+ *   1. 어느 자리에 걸렸는가 - 네 기둥은 각각 조상·부모·나·자식의 자리다.
+ *      같은 충이라도 년월에 걸리면 부모 인연이고 일지에 걸리면 배우자다.
+ *   2. 무엇과 무엇이 만났는가 - 비겁이 많은데 재성이 얇으면 군겁쟁재라
+ *      부르고, 재물을 남에게 빼앗기는 자리로 본다. 개수만 세면 이게 안 보인다.
+ *
+ * 실제 삶과 맞춰보니 이 두 가지가 맞히고 오행 퍼센트는 못 맞혔다.
+ */
+
+const PILLAR_MEANING = ['조상과 부모', '부모와 형제, 그리고 직업', '나와 배우자', '자식과 말년'];
+
+/** 충·형이 어느 자리에 걸렸는가 */
+const CLASH_AT = [
+  { at: [0, 1], kind: '충',
+    text: '부모 자리끼리 정면으로 부딪칩니다. 어릴 적 집안이 조용하지만은 않았을 결이고, 부모 두 분 사이나 부모와의 인연이 한 번 크게 흔들리는 배치입니다. 일찍 자기 앞가림을 하게 되는 쪽입니다.' },
+  { at: [0, 1], kind: '형',
+    text: '부모 자리가 서로 벼릅니다. 크게 터지지 않아도 오래 끄는 결이라, 집안 문제가 배경음처럼 길게 남습니다.' },
+  { at: [1, 2], kind: '충',
+    text: '직업의 자리와 내 자리가 부딪칩니다. 한자리에 오래 머물기보다 방향을 한 번 크게 트는 배치이고, 몸을 쓰거나 움직이는 일과 인연이 깊습니다. 전통적으로는 이 충을 몸이 열리는 자리로도 봅니다 — 수술이나 사고가 겹치기 쉬운 배치입니다.' },
+  { at: [2, 3], kind: '충',
+    text: '배우자와 자식의 자리가 부딪칩니다. 가정을 꾸린 뒤에 이동이나 변동이 잦아지는 결입니다.' },
+  { at: [2, 3], kind: '형',
+    text: '배우자 자리가 벼르는 배치입니다. 관계가 끊어지기보다 끌면서 부딪치는 쪽이라, 참는 습관이 쌓이면 어느 순간 크게 터집니다.' },
+];
+
+/** 십신 조합에 붙은 옛 이름들. 개수만 세면 안 보이는 것들이다 */
+function combos(g, isMale) {
+  const out = [];
+  const 비 = g.비겁, 식 = g.식상, 재 = g.재성, 관 = g.관성, 인 = g.인성;
+
+  if (재 <= 1 && 비 >= 재) out.push({
+    name: '군겁쟁재',
+    text: '나와 같은 편이 여럿인데 나눌 재물은 얇습니다. 옛말로 군겁쟁재라 하고, 재물을 남에게 빼앗기는 자리로 봅니다. 동업·보증·큰 계약에서 특히 그런데, 내가 잘못해서가 아니라 구조가 그렇게 생겼습니다. 돈이 얽히는 일은 반드시 문서로 남기시고, 사람을 믿고 넘기는 방식만큼은 피하셔야 합니다.',
+  });
+  if (인 >= 4 && 식 <= 1) out.push({
+    name: '모왕멸자',
+    text: '받고 배우는 기운이 지나치게 셉니다. 생각은 깊어지는데 밖으로 내놓는 힘이 눌려서, 준비만 길어지고 결과로 이어지지 않습니다. 완벽하게 만들어서 내놓으려 하지 마시고, 어설퍼도 먼저 내놓고 고치는 쪽으로 방식을 바꾸셔야 풀립니다.',
+  });
+  if (관 >= 3) out.push({
+    name: '관살태왕',
+    text: '나를 누르는 기운이 지나치게 셉니다. 책임과 압박이 늘 몸보다 앞서고, 조직이나 시험처럼 규격이 정해진 곳에서 오래 애쓰게 됩니다. 애쓴 만큼 결과가 안 나오면 내 능력 문제로 여기기 쉬운데, 이건 눌리는 구조지 모자란 게 아닙니다. 규격 밖에서 내 방식으로 하는 쪽이 훨씬 빠릅니다.',
+  });
+  if (인 === 0) out.push({
+    name: '인성 없음',
+    text: '문서와 자격의 자리가 비어 있습니다. 인성은 시험·자격·학위·계약처럼 종이로 증명되는 것을 관장합니다. 이 자리가 없으면 시험으로 승부를 보는 길이 유독 더디고, 오래 붙들수록 손해가 쌓입니다. 대신 실력을 직접 보여주는 길 — 만든 것, 해낸 것으로 증명하는 쪽은 훨씬 잘 열립니다.',
+  });
+  if (식 === 0 && 재 >= 1) out.push({
+    name: '식상 없음',
+    text: '재물로 가는 길목이 비어 있습니다. 명리에서 돈은 내가 만들어낸 것(식상)을 거쳐 재물(재성)로 갑니다. 그 가운데 칸이 비면 재물이 있어도 내 손으로 오는 길이 없습니다. 아무리 성실해도 돈이 안 붙는다고 느끼셨다면 이 구조 때문입니다. 남의 일을 대신 해주는 쪽보다 내가 만든 것을 파는 쪽으로 한 칸만 옮겨도 크게 달라집니다.',
+  });
+  if (재 >= 3 && 비 <= 1) out.push({
+    name: '재다신약',
+    text: '다룰 재물은 큰데 그것을 감당할 내 힘이 얇습니다. 일이 커질수록 몸이 먼저 상하는 배치이니, 규모를 키우기 전에 사람을 먼저 붙이셔야 합니다.',
+  });
+  return out;
+}
+
+/**
+ * @param {object} chart  사주 원국
+ * @param {object} input  prepareInput 결과
+ */
+export function patternReading(input, chart) {
+  const P = [chart.pillars.year, chart.pillars.month, chart.pillars.day, chart.pillars.hour]
+    .filter(Boolean);
+  const gods = tenGodDistribution(chart.pillars, chart.dayStem);
+  const lines = [];
+
+  // 어느 자리에 충·형이 걸렸는가
+  for (let i = 0; i < P.length; i++) {
+    for (let j = i + 1; j < P.length; j++) {
+      for (const rel of branchRelations(P[i].branch, P[j].branch)) {
+        const kind = rel.kind.includes('형') ? '형' : rel.kind;
+        const hit = CLASH_AT.find((c) =>
+          c.kind === kind && c.at[0] === i && c.at[1] === j);
+        if (!hit) continue;
+        const label = `${PILLAR_MEANING[i]}의 자리`;
+        // 한 자리에 충과 형이 겹치면 무거운 쪽(충)만 말한다. 같은 이야기를
+        // 두 번 하면 읽는 사람은 두 가지 일이 있는 줄 안다.
+        const already = lines.findIndex((l) => l.name === label);
+        if (already >= 0) {
+          if (kind === '충') lines[already] = { name: label, text: hit.text };
+          continue;
+        }
+        lines.push({ name: label, text: hit.text });
+      }
+    }
+  }
+
+  for (const c of combos(gods.groups, input.isMale)) {
+    lines.push({ name: c.name, text: c.text });
+  }
+  return lines;
 }

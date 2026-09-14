@@ -15,7 +15,7 @@ import {
 import { pickNumbers } from './lotto.js';
 import { readForecast, AREAS } from './forecast.js';
 import { lifeReading, monthDays, luckyDays, periodProse, compatReading,
-         consensusReading, structureReading } from './reading.js';
+         consensusReading, structureReading, patternReading } from './reading.js';
 import { aiSection, initAI, initCompatAI } from './ai.js';
 
 /** 방금 본 결과. 이미지 카드와 공유 링크를 만들 때 다시 쓴다 */
@@ -297,6 +297,7 @@ function render(form) {
   const life = lifeReading(r.input, r.chart, s);
   const con = consensusReading(r, f.year);
   const st = structureReading(r.input, r.chart);
+  const pat = patternReading(r.input, r.chart);
   const days = monthDays(r.input, r.chart, f.today.y, f.today.m);
   const lucky = luckyDays(days, life.meta.weak);
   const today = days.find((x) => x.d === f.today.d) ?? days[0];
@@ -365,13 +366,16 @@ function render(form) {
       ${period(f.year, '올해', 'year')}
     </div>
 
-    ${st.lines.length ? `
+    ${(st.lines.length || pat.length) ? `
     <div class="section-label">타고난 구성</div>
     <div class="card">
       ${block(st.level === 'strong' ? '크게 치우친 사주입니다' : '치우친 자리', st.head, [])}
       ${st.lines.map((t) => block(null, t, [])).join('')}
+      ${pat.map((x) => block(x.name, x.text, [])).join('')}
       <p class="area-src" style="margin-top:8px">
         이 대목은 열다섯을 평균 낸 값이 아니라 사주 원국을 그대로 읽은 것입니다.
+        네 기둥은 각각 조상·부모·나·자식의 자리라, 같은 부딪침이라도 어느 자리에
+        걸렸느냐에 따라 뜻이 달라집니다.
         시기에 따라 바뀌지 않는 결이라 시기 운세보다 무겁게 보셔도 됩니다.
       </p>
     </div>` : ''}

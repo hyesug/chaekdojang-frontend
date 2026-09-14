@@ -64,19 +64,6 @@ export const TAGS = [
 
 const TAG_SET = new Set(TAGS);
 
-/** 전통 산법·대표 규칙 재구성·생년월일 응용을 화면과 종합에서 구분한다. */
-const METHOD_BY_ID = {
-  hongguk: { kind: 'reconstructed', label: '대표 산법 재구성', weight: 0.65 },
-  taeeul: { kind: 'reconstructed', label: '대표 산법 재구성', weight: 0.65 },
-  thai: { kind: 'reconstructed', label: '요일 점성 재구성', weight: 0.65 },
-  kabbalah: { kind: 'adapted', label: '현대 수비학 응용', weight: 0.4 },
-  tarot: { kind: 'adapted', label: '생년월일 상징 응용', weight: 0.4 },
-};
-
-export function methodFor(id) {
-  return METHOD_BY_ID[id] ?? { kind: 'traditional', label: '전통·대표 산법', weight: 1 };
-}
-
 /** 고정 어휘에 없는 태그는 버린다. 오타 하나로 교집합이 깨지는 걸 막는다 */
 export function validateTags(tags = []) {
   const bad = tags.filter((t) => !TAG_SET.has(t));
@@ -121,8 +108,6 @@ export function normalizeElements(arr) {
  *                             출생 시간을 모르면 시주에 의존하는 체계는 낮춘다.
  */
 export function result(o) {
-  const method = methodFor(o.id);
-  const inputConfidence = o.confidence ?? 1;
   return {
     id: o.id,
     name: o.name,
@@ -130,9 +115,7 @@ export function result(o) {
     headline: o.headline ?? '',
     facts: o.facts ?? [],
     readings: o.readings ?? [],
-    confidence: inputConfidence * method.weight,
-    inputConfidence,
-    method,
+    confidence: o.confidence ?? 1,
     signals: {
       elements: normalizeElements(o.signals?.elements ?? zeroElements()),
       traits: { ...zeroTraits(), ...(o.signals?.traits ?? {}) },

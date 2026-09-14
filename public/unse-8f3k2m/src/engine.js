@@ -71,7 +71,7 @@ function exactAge(y, m, d, now = new Date()) {
  * @param {string} form.homePlace   도시 이름
  * @param {boolean} [form.dst]      해외 출생 시 서머타임 여부
  */
-export function prepareInput(form, now = new Date()) {
+export function prepareInput(form) {
   const integers = ['year', 'month', 'day'];
   if (integers.some((key) => !Number.isInteger(form[key]))) {
     throw new Error('생년월일은 숫자로 정확히 입력해주세요.');
@@ -84,11 +84,6 @@ export function prepareInput(form, now = new Date()) {
       date.getUTCFullYear() !== form.year || date.getUTCMonth() + 1 !== form.month ||
       date.getUTCDate() !== form.day) {
     throw new Error('존재하지 않는 날짜입니다. 생년월일을 다시 확인해주세요.');
-  }
-  const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-  const todayKst = Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate());
-  if (date.getTime() > todayKst) {
-    throw new Error('아직 오지 않은 날은 생년월일로 입력할 수 없습니다.');
   }
   if (form.hour != null && (!Number.isInteger(form.hour) || form.hour < 0 || form.hour > 23)) {
     throw new Error('태어난 시는 0에서 23 사이로 입력해주세요.');

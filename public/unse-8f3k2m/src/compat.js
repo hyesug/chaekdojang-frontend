@@ -16,7 +16,6 @@
  */
 
 import { prepareInput, SYSTEMS } from './engine.js';
-import { methodFor } from './systems/_base.js';
 
 /** 점수를 다섯 단계로 나눈다 */
 export function toVerdict(score) {
@@ -74,7 +73,7 @@ function synthesizeCompat(results, nameA, nameB) {
     return { score: 0, verdict: '판정 불가', text: '견줄 수 있는 체계가 없습니다.', buckets: {}, split: null, best: [], worst: [] };
   }
 
-  const weights = results.map((r) => (r.weight ?? 1) * (r.id === 'tojeong' ? 0.4 : methodFor(r.id).weight));
+  const weights = results.map((r) => r.weight ?? 1);
   const total = weights.reduce((a, b) => a + b, 0);
   const score = Math.round(results.reduce((a, r, i) => a + r.score * weights[i], 0) / total);
   const v = toVerdict(score);
@@ -98,7 +97,7 @@ function synthesizeCompat(results, nameA, nameB) {
 
   sentences.push(
     split
-      ? `견준 체계의 의견이 갈립니다. ${good}개는 잘 맞는다 하고 ${bad}개는 어렵다고 합니다. ` +
+      ? `열다섯 체계의 의견이 갈립니다. ${good}개는 잘 맞는다 하고 ${bad}개는 어렵다고 합니다. ` +
         '이런 조합은 "애매하다"가 아니라 "어떤 면은 아주 잘 맞고 어떤 면은 계속 부딪친다"는 뜻에 가깝습니다. ' +
         '아래에서 어느 쪽이 무엇을 보고 그렇게 말하는지 확인하는 편이 점수보다 쓸모 있습니다.'
       : good > bad * 2

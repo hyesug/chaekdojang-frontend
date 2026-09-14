@@ -54,8 +54,8 @@ export function aiSection() {
         <button type="button" id="ai-send">보내기</button>
       </div>
       <p class="ai-note" id="ai-note">
-        로그인 사용자에게 매달 5번 제공됩니다. 이름·생년월일·장소는 빼고 계산된 결과와 질문만 Claude에 보냅니다.
-        어렵지 않은 상담 말투로, 지금 나에게 필요한 이야기를 들려드립니다.
+        위의 열다섯 체계 계산 결과를 그대로 넘겨서 묻습니다.
+        간지·절기는 이미 계산된 값을 쓰므로 AI 가 사주를 다시 셈하지 않습니다.
       </p>
     </div>`;
 }
@@ -103,7 +103,6 @@ export function initAI(form, fortune, forecast) {
     try {
       const res = await fetch(ENDPOINT, {
         method: 'POST',
-        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ context: session.context, messages: session.messages }),
       });
@@ -162,8 +161,7 @@ export function initAI(form, fortune, forecast) {
         `직전 질문 — 입력 ${u.input.toLocaleString()} · 출력 ${u.output.toLocaleString()} 토큰` +
         (u.cacheRead ? ` · 캐시에서 읽음 ${u.cacheRead.toLocaleString()}` : '') +
         ` · 약 $${usd.toFixed(4)}<br>` +
-        (Number.isInteger(u.remaining) ? `이번 달 ${u.remaining}회 남음 · ` : '') +
-        '명반은 캐시에 얹혀 있어 두 번째 질문부터 입력 비용이 줄어듭니다.';
+        '명반은 캐시에 얹혀 있어 두 번째 질문부터 입력 비용이 크게 줄어듭니다.';
     }
   }
 }

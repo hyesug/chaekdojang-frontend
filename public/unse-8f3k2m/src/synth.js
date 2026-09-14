@@ -59,12 +59,11 @@ export function synthesize(results) {
     .map((r) => {
       const e = r.signals.elements;
       const max = Math.max(...e);
-      return max > 0 ? { id: r.id, name: r.name, element: e.indexOf(max), weight: r.confidence } : null;
+      return max > 0 ? { id: r.id, name: r.name, element: e.indexOf(max) } : null;
     })
     .filter(Boolean);
   const agreeing = votes.filter((v) => v.element === strongest);
-  const voteWeight = votes.reduce((sum, v) => sum + v.weight, 0);
-  const agreement = voteWeight ? agreeing.reduce((sum, v) => sum + v.weight, 0) / voteWeight : 0;
+  const agreement = votes.length ? agreeing.length / votes.length : 0;
 
   // ── 기질 합산 ──
   const traits = {};
@@ -96,15 +95,13 @@ export function synthesize(results) {
   const freq = new Map();
   for (const r of active) {
     for (const t of new Set(r.signals.tags)) {
-      if (!freq.has(t)) freq.set(t, { from: [], weight: 0 });
-      const entry = freq.get(t);
-      entry.from.push(r.name);
-      entry.weight += r.confidence;
+      if (!freq.has(t)) freq.set(t, []);
+      freq.get(t).push(r.name);
     }
   }
   const allTags = [...freq.entries()]
-    .sort((a, b) => b[1].weight - a[1].weight)
-    .map(([word, entry]) => ({ word, from: entry.from, count: entry.from.length, weight: entry.weight }));
+    .sort((a, b) => b[1].length - a[1].length)
+    .map(([word, from]) => ({ word, from, count: from.length }));
 
   const sharedTags = allTags.filter((t) => t.count >= 2);
   const soloTags = allTags.filter((t) => t.count === 1);
@@ -152,24 +149,23 @@ export function synthesize(results) {
 
   const elementText =
     agreement >= 0.5
-      ? `산법 성격을 반영한 가중 집계에서 ${Math.round(agreement * 100)}%가 ${j(ELEMENT_NAMES[strongest], '을')} 가리킵니다. 오행 환산 기준이 서로 다른데도 같은 쪽으로 모였습니다.`
-      : `오행으로 환산했을 때는 방향이 갈립니다(가장 많은 쪽도 가중 ${Math.round(agreement * 100)}%). 체계마다 오행에 대응시키는 방식이 달라서 원래 잘 모이지 않는 지표입니다.`;
+      ? `${votes.length}개 체계 중 ${agreeing.length}개가 ${j(ELEMENT_NAMES[strongest], '을')} 가리킵니다. 오행 환산 기준이 서로 다른데도 같은 쪽으로 모였습니다.`
+      : `오행으로 환산했을 때는 방향이 갈립니다(가장 많은 쪽이 ${votes.length}개 중 ${agreeing.length}개). 체계마다 오행에 대응시키는 방식이 달라서 원래 잘 모이지 않는 지표입니다.`;
 
   // ── 합의도 ──
   // 오행보다 태그 쪽이 훨씬 읽을 만한 지표다. 체계마다 오행 환산 방식이
   // 제각각이라 오행 투표는 잘 모이지 않는 반면, 태그는 고정 어휘라 곧바로 겹친다.
   const taggers = active.filter((r) => r.signals.tags.length);
-  const taggerWeight = taggers.reduce((sum, r) => sum + r.confidence, 0);
   const top = allTags[0];
-  const consensus = top && taggerWeight ? top.weight / taggerWeight : 0;
+  const consensus = top && taggers.length ? top.count / taggers.length : 0;
 
   const consensusText = !top
     ? '태그를 낸 체계가 없습니다.'
     : consensus >= 0.45
-    ? `산법 성격을 반영한 가중 집계의 ${Math.round(consensus * 100)}%가 '${top.word}'에서 만납니다. 서로 다른 계보가 같은 낱말을 가리킨다는 점은 눈여겨볼 만합니다.`
+    ? `${taggers.length}개 체계 중 ${top.count}개가 '${top.word}'에서 만납니다. 사주와 타로처럼 계보가 전혀 다른 체계가 같은 낱말을 가리킨다면, 그건 이 사람을 설명하는 가장 단단한 한마디로 볼 만합니다.`
     : consensus >= 0.28
-    ? `가중 집계의 ${Math.round(consensus * 100)}%가 '${top.word}'에서 만납니다. 과반은 아니지만 가장 강한 경향으로 참고할 만합니다.`
-    : `가장 강한 낱말도 가중 ${Math.round(consensus * 100)}%인 '${top.word}'입니다. 한쪽으로 뚜렷하게 모이지 않는다는 뜻입니다.`;
+    ? `${taggers.length}개 체계 중 ${top.count}개가 '${top.word}'에서 만납니다. 과반은 아니지만 가장 자주 나온 낱말이니 경향으로 읽을 만합니다.`
+    : `가장 많이 겹친 낱말이 '${top.word}'이고 ${taggers.length}개 중 ${top.count}개뿐입니다. 한쪽으로 뚜렷하게 모이지 않는다는 뜻이고, 그건 그것대로 정보입니다 — 상황에 따라 다른 얼굴을 쓰는 사람일 수 있습니다.`;
 
   return {
     elements: {

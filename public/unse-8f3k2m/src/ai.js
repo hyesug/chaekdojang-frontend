@@ -10,6 +10,7 @@
  */
 
 import { buildContext, READING_PROMPT, buildCompatContext, COMPAT_PROMPT } from './aiContext.js';
+import { readForecast } from './forecast.js';
 
 const ENDPOINT = '/fortune-ai';
 
@@ -45,6 +46,7 @@ const PAIR_QUICK = [
   ['전체 풀이', COMPAT_PROMPT],
   ['어디서 부딪칠까요?', '두 사람이 부딪치기 쉬운 지점과, 그럴 때 무엇을 하면 되는지 알려주세요.'],
   ['오래 갈까요?', '이 관계가 시간이 지나면 어떻게 변해갈지 명반을 근거로 봐주세요.'],
+  ['결혼 시기', '두 사람의 관계와 각자 시기 흐름을 함께 보고, 결혼을 준비하기 가장 좋은 시기를 구체적으로 골라주세요.'],
   ['서로 뭘 채워주나요?', '한쪽에 없는 것을 다른 쪽이 가지고 있는 부분을 짚어 주세요.'],
   ['일로 만나면', '연애가 아니라 동업이나 같이 일하는 사이라면 어떤지 봐주세요.'],
   ['갈리는 지점', '열다섯 체계 가운데 판단이 엇갈리는 곳은 어디이고, 왜 그런지 설명해 주세요.'],
@@ -80,7 +82,12 @@ export function initAI(form, fortune, forecast) {
 
 /** 궁합 화면용. 두 사람 명반을 통째로 싣는다 */
 export function initCompatAI(formA, formB, compat) {
-  wire(buildCompatContext(formA, formB, compat));
+  // 궁합만으로는 언제가 좋은지 답할 수 없다. 두 사람의 개인 시기 흐름도
+  // 같이 계산해 넣어, 관계의 결뿐 아니라 실제로 맞물리는 달을 보게 한다.
+  wire(buildCompatContext(
+    formA, formB, compat,
+    readForecast(formA), readForecast(formB),
+  ));
 }
 
 /** 화면이 그려진 뒤 입력칸과 버튼을 붙인다. 개인·궁합이 같은 배선을 쓴다 */

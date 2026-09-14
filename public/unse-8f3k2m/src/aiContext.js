@@ -154,7 +154,7 @@ export const READING_PROMPT =
  * @param {object} formB 두 번째 사람
  * @param {object} c     compareFortune 결과
  */
-export function buildCompatContext(formA, formB, c) {
+export function buildCompatContext(formA, formB, c, forecastA = null, forecastB = null) {
   const out = [];
   const s = c.synthesis;
   const who = (f) => `${f.name} · ${f.gender === 'male' ? '남성' : '여성'} · ` +
@@ -193,10 +193,34 @@ export function buildCompatContext(formA, formB, c) {
   if (s.summary?.length) out.push(`요약 — ${s.summary.join(' ')}`);
   out.push('');
 
+  // 궁합은 관계의 성질이고, 결혼 시기는 각자에게 들어오는 흐름을 겹쳐야 한다.
+  // 같은 절기 순서의 월별 점수를 나란히 놓아 둘 다 편한 달만 추린다.
+  if (forecastA && forecastB) {
+    const months = forecastA.timeline.map((a, i) => {
+      const b = forecastB.timeline[i];
+      return {
+        from: a.from,
+        a: a.score,
+        b: b?.score ?? 50,
+        together: a.score + (b?.score ?? 50),
+      };
+    });
+    const best = months.slice().sort((a, b) => b.together - a.together).slice(0, 3);
+    const careful = months.slice().sort((a, b) => a.together - b.together).slice(0, 3);
+    const describe = (x) => `${x.from.m}월 ${x.from.d}일 이후 (첫째 ${x.a}, 둘째 ${x.b})`;
+
+    out.push('## 결혼 시기 자료 — 두 사람의 개인 흐름을 겹친 값');
+    out.push(`기준 연도 ${forecastA.today.y}년. 아래 달은 절기 시작일 기준이다.`);
+    out.push(`두 사람 모두에게 비교적 힘이 실리는 시기: ${best.map(describe).join(' / ')}`);
+    out.push(`두 사람 모두에게 부담이 될 수 있어 피하는 편이 좋은 시기: ${careful.map(describe).join(' / ')}`);
+    out.push('이 자료가 있으면 결혼 시기를 물을 때 반드시 위의 좋은 시기에서 1~2개를 구체적으로 골라 답할 것. 날짜 단위 자료는 없으므로 특정 일자를 지어내지 말고 월·절기 단위로 답할 것.');
+    out.push('');
+  }
+
   out.push('## 읽는 법');
   out.push('위 값은 모두 천문 계산으로 구한 것이다. 간지·절기·음력·행성 위치를 다시 계산하지 말고 그대로 쓸 것.');
   out.push('체계마다 잣대가 다르다. 베딕 아쉬타쿠타처럼 혼인을 전제로 만든 잣대는 박하고, 요일 하나로 보는 체계는 후하다. 점수를 가로로 견주지 말 것.');
-  out.push('궁합은 두 사람 사이의 경향이지 판결이 아니다. 헤어지라거나 결혼하라고 말하지 말 것.');
+  out.push('궁합은 두 사람 사이의 경향이지 판결이 아니다. 헤어지라거나 결혼하라고 말하지 말 것. 결혼 시기를 물으면 위의 결혼 시기 자료를 근거로 준비하기 좋은 달을 답할 것. "시기 자료가 없다"거나 두 사람 개인 운세를 따로 보라고 말하지 말 것.');
 
   return out.join('\n');
 }

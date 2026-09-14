@@ -309,7 +309,7 @@ function render(form) {
     : '';
 
   const period = (blk, label, kind) => {
-    const p = periodProse(blk, seed + label.length);
+    const p = periodProse(blk, seed + label.length, r.chart);
     return AREAS.map((a) => p[a]?.text
       ? block(label === '오늘' ? a : `${label} ${a}`, p[a].text, p[a].sources) : '').join('');
   };

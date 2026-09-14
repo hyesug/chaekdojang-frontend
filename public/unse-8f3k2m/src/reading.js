@@ -75,6 +75,28 @@ function pillarFlavor(chart) {
   };
 }
 
+// 같은 오행 비율만으로 사람을 읽으면 원국이 다른 사람도 같은 말이 된다.
+// 네 기둥이 일간과 맺는 실제 관계를 한 번 더 풀어, 평생 리딩의 뼈대를
+// 각 명반에 고정한다. 전문 용어는 드러내지 않는다.
+function nativeSignature(chart) {
+  const p = chart.pillars;
+  const gods = [p.year, p.month, p.hour].filter(Boolean)
+    .map((x) => tenGod(chart.dayStem, x.stem));
+  const unique = [...new Set(gods)];
+  const descriptions = unique.slice(0, 2).map((god) => GOD_AT_PILLAR[god]).filter(Boolean);
+  const ties = [p.year, p.month, p.hour].filter(Boolean)
+    .map((x) => branchRelations(p.day.branch, x.branch)[0])
+    .filter(Boolean);
+  const tense = ties.find((x) => !x.good);
+  const smooth = ties.find((x) => x.good);
+  const relation = tense
+    ? '가까운 사람이나 환경과 부딪칠 때 자기 페이스를 지키는 법을 배우며 커가는 구성입니다'
+    : smooth
+      ? '사람과 환경의 도움을 자기 힘으로 바꿔 쓰기 좋은 연결이 들어 있습니다'
+      : '한쪽에 기대기보다 상황을 읽고 자기 자리를 만들어 가는 구성이 뚜렷합니다';
+  return `${descriptions.join('. ')}. ${relation}`;
+}
+
 function stage(label, periods, tail) {
   if (!periods || !periods.length) return null;
   const from = periods[0].fromAge;
@@ -160,10 +182,11 @@ export function lifeReading(input, chart, synth) {
   const b = BODY[weak];
   const dayEl = chart.pillars.day.element;
   const flavor = pillarFlavor(chart);
+  const native = nativeSignature(chart);
 
   return {
     early: stage('초년', L.slice(0, 2),
-      `이 무렵에 성격의 뼈대가 잡히고, 그때 곁에 있던 사람이 오래 남습니다. ${flavor.early}.${c.hedge}`),
+      `이 무렵에 성격의 뼈대가 잡히고, 그때 곁에 있던 사람이 오래 남습니다. ${flavor.early}. ${native}.${c.hedge}`),
     middle: stage('중년', L.slice(2, 5),
       `어려움과 성공을 한 차례씩 겪는데, 주관이 뚜렷해 뒤로 갈수록 자리가 단단해집니다. ${flavor.middle}.`),
     late: stage('말년', L.slice(5, 8),
@@ -455,21 +478,69 @@ const P = {
   },
 };
 
+// 세운은 모두가 같은 해를 지나므로, 해 자체를 설명하면 누구에게나 같은
+// 문장이 된다. 이 해의 기운이 "이 사람의 일간과 일지"에 어떻게 닿는지를
+// 먼저 읽어 문단마다 개인 차이를 남긴다.
+const YEAR_TOUCH = {
+  비견: '올해는 내 판단과 같은 목소리가 늘어납니다. 함께할 사람은 생기지만, 내 몫과 남의 몫은 처음부터 분명히 해두는 편이 좋습니다.',
+  겁재: '올해는 경쟁과 공동 지출이 함께 들어오기 쉽습니다. 기회가 와도 조건과 정산을 글로 남겨두면 손실을 줄일 수 있습니다.',
+  식신: '올해는 손에 잡히는 결과를 만들수록 길이 열립니다. 말보다 실물과 성과로 보여주는 일이 특히 잘 맞습니다.',
+  상관: '올해는 재능과 의견이 눈에 띄기 쉽습니다. 다만 맞는 말이어도 전달 순서를 고르면 더 큰 기회로 이어집니다.',
+  편재: '올해는 바깥 기회와 사람을 통해 돈의 흐름을 넓혀볼 수 있습니다. 한 번에 크게 거는 일보다 여러 가능성을 비교해 고르세요.',
+  정재: '올해는 생활을 단단히 정리한 만큼 실속이 남습니다. 작은 계약과 꾸준한 수입을 챙기는 일이 큰 변동보다 유리합니다.',
+  편관: '올해는 책임이 먼저 찾아올 수 있습니다. 피하기보다 기준과 우선순위를 세우면 부담이 경력과 신뢰로 바뀝니다.',
+  정관: '올해는 역할과 평판을 다지는 해입니다. 약속한 일을 깔끔하게 끝내는 태도가 다음 자리로 연결됩니다.',
+  편인: '올해는 남들과 다른 정보와 배움에서 실마리를 찾기 쉽습니다. 혼자 정리할 시간을 확보해야 판단도 선명해집니다.',
+  정인: '올해는 배우는 일과 문서, 조언을 활용할수록 흐름이 좋아집니다. 도움을 받는 것을 미루지 말고 제도로 연결하세요.',
+};
+
+function yearTouch(block, chart) {
+  if (block?.period?.kind !== 'year' || !chart) return null;
+  const ruling = block.period.ruling;
+  const god = ruling ? tenGod(chart.dayStem, ruling.stem) : null;
+  const tie = ruling ? branchRelations(chart.pillars.day.branch, ruling.branch)[0] : null;
+  const relation = !tie ? ''
+    : tie.good ? ' 사람과 일을 연결해 풀수록 수월합니다.'
+      : ' 중요한 일은 속도를 한 번 늦춰 확인하는 편이 안전합니다.';
+  return `${YEAR_TOUCH[god] ?? ''}${relation}`.trim() || null;
+}
+
+function yearlyAreaPosition(block, area) {
+  if (block?.period?.kind !== 'year') return null;
+  const all = AREAS.map((name) => ({ name, score: block.areas?.[name]?.score }))
+    .filter((x) => x.score != null)
+    .sort((a, b) => b.score - a.score);
+  const at = all.findIndex((x) => x.name === area);
+  if (at < 0 || !all.length) return null;
+  if (at === 0) return `올해 여섯 흐름 가운데 ${area}이 가장 앞에 섭니다.`;
+  if (at === all.length - 1) return `올해는 다른 흐름보다 ${area}의 우선순위를 먼저 챙기셔야 합니다.`;
+  return null;
+}
+
+function chartSeed(chart) {
+  if (!chart) return 0;
+  return Object.values(chart.pillars).filter(Boolean)
+    .reduce((sum, p, i) => sum + (p.stem + 1) * (i + 11) + (p.branch + 1) * (i + 19), 0);
+}
+
 /** 한 시기 한 영역의 문단. 근거로 쓴 체계도 같이 돌려준다 */
-export function areaProse(block, area, seed = 0) {
+export function areaProse(block, area, seed = 0, chart = null) {
   const x = block?.areas?.[area];
   if (!x || x.score == null) return null;
   const bank = P[area]?.[BAND(x.score)] ?? [];
   return {
-    text: bank.length ? pick(bank, seed) : null,
+    text: bank.length ? [
+      pick(bank, seed + chartSeed(chart) + area.length * 17),
+      area === '총운' ? yearTouch(block, chart) : yearlyAreaPosition(block, area),
+    ].filter(Boolean).join(' ') : null,
     sources: areaSources(block, area),
   };
 }
 
 /** 한 시기 전체 — 여섯 영역을 문단으로 */
-export function periodProse(block, seed = 0) {
+export function periodProse(block, seed = 0, chart = null) {
   const out = {};
-  for (const a of AREAS) out[a] = areaProse(block, a, seed);
+  for (const a of AREAS) out[a] = areaProse(block, a, seed, chart);
   return out;
 }
 

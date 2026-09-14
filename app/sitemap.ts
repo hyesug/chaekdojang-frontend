@@ -49,12 +49,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     next: { revalidate: 3600 },
   });
 
-  const bookRoutes = (publicBooks ?? []).map((book) => ({
-    url: `${SITE_URL}/books/${encodeSegment(bookPathSegment(book.id, book.slug))}`,
-    lastModified: now,
-    changeFrequency: "weekly" as const,
-    priority: 0.5,
-  }));
+  // 독후감이 없는 책은 화면에 내용이 없다. 빈 페이지를 대량으로 제출하면 색인 품질이 떨어진다.
+  const bookRoutes = (publicBooks ?? [])
+    .filter((book) => book.reviewCount > 0)
+    .map((book) => ({
+      url: `${SITE_URL}/books/${encodeSegment(bookPathSegment(book.id, book.slug))}`,
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: 0.5,
+    }));
 
   return [...staticRoutes, ...reviewRoutes, ...bookRoutes];
 }

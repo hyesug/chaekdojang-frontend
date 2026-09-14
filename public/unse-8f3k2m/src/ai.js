@@ -177,10 +177,15 @@ function wire(context) {
     const note = document.querySelector('#ai-note');
     if (note) {
       note.innerHTML =
-        `직전 질문 — 입력 ${u.input.toLocaleString()} · 출력 ${u.output.toLocaleString()} 토큰` +
+        `직전 질문 — 입력 ${u.input.toLocaleString()} · 출력 ${u.output.toLocaleString()}` +
+        // 캐시에 쓴 양을 빼놓으면 숫자가 안 맞아 보인다. 첫 질문은 입력이
+        // 몇십 토큰인데도 명반 몇천 자를 캐시에 얹느라 값이 붙는다.
+        (u.cacheWrite ? ` · 캐시에 올림 ${u.cacheWrite.toLocaleString()}` : '') +
         (u.cacheRead ? ` · 캐시에서 읽음 ${u.cacheRead.toLocaleString()}` : '') +
-        ` · 약 $${usd.toFixed(4)}<br>` +
-        '명반은 캐시에 얹혀 있어 두 번째 질문부터 입력 비용이 크게 줄어듭니다.';
+        ` 토큰 · 약 $${usd.toFixed(4)}<br>` +
+        (u.cacheRead
+          ? '명반을 캐시에서 읽어 입력 비용이 10분의 1로 줄었습니다.'
+          : '이번엔 명반을 캐시에 올리느라 값이 붙었습니다. 다음 질문부터 크게 줄어듭니다.');
     }
   }
 }

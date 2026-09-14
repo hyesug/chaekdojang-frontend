@@ -30,6 +30,15 @@ function foldFacts(facts, max = 10) {
     .join(' · ');
 }
 
+
+/** 120일은 해를 넘긴다. 표에 연도를 다 적으면 길어지니 한 줄로 일러둔다 */
+function yearNote(days) {
+  const first = days[0], last = days[days.length - 1];
+  return first.y === last.y
+    ? `아래 날짜는 모두 ${first.y}년이다.`
+    : `아래 날짜 가운데 ${first.m}월~12월은 ${first.y}년, 1월 이후는 ${last.y}년이다.`;
+}
+
 /**
  * @param {object} form   사용자 입력
  * @param {object} r      readFortune 결과
@@ -170,6 +179,7 @@ export function buildContext(form, r, f = null) {
     const days = dayRange(r.input, r.chart, f.today, 120);
     out.push(`## 일자별 (${f.today.y}년 ${f.today.m}월 ${f.today.d}일부터 120일)`);
     out.push('형식: 월/일(요일) 일진 등급 [황도|흑도] [천의=치료·수술에 쓰는 날] [일지충=본인과 부딪치는 날] 신살');
+    out.push(yearNote(days));
     for (const x of days) {
       const t = x.taekil;
       const tags = [
@@ -311,6 +321,7 @@ export function buildCompatContext(formA, formB, c, forecastA = null, forecastB 
 
     out.push(`## 두 사람에게 같이 맞는 날 (${forecastA.today.y}년 ${forecastA.today.m}월 ${forecastA.today.d}일부터 120일)`);
     out.push('두 사람의 일진을 각각 계산해 겹친 것이다. 예식·상견례·여행처럼 날을 잡는 질문에는 여기서 실제 날짜를 골라 답할 것.');
+    out.push(yearNote(dA));
     for (const x of bestDays) out.push(`좋음 ${label(x)}`);
     for (const x of avoidDays) out.push(`피함 ${label(x)}`);
     out.push('');

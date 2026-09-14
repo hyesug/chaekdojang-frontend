@@ -217,12 +217,6 @@ export function analyze(input) {
   const careerStars = palaceAt['관록궁'].stars;
   const wealthStars = palaceAt['재백궁'].stars;
   const healthStars = palaceAt['질액궁'].stars;
-  // 탐랑은 기회와 욕망을 넓게 보는 별이고, 칠살·파군은 위험 감수와
-  // 판을 갈아엎는 성질이 강하다. 셋이 돈·명·직업 자리에 동시에 놓일 때만
-  // '수입'이 아니라 투자 규모와 차입 한도를 먼저 정하라는 경고로 읽는다.
-  // 별 하나만으로 투기나 빚을 단정하지 않는다.
-  const expansionRisk = wealthStars.includes('탐랑') &&
-    (mainStars.includes('칠살') || careerStars.includes('파군'));
   readings.push({
     title: '관록궁과 재백궁',
     text: `일의 자리에 ${careerStars.join('·') || '주성 없음'}, 돈의 자리에 ${wealthStars.join('·') || '주성 없음'}이(가) 들었습니다. ` +
@@ -230,12 +224,7 @@ export function analyze(input) {
         ? '직업에 변동이 큰 구조라, 한 조직에 오래 머무는 것보다 자기 판을 만드는 쪽이 맞습니다.'
         : careerStars.includes('자미') || careerStars.includes('천부')
         ? '조직 안에서 자리를 얻는 구조입니다. 책임이 커질수록 안정됩니다.'
-        : '일의 성격이 한 갈래로 고정되지 않습니다. 환경에 맞춰 방향을 정하게 됩니다.') +
-      (expansionRisk
-        ? ' 큰 기회에 과감하게 움직이는 장점이 있지만, 돈을 굴릴 때는 수익 전망보다 잃을 수 있는 한도와 상환 계획을 먼저 정해야 합니다. 한 번에 만회하려는 선택은 이 구성의 약점이 되기 쉽습니다.'
-        : wealthStars.includes('탐랑')
-          ? ' 돈의 기회를 넓게 보는 편이라 한 가지에 묶이기보다 여러 가능성을 살피게 됩니다. 선택지를 줄이고 기준을 세울수록 실제로 남는 것이 많아집니다.'
-          : ''),
+        : '일의 성격이 한 갈래로 고정되지 않습니다. 환경에 맞춰 방향을 정하게 됩니다.'),
   });
 
   readings.push({

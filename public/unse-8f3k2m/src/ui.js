@@ -14,7 +14,7 @@ import {
 } from './share.js';
 import { pickNumbers } from './lotto.js';
 import { readForecast, AREAS } from './forecast.js';
-import { lifeReading, monthDays, luckyDays, periodProse } from './reading.js';
+import { lifeReading, monthDays, luckyDays, periodProse, compatReading } from './reading.js';
 import { aiSection, initAI, initCompatAI } from './ai.js';
 
 /** 방금 본 결과. 이미지 카드와 공유 링크를 만들 때 다시 쓴다 */
@@ -240,13 +240,16 @@ const say = (name, html) =>
 
 function renderCompat(formA, formB) {
   const r = compareFortune(formA, formB);
-  const s = r.synthesis;
   last = { mode: 'pair', formA, formB, result: r };
   const p = (n) => String(n).padStart(2, '0');
   const when = (f) => `${f.year}.${p(f.month)}.${p(f.day)}` +
     (f.hour == null ? ' 시간 미상' : ` ${p(f.hour)}:${p(f.minute)}`);
 
-  const toneClass = (t) => t > 0 ? 'good' : t < 0 ? 'bad' : 'mid';
+  const cr = compatReading(r);
+  const block = (label, v) => v?.text
+    ? `<div class="say"><div class="say-name">${esc(label)}</div>
+         <p class="say-text">${esc(v.text)}${cite(v.sources)}</p></div>`
+    : '';
 
   return `
     <div class="section-label">궁합</div>
@@ -254,49 +257,26 @@ function renderCompat(formA, formB) {
       <h3>${esc(formA.name)} <span style="color:var(--gold-soft)">×</span> ${esc(formB.name)}</h3>
       <p class="headline">${esc(when(formA))} &nbsp;·&nbsp; ${esc(when(formB))}</p>
 
-      ${s.summary.map((t) => say(null, esc(t))).join('')}
+      ${block('총평', cr.총평)}
+      ${block('끌리는 지점', cr.끌림)}
+      ${block('같이 사는 일', cr.현실)}
+      ${block('돈에 대해', cr.돈)}
+      ${block('대화', cr.대화)}
+      ${block('오래 가려면', cr.오래)}
+      ${block('가장 든든한 자리', cr.강점)}
+      ${block('가장 걸리는 자리', cr.부딪침)}
 
-      ${say(null, `견준 ${s.count}개 체계 가운데 ` +
-        `좋게 본 것이 ${s.buckets['좋음'].length}${cite(s.buckets['좋음'])}, ` +
-        `무난하게 본 것이 ${s.buckets['무난'].length}${cite(s.buckets['무난'])}, ` +
-        `어렵게 본 것이 ${s.buckets['어려움'].length}${cite(s.buckets['어려움'])} 입니다.`)}
-
-      ${s.best ? say('가장 좋게 보는 곳',
-        `${esc(s.best.name)} — ${esc(s.best.headline)}`) : ''}
-      ${s.worst ? say('가장 어렵게 보는 곳',
-        `${esc(s.worst.name)} — ${esc(s.worst.headline)}`) : ''}
-
-      ${say(null, `<span style="color:var(--ink-3)">체계마다 잣대가 다릅니다. 베딕의 아쉬타쿠타처럼 ` +
-        `혼인을 전제로 만든 까다로운 잣대는 박하게 나오고, 요일이나 별 하나로 보는 체계는 ` +
-        `후하게 나옵니다. 가로로 견주기보다 각 체계가 무엇을 보고 그렇게 말했는지를 읽는 편이 낫습니다.</span>`)}
+      <p class="area-src" style="margin-top:14px">
+        열다섯 체계를 모두 견주되, 항목마다 그 주제를 보는 체계에 무게를 더 줍니다.
+        괄호 안이 그 항목을 실제로 끈 체계입니다.
+      </p>
     </div>
-    <div class="section-label">체계별 풀이 — ${r.results.length}개</div>
-    ${r.errors.map((e) => `<div class="error">${esc(e.system)} 계산 실패: ${esc(e.message)}</div>`).join('')}
-    ${r.results.slice().sort((x, y) => y.score - x.score).map((x, i) => `
-      <details class="sys" ${i === 0 ? 'open' : ''}>
-        <summary>
-          <span class="nm">${esc(x.name)}</span>
-          <span class="hd">${esc(x.headline)}</span>
-          <span class="vtag ${toneClass(x.tone)}">${esc(x.verdict)}</span>
-          <span class="chev">▾</span>
-        </summary>
-        <div class="body">
-          <dl class="facts">
-            ${x.facts.map((f) => `
-              <div class="fact"><dt>${esc(f.label)}</dt>
-                <dd>${esc(f.value)}${f.note ? `<small>${esc(f.note)}</small>` : ''}</dd></div>`).join('')}
-          </dl>
-          ${x.readings.map((v) => `
-            <div class="reading"><h4>${esc(v.title)}</h4>
-              <p class="${v.mono ? 'mono' : ''}">${esc(v.text)}</p></div>`).join('')}
-        </div>
-      </details>`).join('')}
 
     ${r.skipped.length ? `
-      <div class="section-label">견주지 못한 체계</div>
-      <div class="card">
-        <div class="planned">${r.skipped.map((x) => `<span>${esc(x.system)}</span>`).join('')}</div>
-        <p style="font-size:12.5px;color:var(--ink-3);margin:14px 0 0">${esc(r.skipped[0].reason)}</p>
+      <div class="card" style="margin-top:14px">
+        <p class="area-src" style="margin:0">
+          ${esc(r.skipped.map((x) => x.system).join(', '))} — ${esc(r.skipped[0].reason)}
+        </p>
       </div>` : ''}
 
     ${aiSection('pair')}

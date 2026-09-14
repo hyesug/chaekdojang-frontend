@@ -20,8 +20,18 @@ function tailChar(word) {
   return s ? s.charCodeAt(s.length - 1) : null;
 }
 
-/** 종성 번호. 0이면 받침 없음. 한글 음절이 아니면 null */
+/**
+ * 숫자는 읽는 소리로 받침을 본다. '5'는 '오'라 받침이 없고 '1'은 '일'이라
+ * 있다. 안 그러면 '객산 5이(가)' 같은 글이 나온다.
+ */
+const DIGIT_JONG = [8, 8, 0, 16, 0, 0, 1, 8, 8, 0]; // 영 일 이 삼 사 오 육 칠 팔 구
+
+/** 종성 번호. 0이면 받침 없음. 한글도 숫자도 아니면 null */
 function jong(word) {
+  const s = String(word ?? '').trim().replace(/[)\]}\s]+$/, '');
+  const last = s[s.length - 1];
+  if (/[0-9]/.test(last)) return DIGIT_JONG[Number(last)];
+
   const code = tailChar(word);
   if (code === null || code < 0xac00 || code > 0xd7a3) return null;
   return (code - 0xac00) % 28;

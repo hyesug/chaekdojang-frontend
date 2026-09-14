@@ -433,3 +433,154 @@ export function periodProse(block, seed = 0) {
   for (const a of AREAS) out[a] = areaProse(block, a, seed);
   return out;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   궁합 리딩
+   ═══════════════════════════════════════════════════════════ */
+
+/**
+ * 궁합도 주제마다 잘 보는 체계가 다르다.
+ *
+ * 숙요의 삼구의는 관계를 보라고 만든 물건이고, 자미두수에는 부처궁이
+ * 따로 있고, 베딕 아쉬타쿠타는 아예 혼인을 전제로 만든 잣대다. 반면
+ * 태을신수는 국운을 보는 것이라 두 사람 사이에 할 말이 적다.
+ * 그래서 항목마다 무게를 달리 준다. 개인 운세와 같은 방식이다.
+ */
+const PAIR_WEIGHT = {
+  //           끌림  현실  돈   대화  오래
+  saju:      [1.0, 1.0, 1.0, 0.7, 1.0],
+  jamidusu:  [1.0, 1.0, 0.9, 0.6, 1.0],
+  sukyo:     [1.0, 0.5, 0.3, 0.8, 0.7],
+  thai:      [0.9, 0.4, 0.3, 0.7, 0.5],
+  vedic:     [0.9, 0.9, 0.7, 0.6, 1.0],
+  astrology: [1.0, 0.7, 0.7, 1.0, 0.8],
+  tarot:     [0.8, 0.5, 0.4, 0.6, 0.5],
+  juyeok:    [0.6, 0.8, 0.6, 0.9, 0.8],
+  yukim:     [0.6, 0.8, 0.7, 0.9, 0.6],
+  hongguk:   [0.5, 1.0, 1.0, 0.6, 0.7],
+  gujeong:   [0.5, 0.9, 0.7, 0.5, 0.7],
+  mahabote:  [0.7, 0.6, 0.5, 0.6, 0.6],
+  kabbalah:  [0.7, 0.5, 0.4, 0.7, 0.5],
+  tojeong:   [0.5, 0.7, 0.7, 0.4, 0.6],
+  taeeul:    [0.3, 0.6, 0.5, 0.3, 0.5],
+};
+const PAIR_AREAS = ['끌림', '현실', '돈', '대화', '오래'];
+
+const PAIR_TEXT = {
+  끌림: {
+    hi: '서로에게 끌리는 힘이 뚜렷합니다. 처음 만났을 때부터 편했을 가능성이 크고, 굳이 애쓰지 않아도 대화가 이어지는 사이입니다.',
+    mid: '끌림이 크지도 작지도 않습니다. 한눈에 반하는 쪽이 아니라 겪을수록 알아가는 사이라, 시간이 편을 들어줍니다.',
+    lo: '서로 다른 결을 가졌습니다. 처음에는 신선하게 느껴지지만 같은 것을 보고도 다르게 느끼는 일이 잦으니, 상대의 반응을 내 기준으로 재지 않는 연습이 필요합니다.',
+  },
+  현실: {
+    hi: '같이 사는 일에 잘 맞습니다. 생활의 속도와 돈 쓰는 결이 비슷해서 사소한 일로 부딪치는 일이 적습니다.',
+    mid: '생활에서는 조율이 필요합니다. 크게 어긋나지는 않지만 습관이 달라 자잘하게 걸리는 일이 생기니, 규칙을 미리 정해두는 편이 낫습니다.',
+    lo: '생활의 결이 다릅니다. 한쪽이 벌이면 한쪽이 정리하는 구도가 되기 쉬우니, 역할을 분명히 나누지 않으면 한 사람만 지칩니다.',
+  },
+  돈: {
+    hi: '돈에 대한 생각이 맞습니다. 함께 모으는 일에 힘이 실리니 공동의 목표를 두면 속도가 붙습니다.',
+    mid: '돈 문제는 무난합니다. 다만 큰 결정을 한쪽이 먼저 내리면 뒤에 말이 나오니, 액수가 큰 일은 반드시 같이 정하세요.',
+    lo: '돈이 갈등의 씨가 되기 쉽습니다. 쓰는 기준이 다르니 지갑을 완전히 합치는 것보다 각자의 몫을 남겨두는 편이 오래 갑니다.',
+  },
+  대화: {
+    hi: '말이 잘 통합니다. 다투더라도 대화로 풀 수 있는 사이라 문제가 오래 묵지 않습니다.',
+    mid: '대화는 보통입니다. 말하지 않으면 모르는 사이이니, 참고 넘어가는 습관이 쌓이면 어느 순간 크게 터집니다.',
+    lo: '같은 말을 다르게 알아듣습니다. 감정이 상한 상태에서 대화하면 반드시 어긋나니, 한 박자 쉬고 말하는 규칙을 세워야 합니다.',
+  },
+  오래: {
+    hi: '길게 보면 단단한 사이입니다. 시간이 갈수록 서로의 자리가 분명해집니다.',
+    mid: '오래 가는 데는 무리가 없습니다. 다만 저절로 되는 것은 아니고, 고비마다 한 번씩 매듭을 지어야 이어집니다.',
+    lo: '오래 가려면 품이 듭니다. 지금 좋은 것만 보고 정하기보다, 서로 물러설 수 있는 선을 미리 정해두는 편이 낫습니다.',
+  },
+};
+
+/**
+ * 체계의 풀이에서 이 두 사람 이야기를 하는 문장을 고른다.
+ *
+ * headline 은 '離궁 × 巽궁 · 상생'이나 '아쉬타쿠타 12.5/36' 처럼 용어 그
+ * 자체라 쓸 수가 없다. 풀이 본문은 사람 말로 쓰여 있지만, 거기에도 그
+ * 체계가 무엇인지 설명하는 대목이 섞여 있다 ("인도에서 혼담이 오갈 때
+ * 맞춰보는 여덟 항목입니다" 같은 것). 그건 이 두 사람 이야기가 아니다.
+ *
+ * 그래서 이름이 나오는 풀이를 먼저 고르고, 방법을 설명하는 투는 뒤로 민다.
+ */
+const METHOD_HINTS = ['기준선', '항목입니다', '잣대', '어떻게 읽을', '전제로 만든', '계산했습니다'];
+
+function plainest(sys, names = []) {
+  const rank = (r) => {
+    let v = 0;
+    if (names.some((n) => n && r.text.includes(n))) v += 3;
+    if (METHOD_HINTS.some((h) => r.text.includes(h))) v -= 3;
+    if (r.mono) v -= 10;
+    return v;
+  };
+  const ordered = (sys.readings ?? []).slice().sort((a, b) => rank(b) - rank(a));
+
+  for (const r of ordered) {
+    if (r.mono) continue;
+    const flat = String(r.text).split(/\s*\n+\s*/).join(' ');
+    const clean = flat
+      .split(/(?<=다\.)\s+/)
+      .map((t) => t.trim())
+      // 완결된 문장만 쓴다. 항목 나열은 '...고 본다' 처럼 끝나서 걸러진다.
+      .filter((t) => t.endsWith('다.') && t.length >= 12)
+      .filter((t) => !/[\u4e00-\u9fff]/.test(t) && !/\d+\s*\/\s*\d+/.test(t))
+      // 체계를 소개하는 문장은 이 두 사람 이야기가 아니다
+      .filter((t) => !METHOD_HINTS.some((h) => t.includes(h)));
+    if (clean.length) return clean.slice(0, 2).join(' ');
+  }
+  return '';
+}
+
+/** 두 사람의 항목별 결. 근거 체계도 함께 돌려준다 */
+export function compatReading(c) {
+  const s = c.synthesis;
+  const out = {};
+
+  PAIR_AREAS.forEach((area, i) => {
+    let sum = 0, w = 0;
+    const voices = [];
+    for (const r of c.results) {
+      const weight = (PAIR_WEIGHT[r.id]?.[i] ?? 0.5) * (r.weight ?? 1);
+      sum += r.score * weight; w += weight;
+      voices.push({ name: r.name, weight });
+    }
+    const score = w ? sum / w : 50;
+    const band = score >= 62 ? 'hi' : score >= 45 ? 'mid' : 'lo';
+    out[area] = {
+      text: PAIR_TEXT[area][band],
+      sources: voices.sort((a, b) => b.weight - a.weight).slice(0, 3).map((v) => v.name),
+    };
+  });
+
+  // 총평 — 갈리는지 아닌지가 이 관계의 성격이다
+  const good = s.buckets['좋음'], bad = s.buckets['어려움'];
+  out.총평 = {
+    text: s.split
+      ? `열다섯 가운데 ${good.length}개는 잘 맞는다 하고 ${bad.length}개는 어렵다고 봅니다. 이런 조합은 "애매하다"가 아니라 "어떤 면은 아주 잘 맞고 어떤 면은 계속 부딪친다"에 가깝습니다. 좋은 쪽만 보고 정하면 나중에 부딪치는 자리에서 놀라게 됩니다.`
+      : good.length > bad.length * 2
+        ? `열다섯 가운데 ${good.length}개가 잘 맞는다고 봅니다. 서로 다른 잣대가 같은 말을 하고 있으니 그만큼 믿을 만한 결입니다.`
+        : bad.length > good.length
+          ? `열다섯 가운데 ${bad.length}개가 어렵게 봅니다. 인연이 아니라는 뜻은 아니고, 저절로 되는 사이는 아니라는 뜻입니다.`
+          : `크게 좋지도 나쁘지도 않은 조합입니다. 무엇이 되느냐는 두 사람이 어떻게 하느냐에 더 많이 달려 있습니다.`,
+    sources: good.concat(bad).slice(0, 4),
+  };
+
+  // best/worst 는 하나가 아니라 상위 셋이다
+  const worst = Array.isArray(s.worst) ? s.worst[0] : s.worst;
+  const best = Array.isArray(s.best) ? s.best[0] : s.best;
+
+  if (worst) {
+    out.부딪침 = {
+      text: `${plainest(worst, s.names)} 여기서 걸리는 부분이 실제로 부딪치는 지점일 가능성이 큽니다. 미리 알고 있으면 그 자리에서 덜 놀랍니다.`,
+      sources: [worst.name],
+    };
+  }
+  if (best) {
+    out.강점 = {
+      text: `${plainest(best, s.names)} 두 사람 사이가 흔들릴 때 버팀목이 되는 대목입니다.`,
+      sources: [best.name],
+    };
+  }
+  return out;
+}

@@ -28,6 +28,9 @@ const MAX_CONTEXT_CHARS = 24_000;
 const MAX_MESSAGES = 40;
 const MAX_QUESTION_CHARS = 2_000;
 
+/** 로그인·월 한도 검사를 켤지. 지금은 꺼 두고 누구나 쓸 수 있게 한다 */
+const REQUIRE_LOGIN = process.env.FORTUNE_AI_REQUIRE_LOGIN === "1";
+
 /**
  * 시스템 프롬프트.
  *
@@ -202,10 +205,16 @@ export async function POST(req: Request) {
     return Response.json({ error: "마지막은 사용자 질문이어야 합니다." }, { status: 400 });
   }
 
-  // 계산은 비회원도 무료지만, 외부 모델 호출은 로그인 계정의 월 한도에서만 쓴다.
-  const reservation = await reserveMonthlyUse(req);
-  if ("error" in reservation) {
-    return Response.json({ error: reservation.error }, { status: reservation.status });
+  // 계산은 비회원도 무료지만, 외부 모델 호출은 로그인 계정의 월 한도에서만 쓸 수 있다.
+  // 지금은 꺼 둔다. 켜려면 Vercel 환경변수 FORTUNE_AI_REQUIRE_LOGIN 을 1 로 두면 된다.
+  // (자바 쪽 POST /api/fortune-ai/reservations 는 그대로 살아 있다.)
+  let remaining: number | null = null;
+  if (REQUIRE_LOGIN) {
+    const reservation = await reserveMonthlyUse(req);
+    if ("error" in reservation) {
+      return Response.json({ error: reservation.error }, { status: reservation.status });
+    }
+    remaining = reservation.data.remaining;
   }
 
   const client = new Anthropic({ apiKey });
@@ -267,7 +276,7 @@ export async function POST(req: Request) {
               output: final.usage.output_tokens,
               cacheRead: final.usage.cache_read_input_tokens ?? 0,
               cacheWrite: final.usage.cache_creation_input_tokens ?? 0,
-              remaining: reservation.data.remaining,
+              ...(remaining === null ? {} : { remaining }),
             },
           })
         );

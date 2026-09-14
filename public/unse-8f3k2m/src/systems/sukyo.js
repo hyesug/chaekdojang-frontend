@@ -241,7 +241,7 @@ export function compare(a, b) {
     const taker = aToB.score < bToA.score ? b.name : a.name;
     readings.push({
       title: '한쪽으로 기운 관계입니다',
-      text: `${a.name}에게 ${j(b.name, '은')} ${aToB.name}, ${b.name}에게 ${j(a.name, '은')} ${bToA.name}입니다. 점수 차이가 ${gap}점이나 됩니다.\n\n` +
+      text: `${a.name}에게 ${j(b.name, '은')} ${aToB.name}, ${b.name}에게 ${j(a.name, '은')} ${bToA.name}입니다. 방향에 따라 판정이 크게 갈립니다.\n\n` +
         `숙요가 다른 궁합법과 갈리는 지점이 바로 여기입니다. 관계를 하나의 점수로 뭉뚱그리지 않고, 누가 주고 누가 받는지를 방향별로 나눠 봅니다. ` +
         `이 조합에서는 ${giver} 쪽이 더 내주고 ${taker} 쪽이 더 받는 구조입니다. 나쁘다는 뜻이 아니라, ${j(giver, '이')} 지치지 않도록 관계의 균형을 의식적으로 맞춰야 오래 간다는 뜻입니다.`,
     });

@@ -109,12 +109,12 @@ function synthesizeCompat(results, nameA, nameB) {
 
   if (best.length) {
     sentences.push(
-      `가장 후하게 본 쪽은 ${best.map((r) => `${r.name}(${r.score}점)`).join(', ')}입니다.`
+      `가장 후하게 본 쪽은 ${best.map((r) => r.name).join(', ')}입니다.`
     );
   }
   if (worst.length && worst[0].tone < 1) {
     sentences.push(
-      `가장 박하게 본 쪽은 ${worst.map((r) => `${r.name}(${r.score}점)`).join(', ')}입니다. 여기서 지적하는 부분이 실제로 부딪칠 지점일 가능성이 큽니다.`
+      `가장 박하게 본 쪽은 ${worst.map((r) => r.name).join(', ')}입니다. 여기서 지적하는 부분이 실제로 부딪칠 지점일 가능성이 큽니다.`
     );
   }
 

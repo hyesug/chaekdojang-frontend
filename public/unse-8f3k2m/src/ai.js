@@ -9,7 +9,7 @@
  *  넘어가기 때문이다.)
  */
 
-import { buildContext, READING_PROMPT } from './aiContext.js';
+import { buildContext, READING_PROMPT, buildCompatContext, COMPAT_PROMPT } from './aiContext.js';
 
 const ENDPOINT = '/fortune-ai';
 
@@ -32,7 +32,7 @@ function renderText(t) {
     .replace(/\n/g, '<br>');
 }
 
-const QUICK = [
+const SOLO_QUICK = [
   ['전체 풀이', READING_PROMPT],
   ['올해 어떤가요?', '올해 전체 흐름이 어떤지, 특히 몇 월을 눈여겨보면 좋을지 알려주세요.'],
   ['지금 이직해도 될까요?', '지금 시기에 직장을 옮기는 것에 대해 명반이 뭐라고 하는지 봐주세요.'],
@@ -41,12 +41,25 @@ const QUICK = [
   ['건강', '몸에서 먼저 신호가 오는 곳과, 지금 조심할 것을 알려주세요.'],
 ];
 
-export function aiSection() {
+const PAIR_QUICK = [
+  ['전체 풀이', COMPAT_PROMPT],
+  ['어디서 부딪칠까요?', '두 사람이 부딪치기 쉬운 지점과, 그럴 때 무엇을 하면 되는지 알려주세요.'],
+  ['오래 갈까요?', '이 관계가 시간이 지나면 어떻게 변해갈지 명반을 근거로 봐주세요.'],
+  ['서로 뭘 채워주나요?', '한쪽에 없는 것을 다른 쪽이 가지고 있는 부분을 짚어 주세요.'],
+  ['일로 만나면', '연애가 아니라 동업이나 같이 일하는 사이라면 어떤지 봐주세요.'],
+  ['갈리는 지점', '열다섯 체계 가운데 판단이 엇갈리는 곳은 어디이고, 왜 그런지 설명해 주세요.'],
+];
+
+/** 지금 화면에 걸린 빠른 질문 목록 */
+let quick = SOLO_QUICK;
+
+export function aiSection(mode = 'solo') {
+  quick = mode === 'pair' ? PAIR_QUICK : SOLO_QUICK;
   return `
     <div class="section-label">AI 에게 묻기</div>
     <div class="card ai">
       <div class="ai-quick">
-        ${QUICK.map((q, i) => `<button type="button" data-q="${i}">${esc(q[0])}</button>`).join('')}
+        ${quick.map((q, i) => `<button type="button" data-q="${i}">${esc(q[0])}</button>`).join('')}
       </div>
       <div id="ai-log" class="ai-log"></div>
       <div class="ai-input">
@@ -55,18 +68,24 @@ export function aiSection() {
       </div>
       <p class="ai-note" id="ai-note">
         위의 열다섯 체계 계산 결과를 그대로 넘겨서 묻습니다.
-        간지·절기는 이미 계산된 값을 쓰므로 AI 가 사주를 다시 셈하지 않습니다.
+        간지·절기는 이미 계산된 값을 쓰므로 AI 가 ${mode === 'pair' ? '두 사람 사주를' : '사주를'} 다시 셈하지 않습니다.
       </p>
     </div>`;
 }
 
 /** 결과 화면이 그려진 뒤 호출한다 */
 export function initAI(form, fortune, forecast) {
-  session = {
-    context: buildContext(form, fortune, forecast),
-    messages: [],
-    busy: false,
-  };
+  wire(buildContext(form, fortune, forecast));
+}
+
+/** 궁합 화면용. 두 사람 명반을 통째로 싣는다 */
+export function initCompatAI(formA, formB, compat) {
+  wire(buildCompatContext(formA, formB, compat));
+}
+
+/** 화면이 그려진 뒤 입력칸과 버튼을 붙인다. 개인·궁합이 같은 배선을 쓴다 */
+function wire(context) {
+  session = { context, messages: [], busy: false };
 
   const log = document.querySelector('#ai-log');
   const box = document.querySelector('#ai-q');
@@ -74,7 +93,7 @@ export function initAI(form, fortune, forecast) {
   if (!log) return;
 
   document.querySelectorAll('.ai-quick button').forEach((b) => {
-    b.addEventListener('click', () => ask(QUICK[+b.dataset.q][1]));
+    b.addEventListener('click', () => ask(quick[+b.dataset.q][1]));
   });
   send.addEventListener('click', () => {
     const v = box.value.trim();

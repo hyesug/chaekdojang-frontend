@@ -491,3 +491,22 @@ details.pool[open] > summary::before { content: '▾ '; }
 }
 .ai-input button:disabled { opacity: .45; cursor: default; }
 .ai-note { font-size: 11.5px; color: var(--ink-3); line-height: 1.7; margin: 12px 2px 0; }
+
+/* ── 문장 풀이 ────────────────────────────────────────────────
+   점수와 막대를 걷어내고 문장만 남긴 뒤로 쓰는 것들.
+   근거는 괄호로 작게 붙여서, 읽는 흐름을 끊지 않되
+   "어느 체계가 그렇게 말하나"는 늘 따라오게 한다. */
+.say { padding: 13px 0; border-bottom: 1px solid rgba(255,255,255,.055); }
+.say:last-child { border-bottom: none; }
+.say-name {
+  font-size: 12px; font-weight: 600; letter-spacing: .04em;
+  color: var(--gold-soft); margin-bottom: 5px;
+}
+.say-text { font-size: 14.5px; line-height: 1.75; margin: 0; color: var(--ink-1); }
+.say-text strong { color: var(--gold); font-weight: 600; }
+.cite { font-size: 12px; color: var(--ink-3); white-space: normal; }
+
+@media print {
+  .say { border-bottom: 1px solid #ddd; }
+  .cite { color: #666; }
+}

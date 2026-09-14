@@ -142,3 +142,67 @@ export const READING_PROMPT =
   '위 명반을 바탕으로 이 사람의 전체 풀이를 써 주세요. ' +
   '소제목을 넣어 (1) 타고난 기질 (2) 지금의 흐름 (3) 올해 눈여겨볼 시기 (4) 조심할 지점 순으로 정리해 주세요. ' +
   '열다섯 체계가 어긋나는 지점이 있으면 그것도 짚어 주세요.';
+
+/**
+ * 궁합용 명반 — 두 사람 것을 한 덩이로
+ *
+ * 개인용과 같은 이유로 만든다. "이 두 사람 궁합 봐줘"라고 물으면 모델이
+ * 두 사람 사주를 각각 세우고 합·충까지 따져야 하는데, 그 앞단에서 이미
+ * 틀린다. 여기서는 열다섯 체계가 견준 결과를 그대로 넘긴다.
+ *
+ * @param {object} formA 첫 번째 사람
+ * @param {object} formB 두 번째 사람
+ * @param {object} c     compareFortune 결과
+ */
+export function buildCompatContext(formA, formB, c) {
+  const out = [];
+  const s = c.synthesis;
+  const who = (f) => `${f.name} · ${f.gender === 'male' ? '남성' : '여성'} · ` +
+    `양력 ${f.year}년 ${f.month}월 ${f.day}일` +
+    (f.hour == null ? ' (시각 미상)' : ` ${p2(f.hour)}시 ${p2(f.minute)}분`) +
+    ` · ${f.birthPlace} 출생`;
+
+  out.push('## 두 사람');
+  out.push(who(formA));
+  out.push(who(formB));
+  out.push('');
+
+  out.push('## 체계별로 견준 결과');
+  out.push('');
+  for (const x of c.results) {
+    out.push(`### ${x.name}`);
+    out.push(`${x.verdict} — ${x.headline}`);
+    const folded = foldFacts(x.facts);
+    if (folded) out.push(folded);
+    for (const v of (x.readings ?? []).slice(0, 2)) {
+      out.push(`${v.title}: ${String(v.text).replace(/\n+/g, ' ')}`);
+    }
+    out.push('');
+  }
+  if (c.skipped?.length) {
+    out.push(`견주지 못한 체계: ${c.skipped.map((x) => x.system).join(', ')} — ${c.skipped[0].reason}`);
+    out.push('');
+  }
+
+  out.push('## 종합');
+  out.push(`견준 ${s.count}개 가운데 좋게 본 것 ${s.buckets['좋음'].length}개(${s.buckets['좋음'].join(', ') || '없음'}), ` +
+    `무난 ${s.buckets['무난'].length}개(${s.buckets['무난'].join(', ') || '없음'}), ` +
+    `어렵게 본 것 ${s.buckets['어려움'].length}개(${s.buckets['어려움'].join(', ') || '없음'})`);
+  if (s.best) out.push(`가장 좋게 보는 곳 — ${s.best.name}: ${s.best.headline}`);
+  if (s.worst) out.push(`가장 어렵게 보는 곳 — ${s.worst.name}: ${s.worst.headline}`);
+  if (s.summary?.length) out.push(`요약 — ${s.summary.join(' ')}`);
+  out.push('');
+
+  out.push('## 읽는 법');
+  out.push('위 값은 모두 천문 계산으로 구한 것이다. 간지·절기·음력·행성 위치를 다시 계산하지 말고 그대로 쓸 것.');
+  out.push('체계마다 잣대가 다르다. 베딕 아쉬타쿠타처럼 혼인을 전제로 만든 잣대는 박하고, 요일 하나로 보는 체계는 후하다. 점수를 가로로 견주지 말 것.');
+  out.push('궁합은 두 사람 사이의 경향이지 판결이 아니다. 헤어지라거나 결혼하라고 말하지 말 것.');
+
+  return out.join('\n');
+}
+
+/** 궁합 화면을 열었을 때 자동으로 받는 요청문 */
+export const COMPAT_PROMPT =
+  '위 결과를 바탕으로 두 사람의 궁합을 풀어 주세요. ' +
+  '소제목을 넣어 (1) 서로 끌리는 지점 (2) 부딪치기 쉬운 지점 (3) 오래 가려면 무엇이 필요한지 순으로 정리하고, ' +
+  '열다섯 체계가 어긋나는 지점이 있으면 그것도 짚어 주세요.';

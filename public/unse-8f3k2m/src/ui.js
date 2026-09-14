@@ -8,13 +8,14 @@ import { readFortune } from './engine.js';
 import { compareFortune } from './compat.js';
 import { CITIES } from './core/place.js';
 import { lunarToSolar } from './core/lunar.js';
-import { ELEMENT_NAMES, TRAIT_NAMES } from './systems/_base.js';
+import { TRAIT_NAMES } from './systems/_base.js';
+import { j } from './core/josa.js';
 import {
   encodeState, decodeState, buildSoloCard, buildCompatCard, downloadCanvas,
 } from './share.js';
 import { pickNumbers } from './lotto.js';
-import { readForecast, AREAS, areaText, periodSummary } from './forecast.js';
-import { aiSection, initAI } from './ai.js';
+import { readForecast, AREAS, areaText, areaSources } from './forecast.js';
+import { aiSection, initAI, initCompatAI } from './ai.js';
 
 /** 방금 본 결과. 이미지 카드와 공유 링크를 만들 때 다시 쓴다 */
 let last = null;
@@ -31,7 +32,6 @@ const shareBar = () => `
   </p>`;
 
 const $ = (s) => document.querySelector(s);
-const ELEM_VARS = ['--mok', '--hwa', '--to', '--geum', '--su'];
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -89,13 +89,15 @@ $('#form').addEventListener('submit', (e) => {
   const box = $('#result');
   try {
     const form = collect('');
-    box.innerHTML = mode === 'pair' ? renderCompat(form, collect('b-')) : render(form);
+    const formB = mode === 'pair' ? collect('b-') : null;
+    box.innerHTML = mode === 'pair' ? renderCompat(form, formB) : render(form);
     box.classList.add('on');
 
-    // 개인 운세 화면에만 AI 구획이 있다. 명반과 시기 운세를 함께 넘겨야
-    // AI 가 "지금"까지 알고 답한다. render 가 이미 계산해 둔 것을 그대로 쓴다.
-    if (mode === 'solo' && last?.result) {
-      initAI(form, last.result, last.forecast);
+    // 두 화면 모두 AI 구획이 있다. 개인은 명반과 시기 운세를 함께 넘겨야
+    // AI 가 "지금"까지 알고 답한다. render 가 계산해 둔 것을 그대로 쓴다.
+    if (last?.result) {
+      if (mode === 'pair') initCompatAI(form, formB, last.result);
+      else initAI(form, last.result, last.forecast);
     }
     // 주소를 지금 보고 있는 결과에 맞춰 둔다.
     // 새로고침해도 같은 결과가 나오고, 주소창을 그대로 복사해도 된다.
@@ -217,8 +219,21 @@ function lottoSection(input, chart) {
 // 운세 흐름 화면
 // ─────────────────────────────────────────────────────────────
 
-const band = (n) => (n >= 62 ? 'hi' : n >= 42 ? 'mid' : 'lo');
+/**
+ * 근거 표시.
+ *
+ * 점수와 막대를 걷어냈으니 "왜 그렇게 보는가"는 이걸로 대신한다. 숫자는
+ * 어차피 열다섯을 평균 낸 값이라 그 자체로 알려주는 게 적었고, 어느 체계가
+ * 그렇게 말하는지가 훨씬 쓸모 있다.
+ */
+const cite = (names) => names && names.length
+  ? ` <span class="cite">(${names.map(esc).join(', ')})</span>` : '';
 
+/** 문장 한 덩이 */
+const say = (name, html) =>
+  `<div class="say">${name ? `<div class="say-name">${esc(name)}</div>` : ''}<p class="say-text">${html}</p></div>`;
+
+/** 한 시기의 풀이 — 문장만 */
 function flowPane(f, kind, open) {
   const P = f.period;
   const gz = kind === 'day' ? P.gz.day : kind === 'month' ? P.gz.month : P.gz.year;
@@ -226,21 +241,11 @@ function flowPane(f, kind, open) {
     <div class="flow-pane" data-fp="${kind}" ${open ? '' : 'hidden'}>
       <p class="lotto-when">${esc(P.label)} · ${esc(gz.hanja)}(${esc(gz.kr)})${
         kind !== 'year' ? ` · ${P.sajuYear}년 ${esc(P.gz.year.hanja)}` : ''}</p>
-      <p class="flow-sum">${esc(periodSummary(f))}</p>
+
       ${AREAS.map((a) => {
         const x = f.areas[a];
         if (x.score == null) return '';
-        return `
-          <div class="area">
-            <div class="area-head">
-              <span class="area-name">${a}</span>
-              <span class="area-score ${band(x.score)}">${x.score}</span>
-            </div>
-            <div class="area-track"><div class="area-fill ${band(x.score)}" style="width:${x.score}%"></div></div>
-            <p class="area-text">${esc(areaText(a, x.score, kind))}</p>
-            <p class="area-src">${x.count}개 체계 · 벌리기 전 ${x.raw}${
-              x.range ? ` · 체계별 ${x.range[0]}~${x.range[1]}` : ''}</p>
-          </div>`;
+        return say(a, `${esc(areaText(a, x.score, kind))}${cite(areaSources(f, a))}`);
       }).join('')}
 
       <details class="pool">
@@ -255,62 +260,45 @@ function flowPane(f, kind, open) {
       </details>
     </div>`;
 }
-
 /**
  * 이레 화면.
  *
- * 명리에 주(週)가 없으므로 간지 한 줄로 요약할 수가 없다. 대신 이레치
- * 일운을 그대로 펼쳐 보여준다. 주간 운세에서 사람이 실제로 알고 싶은 건
- * 평균이 아니라 "어느 날에 하면 되나"이기도 하다.
+ * 명리에 주(週)가 없어 이레치 일운을 계산해 묶은 것이다. 막대를 걷어낸
+ * 자리에는 날짜를 문장으로 적는다 — 주간 운세에서 알고 싶은 건 결국
+ * "어느 날에 하면 되나"라서 숫자 없이도 전해진다.
  */
 function weekPane(w, open) {
-  const dayCol = (d) => `
-    <div class="tl-col">
-      <div class="tl-barwrap"><div class="tl-bar ${band(d.score)}" style="height:${Math.max(6, (d.score - 20) * 1.5)}px"></div></div>
-      <div class="tl-score">${d.score}</div>
-      <div class="tl-mon">${d.on.m}/${d.on.d}${d.today ? ' 오늘' : ''}</div>
-      <div class="tl-gz">${esc(d.weekday)} ${esc(d.gz.hanja)}</div>
-    </div>`;
+  const day = (d) => `${d.on.m}월 ${d.on.d}일(${esc(d.weekday)})`;
+  const sorted = w.days.slice().sort((a, b) => b.score - a.score);
 
   return `
     <div class="flow-pane" data-fp="week" ${open ? '' : 'hidden'}>
       <p class="lotto-when">${esc(w.label)} · 이레</p>
-      <p class="flow-sum">${esc(w.best.area)}이 가장 높고 ${esc(w.worst.area)}이 가장 낮습니다.
-        이레 가운데 ${w.bestDay.on.m}월 ${w.bestDay.on.d}일(${esc(w.bestDay.weekday)})이 가장 낫고,
-        ${w.worstDay.on.m}월 ${w.worstDay.on.d}일(${esc(w.worstDay.weekday)})이 가장 무겁습니다.</p>
 
-      <div class="tl" style="margin:16px 0 20px">${w.days.map(dayCol).join('')}</div>
+      ${say('어느 날',
+        `${sorted.slice(0, 2).map(day).join(', ')} 쪽이 낫고, ` +
+        `${sorted.slice(-2).reverse().map(day).join(', ')} 쪽이 무겁습니다. ` +
+        `중요한 자리를 잡는다면 앞쪽 날로 미는 편이 낫습니다.` +
+        `<span class="cite">(이레치 일진을 하루씩 계산한 결과입니다)</span>`)}
 
       ${AREAS.map((a) => {
         const x = w.areas[a];
         if (x.score == null) return '';
-        return `
-          <div class="area">
-            <div class="area-head">
-              <span class="area-name">${a}</span>
-              <span class="area-score ${band(x.score)}">${x.score}</span>
-            </div>
-            <div class="area-track"><div class="area-fill ${band(x.score)}" style="width:${x.score}%"></div></div>
-            <p class="area-text">${esc(areaText(a, x.score, 'week'))}</p>
-            <p class="area-src">이레 평균 · 벌리기 전 ${x.raw} · 날짜별 ${x.lo}~${x.hi}</p>
-          </div>`;
+        return say(a, `${esc(areaText(a, x.score, 'week'))}${cite(areaSources(w, a))}`);
       }).join('')}
 
       <p class="area-src" style="margin-top:14px">
         명리에는 주(週)라는 단위가 없습니다. 년·월·일·시뿐이라 주건(週建)에 해당하는 간지가
-        없어서, 없는 간지를 지어내는 대신 이레치 일운을 실제로 계산해 묶었습니다.
-        이레 평균은 좋은 날과 나쁜 날이 상쇄되어 폭이 좁아지므로 눈금을 따로 재어 벌렸습니다.
+        없어서, 없는 간지를 지어내는 대신 이레치 일운을 하루씩 계산해 묶었습니다.
       </p>
     </div>`;
 }
-
-/** 오늘·이레·이달·올해를 한 묶음으로. 개인 운세 화면 맨 위에 온다 */
+/** 오늘·이레·이달·올해. 개인 운세 화면 맨 위에 온다 */
 function timeSection(form, f) {
   const tl = f.timeline;
-  const max = Math.max(...tl.map((m) => m.score));
-  const min = Math.min(...tl.map((m) => m.score));
-  const bestM = tl.reduce((a, b) => (b.score > a.score ? b : a));
-  const worstM = tl.reduce((a, b) => (b.score < a.score ? b : a));
+  const sorted = tl.slice().sort((a, b) => b.score - a.score);
+  const lo = sorted[sorted.length - 1];
+  const spread = sorted[0].score - lo.score;
   const p2 = (n) => String(n).padStart(2, '0');
 
   return `
@@ -331,28 +319,22 @@ function timeSection(form, f) {
       ${flowPane(f.year, 'year', false)}
     </div>
 
-    <div class="section-label">${f.day.period.sajuYear}년 열두 달 흐름</div>
+    <div class="section-label">${f.day.period.sajuYear}년 열두 달</div>
     <div class="card">
-      <div class="tl">
-        ${tl.map((m) => `
-          <div class="tl-col">
-            <div class="tl-barwrap"><div class="tl-bar ${band(m.score)}" style="height:${Math.max(6, (m.score - 20) * 1.5)}px"></div></div>
-            <div class="tl-score">${m.score}</div>
-            <div class="tl-mon">${m.from.m}/${m.from.d}~</div>
-            <div class="tl-gz">${esc(m.gz.hanja)}</div>
+      ${say(null,
+        `올해 열두 달 가운데 ${sorted.slice(0, 2).map((m) => m.from.m + '월').join('과 ')} 쪽이 가장 낫고, ` +
+        `${lo.from.m}월이 가장 무겁습니다. ` +
+        (spread >= 25 ? '기복이 큰 해라 시기를 골라 쓰는 편이 낫습니다.'
+          : spread >= 12 ? '기복은 보통입니다.'
+          : '달마다 큰 차이가 없는 평탄한 해입니다.') +
+        `<span class="cite">(달의 경계는 달력 1일이 아니라 절기입니다)</span>`)}
+      <dl class="facts" style="margin-top:6px">
+        ${sorted.slice(0, 2).concat([lo]).map((m, i) => `
+          <div class="fact">
+            <dt>${m.from.m}월 ${esc(m.gz.hanja)}</dt>
+            <dd>${i < 2 ? '좋게 봅니다' : '조심스럽게 봅니다'}<small>${
+              esc((i < 2 ? m.best : m.worst) ?? '')} 쪽이 특히 그렇습니다 · ${m.from.m}월 ${m.from.d}일부터</small></dd>
           </div>`).join('')}
-      </div>
-      <p class="area-src" style="margin-top:16px">
-        달력 달이 아니라 절기 기준입니다. 명리에서 한 달은 1일이 아니라 절기에 바뀝니다 —
-        칸 아래 날짜가 그 달이 시작되는 절입일입니다.
-      </p>
-      <dl class="facts" style="margin-top:14px">
-        <div class="fact"><dt>가장 높은 달</dt>
-          <dd>${bestM.from.m}월 ${esc(bestM.gz.hanja)} · ${bestM.score}점<small>${esc(bestM.best ?? '')} 쪽이 특히 좋습니다</small></dd></div>
-        <div class="fact"><dt>가장 낮은 달</dt>
-          <dd>${worstM.from.m}월 ${esc(worstM.gz.hanja)} · ${worstM.score}점<small>${esc(worstM.worst ?? '')} 쪽을 특히 조심하세요</small></dd></div>
-        <div class="fact"><dt>진폭</dt>
-          <dd>${min} ~ ${max}<small>${max - min >= 25 ? '기복이 큰 해입니다' : max - min >= 12 ? '보통 정도의 기복입니다' : '평탄한 해입니다'}</small></dd></div>
       </dl>
     </div>
   `;
@@ -378,39 +360,22 @@ function renderCompat(formA, formB) {
       <h3>${esc(formA.name)} <span style="color:var(--gold-soft)">×</span> ${esc(formB.name)}</h3>
       <p class="headline">${esc(when(formA))} &nbsp;·&nbsp; ${esc(when(formB))}</p>
 
-      <div class="agree">
-        <div class="agree-num">${s.score}<small>/ 100 · ${esc(s.verdict)}</small></div>
-        <p>${esc(s.count)}개 체계를 견준 가중 평균입니다. 점수 자체보다 아래의 갈림을 보세요.</p>
-      </div>
+      ${s.summary.map((t) => say(null, esc(t))).join('')}
 
-      ${s.summary.map((t) => `<div class="summary-line">${esc(t)}</div>`).join('')}
+      ${say(null, `견준 ${s.count}개 체계 가운데 ` +
+        `좋게 본 것이 ${s.buckets['좋음'].length}${cite(s.buckets['좋음'])}, ` +
+        `무난하게 본 것이 ${s.buckets['무난'].length}${cite(s.buckets['무난'])}, ` +
+        `어렵게 본 것이 ${s.buckets['어려움'].length}${cite(s.buckets['어려움'])} 입니다.`)}
 
-      <div class="section-label" style="margin-top:22px">체계별 판정</div>
-      <div class="verdicts">
-        ${['좋음', '무난', '어려움'].map((k) => `
-          <div class="vgroup ${toneClass(k === '좋음' ? 1 : k === '어려움' ? -1 : 0)}">
-            <div class="vcount">${s.buckets[k].length}</div>
-            <div class="vname">${k}</div>
-            <div class="vlist">${s.buckets[k].map(esc).join(', ') || '—'}</div>
-          </div>`).join('')}
-      </div>
+      ${s.best ? say('가장 좋게 보는 곳',
+        `${esc(s.best.name)} — ${esc(s.best.headline)}`) : ''}
+      ${s.worst ? say('가장 어렵게 보는 곳',
+        `${esc(s.worst.name)} — ${esc(s.worst.headline)}`) : ''}
 
-      <div class="section-label" style="margin-top:22px">점수 순</div>
-      ${r.results.slice().sort((x, y) => y.score - x.score).map((x) => `
-        <div class="domain">
-          <div class="domain-name">${esc(x.name)}</div>
-          <div class="domain-track"><div class="domain-fill ${toneClass(x.tone)}" style="width:${x.score}%"></div></div>
-          <div class="domain-val">${x.score}</div>
-        </div>`).join('')}
-      <p style="font-size:11.5px;color:var(--ink-3);margin:10px 0 0">
-        점수 기준이 체계마다 다릅니다. 베딕의 아쉬타쿠타처럼 혼인을 전제로 만든 까다로운 잣대는
-        낮게 나오기 쉽고, 요일이나 별 하나로 보는 체계는 후하게 나옵니다.
-        가로로 견주기보다 각 체계가 무엇을 보고 그렇게 말했는지를 읽는 편이 낫습니다.
-      </p>
+      ${say(null, `<span style="color:var(--ink-3)">체계마다 잣대가 다릅니다. 베딕의 아쉬타쿠타처럼 ` +
+        `혼인을 전제로 만든 까다로운 잣대는 박하게 나오고, 요일이나 별 하나로 보는 체계는 ` +
+        `후하게 나옵니다. 가로로 견주기보다 각 체계가 무엇을 보고 그렇게 말했는지를 읽는 편이 낫습니다.</span>`)}
     </div>
-
-    ${shareBar()}
-
     <div class="section-label">체계별 풀이 — ${r.results.length}개</div>
     ${r.errors.map((e) => `<div class="error">${esc(e.system)} 계산 실패: ${esc(e.message)}</div>`).join('')}
     ${r.results.slice().sort((x, y) => y.score - x.score).map((x, i) => `
@@ -418,7 +383,7 @@ function renderCompat(formA, formB) {
         <summary>
           <span class="nm">${esc(x.name)}</span>
           <span class="hd">${esc(x.headline)}</span>
-          <span class="vtag ${toneClass(x.tone)}">${x.score}</span>
+          <span class="vtag ${toneClass(x.tone)}">${esc(x.verdict)}</span>
           <span class="chev">▾</span>
         </summary>
         <div class="body">
@@ -439,6 +404,10 @@ function renderCompat(formA, formB) {
         <div class="planned">${r.skipped.map((x) => `<span>${esc(x.system)}</span>`).join('')}</div>
         <p style="font-size:12.5px;color:var(--ink-3);margin:14px 0 0">${esc(r.skipped[0].reason)}</p>
       </div>` : ''}
+
+    ${aiSection('pair')}
+
+    ${shareBar()}
   `;
 }
 
@@ -464,70 +433,36 @@ function render(form) {
 
       ${s.summary.map((t) => `<div class="summary-line">${esc(t)}</div>`).join('')}
 
-      <div class="agree">
-        <div class="agree-num">${s.consensus.ratio}%<small>체계 간 합의도${s.consensus.word ? ` — ‘${esc(s.consensus.word)}’` : ''}</small></div>
-        <p>${esc(s.consensus.text)}</p>
-        ${s.consensus.from.length ? `<div class="tag-from">${s.consensus.from.map(esc).join(' · ')}</div>` : ''}
-      </div>
+      ${say(null, `${esc(s.consensus.text)}${cite(s.consensus.from)}`)}
 
-      <div class="section-label" style="margin-top:22px">합산 오행</div>
-      <div class="elembar">
-        ${s.elements.pct.map((v, i) => v < 0.5 ? '' : `
-          <div style="flex:${v};background:var(${ELEM_VARS[i]})">${v >= 8 ? ELEMENT_NAMES[i] : ''}</div>
-        `).join('')}
-      </div>
-      <div class="elem-legend">
-        ${ELEMENT_NAMES.map((n, i) =>
-          `<span><i style="background:var(${ELEM_VARS[i]})"></i>${n} ${s.elements.pct[i]}%</span>`).join('')}
-      </div>
-      <p style="font-size:11.5px;color:var(--ink-3);margin:8px 0 0">${esc(s.elementAgreement.text)}</p>
+      <div class="section-label" style="margin-top:22px">타고난 바탕</div>
+      ${say(null, `${esc(s.elementAgreement.text)} ` +
+        `${esc(j(s.elements.strongestName, '이'))} 가장 두텁고 ` +
+        `${esc(j(s.elements.weakestName, '이'))} 가장 옅습니다.` +
+        `<span class="cite">(열다섯 체계의 오행을 합산한 것입니다)</span>`)}
+
+      ${say('기질', esc(TRAIT_NAMES.map((k) => {
+        const v = s.traits[k].value;
+        if (Math.abs(v) < 0.2) return `${k}은 한쪽으로 기울지 않습니다`;
+        const how = Math.abs(v) >= 0.5 ? '뚜렷하게' : '조금';
+        return `${k}은 ${how} ${POLES[k][v >= 0 ? 1 : 0]} 쪽입니다`;
+      }).join(', ') + '.'))}
+
+      ${say('힘이 실린 곳',
+        `${esc(s.ranked.slice(0, 2).map((d) => d.label).join('과 '))} 쪽에 힘이 실려 있고, ` +
+        `${esc(s.ranked[s.ranked.length - 1].label)} 쪽이 상대적으로 옅습니다.` +
+        cite(s.ranked[0].speakers))}
 
       <div class="section-label" style="margin-top:22px">여러 체계가 함께 가리킨 것</div>
-      ${s.sharedTags.length ? `
-        <div class="tags">
-          ${s.sharedTags.map((t) => `
-            <span class="tag ${t.count >= 3 ? 'hot' : ''}">${esc(t.word)}<span class="n">${t.count}</span></span>
-          `).join('')}
-        </div>
-        <div class="tag-from">
-          ${s.sharedTags.slice(0, 3).map((t) => `${esc(t.word)} — ${t.from.map(esc).join(', ')}`).join(' &nbsp;·&nbsp; ')}
-        </div>
-      ` : `<p style="color:var(--ink-3);font-size:13.5px;margin:4px 0 0">
-             겹치는 항목이 없습니다. 체계마다 다른 면을 비추고 있다는 뜻입니다.
-           </p>`}
-      ${s.soloTags.length ? `
-        <div class="tags" style="margin-top:10px">
-          ${s.soloTags.map((t) => `<span class="tag">${esc(t.word)}</span>`).join('')}
-        </div>
-        <div class="tag-from">위는 한 체계에서만 나온 항목입니다. 참고만 하세요.</div>
-      ` : ''}
-
-      <div class="section-label" style="margin-top:22px">기질</div>
-      <div class="axis">
-        ${TRAIT_NAMES.map((k) => {
-          const t = s.traits[k];
-          const pos = 50 + t.value * 50;
-          return `<div class="axis-row">
-            <span>${POLES[k][0]}</span>
-            <div class="axis-track"><div class="axis-dot" style="left:${pos}%"></div></div>
-            <span class="r">${POLES[k][1]}</span>
-          </div>`;
-        }).join('')}
-      </div>
-
-      <div class="section-label" style="margin-top:22px">영역별 힘</div>
-      ${s.ranked.map((d) => `
-        <div class="domain">
-          <div class="domain-name">${esc(d.label)}</div>
-          <div class="domain-track"><div class="domain-fill" style="width:${d.score}%"></div></div>
-          <div class="domain-val">${d.score}</div>
-        </div>
-      `).join('')}
-      <p style="font-size:11.5px;color:var(--ink-3);margin:8px 0 0">
-        영역별 힘은 그 항목에 대해 말할 것이 있는 체계만 평균한 값입니다. 절대 점수가 아니라 서로 견준 순위로 보세요.
-      </p>
+      ${s.sharedTags.length
+        ? say(null, s.sharedTags.map((t) => `<strong>${esc(t.word)}</strong>${cite(t.from)}`).join(', ') +
+            ' — 서로 다른 전통이 같은 곳을 가리킬 때 그나마 믿을 만합니다.')
+        : say(null, '겹치는 항목이 없습니다. 체계마다 다른 면을 비추고 있다는 뜻입니다.')}
+      ${s.soloTags.length
+        ? say(null, `<span style="color:var(--ink-3)">한 체계에서만 나온 것 — ` +
+            `${s.soloTags.map((t) => esc(t.word)).join(', ')}. 참고만 하세요.</span>`)
+        : ''}
     </div>
-
     <div class="section-label">계산에 쓴 값</div>
     <div class="card">
       <dl class="facts">
@@ -562,7 +497,7 @@ function render(form) {
 
     ${lottoSection(r.input, r.chart)}
 
-    ${aiSection()}
+    ${aiSection('solo')}
 
     ${shareBar()}
   `;

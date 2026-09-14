@@ -168,6 +168,8 @@ export function forecastWeek(input, chart, t, span = 7) {
       raw: Math.round(raw * 10) / 10,
       lo: Math.min(...scores), hi: Math.max(...scores),
       days: raws.length,
+      // 가중치는 날마다 같으므로 첫날 것을 그대로 쓴다 (근거 표시용)
+      voices: days[0].areas[a]?.voices ?? [],
     };
   }
 
@@ -419,4 +421,19 @@ export function readForecast(form, now = new Date()) {
   });
 
   return { input, chart, birth, lunar, today: t, day, week, month, year, timeline };
+}
+
+/**
+ * 이 영역을 실제로 끈 체계들 — 문장 뒤 괄호에 넣을 근거
+ *
+ * 점수를 보여주지 않기로 했으니 "왜 그렇게 보는가"는 이걸로 대신한다.
+ * 주제 적합도(DOMAIN_WEIGHT)와 산법 신뢰도를 곱한 값이 큰 순서라,
+ * 금전운이면 사주 재성·자미 재백궁·홍국 생문이 앞에 온다.
+ */
+export function areaSources(block, area, n = 3) {
+  const v = block?.areas?.[area]?.voices ?? [];
+  return v.slice()
+    .sort((a, b) => (b.weight ?? 1) - (a.weight ?? 1))
+    .slice(0, n)
+    .map((x) => x.name);
 }

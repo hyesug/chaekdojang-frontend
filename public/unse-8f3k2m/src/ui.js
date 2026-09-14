@@ -14,7 +14,8 @@ import {
 } from './share.js';
 import { pickNumbers } from './lotto.js';
 import { readForecast, AREAS } from './forecast.js';
-import { lifeReading, monthDays, luckyDays, periodProse, compatReading } from './reading.js';
+import { lifeReading, monthDays, luckyDays, periodProse, compatReading,
+         consensusReading } from './reading.js';
 import { aiSection, initAI, initCompatAI } from './ai.js';
 
 /** 방금 본 결과. 이미지 카드와 공유 링크를 만들 때 다시 쓴다 */
@@ -294,6 +295,7 @@ function render(form) {
   last = { mode: 'solo', formA: form, formB: null, result: r, forecast: f };
 
   const life = lifeReading(r.input, r.chart, s);
+  const con = consensusReading(r, f.year);
   const days = monthDays(r.input, r.chart, f.today.y, f.today.m);
   const lucky = luckyDays(days, life.meta.weak);
   const today = days.find((x) => x.d === f.today.d) ?? days[0];
@@ -360,6 +362,12 @@ function render(form) {
     <div class="section-label">${f.day.period.sajuYear}년</div>
     <div class="card">
       ${period(f.year, '올해', 'year')}
+    </div>
+
+    <div class="section-label">열다섯이 말하는 것</div>
+    <div class="card">
+      ${block('여럿이 함께 가리킨 것', con.공통?.text, con.공통?.sources)}
+      ${con.갈림 ? block('갈리는 지점', con.갈림.text, con.갈림.sources) : ''}
     </div>
 
     <div class="section-label">평생</div>

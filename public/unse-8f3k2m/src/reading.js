@@ -584,3 +584,61 @@ export function compatReading(c) {
   }
   return out;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   겹치는 것과 갈리는 것
+   ═══════════════════════════════════════════════════════════ */
+
+/**
+ * 열다섯을 돌리는 이유가 여기 있다.
+ *
+ * 서로 다른 전통이 다른 길로 걸어와 같은 자리를 가리키면, 그건 한 체계가
+ * 혼자 하는 말보다 무겁다. 반대로 갈리는 자리는 숨기지 않고 양 끝을 보여준다 -
+ * 가장 좋게 본 쪽과 가장 어렵게 본 쪽이 각각 무엇을 보고 그렇게 말하는지.
+ *
+ * 가운데 있는 열세 개는 굳이 늘어놓지 않는다. 읽는 사람에게 필요한 건
+ * '여럿이 동의하는 것'과 '의견이 갈리는 양 끝'이지 전부가 아니다.
+ */
+export function consensusReading(r, block) {
+  const s = r.synthesis;
+  const out = {};
+
+  const agreed = (s.sharedTags ?? []).filter((t) => t.count >= 2);
+  if (agreed.length) {
+    const head = agreed.slice(0, 4);
+    out.공통 = {
+      text:
+        `서로 다른 전통이 같은 곳을 가리킨 대목입니다. ` +
+        head.map((t) => `${t.word}(${t.count}곳)`).join(', ') +
+        `. 한 체계만 말했다면 흘려들어도 되지만, 계산 방식이 전혀 다른 ` +
+        `${head[0].count}곳이 같은 말을 한다면 그만큼 무게가 있습니다.`,
+      sources: head[0].from,
+    };
+  } else {
+    out.공통 = {
+      text: '열다섯이 겹치는 자리가 없습니다. 체계마다 다른 면을 비추고 있다는 뜻이니, 어느 하나를 정답으로 두지 마시고 여러 결을 함께 보시는 편이 낫습니다.',
+      sources: [],
+    };
+  }
+
+  // 갈림 — 시기 운세의 총운 점수로 양 끝을 잡는다
+  const voices = (block?.results ?? [])
+    .filter((x) => x.areas?.총운 != null)
+    .slice()
+    .sort((a, b) => b.areas.총운 - a.areas.총운);
+
+  if (voices.length >= 3) {
+    const hi = voices[0], lo = voices[voices.length - 1];
+    const gap = hi.areas.총운 - lo.areas.총운;
+    out.갈림 = {
+      text:
+        `가장 좋게 보는 쪽은 "${hi.text || hi.headline}" 라고 하고, ` +
+        `가장 어렵게 보는 쪽은 "${lo.text || lo.headline}" 라고 합니다. ` +
+        (gap >= 30
+          ? '두 쪽의 거리가 멀어서, 어느 한쪽만 믿기보다 양쪽을 다 알고 계시는 편이 낫습니다.'
+          : '거리가 크지 않으니 대체로 비슷한 결로 보시면 됩니다.'),
+      sources: [hi.name, lo.name],
+    };
+  }
+  return out;
+}

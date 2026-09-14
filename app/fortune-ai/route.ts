@@ -28,7 +28,10 @@ const BACKEND_URL = (
 /** 명반 데이터가 아무리 커도 이 정도면 넉넉하다 */
 const MAX_CONTEXT_CHARS = 24_000;
 const MAX_MESSAGES = 40;
-const MAX_QUESTION_CHARS = 2_000;
+// 질문 길이. 막는 것이 목적이 아니라 실수로 책 한 권을 붙여넣는 걸 거르는
+// 정도다. 넘으면 조용히 자르지 않고 알려준다 - 잘린 줄 모르고 엉뚱한 답을
+// 받는 것이 제일 나쁘다.
+const MAX_QUESTION_CHARS = 20_000;
 
 /** 로그인·월 한도 검사를 켤지. 지금은 꺼 두고 누구나 쓸 수 있게 한다 */
 const REQUIRE_LOGIN = process.env.FORTUNE_AI_REQUIRE_LOGIN === "1";
@@ -191,10 +194,13 @@ export async function POST(req: Request) {
     return Response.json({ error: "본문을 읽지 못했습니다." }, { status: 400 });
   }
 
-  const context = (body.context ?? "").slice(0, MAX_CONTEXT_CHARS);
+  const context = String(body.context ?? "");
   const raw = Array.isArray(body.messages) ? body.messages : [];
   if (!context || raw.length === 0) {
     return Response.json({ error: "명반 데이터와 질문이 필요합니다." }, { status: 400 });
+  }
+  if (context.length > MAX_CONTEXT_CHARS) {
+    return Response.json({ error: "명반 데이터가 너무 큽니다." }, { status: 413 });
   }
 
   const messages = raw
@@ -202,8 +208,16 @@ export async function POST(req: Request) {
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && m.content)
     .map((m) => ({
       role: m.role as "user" | "assistant",
-      content: String(m.content).slice(0, MAX_QUESTION_CHARS),
+      content: String(m.content),
     }));
+
+  const tooLong = messages.find((m) => m.content.length > MAX_QUESTION_CHARS);
+  if (tooLong) {
+    return Response.json(
+      { error: `질문이 너무 깁니다. ${MAX_QUESTION_CHARS.toLocaleString()}자 안으로 줄여 주세요 (지금 ${tooLong.content.length.toLocaleString()}자).` },
+      { status: 400 }
+    );
+  }
 
   if (messages.length === 0 || messages[messages.length - 1].role !== "user") {
     return Response.json({ error: "마지막은 사용자 질문이어야 합니다." }, { status: 400 });

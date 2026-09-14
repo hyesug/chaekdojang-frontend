@@ -690,44 +690,26 @@ export function consensusReading(r, block) {
     };
   }
 
-  // 갈림 - 체계 원문을 옮기면 용어가 튀어나온다. 점수와 영역만 보고 푼다.
-  const voices = (block?.results ?? [])
-    .filter((x) => x.areas?.총운 != null)
-    .slice()
-    .sort((a2, b2) => b2.areas.총운 - a2.areas.총운);
+  // 한 체계의 최고·최저를 억지로 생활 조언으로 바꾸지 않는다.
+  // 같은 영역을 최소 두 곳 이상이 각각 좋고 나쁘게 봐야만 '갈림'이라고 말한다.
+  // 총운은 모든 항목을 섞은 값이라 특정 조언으로 번역하지 않는다.
+  const voices = (block?.results ?? []).filter((x) => x.areas);
+  const conflicts = AREAS
+    .filter((area) => area !== '총운')
+    .map((area) => {
+      const plus = voices.filter((x) => (x.areas[area] ?? 50) >= 58);
+      const minus = voices.filter((x) => (x.areas[area] ?? 50) <= 42);
+      return { area, plus, minus };
+    })
+    .filter((x) => x.plus.length >= 2 && x.minus.length >= 2)
+    .sort((a, b) => (b.plus.length + b.minus.length) - (a.plus.length + a.minus.length));
 
-  if (voices.length >= 3) {
-    const hi = voices[0], lo = voices[voices.length - 1];
-    const gap = hi.areas.총운 - lo.areas.총운;
-
-    // 영역마다 사람이 쓰는 말과, 밀 때·지킬 때 실제로 할 일
-    const AREA_DO = {
-      총운: ['전반적인 흐름', '새 일을 시작하거나 판을 키우기 좋은 때', '벌여둔 것을 정리하고 쉬어 가는 편'],
-      애정운: ['사람 관계', '먼저 연락하고 자리를 만들기 좋은 때', '예민한 이야기를 뒤로 미루는 편'],
-      금전운: ['돈', '미뤄둔 정산이나 계약을 처리하기 좋은 때', '큰 결제와 보증을 미루는 편'],
-      직장운: ['일과 자리', '어려운 안건을 꺼내 드러내기 좋은 때', '새 일을 떠안지 않는 편'],
-      학업운: ['배움', '어려운 것부터 손대기 좋은 때', '분량을 줄이고 반복하는 편'],
-      건강운: ['몸', '미뤄둔 운동이나 검진을 잡기 좋은 때', '무리한 운동과 술을 피하는 편'],
-    };
-    const best = (v) => AREAS.filter((x) => v.areas?.[x] != null)
-      .sort((x, y) => v.areas[y] - v.areas[x])[0];
-    const worst = (v) => AREAS.filter((x) => v.areas?.[x] != null)
-      .sort((x, y) => v.areas[x] - v.areas[y])[0];
-
-    const up = AREA_DO[best(hi)] ?? AREA_DO.총운;
-    const down = AREA_DO[worst(lo)] ?? AREA_DO.총운;
-
+  if (conflicts.length) {
+    const x = conflicts[0];
+    const area = { 애정운: '사람 관계', 금전운: '돈', 직장운: '일과 자리', 학업운: '배움', 건강운: '몸과 생활 리듬' }[x.area];
     out.갈림 = {
-      text:
-        `이 시기를 보는 눈이 갈립니다. 한쪽에서는 ${up[0]} 쪽이 열려 있다고 보고, ` +
-        `다른 쪽에서는 ${down[0]} 쪽을 조심하라고 합니다. ` +
-        (up[0] === down[0]
-          ? `같은 자리를 두고 반대로 보는 셈이라, 크게 벌이지 말고 작게 시험해 보는 정도가 맞습니다.`
-          : `둘 다 맞다고 보시면 됩니다. 서로 다른 곳을 보고 있으니 어느 하나를 버릴 이유가 없습니다. ` +
-            `구체적으로는 ${up[0]} 쪽은 ${up[1]}이고, ` +
-            `${down[0]} 쪽은 ${down[2]}이 낫습니다.`) +
-        (gap >= 30 ? ' 두 쪽의 거리가 꽤 멀어서, 한쪽 말만 듣고 움직이면 다른 쪽에서 탈이 납니다.' : ''),
-      sources: [hi.name, lo.name],
+      text: `${area}에 대해서는 계산 결과가 한쪽으로 모이지 않습니다. ${x.plus.length}곳은 힘이 실린다고 보고, ${x.minus.length}곳은 속도를 조절하라고 봅니다. 이 항목은 좋다·나쁘다로 단정하지 말고, 잘 풀리는 신호가 보일 때만 한 단계씩 움직이며 확인하는 편이 맞습니다.`,
+      sources: [...x.plus.slice(0, 2), ...x.minus.slice(0, 2)].map((v) => v.name),
     };
   }
   return out;

@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- 하위 폴더에 올릴 때 상대경로의 기준을 잡아준다.
+     예: 책도장에서는 /unse-8f3k2m 로 서빙되는데, 슬래시가 없으면
+     assets/style.css 가 /assets/style.css 로 풀려 404 가 난다.
+     폴더 이름을 바꾸면 여기도 함께 바꿀 것. 루트에 둘 때는 "./" 로 두면 된다. -->
+<base href="/unse-8f3k2m/">
+<!-- 메뉴에 걸지 않고 주소를 아는 사람만 들어오는 방식이라 검색 노출을 막는다 -->
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+<!-- 바깥으로 나갈 때 이 페이지 주소를 흘리지 않는다 (구글 폰트 요청 등) -->
+<meta name="referrer" content="no-referrer">
+<title>종합 운세</title>
+
+<!-- 카카오톡 등으로 링크를 보냈을 때 뜨는 미리보기 -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="종합 운세">
+<meta property="og:description" content="열다섯 가지 점술 체계를 한 번에 돌려, 겹치는 것과 갈리는 것을 함께 봅니다">
+<meta property="og:locale" content="ko_KR">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🔮</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>종합 운세</h1>
+    <p>여러 체계를 한 번에 돌려, 겹치는 것과 갈리는 것을 함께 봅니다</p>
+    <div class="rule"></div>
+  </header>
+
+  <div class="modes">
+    <button type="button" class="mode on" data-mode="solo">개인 운세</button>
+    <button type="button" class="mode" data-mode="pair">궁합</button>
+    <button type="button" class="mode" data-mode="flow">운세 흐름</button>
+  </div>
+
+  <form id="form" class="panel" autocomplete="off">
+   <div class="person" id="personA">
+    <div class="person-title" hidden>첫 번째 사람</div>
+    <div class="grid three">
+      <div>
+        <label for="name">이름</label>
+        <input id="name" placeholder="홍길동" autocomplete="name">
+      </div>
+      <div>
+        <label for="gender">성별</label>
+        <select id="gender">
+          <option value="male">남</option>
+          <option value="female">여</option>
+        </select>
+      </div>
+      <div>
+        <label for="calendar">양력 / 음력</label>
+        <select id="calendar">
+          <option value="solar">양력</option>
+          <option value="lunar">음력 (평달)</option>
+          <option value="lunar-leap">음력 (윤달)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grid three" style="margin-top:14px">
+      <div>
+        <label for="year">연</label>
+        <input id="year" type="number" inputmode="numeric" placeholder="1990" min="1900" max="2100">
+      </div>
+      <div>
+        <label for="month">월</label>
+        <input id="month" type="number" inputmode="numeric" placeholder="5" min="1" max="12">
+      </div>
+      <div>
+        <label for="day">일</label>
+        <input id="day" type="number" inputmode="numeric" placeholder="15" min="1" max="31">
+      </div>
+    </div>
+
+    <div class="grid two" style="margin-top:14px">
+      <div>
+        <label for="hour">태어난 시</label>
+        <input id="hour" type="number" inputmode="numeric" placeholder="14" min="0" max="23">
+      </div>
+      <div>
+        <label for="minute">분</label>
+        <input id="minute" type="number" inputmode="numeric" placeholder="30" min="0" max="59">
+      </div>
+    </div>
+    <label class="check"><input type="checkbox" id="noTime"> 태어난 시간을 모릅니다</label>
+
+    <div class="grid two" style="margin-top:14px">
+      <div>
+        <label for="birthPlace">태어난 곳</label>
+        <input id="birthPlace" list="cities" placeholder="서울">
+        <p class="fieldnote">목록에 없으면 가장 가까운 시·군으로 — 결과가 거의 같습니다</p>
+      </div>
+      <div>
+        <label for="homePlace">지금 사는 곳</label>
+        <input id="homePlace" list="cities" placeholder="서울">
+      </div>
+    </div>
+    <label class="check"><input type="checkbox" id="dst"> 해외 출생이고, 그때 서머타임 기간이었습니다</label>
+   </div>
+
+   <!-- 궁합일 때 두 번째 사람 칸이 여기에 만들어진다 -->
+   <div class="person" id="personB" hidden></div>
+
+    <datalist id="cities"></datalist>
+
+    <button class="go" type="submit">풀이 보기</button>
+    <p class="hint">
+      입력한 내용은 이 브라우저 안에서만 계산되며 어디로도 전송되지 않습니다.
+      태어난 시간을 알수록 정확해집니다 — 시간에 따라 갈리는 체계가 여럿 있습니다.
+    </p>
+  </form>
+
+  <div id="result" aria-live="polite" aria-atomic="false"></div>
+
+  <footer>
+    <p>
+      <strong>계산에 대하여.</strong>
+      절기·삭·달의 위치는 천문 계산으로 직접 구합니다. 출생 시각은 그 시대의
+      표준시와 서머타임, 출생지의 경도, 균시차를 모두 걷어내 진태양시로 바꾼 뒤 씁니다.
+      음력은 데이터표가 아니라 역법 규칙으로 계산합니다.
+    </p>
+    <p>
+      <strong>해석에 대하여.</strong>
+      각 체계의 계산 방식과 결과(사주 팔자, 괘, 별, 숙 등)는 전통 산법을 따랐습니다.
+      다만 그 결과를 풀어 쓴 <em>문장</em>은 원전의 번역이 아니라 이 사이트에서 새로 쓴 것입니다.
+      재미로 보시고, 중요한 결정은 스스로 내리시기 바랍니다.
+    </p>
+  </footer>
+
+</div>
+<script type="module" src="src/ui.js"></script>
+</body>
+</html>

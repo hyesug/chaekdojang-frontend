@@ -55,10 +55,27 @@ const nextConfig: NextConfig = {
         source: "/:path*",
         headers: securityHeaders,
       },
+      {
+        // robots.txt 에는 적지 않는다. 그 파일은 공개라서 적는 순간
+        // 주소를 아는 사람만 들어오게 한다는 전제가 깨진다.
+        // 색인 차단은 페이지의 meta 와 이 헤더로만 건다.
+        source: "/unse-8f3k2m/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive, nosnippet" }],
+      },
+      {
+        source: "/unse-8f3k2m",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive, nosnippet" }],
+      },
     ];
   },
   async rewrites() {
     return [
+      // 종합 운세 — public/ 아래의 정적 사이트.
+      // public 은 /폴더/index.html 로만 서빙되므로 디렉터리 주소를 이어준다.
+      // 메뉴에 걸지 않고 주소를 아는 사람만 들어오는 페이지다.
+      { source: "/unse-8f3k2m", destination: "/unse-8f3k2m/index.html" },
+      { source: "/unse-8f3k2m/", destination: "/unse-8f3k2m/index.html" },
+
       { source: "/api/:path*", destination: `${BACKEND_URL}/api/:path*` },
       { source: "/oauth2/:path*", destination: `${BACKEND_URL}/oauth2/:path*` },
       { source: "/login/oauth2/:path*", destination: `${BACKEND_URL}/login/oauth2/:path*` },

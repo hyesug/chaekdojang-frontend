@@ -14,7 +14,7 @@
  * 그게 열다섯을 다 돌려서 얻는 것이다.
  */
 
-import { elementDistribution, tenGodDistribution, computeDaeun, branchRelations,
+import { elementDistribution, tenGodDistribution, computeDaeun, branchRelations, tenGod,
          ELEMENTS, ELEMENT_HANJA } from './core/ganzhi.js';
 import { j } from './core/josa.js';
 
@@ -42,6 +42,38 @@ const GOD_LIFE = {
   편인: '생각이 깊어지고 안으로 파고듭니다. 배움에는 좋으나 결정이 늦어집니다',
   정인: '돕는 사람과 문서가 붙습니다. 배우거나 자격을 얻기에 좋은 때입니다',
 };
+
+// 같은 오행 비율이라도 월·일·시의 관계가 다르면 삶에서 드러나는 자리가 달라진다.
+// 평생 운세의 반복을 줄이기 위해, 실제 네 기둥에서만 만드는 짧은 개인 문장을 붙인다.
+const GOD_AT_PILLAR = {
+  비견: '자기 방식이 강해, 어릴 때부터 남의 기준보다 스스로 납득하는 기준을 먼저 세우는 편입니다',
+  겁재: '또래와 부딪치며 자기 몫을 만드는 경험이 일찍 들어오는 편입니다',
+  식신: '손으로 만들고 표현하는 경험을 쌓을수록 자기 길이 선명해지는 편입니다',
+  상관: '말과 재주가 먼저 드러나며, 틀에 맞추기보다 자기 방식을 찾는 과정이 중요합니다',
+  편재: '사람과 기회를 넓게 보면서 한 가지보다 여러 가능성을 함께 잡는 편입니다',
+  정재: '작은 약속과 생활의 질서를 지킬수록 기회가 쌓이는 편입니다',
+  편관: '일찍 책임을 지거나 만만치 않은 기준을 만나면서 단단해지는 편입니다',
+  정관: '정해진 역할 안에서 신뢰를 얻고, 맡은 일을 끝까지 해내며 자리를 만드는 편입니다',
+  편인: '남들과 다른 관심사를 깊게 파고들며 혼자 생각을 정리하는 시간이 필요한 편입니다',
+  정인: '배움·문서·윗사람의 도움을 잘 활용할 때 길이 넓어지는 편입니다',
+};
+
+function pillarFlavor(chart) {
+  const P = chart.pillars;
+  const monthGod = tenGod(chart.dayStem, P.month.stem);
+  const yearGod = tenGod(chart.dayStem, P.year.stem);
+  const hourGod = P.hour ? tenGod(chart.dayStem, P.hour.stem) : null;
+  const relation = branchRelations(P.month.branch, P.day.branch)[0];
+  const relationText = !relation ? '태어난 달의 분위기와 자기 기질이 한쪽으로 쏠리지 않아, 환경에 맞춰 자기 방식을 조절하는 힘이 있습니다'
+    : relation.good ? `태어난 환경의 리듬과 자기 기질 사이에 맞물리는 자리가 있어, 익숙한 사람과 환경을 잘 활용할수록 힘이 납니다`
+      : `태어난 환경의 리듬과 자기 기질 사이에 긴장이 있어, 남이 정한 길을 그대로 따르기보다 자기 기준을 만드는 과정이 중요합니다`;
+  return {
+    early: GOD_AT_PILLAR[yearGod],
+    middle: `${GOD_AT_PILLAR[monthGod]}. ${relationText}`,
+    late: hourGod ? GOD_AT_PILLAR[hourGod] : '출생 시각이 없어 후반 흐름은 넓게만 읽습니다. 나이가 들수록 무엇을 남길지 스스로 정하는 일이 중요합니다',
+    relation: relation?.kind ?? null,
+  };
+}
 
 function stage(label, periods, tail) {
   if (!periods || !periods.length) return null;
@@ -127,18 +159,25 @@ export function lifeReading(input, chart, synth) {
     .sort((a, b) => a.v - b.v)[0].i;
   const b = BODY[weak];
   const dayEl = chart.pillars.day.element;
+  const flavor = pillarFlavor(chart);
 
   return {
     early: stage('초년', L.slice(0, 2),
-      `이 무렵에 성격의 뼈대가 잡히고, 그때 곁에 있던 사람이 오래 남습니다.${c.hedge}`),
+      `이 무렵에 성격의 뼈대가 잡히고, 그때 곁에 있던 사람이 오래 남습니다. ${flavor.early}.${c.hedge}`),
     middle: stage('중년', L.slice(2, 5),
-      '어려움과 성공을 한 차례씩 겪는데, 주관이 뚜렷해 뒤로 갈수록 자리가 단단해집니다.'),
+      `어려움과 성공을 한 차례씩 겪는데, 주관이 뚜렷해 뒤로 갈수록 자리가 단단해집니다. ${flavor.middle}.`),
     late: stage('말년', L.slice(5, 8),
-      '앞서 모은 것이 재물이었다면 이 시기는 이름을 얻는 때가 됩니다.'),
+      `앞서 모은 것이 재물이었다면 이 시기는 이름을 얻는 때가 됩니다. ${flavor.late}.`),
 
-    sibling: sibling(gods.groups.비겁),
-    child: child(input.isMale ? gods.groups.관성 : gods.groups.식상),
-    spouse: spouse(input.isMale ? gods.groups.재성 : gods.groups.관성, input.isMale),
+    sibling: `${sibling(gods.groups.비겁)} ${flavor.relation === '충' || flavor.relation === '형'
+      ? '가까운 사이일수록 기대를 말로 확인하는 편이 좋습니다. 알아서 알겠지 하고 넘기면 오해가 오래 갑니다.'
+      : '가까운 사람과의 인연은 급하게 결론내기보다 시간을 두고 쌓을수록 제 몫이 됩니다.'}`,
+    child: `${child(input.isMale ? gods.groups.관성 : gods.groups.식상)} ${flavor.relation === '육합' || flavor.relation === '반합'
+      ? '가족 안에서 서로 역할을 나누면 한 사람이 짊어질 몫이 줄어드는 구성입니다.'
+      : '가족 안에서도 각자의 생활 리듬을 존중할 때 관계가 더 편해집니다.'}`,
+    spouse: `${spouse(input.isMale ? gods.groups.재성 : gods.groups.관성, input.isMale)} ${flavor.relation === '충' || flavor.relation === '해'
+      ? '연애의 설렘보다 생활 방식과 금전·시간의 기준을 먼저 맞추는 것이 특히 중요합니다.'
+      : '서로의 일상 리듬을 자연스럽게 맞춰갈수록 인연의 장점이 잘 살아납니다.'}`,
 
     // 모자란 오행이 하나만은 아니다. 둘을 같이 채우는 쪽이 실제로 맞다.
     career:

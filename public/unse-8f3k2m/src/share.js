@@ -210,7 +210,7 @@ function elementBar(ctx, y, pct) {
     ctx.fillStyle = C.elem[i];
     roundRect(ctx, lx, y - 13, 13, 13, 3); ctx.fill();
     ctx.fillStyle = C.ink2;
-    const label = `${n} ${pct[i]}%`;
+    const label = n;
     ctx.fillText(label, lx + 21, y);
     lx += 21 + ctx.measureText(label).width + 30;
   });
@@ -318,14 +318,11 @@ export function buildSoloCard(form, r) {
 
   // 합의도
   y = sectionLabel(ctx, y, '체 계 간 합 의 도');
-  ctx.fillStyle = C.gold; ctx.font = font(70, 700);
-  ctx.fillText(`${s.consensus.ratio}%`, PAD, y + 20);
-  const numW = ctx.measureText(`${s.consensus.ratio}%`).width;
   if (s.consensus.word) {
-    ctx.fillStyle = C.ink2; ctx.font = font(30, 500);
-    ctx.fillText(`‘${s.consensus.word}’`, PAD + numW + 22, y + 20);
-    ctx.fillStyle = C.ink3; ctx.font = font(22, 400);
-    ctx.fillText(`${s.consensus.count} / ${s.consensus.total}개 체계`, PAD + numW + 22, y + 52);
+    ctx.fillStyle = C.gold; ctx.font = font(52, 700);
+    ctx.fillText(`‘${s.consensus.word}’`, PAD, y + 14);
+    ctx.fillStyle = C.ink3; ctx.font = font(23, 400);
+    ctx.fillText(`열다섯 가운데 ${s.consensus.count}개 체계가 같은 곳을 가리킵니다`, PAD, y + 54);
   }
   y += 96;
 
@@ -356,9 +353,12 @@ export function buildSoloCard(form, r) {
   // 영역
   y = sectionLabel(ctx, y, '영 역 별 힘');
   y += 20;
-  for (const d of s.ranked) {
-    y = barRow(ctx, y, d.label, d.score, 100, C.gold);
-  }
+  s.ranked.forEach((d, i) => {
+    // s.ranked 는 이미 높은 순이다. 절대 기준으로 자르면 다섯 개가 전부
+    // '보통'으로 나와 아무 것도 알려주지 못한다. 화면과 같이 순위로 말한다.
+    y = barRow(ctx, y, d.label, d.score, 100, C.gold,
+      i === 0 ? '가장 두터운' : i === s.ranked.length - 1 ? '가장 옅은' : '');
+  });
   y += 34;
 
   // 요약 문장
@@ -388,15 +388,12 @@ export function buildCompatCard(formA, formB, r) {
 
   // 총점
   ctx.textAlign = 'center';
-  ctx.fillStyle = C.gold; ctx.font = font(130, 700);
-  ctx.fillText(String(s.score), W / 2, y + 66);
-  const w1 = ctx.measureText(String(s.score)).width;
-  ctx.fillStyle = C.ink3; ctx.font = font(32, 400);
-  ctx.fillText('/ 100', W / 2 + w1 / 2 + 56, y + 66);
-  y += 108;
-  ctx.fillStyle = C.ink; ctx.font = font(38, 600);
-  ctx.fillText(s.verdict, W / 2, y + 30);
-  y += 86;
+  ctx.fillStyle = C.gold; ctx.font = font(86, 700);
+  ctx.fillText(s.verdict, W / 2, y + 52);
+  y += 92;
+  ctx.fillStyle = C.ink3; ctx.font = font(26, 400);
+  ctx.fillText(`견준 ${s.count}개 체계의 판정을 모은 것입니다`, W / 2, y + 26);
+  y += 74;
   ctx.textAlign = 'left';
 
   // 판정 분포
@@ -424,12 +421,12 @@ export function buildCompatCard(formA, formB, r) {
   y += 168 + 54;
 
   // 체계별 점수
-  y = sectionLabel(ctx, y, '체 계 별 점 수');
+  y = sectionLabel(ctx, y, '체 계 별 판 정');
   y += 22;
   const sorted = [...r.results].sort((x, z) => z.score - x.score);
   for (const x of sorted) {
     const col = x.tone > 0 ? C.good : x.tone < 0 ? C.bad : C.gold;
-    y = barRow(ctx, y, x.name, x.score, 100, col);
+    y = barRow(ctx, y, x.name, x.score, 100, col, x.verdict);
   }
   y += 36;
 
@@ -443,7 +440,7 @@ export function buildCompatCard(formA, formB, r) {
   }
 
   y = footer(ctx, y,
-    '체계마다 잣대가 달라 점수를 가로로 견주는 것은 뜻이 적습니다. 총점보다 갈림을 보세요.');
+    '체계마다 잣대가 달라 가로로 견주는 것은 뜻이 적습니다. 어디서 갈리는지를 보세요.');
   return crop(cv, y);
 }
 

@@ -257,8 +257,7 @@ function areaDetail(area, score, kind, data) {
       end: '일정을 비우고 우선순위를 줄이면 충분히 지나갈 수 있는 시기입니다. 중요한 결정은 한 번 더 확인하세요.',
     },
   }[level];
-  const basis = data.voices?.slice(0, 2).map((v) => v.name).join('·');
-  return `${detail.start} ${detail.middle} ${detail.end}${basis ? ` 이 항목은 ${basis} 등의 계산 결과를 종합한 읽기입니다.` : ''}`;
+  return `${detail.start} ${detail.middle} ${detail.end}`;
 }
 
 /**
@@ -284,11 +283,6 @@ function weekPane(w, open) {
             <p>${esc(areaDetail(a, x.score, 'week', x))}</p></div>`;
       }).join('')}
 
-      <p class="area-src" style="margin-top:14px">
-        명리에는 주(週)라는 단위가 없습니다. 년·월·일·시뿐이라 주건(週建)에 해당하는 간지가
-        없어서, 없는 간지를 지어내는 대신 이레치 일운을 실제로 계산해 묶었습니다.
-        이레 평균은 좋은 날과 나쁜 날이 상쇄되어 폭이 좁아지므로 눈금을 따로 재어 벌렸습니다.
-      </p>
     </div>`;
 }
 
@@ -345,7 +339,7 @@ function compatReading(r) {
     ['잘 맞는 지점', good.length ? `두 사람은 편하게 이어지는 지점이 분명히 있습니다. 특히 대화의 리듬, 생활을 함께 꾸리는 방식, 서로를 응원하는 방식에서 장점을 찾기 쉽습니다. 좋은 흐름이 있을 때 당연하게 넘기지 말고 감사와 인정의 말을 자주 나누세요. 관계는 큰 사건보다 이런 작은 확인으로 오래 단단해집니다. (${basisGood})` : `서로를 쉽게 이해하는 부분보다, 천천히 알아가야 하는 부분이 더 많은 조합입니다. 그렇다고 맞지 않는 관계라는 뜻은 아닙니다. 공통점을 억지로 찾기보다 서로 다른 기질을 존중하면 오히려 관계가 안정됩니다. (${basisGood})`],
     ['조심할 지점', hard.length ? `가까워질수록 기대가 커져 말이 어긋날 수 있는 자리도 보입니다. 상대가 당연히 알아주기를 바라기보다, 서운한 일은 작을 때 말로 꺼내는 편이 좋습니다. 돈·가족·시간처럼 생활에 닿는 문제는 감정이 쌓이기 전에 기준을 맞추세요. 싸움에서 이기는 것보다 다시 편해지는 방식을 만드는 것이 더 중요합니다. (${basisHard})` : `크게 충돌하는 신호는 두드러지지 않습니다. 다만 편하다는 이유로 대화를 줄이면 관계가 무뎌질 수 있습니다. 서로가 지금 무엇을 바라는지 가끔 확인하고, 익숙함 속에서도 시간을 따로 만드는 편이 좋습니다. (${basisHard})`],
     ['오래 가는 방법', `이 관계는 한 사람이 끌고 다른 사람이 따라가는 식보다, 각자의 강점을 인정할 때 안정됩니다. 중요한 결정은 감정이 높아진 순간보다 충분히 쉬고 난 뒤에 함께 정하세요. 상대를 바꾸려 하기보다 “나는 이럴 때 힘들고, 이렇게 해 주면 편하다”처럼 구체적으로 말하면 갈등이 줄어듭니다. 관계의 장점은 키우고, 어려운 지점은 생활 규칙으로 보완하는 것이 가장 현실적인 방법입니다. (${names(r.results)})`],
-  ];
+  ].map(([title, text]) => [title, text.replace(/\s*\([^)]*\)$/, '')]);
 }
 
 function renderCompat(formA, formB) {
@@ -355,18 +349,8 @@ function renderCompat(formA, formB) {
     <div class="section-label">궁합</div>
     <div class="card synth">
       <h3>${esc(formA.name)} <span style="color:var(--gold-soft)">×</span> ${esc(formB.name)}</h3>
-      <p class="headline">두 사람의 계산 결과를 종합한 관계 풀이입니다</p>
+      <p class="headline">두 사람이 편해지는 길을 중심으로 풀어드리는 관계 이야기입니다</p>
       ${compatReading(r).map(([title, text]) => `<div class="reading"><h4>${title}</h4><p>${esc(text)}</p></div>`).join('')}
-    </div>
-
-    <div class="section-label">체계별 해석</div>
-    <div class="card">
-      ${r.errors.map((e) => `<div class="error">${esc(e.system)} 계산 실패: ${esc(e.message)}</div>`).join('')}
-      ${r.results.map((x) => `
-        <div class="reading"><h4>${esc(x.name)}</h4>
-          <p>${esc(x.headline)}</p>
-          ${x.readings.map((v) => `<p>${esc(v.text)}</p>`).join('')}
-        </div>`).join('')}
     </div>
     ${shareBar()}
   `;
@@ -386,7 +370,7 @@ function lifeReading(r) {
     ['형제·가족운', `가족 관계에서는 정을 표현하는 방식보다 약속을 지키는 태도가 더 중요하게 작용합니다. ${trait('감성', '감정을 먼저 읽는 편이라 서운함을 혼자 쌓아 두지 않는 것', '현실적으로 판단하는 편이라 말이 차갑게 들리지 않도록 한 번 더 설명하는 것')}이 필요합니다. 가까울수록 역할과 금전 문제를 애매하게 두지 말고, 서로 기대하는 범위를 일찍 맞추는 편이 편안합니다.`],
     ['부부·인연운', `관계운은 ${score('관계')}점으로 읽힙니다. 마음이 맞는 사람과는 깊게 가지만, 기준이 맞지 않는 관계에는 오래 머물기 어려운 편입니다. 처음의 설렘보다 생활 리듬과 대화 방식이 맞는지가 더 중요합니다. 상대를 고치려 하기보다 서로의 혼자 있는 시간과 책임 범위를 존중할 때 관계가 안정됩니다.`],
     ['자식운', `돌봄과 교육의 자리에서는 말보다 태도가 크게 남습니다. 기대를 높게 두기보다 아이가 스스로 선택하고 책임지는 경험을 만들어 주는 쪽이 좋습니다. 강점은 구체적으로 인정하고, 부족한 점은 비교 대신 연습의 문제로 다루면 관계가 훨씬 편해집니다. 가족 안에서도 각자의 기질이 다르다는 점을 받아들이는 것이 중요합니다.`],
-    ['직업운', `직업운은 ${score('직업')}점으로 읽힙니다. ${trait('실리', '성과와 보상이 분명한 환경', '의미와 성장감이 있는 환경')}에서 오래 버틸 힘이 납니다. 일의 방향을 정할 때는 단기 조건만 보지 말고, 배울 사람과 다음 단계가 있는지를 함께 확인하세요. 한 번 맡은 일은 책임감 있게 끌고 가는 힘이 있으니, 과로만 관리하면 전문성이 자산으로 남습니다.`],
+    ['직업운', `${trait('실리', '성과와 보상이 분명한 환경', '의미와 성장감이 있는 환경')}에서 오래 버틸 힘이 납니다. 일의 방향을 정할 때는 단기 조건만 보지 말고, 배울 사람과 다음 단계가 있는지를 함께 확인하세요. 한 번 맡은 일은 책임감 있게 끌고 가는 힘이 있으니, 과로만 관리하면 전문성이 자산으로 남습니다.`],
   ];
   return sections.map(([title, text]) => `<div class="reading"><h4>${title}</h4><p>${esc(text)}</p></div>`).join('');
 }
@@ -401,7 +385,7 @@ function render(form) {
     <div class="section-label">평생 운세</div>
     <div class="card synth">
       <h3>${esc(form.name)} 님</h3>
-      <p class="headline">${r.synthesis.systemCount}개 계산 결과를 종합한 평생 흐름입니다</p>
+      <p class="headline">타고난 기질과 삶의 흐름을 편하게 읽어드리는 평생 이야기입니다</p>
       ${lifeReading(r)}
     </div>
     ${lottoSection(r.input, r.chart)}

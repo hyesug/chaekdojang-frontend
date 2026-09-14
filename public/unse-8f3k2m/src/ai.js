@@ -54,8 +54,8 @@ export function aiSection() {
         <button type="button" id="ai-send">보내기</button>
       </div>
       <p class="ai-note" id="ai-note">
-        로그인 사용자에게 매달 5번 제공됩니다. 이름·생년월일·장소는 빼고 계산된 명반과 질문만 Claude에 보냅니다.
-        간지·절기는 이미 계산된 값을 쓰므로 AI 가 사주를 다시 셈하지 않습니다.
+        로그인 사용자에게 매달 5번 제공됩니다. 이름·생년월일·장소는 빼고 계산된 결과와 질문만 Claude에 보냅니다.
+        어렵지 않은 상담 말투로, 지금 나에게 필요한 이야기를 들려드립니다.
       </p>
     </div>`;
 }

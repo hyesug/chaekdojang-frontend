@@ -132,6 +132,63 @@ export function forecastPeriod(input, chart, period) {
 }
 
 /**
+ * 이레 운세 — 오늘부터 일곱 날
+ *
+ * 명리에 주(週)라는 단위는 없다. 년·월·일·시가 전부이고, 주건(週建)에
+ * 해당하는 간지가 아예 없다. 그래서 없는 간지를 지어내지 않고 이레치
+ * 일운을 실제로 계산해서 묶는다. 한 주는 결국 일곱 날이기 때문이다.
+ *
+ * 그래서 이 화면의 알맹이는 평균이 아니라 '어느 날이 좋은가'다.
+ */
+export function forecastWeek(input, chart, t, span = 7) {
+  const startJD = toJD(t.y, t.m, t.d, 12);
+  const days = [];
+
+  for (let i = 0; i < span; i++) {
+    const on = fromJD(startJD + i);
+    const period = makePeriod('day', { y: on.y, m: on.m, d: on.d });
+    const f = forecastPeriod(input, chart, period);
+    days.push({
+      on: { y: on.y, m: on.m, d: on.d },
+      weekday: period.weekday, gz: period.gz.day,
+      score: f.overall, areas: f.areas,
+      today: i === 0,
+    });
+  }
+
+  // 영역별로 이레치를 모은다. 벌리기 전 원점수를 평균 내고 다시 벌린다.
+  const areas = {};
+  for (const a of AREAS) {
+    const raws = days.map((d) => d.areas[a]?.raw).filter((v) => v != null);
+    const scores = days.map((d) => d.areas[a]?.score).filter((v) => v != null);
+    if (!raws.length) { areas[a] = { score: null, raw: null, lo: null, hi: null, days: 0 }; continue; }
+    const raw = raws.reduce((x, y) => x + y, 0) / raws.length;
+    areas[a] = {
+      score: amplify(raw, WEEK_SPREAD, WEEK_CENTER),
+      raw: Math.round(raw * 10) / 10,
+      lo: Math.min(...scores), hi: Math.max(...scores),
+      days: raws.length,
+    };
+  }
+
+  const scored = AREAS.map((a) => ({ area: a, ...areas[a] })).filter((x) => x.score != null);
+  const best = [...scored].sort((x, y) => y.score - x.score)[0] ?? null;
+  const worst = [...scored].sort((x, y) => x.score - y.score)[0] ?? null;
+
+  const bestDay = days.reduce((x, y) => (y.score > x.score ? y : x));
+  const worstDay = days.reduce((x, y) => (y.score < x.score ? y : x));
+
+  const first = days[0].on, lastD = days[days.length - 1].on;
+  return {
+    kind: 'week',
+    label: `${first.m}월 ${first.d}일 ~ ${lastD.m}월 ${lastD.d}일`,
+    days, areas, best, worst, bestDay, worstDay,
+    overall: areas.총운.score,
+    span,
+  };
+}
+
+/**
  * 열다섯을 그냥 평균 내면 점수가 전부 50 언저리로 뭉개진다.
  * 서로 다른 신호를 많이 더할수록 가운데로 몰리는 건 당연한 일이라,
  * 그대로 보여주면 여섯 영역이 다 55쯤 나와 아무 정보가 없다.
@@ -149,7 +206,15 @@ export function forecastPeriod(input, chart, period) {
 // 표를 고칠 때는 scripts/calibrate.mjs 를 다시 돌려 이 값을 갱신할 것.
 const CENTER = 52.2;
 const SPREAD = 4.4;
-const amplify = (v) => Math.max(5, Math.min(95, Math.round(50 + (v - CENTER) * SPREAD)));
+const amplify = (v, spread = SPREAD, center = CENTER) =>
+  Math.max(5, Math.min(95, Math.round(50 + (v - center) * spread)));
+
+// 이레는 일곱 날을 평균 낸 값이라 좋은 날과 나쁜 날이 상쇄돼 퍼짐이 좁다.
+// 날짜용 배율을 그대로 쓰면 주간 화면이 전부 50 언저리로 뭉개진다.
+// 실측하니 표준편차가 날짜의 63%였다 (1/√7 = 38% 가 아닌 것은 이레 안의
+// 날들이 같은 월건·세운을 써서 서로 독립이 아니기 때문이다).
+const WEEK_CENTER = 52.5;
+const WEEK_SPREAD = 6.9;
 
 /** 여섯 영역으로 모은다 */
 function synthesizeAreas(results, period) {
@@ -213,72 +278,90 @@ const AREA_TEXT = {
   총운: {
     high: ['전반적으로 잘 풀리는 날입니다. 미뤄둔 연락이나 결정을 오늘 처리하세요.',
            '흐름이 순한 달입니다. 벌여도 좋고, 벌인 것을 키워도 좋습니다.',
-           '큰 흐름이 받쳐주는 해입니다. 미뤄둔 일을 올해 안에 꺼내는 편이 낫습니다.'],
+           '큰 흐름이 받쳐주는 해입니다. 미뤄둔 일을 올해 안에 꺼내는 편이 낫습니다.',
+           '이레 내내 흐름이 받쳐줍니다. 벌일 일이 있으면 이번 주에 꺼내세요.'],
     mid: ['특별히 좋지도 나쁘지도 않은 날입니다. 하던 대로 하면 됩니다.',
           '평탄한 달입니다. 큰 사건 없이 지나가니 정비하기 좋습니다.',
-          '무난한 해입니다. 크게 벌이기보다 하던 것을 다지는 쪽이 맞습니다.'],
+          '무난한 해입니다. 크게 벌이기보다 하던 것을 다지는 쪽이 맞습니다.',
+          '무난한 이레입니다. 날마다 기복은 있어도 한 주로 보면 평탄합니다.'],
     low: ['기운이 눌리는 날입니다. 새로 벌이기보다 마무리에 쓰세요.',
           '버티는 달입니다. 무리하지 않는 것만으로 절반은 넘깁니다.',
-          '힘이 드는 해입니다. 확장보다 지키는 쪽으로 방향을 잡으세요.'],
+          '힘이 드는 해입니다. 확장보다 지키는 쪽으로 방향을 잡으세요.',
+          '눌리는 이레입니다. 새로 벌이기보다 밀린 것을 정리하는 데 쓰세요.'],
   },
   애정운: {
     high: ['사람이 다가오는 날입니다. 먼저 말을 거는 쪽이 이득입니다.',
            '관계가 따뜻해지는 달입니다. 오래 미룬 자리를 만들기 좋습니다.',
-           '인연이 움직이는 해입니다. 만남도 정리도 이 해에 일어나기 쉽습니다.'],
+           '인연이 움직이는 해입니다. 만남도 정리도 이 해에 일어나기 쉽습니다.',
+           '사람이 가까워지는 이레입니다. 자리를 만들려면 이번 주가 낫습니다.'],
     mid: ['관계에 큰 변화가 없는 날입니다. 평소대로 지내면 됩니다.',
           '조용한 달입니다. 관계를 새로 만들기보다 있는 것을 돌보세요.',
-          '관계가 크게 요동치지 않는 해입니다.'],
+          '관계가 크게 요동치지 않는 해입니다.',
+          '관계가 조용한 이레입니다. 있는 사이를 돌보는 정도가 맞습니다.'],
     low: ['말이 어긋나기 쉬운 날입니다. 예민한 이야기는 미루세요.',
           '서운함이 쌓이기 쉬운 달입니다. 확인하고 넘어가는 습관이 필요합니다.',
-          '관계에 힘이 드는 해입니다. 기대치를 낮추면 덜 다칩니다.'],
+          '관계에 힘이 드는 해입니다. 기대치를 낮추면 덜 다칩니다.',
+          '말이 어긋나기 쉬운 이레입니다. 예민한 이야기는 다음 주로 미루세요.'],
   },
   금전운: {
     high: ['돈이 들어오는 쪽으로 기울어 있습니다. 미뤄둔 청구나 정산을 오늘 챙기세요.',
            '수입이 늘거나 묶인 돈이 풀리는 달입니다.',
-           '재물이 붙는 해입니다. 다만 들어오는 만큼 나갈 자리도 함께 커집니다.'],
+           '재물이 붙는 해입니다. 다만 들어오는 만큼 나갈 자리도 함께 커집니다.',
+           '돈이 들어오는 쪽으로 기운 이레입니다. 정산과 청구를 이번 주에 끝내세요.'],
     mid: ['특별한 변동이 없습니다. 들어오고 나가는 것이 평소대로입니다.',
           '큰 지출도 큰 수입도 없는 달입니다.',
-          '무난한 해입니다. 저축이나 정리에 어울립니다.'],
+          '무난한 해입니다. 저축이나 정리에 어울립니다.',
+          '들고 나는 것이 평소만 한 이레입니다.'],
     low: ['새는 자리가 생기기 쉬운 날입니다. 큰 결제는 하루 미루세요.',
           '지출이 앞서는 달입니다. 보증이나 빌려주는 일은 특히 조심하세요.',
-          '재물이 눌리는 해입니다. 벌이기보다 지키는 쪽으로 방향을 잡으세요.'],
+          '재물이 눌리는 해입니다. 벌이기보다 지키는 쪽으로 방향을 잡으세요.',
+          '새는 자리가 생기기 쉬운 이레입니다. 큰 결제는 다음 주로 넘기세요.'],
   },
   직장운: {
     high: ['일이 손에 붙는 날입니다. 어려운 안건을 오늘 꺼내세요.',
            '인정과 기회가 오는 달입니다. 드러내는 쪽으로 힘을 쓰세요.',
-           '자리가 오르거나 판이 바뀌는 해입니다. 책임이 커지는 만큼 소모도 큽니다.'],
+           '자리가 오르거나 판이 바뀌는 해입니다. 책임이 커지는 만큼 소모도 큽니다.',
+           '일이 손에 붙는 이레입니다. 어려운 안건을 이번 주에 처리하세요.'],
     mid: ['평소대로 흘러가는 날입니다.',
           '큰 변화 없이 지나가는 달입니다. 실무를 다지기 좋습니다.',
-          '직장에 큰 변동이 없는 해입니다.'],
+          '직장에 큰 변동이 없는 해입니다.',
+          '평소대로 흘러가는 이레입니다.'],
     low: ['윗선과 부딪치기 쉬운 날입니다. 보고는 짧고 명확하게 하세요.',
           '압박이 커지는 달입니다. 혼자 떠안지 말고 나누세요.',
-          '일이 무겁게 눌리는 해입니다. 버티는 것이 곧 성과입니다.'],
+          '일이 무겁게 눌리는 해입니다. 버티는 것이 곧 성과입니다.',
+          '부딪치기 쉬운 이레입니다. 중요한 보고는 아래에서 좋은 날을 골라 잡으세요.'],
   },
   학업운: {
     high: ['머리가 맑은 날입니다. 어려운 것부터 손대세요.',
            '집중이 붙는 달입니다. 시험이나 자격 준비에 좋습니다.',
-           '배움이 쌓이는 해입니다. 자격·시험·문서에 힘이 실립니다.'],
+           '배움이 쌓이는 해입니다. 자격·시험·문서에 힘이 실립니다.',
+           '집중이 붙는 이레입니다. 어려운 단원을 이번 주에 넘기세요.'],
     mid: ['평소만큼 됩니다. 무리하지 않아도 유지는 됩니다.',
           '꾸준히 하면 유지되는 달입니다.',
-          '학업에 큰 기복이 없는 해입니다.'],
+          '학업에 큰 기복이 없는 해입니다.',
+          '평소만큼 되는 이레입니다. 분량만 지키면 유지됩니다.'],
     low: ['집중이 흩어지는 날입니다. 새 내용보다 복습이 낫습니다.',
           '진도가 안 나가는 달입니다. 분량을 줄이고 반복하세요.',
-          '성과가 늦게 나오는 해입니다. 조급해지면 더 안 됩니다.'],
+          '성과가 늦게 나오는 해입니다. 조급해지면 더 안 됩니다.',
+          '흩어지는 이레입니다. 새 내용보다 복습으로 채우세요.'],
   },
   건강운: {
     high: ['몸 상태가 좋은 날입니다. 미뤄둔 운동이나 검진에 어울립니다.',
            '회복이 잘 되는 달입니다.',
-           '체력이 받쳐주는 해입니다.'],
+           '체력이 받쳐주는 해입니다.',
+           '몸이 가벼운 이레입니다. 운동이나 검진을 이번 주에 잡으세요.'],
     mid: ['특별한 이상 없이 지나갑니다. 평소 리듬을 지키세요.',
           '큰 문제 없는 달입니다.',
-          '건강에 큰 기복이 없는 해입니다.'],
+          '건강에 큰 기복이 없는 해입니다.',
+          '큰 이상 없이 지나가는 이레입니다.'],
     low: ['무리가 가기 쉬운 날입니다. 잠과 끼니를 먼저 챙기세요.',
           '몸이 신호를 보내는 달입니다. 미루던 검진을 잡으세요.',
-          '소모가 큰 해입니다. 쉬는 것을 일정에 넣어야 버팁니다.'],
+          '소모가 큰 해입니다. 쉬는 것을 일정에 넣어야 버팁니다.',
+          '무리가 쌓이는 이레입니다. 잠부터 확보하세요.'],
   },
 };
 
-const KIND_IDX = { day: 0, month: 1, year: 2 };
+const KIND_IDX = { day: 0, month: 1, year: 2, week: 3 };
 
 /** 점수를 문장으로 */
 export function areaText(area, score, kind) {
@@ -317,6 +400,7 @@ export function readForecast(form, now = new Date()) {
   const t = todayKST(now);
 
   const day = forecastPeriod(input, chart, makePeriod('day', t));
+  const week = forecastWeek(input, chart, t);
   const month = forecastPeriod(input, chart, makePeriod('month', t));
   const year = forecastPeriod(input, chart, makePeriod('year', { y: t.y, m: t.m, d: t.d }));
 
@@ -334,5 +418,5 @@ export function readForecast(form, now = new Date()) {
     };
   });
 
-  return { input, chart, birth, lunar, today: t, day, month, year, timeline };
+  return { input, chart, birth, lunar, today: t, day, week, month, year, timeline };
 }

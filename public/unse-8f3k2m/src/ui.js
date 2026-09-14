@@ -60,8 +60,7 @@ document.querySelectorAll('.mode').forEach((btn) => {
     document.querySelectorAll('.mode').forEach((x) => x.classList.toggle('on', x === btn));
     $('#personB').hidden = mode !== 'pair';
     document.querySelectorAll('.person-title').forEach((t) => { t.hidden = mode !== 'pair'; });
-    $('.go').textContent = mode === 'pair' ? '궁합 보기'
-      : mode === 'flow' ? '흐름 보기' : '풀이 보기';
+    $('.go').textContent = mode === 'pair' ? '궁합 보기' : '풀이 보기';
     $('#result').classList.remove('on');
     last = null;
     history.replaceState(null, '', location.pathname);
@@ -90,15 +89,13 @@ $('#form').addEventListener('submit', (e) => {
   const box = $('#result');
   try {
     const form = collect('');
-    box.innerHTML = mode === 'pair' ? renderCompat(form, collect('b-'))
-      : mode === 'flow' ? renderFlow(form)
-      : render(form);
+    box.innerHTML = mode === 'pair' ? renderCompat(form, collect('b-')) : render(form);
     box.classList.add('on');
 
-    // 개인 운세 화면에만 AI 구획이 있다.
-    // 명반과 시기 운세를 함께 넘겨야 AI 가 "지금"까지 알고 답한다.
+    // 개인 운세 화면에만 AI 구획이 있다. 명반과 시기 운세를 함께 넘겨야
+    // AI 가 "지금"까지 알고 답한다. render 가 이미 계산해 둔 것을 그대로 쓴다.
     if (mode === 'solo' && last?.result) {
-      initAI(form, last.result, readForecast(form));
+      initAI(form, last.result, last.forecast);
     }
     // 주소를 지금 보고 있는 결과에 맞춰 둔다.
     // 새로고침해도 같은 결과가 나오고, 주소창을 그대로 복사해도 된다.
@@ -259,11 +256,57 @@ function flowPane(f, kind, open) {
     </div>`;
 }
 
-function renderFlow(form) {
-  const r = readForecast(form);
-  last = { mode: 'flow', formA: form, formB: null, result: r };
+/**
+ * 이레 화면.
+ *
+ * 명리에 주(週)가 없으므로 간지 한 줄로 요약할 수가 없다. 대신 이레치
+ * 일운을 그대로 펼쳐 보여준다. 주간 운세에서 사람이 실제로 알고 싶은 건
+ * 평균이 아니라 "어느 날에 하면 되나"이기도 하다.
+ */
+function weekPane(w, open) {
+  const dayCol = (d) => `
+    <div class="tl-col">
+      <div class="tl-barwrap"><div class="tl-bar ${band(d.score)}" style="height:${Math.max(6, (d.score - 20) * 1.5)}px"></div></div>
+      <div class="tl-score">${d.score}</div>
+      <div class="tl-mon">${d.on.m}/${d.on.d}${d.today ? ' 오늘' : ''}</div>
+      <div class="tl-gz">${esc(d.weekday)} ${esc(d.gz.hanja)}</div>
+    </div>`;
 
-  const tl = r.timeline;
+  return `
+    <div class="flow-pane" data-fp="week" ${open ? '' : 'hidden'}>
+      <p class="lotto-when">${esc(w.label)} · 이레</p>
+      <p class="flow-sum">${esc(w.best.area)}이 가장 높고 ${esc(w.worst.area)}이 가장 낮습니다.
+        이레 가운데 ${w.bestDay.on.m}월 ${w.bestDay.on.d}일(${esc(w.bestDay.weekday)})이 가장 낫고,
+        ${w.worstDay.on.m}월 ${w.worstDay.on.d}일(${esc(w.worstDay.weekday)})이 가장 무겁습니다.</p>
+
+      <div class="tl" style="margin:16px 0 20px">${w.days.map(dayCol).join('')}</div>
+
+      ${AREAS.map((a) => {
+        const x = w.areas[a];
+        if (x.score == null) return '';
+        return `
+          <div class="area">
+            <div class="area-head">
+              <span class="area-name">${a}</span>
+              <span class="area-score ${band(x.score)}">${x.score}</span>
+            </div>
+            <div class="area-track"><div class="area-fill ${band(x.score)}" style="width:${x.score}%"></div></div>
+            <p class="area-text">${esc(areaText(a, x.score, 'week'))}</p>
+            <p class="area-src">이레 평균 · 벌리기 전 ${x.raw} · 날짜별 ${x.lo}~${x.hi}</p>
+          </div>`;
+      }).join('')}
+
+      <p class="area-src" style="margin-top:14px">
+        명리에는 주(週)라는 단위가 없습니다. 년·월·일·시뿐이라 주건(週建)에 해당하는 간지가
+        없어서, 없는 간지를 지어내는 대신 이레치 일운을 실제로 계산해 묶었습니다.
+        이레 평균은 좋은 날과 나쁜 날이 상쇄되어 폭이 좁아지므로 눈금을 따로 재어 벌렸습니다.
+      </p>
+    </div>`;
+}
+
+/** 오늘·이레·이달·올해를 한 묶음으로. 개인 운세 화면 맨 위에 온다 */
+function timeSection(form, f) {
+  const tl = f.timeline;
   const max = Math.max(...tl.map((m) => m.score));
   const min = Math.min(...tl.map((m) => m.score));
   const bestM = tl.reduce((a, b) => (b.score > a.score ? b : a));
@@ -271,22 +314,24 @@ function renderFlow(form) {
   const p2 = (n) => String(n).padStart(2, '0');
 
   return `
-    <div class="section-label">운세 흐름</div>
+    <div class="section-label">시기 운세</div>
     <div class="card synth">
-      <h3>${esc(form.name)} 님<span class="hanja">${r.today.y}.${p2(r.today.m)}.${p2(r.today.d)} 기준</span></h3>
+      <h3>${esc(form.name)} 님<span class="hanja">${f.today.y}.${p2(f.today.m)}.${p2(f.today.d)} 기준</span></h3>
 
       <div class="lotto-tabs" style="margin-top:16px">
         <button type="button" class="ft on" data-ft="day">오늘</button>
+        <button type="button" class="ft" data-ft="week">앞으로 7일</button>
         <button type="button" class="ft" data-ft="month">이번 달</button>
         <button type="button" class="ft" data-ft="year">올해</button>
       </div>
 
-      ${flowPane(r.day, 'day', true)}
-      ${flowPane(r.month, 'month', false)}
-      ${flowPane(r.year, 'year', false)}
+      ${flowPane(f.day, 'day', true)}
+      ${weekPane(f.week, false)}
+      ${flowPane(f.month, 'month', false)}
+      ${flowPane(f.year, 'year', false)}
     </div>
 
-    <div class="section-label">${r.day.period.sajuYear}년 열두 달 흐름</div>
+    <div class="section-label">${f.day.period.sajuYear}년 열두 달 흐름</div>
     <div class="card">
       <div class="tl">
         ${tl.map((m) => `
@@ -303,26 +348,13 @@ function renderFlow(form) {
       </p>
       <dl class="facts" style="margin-top:14px">
         <div class="fact"><dt>가장 높은 달</dt>
-          <dd>${bestM.from.m}월 ${esc(bestM.gz.hanja)} · ${bestM.score}점<small>${esc(bestM.best ?? '')}이(가) 특히 좋습니다</small></dd></div>
+          <dd>${bestM.from.m}월 ${esc(bestM.gz.hanja)} · ${bestM.score}점<small>${esc(bestM.best ?? '')} 쪽이 특히 좋습니다</small></dd></div>
         <div class="fact"><dt>가장 낮은 달</dt>
-          <dd>${worstM.from.m}월 ${esc(worstM.gz.hanja)} · ${worstM.score}점<small>${esc(worstM.worst ?? '')}을(를) 특히 조심하세요</small></dd></div>
+          <dd>${worstM.from.m}월 ${esc(worstM.gz.hanja)} · ${worstM.score}점<small>${esc(worstM.worst ?? '')} 쪽을 특히 조심하세요</small></dd></div>
         <div class="fact"><dt>진폭</dt>
           <dd>${min} ~ ${max}<small>${max - min >= 25 ? '기복이 큰 해입니다' : max - min >= 12 ? '보통 정도의 기복입니다' : '평탄한 해입니다'}</small></dd></div>
       </dl>
     </div>
-
-    ${shareBar()}
-
-    <div class="card" style="margin-top:14px">
-      <p class="lotto-warn" style="margin:0">
-        점수는 열다섯 체계의 평균을 눈금만 벌려 놓은 값입니다. 그냥 평균 내면 전부 50 언저리로
-        뭉개져서 아무 정보가 없기 때문입니다. 50이 보통이고, 벌리기 전 원점수와 체계별 점수 범위를
-        각 영역 아래에 함께 적어 두었습니다. 절대적인 수치가 아니라
-        <strong>영역끼리, 달끼리 견주는 용도</strong>로 보세요.
-      </p>
-    </div>
-  `;
-}
 
 // ─────────────────────────────────────────────────────────────
 // 궁합 화면
@@ -412,12 +444,17 @@ function renderCompat(formA, formB) {
 
 function render(form) {
   const r = readFortune(form);
+  // 시기 운세도 같은 화면에 들어간다. 여기서 한 번만 계산해 두고
+  // AI 에도 그대로 넘긴다 (읽는 사람이 보는 값과 AI 가 받는 값이 같아야 한다).
+  const f = readForecast(form);
   const s = r.synthesis;
-  last = { mode: 'solo', formA: form, formB: null, result: r };
+  last = { mode: 'solo', formA: form, formB: null, result: r, forecast: f };
   const p = (n) => String(n).padStart(2, '0');
 
   return `
-    <div class="section-label">종합</div>
+    ${timeSection(form, f)}
+
+    <div class="section-label">평생 운세</div>
     <div class="card synth">
       <h3>${esc(form.name)} 님<span class="hanja">${form.year}.${p(form.month)}.${p(form.day)}
         ${r.input.timeKnown ? `${p(form.hour)}:${p(form.minute)}` : '시간 미상'} · ${esc(form.birthPlace)}</span></h3>
@@ -426,7 +463,7 @@ function render(form) {
       ${s.summary.map((t) => `<div class="summary-line">${esc(t)}</div>`).join('')}
 
       <div class="agree">
-        <div class="agree-num">${s.consensus.ratio}%<small>체계 간 합의도${s.consensus.word ? ` — ‘${esc(s.consensus.word)}’` : ''}</small></div>
+        <div class="agree-num">${s.consensus.ratio}%<small>산법 가중 합의도${s.consensus.word ? ` — ‘${esc(s.consensus.word)}’` : ''}</small></div>
         <p>${esc(s.consensus.text)}</p>
         ${s.consensus.from.length ? `<div class="tag-from">${s.consensus.from.map(esc).join(' · ')}</div>` : ''}
       </div>
@@ -489,12 +526,6 @@ function render(form) {
       </p>
     </div>
 
-    ${shareBar()}
-
-    ${lottoSection(r.input, r.chart)}
-
-    ${aiSection()}
-
     <div class="section-label">계산에 쓴 값</div>
     <div class="card">
       <dl class="facts">
@@ -526,6 +557,12 @@ function render(form) {
           시간을 모르면 근사치를 내는 대신 아예 내놓지 않는 편이 정직합니다.
         </p>
       </div>` : ''}
+
+    ${lottoSection(r.input, r.chart)}
+
+    ${aiSection()}
+
+    ${shareBar()}
   `;
 }
 
@@ -565,6 +602,7 @@ function renderSystem(sys, open, r) {
     <details class="sys" ${open ? 'open' : ''}>
       <summary>
         <span class="nm">${esc(sys.name)}</span>
+        <span class="hanja">${esc(sys.method.label)}</span>
         <span class="hd">${esc(sys.headline)}</span>
         <span class="chev">▾</span>
       </summary>
@@ -584,7 +622,9 @@ function renderSystem(sys, open, r) {
         ${sys.confidence < 1 ? `
           <p style="font-size:11.5px;color:var(--ink-3);margin-top:14px">
             이 체계는 종합에 ${Math.round(sys.confidence * 100)}%만 반영했습니다 —
-            정확히 계산하려면 더 정밀한 출생 시각이 필요합니다.
+            ${sys.method.kind === 'traditional'
+              ? '출생 시각 등 계산 재료가 제한된 점을 반영했습니다.'
+              : `${esc(sys.method.label)}이라는 산법 성격을 반영했습니다.`}
           </p>` : ''}
       </div>
     </details>`;

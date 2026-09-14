@@ -18,8 +18,6 @@
 import { ELEMENTS } from './core/ganzhi.js';
 import { AREAS } from './forecast.js';
 
-const p2 = (n) => String(n).padStart(2, '0');
-
 /** facts 배열을 한 줄로 접는다 */
 function foldFacts(facts, max = 10) {
   return facts
@@ -36,26 +34,13 @@ function foldFacts(facts, max = 10) {
  */
 export function buildContext(form, r, f = null) {
   const out = [];
-  const { chart, lunar, birth, input, synthesis: s } = r;
+  const { chart, input, synthesis: s } = r;
 
   // ── 기본 ──
-  const when = `${form.year}년 ${form.month}월 ${form.day}일` +
-    (input.timeKnown ? ` ${p2(form.hour)}시 ${p2(form.minute)}분` : ' (시각 미상)');
-  const tst = input.timeKnown
-    ? ` → 진태양시 ${birth.tst.h}시 ${p2(birth.tst.mi)}분 (경도·균시차 보정 ${birth.totalShiftMinutes >= 0 ? '+' : '−'}${Math.abs(birth.totalShiftMinutes).toFixed(0)}분)`
-    : '';
-
   out.push('## 기본');
-  out.push(`${form.name} · ${form.gender === 'male' ? '남성' : '여성'} · 만 ${input.age}세`);
-  out.push(`양력 ${when}${tst}`);
-  out.push(`음력 ${lunar.year}.${lunar.isLeap ? '윤' : ''}${lunar.month}.${lunar.day}`);
-  out.push(`출생 ${form.birthPlace} · 거주 ${form.homePlace} (${input.moveDirection}쪽으로 이동)`);
-  out.push(
-    `사주 연도 ${chart.sajuYear}년 ${chart.zodiac}띠` +
-    (chart.sajuYear !== form.year
-      ? `  ※ 양력으로는 ${form.year}년생이지만 입춘 전이라 명리에서는 ${chart.sajuYear}년으로 본다`
-      : '')
-  );
+  out.push(`${form.gender === 'male' ? '남성' : '여성'} · 출생 시각 ${input.timeKnown ? '반영' : '미상'}`);
+  out.push('※ 이름·생년월일·출생지·거주지는 개인정보 최소화를 위해 AI에 보내지 않았다. 아래 계산 결과만 해석할 것.');
+  out.push(`사주 연도 ${chart.sajuYear}년 ${chart.zodiac}띠 · ${chart.pillars.year.hanja}년주`);
   if (!input.timeKnown) {
     out.push('※ 출생 시각을 몰라 시주가 없다. 자미두수·육임·홍국기문은 계산하지 않았고 나머지도 정확도가 떨어진다.');
   }
@@ -70,7 +55,7 @@ export function buildContext(form, r, f = null) {
     const folded = foldFacts(sys.facts);
     if (folded) out.push(folded);
     if (sys.confidence < 1) {
-      out.push(`※ 재료가 부족해 종합 반영 ${Math.round(sys.confidence * 100)}%`);
+      out.push(`※ ${sys.method.label} · 가중 종합 반영 ${Math.round(sys.confidence * 100)}%`);
     }
     out.push('');
   }
@@ -82,7 +67,7 @@ export function buildContext(form, r, f = null) {
   // ── 종합 ──
   out.push('## 종합');
   out.push(
-    `합의도 ${s.consensus.ratio}%` +
+    `산법 성격을 반영한 가중 합의도 ${s.consensus.ratio}%` +
     (s.consensus.word ? ` — ${s.consensus.total}개 중 ${s.consensus.count}개가 '${s.consensus.word}'을 가리킴 (${s.consensus.from.join(', ')})` : '')
   );
   out.push(`합산 오행 ${ELEMENTS.map((e, i) => `${e}${s.elements.pct[i]}%`).join(' ')} — 강한 ${s.elements.strongestName}, 약한 ${s.elements.weakestName}`);
@@ -105,6 +90,10 @@ export function buildContext(form, r, f = null) {
     const t = f.today;
     out.push(`## 시기 운세 (기준일 ${t.y}년 ${t.m}월 ${t.d}일)`);
     out.push('');
+    const week = f.week;
+    if (week) {
+      out.push(`앞으로 7일 ${week.label} — 총운${week.overall}, 가장 높은 날 ${week.bestDay.on.m}/${week.bestDay.on.d}(${week.bestDay.score}), 가장 낮은 날 ${week.worstDay.on.m}/${week.worstDay.on.d}(${week.worstDay.score})`);
+    }
     for (const [label, block] of [['오늘', f.day], ['이번 달', f.month], ['올해', f.year]]) {
       const gz = block.period.ruling;
       out.push(
@@ -131,7 +120,7 @@ export function buildContext(form, r, f = null) {
   }
 
   out.push('## 읽는 법');
-  out.push('위 값은 모두 천문 계산으로 구한 것이다. 간지·절기·음력·행성 위치를 다시 계산하지 말고 그대로 쓸 것.');
+  out.push('간지·절기·음력·행성 위치는 계산값이므로 다시 계산하지 말고 그대로 쓸 것. 나머지는 전통·대표 산법과 사이트 응용 해석이 섞여 있으며 각 체계의 산법 표지를 존중할 것.');
   out.push('체계마다 보는 대상이 다르므로 결론이 갈릴 수 있다. 갈리면 갈린다고 말할 것.');
 
   return out.join('\n');

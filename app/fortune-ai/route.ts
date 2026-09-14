@@ -16,7 +16,12 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
 const MODEL = "claude-opus-5";
-const MAX_TOKENS = 16000;
+const MAX_TOKENS = 4_000;
+const BACKEND_URL = (
+  process.env.BACKEND_URL ??
+  process.env.NEXT_PUBLIC_API_BASE_URL ??
+  (process.env.NODE_ENV === "development" ? "http://localhost:8080" : "https://api.chaekdojang.com")
+).replace(/\/$/, "");
 
 /** 명반 데이터가 아무리 커도 이 정도면 넉넉하다 */
 const MAX_CONTEXT_CHARS = 24_000;
@@ -92,6 +97,25 @@ function line(obj: unknown) {
   return new TextEncoder().encode(JSON.stringify(obj) + "\n");
 }
 
+async function reserveMonthlyUse(req: Request) {
+  const response = await fetch(`${BACKEND_URL}/api/fortune-ai/reservations`, {
+    method: "POST",
+    headers: {
+      Cookie: req.headers.get("cookie") ?? "",
+      Accept: "application/json",
+    },
+    cache: "no-store",
+  });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok || !payload?.success) {
+    return {
+      error: payload?.message ?? (response.status === 401 ? "AI 풀이는 로그인 후 이용할 수 있습니다." : "AI 이용 한도를 확인하지 못했습니다."),
+      status: response.status || 502,
+    };
+  }
+  return { data: payload.data as { remaining: number; monthlyLimit: number } };
+}
+
 export async function POST(req: Request) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
@@ -101,10 +125,12 @@ export async function POST(req: Request) {
     );
   }
 
-  // 같은 사이트에서 온 요청만 받는다. 떠돌이 스캐너가 크레딧을 태우는 걸 막는 정도의 장치다.
+  // 같은 사이트에서 온 요청만 받는다. host 부분 문자열 비교는 evil-example.com도 통과시키므로
+  // URL의 origin을 정확히 비교한다.
   const origin = req.headers.get("origin") ?? "";
   const host = req.headers.get("host") ?? "";
-  if (origin && !origin.includes(host)) {
+  const expectedOrigin = host ? `https://${host}` : "";
+  if (origin && origin !== expectedOrigin && !(host.startsWith("localhost") && origin === `http://${host}`)) {
     return Response.json({ error: "허용되지 않은 출처입니다." }, { status: 403 });
   }
 
@@ -140,6 +166,12 @@ export async function POST(req: Request) {
 
   if (messages.length === 0 || messages[messages.length - 1].role !== "user") {
     return Response.json({ error: "마지막은 사용자 질문이어야 합니다." }, { status: 400 });
+  }
+
+  // 계산은 비회원도 무료지만, 외부 모델 호출은 로그인 계정의 월 한도에서만 쓴다.
+  const reservation = await reserveMonthlyUse(req);
+  if ("error" in reservation) {
+    return Response.json({ error: reservation.error }, { status: reservation.status });
   }
 
   const client = new Anthropic({ apiKey });
@@ -187,6 +219,7 @@ export async function POST(req: Request) {
               output: final.usage.output_tokens,
               cacheRead: final.usage.cache_read_input_tokens ?? 0,
               cacheWrite: final.usage.cache_creation_input_tokens ?? 0,
+              remaining: reservation.data.remaining,
             },
           })
         );

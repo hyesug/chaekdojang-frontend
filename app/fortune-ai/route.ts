@@ -93,19 +93,53 @@ function rateLimited(ip: string, limit = 30, windowMs = 60_000) {
   return list.length > limit;
 }
 
+/** 오류를 사람이 읽을 수 있는 한 줄로 */
+function describe(err: unknown) {
+  if (err instanceof Anthropic.APIError) {
+    return `Claude API 오류 (${err.status ?? "?"}): ${err.message}`;
+  }
+  if (err instanceof Error) {
+    const cause = (err as { cause?: unknown }).cause;
+    const tail = cause instanceof Error ? ` — ${cause.name}: ${cause.message}` : "";
+    return `${err.name}: ${err.message}${tail}`;
+  }
+  return String(err);
+}
+
 function line(obj: unknown) {
   return new TextEncoder().encode(JSON.stringify(obj) + "\n");
 }
 
+/**
+ * 이번 달 이용분을 잡아둔다.
+ *
+ * 백엔드가 내려가 있으면 fetch 가 그대로 던진다. 감싸지 않으면 함수가 죽어
+ * 본문 없는 500 이 나가고, 사용자는 아무 안내도 못 받는다. 로그에도 원인이
+ * 백엔드 타임아웃으로만 남아서 운세 쪽 문제로 보이기 쉽다. 실제로 한 번
+ * 그렇게 헤맸다.
+ *
+ * 연결 대기도 10초는 너무 길다. 백엔드가 죽었으면 빨리 알려주는 편이 낫다.
+ */
 async function reserveMonthlyUse(req: Request) {
-  const response = await fetch(`${BACKEND_URL}/api/fortune-ai/reservations`, {
-    method: "POST",
-    headers: {
-      Cookie: req.headers.get("cookie") ?? "",
-      Accept: "application/json",
-    },
-    cache: "no-store",
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${BACKEND_URL}/api/fortune-ai/reservations`, {
+      method: "POST",
+      headers: {
+        Cookie: req.headers.get("cookie") ?? "",
+        Accept: "application/json",
+      },
+      cache: "no-store",
+      signal: AbortSignal.timeout(5000),
+    });
+  } catch (err) {
+    console.error("[fortune-ai] 이용 한도 확인 실패", err);
+    return {
+      error: "지금은 이용 확인이 어렵습니다. 잠시 뒤에 다시 시도해 주세요.",
+      status: 503,
+    };
+  }
+
   const payload = await response.json().catch(() => null);
   if (!response.ok || !payload?.success) {
     return {
@@ -176,22 +210,36 @@ export async function POST(req: Request) {
 
   const client = new Anthropic({ apiKey });
 
-  const stream = client.messages.stream({
-    model: MODEL,
-    max_tokens: MAX_TOKENS,
-    thinking: { type: "adaptive" },
-    // 명반은 한 사람에 대해 고정이라, 질문을 여러 번 던져도 앞부분은 그대로다.
-    // 캐시에 태워 두면 두 번째 질문부터 입력 비용이 크게 줄어든다.
-    system: [
-      { type: "text", text: SYSTEM },
-      {
-        type: "text",
-        text: `# 이 사람의 명반\n\n아래는 천문 계산으로 구한 값입니다. 그대로 쓰세요.\n\n${context}`,
-        cache_control: { type: "ephemeral" },
-      },
-    ],
-    messages,
-  });
+  // stream() 은 요청을 바로 띄운다. 그 약속이 for-await 에 붙기 전에
+  // 거절되면 처리되지 않은 거절이 되어 함수가 통째로 죽고, 단서 없는 500 이
+  // 나간다 (그러면 Vercel 이 오류 페이지를 렌더하다 백엔드를 부르는 바람에
+  // 로그에는 엉뚱하게 백엔드 타임아웃만 남는다). 그래서 만들자마자 잡아둔다.
+  let stream: ReturnType<typeof client.messages.stream>;
+  try {
+    stream = client.messages.stream({
+      model: MODEL,
+      max_tokens: MAX_TOKENS,
+      thinking: { type: "adaptive" },
+      // 명반은 한 사람에 대해 고정이라, 질문을 여러 번 던져도 앞부분은 그대로다.
+      // 캐시에 태워 두면 두 번째 질문부터 입력 비용이 크게 줄어든다.
+      system: [
+        { type: "text", text: SYSTEM },
+        {
+          type: "text",
+          text: `# 이 사람의 명반\n\n아래는 천문 계산으로 구한 값입니다. 그대로 쓰세요.\n\n${context}`,
+          cache_control: { type: "ephemeral" },
+        },
+      ],
+      messages,
+    });
+  } catch (err) {
+    return Response.json({ error: describe(err) }, { status: 502 });
+  }
+
+  // 소비하기 전에 거절되어도 처리되지 않은 거절이 되지 않도록 미리 붙인다.
+  // 실제 오류는 아래 for-await 에서 다시 잡혀 사용자에게 전달된다.
+  let early: unknown = null;
+  stream.on("error", (e: unknown) => { early = e; });
 
   const body$ = new ReadableStream({
     async start(controller) {
@@ -224,13 +272,7 @@ export async function POST(req: Request) {
           })
         );
       } catch (err) {
-        const msg =
-          err instanceof Anthropic.APIError
-            ? `Claude API 오류 (${err.status}): ${err.message}`
-            : err instanceof Error
-              ? err.message
-              : "알 수 없는 오류";
-        controller.enqueue(line({ error: msg }));
+        controller.enqueue(line({ error: describe(early ?? err) }));
       } finally {
         controller.close();
       }

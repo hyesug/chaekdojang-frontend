@@ -173,6 +173,7 @@ export function analyze(input) {
     { label: '부처궁', value: showPalace('부처궁'), note: '' },
     { label: '재백궁', value: showPalace('재백궁'), note: '' },
     { label: '관록궁', value: showPalace('관록궁'), note: '' },
+    { label: '질액궁', value: showPalace('질액궁'), note: '몸의 타고난 리듬과 약한 자리를 보는 궁' },
     { label: '천이궁', value: showPalace('천이궁'), note: '' },
     { label: '사화', value: sihwa.map((x) => x.star).join(' · '), note: `${stemKr}년생 기준 녹·권·과·기` },
   ];
@@ -215,6 +216,7 @@ export function analyze(input) {
 
   const careerStars = palaceAt['관록궁'].stars;
   const wealthStars = palaceAt['재백궁'].stars;
+  const healthStars = palaceAt['질액궁'].stars;
   readings.push({
     title: '관록궁과 재백궁',
     text: `일의 자리에 ${careerStars.join('·') || '주성 없음'}, 돈의 자리에 ${wealthStars.join('·') || '주성 없음'}이(가) 들었습니다. ` +
@@ -223,6 +225,19 @@ export function analyze(input) {
         : careerStars.includes('자미') || careerStars.includes('천부')
         ? '조직 안에서 자리를 얻는 구조입니다. 책임이 커질수록 안정됩니다.'
         : '일의 성격이 한 갈래로 고정되지 않습니다. 환경에 맞춰 방향을 정하게 됩니다.'),
+  });
+
+  readings.push({
+    title: '질액궁 — 몸의 리듬을 보는 자리',
+    text: healthStars.length
+      ? `몸의 자리에 ${healthStars.join('·')}이(가) 들었습니다. ` +
+        (healthStars.some((s) => s === '칠살' || s === '파군')
+          ? '한 번 무리한 뒤에 회복 시간을 놓치지 않는 것이 특히 중요합니다. 바쁠수록 수면과 식사 시간을 먼저 지키는 쪽이 맞습니다.'
+          : healthStars.some((s) => s === '천동' || s === '천량' || s === '천부')
+            ? '생활 리듬만 크게 흐트러뜨리지 않으면 회복하는 힘을 잘 쓰는 편입니다. 꾸준히 걷고 쉬는 습관이 가장 잘 맞습니다.'
+            : '타고난 한 가지 약점보다 쌓인 피로와 생활 리듬의 영향을 더 크게 받는 편입니다. 무리한 날 뒤에 회복 시간을 비워두는 습관이 중요합니다.') +
+        ' 이 자리는 병을 단정하는 곳이 아니라, 무리할 때 어떤 식으로 기운이 흔들리기 쉬운지를 읽는 자리입니다.'
+      : '몸의 자리에 주성이 없는 공궁입니다. 타고난 한 가지 약점으로 단정하기보다, 생활 리듬과 그때그때 들어오는 흐름의 영향을 더 크게 받는 자리로 봅니다.',
   });
 
   readings.push({
@@ -251,6 +266,7 @@ export function analyze(input) {
   for (const k of Object.keys(traits)) traits[k] = Math.max(-1, Math.min(1, traits[k]));
 
   const tags = [...new Set(mainStars.flatMap((s) => STARS[s]?.tags ?? []))];
+  const healthTone = healthStars.reduce((sum, star) => sum + (STAR_AREA[star]?.건강운 ?? 0), 0);
 
   return result({
     id: meta.id,
@@ -266,7 +282,9 @@ export function analyze(input) {
         재물: 50 + (wealthStars.includes('무곡') || wealthStars.includes('천부') || wealthStars.includes('태음') ? 18 : 0),
         관계: 50 + (spouseStars.length ? 8 : -6),
         직업: 50 + (careerStars.includes('자미') || careerStars.includes('태양') || careerStars.includes('천량') ? 16 : 0),
-        건강: null,
+        // 질액궁은 위에서 실제로 배치했다. 비어 있다고 null을 주면 종합과
+        // AI 문맥에서 이 핵심 자리가 통째로 빠진다.
+        건강: Math.max(28, Math.min(72, 50 + healthTone)),
         학업: 50 + (mainStars.includes('천기') || mainStars.includes('거문') ? 14 : 0),
       },
       tags: tags.length ? tags : ['변화'],

@@ -15,8 +15,9 @@
  * 토큰을 아끼려고 줄임말을 쓰되, 모델이 알아볼 수 없을 만큼 줄이지는 않는다.
  */
 
-import { ELEMENTS } from './core/ganzhi.js';
+import { ELEMENTS, computeDaeun } from './core/ganzhi.js';
 import { AREAS } from './forecast.js';
+import { dayRange, structureReading, patternReading } from './reading.js';
 
 const p2 = (n) => String(n).padStart(2, '0');
 
@@ -138,9 +139,67 @@ export function buildContext(form, r, f = null) {
     out.push('');
   }
 
+  // ── 타고난 구성 ──
+  // 시기 점수는 '그 시기'를 재는 값이라, 구조가 무너진 명반도 평범하게 나온다.
+  // 사람의 삶에 실제로 들어맞은 건 늘 이쪽이었다. 그래서 따로 싣는다.
+  const st = structureReading(r.input, r.chart);
+  const pat = patternReading(r.input, r.chart);
+  if (st.lines.length || pat.length) {
+    out.push('## 타고난 구성 (원국을 그대로 읽은 것 — 시기와 무관하게 평생 간다)');
+    if (st.head) out.push(st.head);
+    for (const t of st.lines) out.push(`- ${t}`);
+    for (const x of pat) out.push(`- ${x.name}: ${x.text}`);
+    out.push('');
+  }
+
+  // ── 대운 ──
+  const daeun = computeDaeun(r.chart, r.input.isMale, r.input.jdUT);
+  if (daeun?.list?.length) {
+    out.push('## 대운 (십 년 단위)');
+    out.push(daeun.list
+      .map((p) => `${p.fromAge}~${p.toAge}세 ${p.hanja}(${p.kr})`)
+      .join(' · '));
+    out.push('');
+  }
+
+  // ── 일자별 달력 ──
+  // 이 표가 이 파일에서 두 번째로 중요한 대목이다. 없으면 모델은 날짜를
+  // 물어도 "11월 초쯤"이라고밖에 답하지 못한다 — 없는 날을 지어내지 않으려면
+  // 그럴 수밖에 없다. 등급은 이 구간 안에서의 순위다.
+  if (f) {
+    const days = dayRange(r.input, r.chart, f.today, 120);
+    out.push(`## 일자별 (${f.today.y}년 ${f.today.m}월 ${f.today.d}일부터 120일)`);
+    out.push('형식: 월/일(요일) 일진 등급 [황도|흑도] [천의=치료·수술에 쓰는 날] [일지충=본인과 부딪치는 날] 신살');
+    for (const x of days) {
+      const t = x.taekil;
+      const tags = [
+        t.good ? '황도' : '흑도',
+        t.cheonui ? '천의' : '',
+        t.clashDay ? '일지충' : '',
+        t.clashYear ? '띠충' : '',
+        ...x.sinsal,
+      ].filter(Boolean).join(' ');
+      out.push(`${x.m}/${x.d}(${x.weekday}) ${x.gz.hanja} ${x.grade} ${tags}`);
+    }
+    out.push('');
+
+    // 해를 넘기는 구간이라 월·일이 아니라 원래 순서로 되돌려야 한다
+    const order = new Map(days.map((x, i) => [x, i]));
+    const tops = (key, n = 5) => days.slice()
+      .sort((a, b) => b[key] - a[key]).slice(0, n)
+      .sort((a, b) => order.get(a) - order.get(b))
+      .map((x) => `${x.m}/${x.d}`).join(', ');
+    out.push('120일 가운데 영역별로 앞서는 날');
+    out.push(`재물 ${tops('wealth')} · 관계 ${tops('love')} · 일 ${tops('work')} · 몸 ${tops('health')}`);
+    out.push('');
+  }
+
   out.push('## 읽는 법');
   out.push('위 값은 모두 천문 계산으로 구한 것이다. 간지·절기·음력·행성 위치를 다시 계산하지 말고 그대로 쓸 것.');
   out.push('체계마다 보는 대상이 다르므로 결론이 갈릴 수 있다. 갈리면 갈린다고 말할 것.');
+  out.push('날짜를 물으면 위 일자별 표에서 실제 날짜를 골라 답할 것. 표에 있는 날은 이미 계산된 날이므로 지어내는 것이 아니다. "월 초"처럼 뭉개지 말고 "11월 3일(화)"처럼 날짜와 요일을 적고, 왜 그 날인지 한 줄로 밝힐 것. 두세 개를 우선순위대로 주고, 함께 피할 날도 같이 적을 것.');
+  out.push('택일의 기준: 몸에 손대는 일(수술·시술·치료 시작)은 천의가 든 날을 먼저 보고, 일지충·띠충·양인이 든 날은 뺀다. 계약·문서·면접은 황도이면서 등급이 높은 날을 고른다. 이사·출발은 역마가 든 날이 맞고, 사람을 만나거나 부탁할 일은 천을이 든 날이 맞다. 등급은 이 120일 안에서의 순위다.');
+  out.push('표 밖의 날짜(120일 이후)를 물으면 그때는 월·절기 단위로만 답하고 표가 거기까지 없다고 한 줄로 밝힐 것.');
 
   return out.join('\n');
 }
@@ -221,14 +280,47 @@ export function buildCompatContext(formA, formB, c, forecastA = null, forecastB 
     out.push(`기준 연도 ${forecastA.today.y}년. 아래 달은 절기 시작일 기준이다.`);
     out.push(`두 사람 모두에게 비교적 힘이 실리는 시기: ${best.map(describe).join(' / ')}`);
     out.push(`두 사람 모두에게 부담이 될 수 있어 피하는 편이 좋은 시기: ${careful.map(describe).join(' / ')}`);
-    out.push('이 자료가 있으면 결혼 시기를 물을 때 반드시 위의 좋은 시기에서 1~2개를 구체적으로 골라 답할 것. 날짜 단위 자료는 없으므로 특정 일자를 지어내지 말고 월·절기 단위로 답할 것.');
+    out.push('이 자료가 있으면 결혼 시기를 물을 때 반드시 위의 좋은 시기에서 1~2개를 구체적으로 골라 답할 것.');
+    out.push('');
+
+    // 달까지만 알려주면 "가을쯤이 좋겠습니다"에서 끝난다. 실제로 사람들이
+    // 묻는 건 예식 날짜, 상견례 날짜처럼 하루짜리다. 두 사람의 일진을
+    // 각각 계산해 겹쳐두면 그 질문에 답할 수 있다.
+    const dA = dayRange(c.A.input, c.A.chart, forecastA.today, 120);
+    const dB = dayRange(c.B.input, c.B.chart, forecastB.today, 120);
+    const RANK = { '아주 좋음': 5, '좋음': 4, '무난': 3, '조심': 2, '나쁨': 1, '특히 조심': 0 };
+    const rows = dA.map((a, i) => {
+      const b = dB[i];
+      return {
+        a, b, i,
+        sum: (RANK[a.grade] ?? 3) + (RANK[b.grade] ?? 3),
+        bad: a.taekil.clashDay || b.taekil.clashDay ||
+             a.sinsal.includes('양인') || b.sinsal.includes('양인'),
+      };
+    });
+    const label = (x) => {
+      const tags = [x.a.taekil.good && x.b.taekil.good ? '둘 다 황도' : x.a.taekil.good || x.b.taekil.good ? '한쪽 황도' : '흑도'];
+      if (x.bad) tags.push('한쪽에 충·양인');
+      return `${x.a.m}/${x.a.d}(${x.a.weekday}) ${x.a.gz.hanja} ${formA.name} ${x.a.grade} / ${formB.name} ${x.b.grade} · ${tags.join(' ')}`;
+    };
+    // 120일은 해를 넘기므로 월·일로 정렬하면 1월이 9월 앞에 선다. 원래 순서로 되돌린다.
+    const bestDays = rows.filter((x) => !x.bad).sort((x, y) => y.sum - x.sum).slice(0, 12)
+      .sort((x, y) => x.i - y.i);
+    const avoidDays = rows.filter((x) => x.bad).sort((x, y) => x.sum - y.sum).slice(0, 8)
+      .sort((x, y) => x.i - y.i);
+
+    out.push(`## 두 사람에게 같이 맞는 날 (${forecastA.today.y}년 ${forecastA.today.m}월 ${forecastA.today.d}일부터 120일)`);
+    out.push('두 사람의 일진을 각각 계산해 겹친 것이다. 예식·상견례·여행처럼 날을 잡는 질문에는 여기서 실제 날짜를 골라 답할 것.');
+    for (const x of bestDays) out.push(`좋음 ${label(x)}`);
+    for (const x of avoidDays) out.push(`피함 ${label(x)}`);
+    out.push('');
     out.push('');
   }
 
   out.push('## 읽는 법');
   out.push('위 값은 모두 천문 계산으로 구한 것이다. 간지·절기·음력·행성 위치를 다시 계산하지 말고 그대로 쓸 것.');
   out.push('체계마다 잣대가 다르다. 베딕 아쉬타쿠타처럼 혼인을 전제로 만든 잣대는 박하고, 요일 하나로 보는 체계는 후하다. 점수를 가로로 견주지 말 것.');
-  out.push('궁합은 두 사람 사이의 경향이지 판결이 아니다. 헤어지라거나 결혼하라고 말하지 말 것. 결혼 시기를 물으면 위의 결혼 시기 자료를 근거로 준비하기 좋은 달을 답할 것. "시기 자료가 없다"거나 두 사람 개인 운세를 따로 보라고 말하지 말 것.');
+  out.push('궁합은 두 사람 사이의 경향이지 판결이 아니다. 헤어지라거나 결혼하라고 말하지 말 것. 시기를 물으면 위의 자료를 근거로 답할 것 — 달을 물으면 결혼 시기 자료에서, 날짜를 물으면 두 사람에게 같이 맞는 날 표에서 실제 날짜와 요일을 적어 두세 개를 골라 주고 피할 날도 함께 적을 것. "시기 자료가 없다"거나 두 사람 개인 운세를 따로 보라고 말하지 말 것.');
 
   return out.join('\n');
 }

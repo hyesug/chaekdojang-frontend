@@ -345,7 +345,14 @@ footer strong { color: var(--ink-2); font-weight: 600; }
   width: 100%; border-radius: 14px; display: block;
   border: 1px solid var(--line); box-shadow: 0 18px 60px rgba(0,0,0,.55);
 }
-#imgmodal .imgacts { display: flex; gap: 8px; margin-top: 14px; }
+/* 카드가 길어 버튼이 화면 밖으로 밀려나면 저장할 방법이 사라진다.
+   아래에 붙여두면 어디까지 스크롤해도 늘 손에 닿는다. */
+#imgmodal .imgacts {
+  display: flex; gap: 8px; margin-top: 14px;
+  position: sticky; bottom: 0; z-index: 1;
+  padding: 10px 0 4px;
+  background: linear-gradient(180deg, rgba(6,9,15,0), rgba(6,9,15,.92) 32%);
+}
 #imgmodal .imgacts button {
   flex: 1; padding: 13px; border-radius: 10px; border: 1px solid var(--line);
   background: var(--card); color: var(--ink-2); font-family: inherit; font-size: 14px; cursor: pointer;

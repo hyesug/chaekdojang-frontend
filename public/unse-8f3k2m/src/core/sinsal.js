@@ -80,3 +80,53 @@ export const SINSAL_TEXT = {
   월덕: '탈이 나도 크게 번지지 않는 날입니다.',
   천덕: '하늘이 한 겹 덜어주는 날입니다.',
 };
+
+/* ── 택일(擇日) ───────────────────────────────────────────────
+   위의 신살은 "이 사람에게 이 날이 어떤가"를 본다. 택일은 반대로
+   "이 일을 하기에 이 날이 맞는가"를 본다. 기준이 사주가 아니라
+   그 날이 속한 달(월건)이라, 사람과 무관하게 정해지는 표다.
+
+   수술 날짜를 묻는 사람에게 "11월쯤이 낫겠습니다"라고 답할 수밖에
+   없었던 건 이 표가 없었기 때문이다. 날을 고르는 규칙은 따로 있다. */
+
+/** 황도십이신. 앞에서부터 차례로 돈다 */
+const HWANGDO_ORDER = ['청룡', '명당', '천형', '주작', '금궤', '천덕',
+                       '백호', '옥당', '천뢰', '현무', '사명', '구진'];
+/** 이 여섯이 황도(길), 나머지 여섯이 흑도(흉) */
+const HWANGDO_GOOD = new Set([0, 1, 4, 5, 7, 10]);
+
+/**
+ * 그 날이 황도인지 흑도인지.
+ *
+ * 청룡이 시작하는 자리는 월건의 지지로 정해진다.
+ * 寅申월은 子, 卯酉월은 寅, 辰戌월은 辰, 巳亥월은 午, 午子월은 申, 未丑월은 戌.
+ */
+export function hwangdo(monthBranch, dayBranch) {
+  const start = (((monthBranch - 2) % 6) + 6) % 6 * 2;
+  const i = ((dayBranch - start) % 12 + 12) % 12;
+  return { name: HWANGDO_ORDER[i], good: HWANGDO_GOOD.has(i) };
+}
+
+/** 천의성(天醫星) — 월건 바로 앞 지지. 치료·수술·침을 놓는 날로 쓴다 */
+export const isCheonui = (monthBranch, dayBranch) => (monthBranch + 11) % 12 === dayBranch;
+
+/**
+ * 하려는 일에 이 날이 맞는지 한 줄로.
+ *
+ * @param {object} me   본인 — { dayBranch, yearBranch }
+ * @param {number} monthBranch  그 날이 속한 절기월의 지지
+ * @param {object} day  그 날의 간지 — { stem, branch }
+ */
+export function taekil(me, monthBranch, day) {
+  const h = hwangdo(monthBranch, day.branch);
+  const clashDay = (me.dayBranch + 6) % 12 === day.branch;
+  const clashYear = (me.yearBranch + 6) % 12 === day.branch;
+  return {
+    hwangdo: h.name,
+    good: h.good,
+    cheonui: isCheonui(monthBranch, day.branch),
+    // 몸을 다루는 일(수술·시술)에서는 일지가 본인 일지와 부딪치는 날을 피한다
+    clashDay,
+    clashYear,
+  };
+}

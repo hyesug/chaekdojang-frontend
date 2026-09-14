@@ -10,7 +10,7 @@ import { CITIES } from './core/place.js';
 import { lunarToSolar } from './core/lunar.js';
 import { j } from './core/josa.js';
 import {
-  encodeState, decodeState, buildSoloCard, buildCompatCard, downloadCanvas,
+  encodeState, decodeState, buildSoloCard, buildCompatCard, saveCanvas,
 } from './share.js';
 import { pickNumbers } from './lotto.js';
 import { readForecast, AREAS } from './forecast.js';
@@ -462,7 +462,7 @@ async function saveImage() {
   if (document.fonts?.ready) await document.fonts.ready;
   const cv = last.mode === 'pair'
     ? buildCompatCard(last.formA, last.formB, last.result)
-    : buildSoloCard(last.formA, last.result);
+    : buildSoloCard(last.formA, last.result, last.forecast);
 
   const name = last.mode === 'pair'
     ? `궁합_${last.formA.name}_${last.formB.name}.png`
@@ -482,17 +482,26 @@ function showImage(cv, filename) {
     <div class="imgbox">
       <img alt="결과 카드">
       <div class="imgacts">
-        <button type="button" data-x="dl">내려받기</button>
+        <button type="button" data-x="dl">저장하기</button>
         <button type="button" data-x="close">닫기</button>
       </div>
-      <p>휴대폰에서는 그림을 길게 눌러 저장하는 편이 확실합니다.</p>
+      <p>저장이 막힌 브라우저라면 그림을 길게 눌러 저장하세요.</p>
     </div>`;
   wrap.querySelector('img').src = cv.toDataURL('image/png');
   document.body.appendChild(wrap);
 
-  wrap.addEventListener('click', (e) => {
+  wrap.addEventListener('click', async (e) => {
     const x = e.target.dataset.x;
-    if (x === 'dl') downloadCanvas(cv, filename);
+    if (x === 'dl') {
+      try {
+        const how = await saveCanvas(cv, filename);
+        if (how === 'download') toast('이미지를 내려받았습니다');
+        if (how === 'shared') wrap.remove();
+      } catch (err) {
+        toast('저장하지 못했습니다. 그림을 길게 눌러 저장해 주세요', false);
+      }
+      return;
+    }
     if (x === 'close' || e.target === wrap) wrap.remove();
   });
 }

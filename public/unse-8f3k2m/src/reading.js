@@ -15,6 +15,7 @@
  */
 
 import { elementDistribution, tenGodDistribution, computeDaeun, branchRelations, tenGod,
+         TEN_GOD_GROUP, MAIN_HIDDEN, ganzhiName,
          ELEMENTS, ELEMENT_HANJA } from './core/ganzhi.js';
 import { j } from './core/josa.js';
 
@@ -112,6 +113,49 @@ function stage(label, periods, tail) {
   return `${head} ${beats}. ${tail}`;
 }
 
+/**
+ * 궁(宮) — 그 자리에 앉은 글자로 그 사람을 읽는다.
+ *
+ * 일지는 배우자가 앉는 자리, 시지는 자식이 앉는 자리, 월지는 형제와
+ * 부모가 앉는 자리다. 같은 '배우자가 하나'라도 그 자리에 무엇이 앉았느냐에
+ * 따라 어떤 배우자인지가 갈린다. 숫자만 세면 열 사람이 같은 글을 받는다.
+ */
+const PALACE = {
+  비겁: {
+    배우자: '배우자는 나와 성향이 닮은 사람입니다. 말이 잘 통하는 대신 같은 것을 두고 부딪치면 물러서는 쪽이 없습니다.',
+    자식: '아이가 나를 많이 닮습니다. 고집이 부딪치기 쉬우니 이기려 들지 말고 편을 들어주는 쪽이 낫습니다.',
+    형제: '형제나 또래와 같은 길을 걷게 됩니다. 도움도 그쪽에서 오고 비교도 그쪽에서 옵니다.',
+  },
+  식상: {
+    배우자: '배우자는 표현이 많고 부지런한 사람입니다. 집이 조용할 날은 적어도 지루할 일은 없습니다.',
+    자식: '아이가 재주를 일찍 드러냅니다. 틀에 맞추기보다 하고 싶어 하는 쪽을 열어주면 크게 갑니다.',
+    형제: '형제 가운데 재주로 눈에 띄는 사람이 있습니다. 내가 그 역할일 때도 많습니다.',
+  },
+  재성: {
+    배우자: '배우자는 현실 감각이 좋고 살림을 챙기는 사람입니다. 돈 이야기를 미루지 않는 쪽이 오래 갑니다.',
+    자식: '아이가 셈이 밝고 갖고 싶은 것이 분명합니다. 어릴 때부터 제 몫을 정해주는 편이 낫습니다.',
+    형제: '형제와 돈이 얽히기 쉬운 구성입니다. 빌려주고 받는 일만 분명히 하면 사이는 좋습니다.',
+  },
+  관성: {
+    배우자: '배우자는 기준이 분명하고 곧은 사람입니다. 든든한 대신 융통성을 바라기는 어렵습니다.',
+    자식: '아이가 반듯하지만 무겁습니다. 기대를 얹기 쉬운 자리이니 잘한 것을 먼저 말해주세요.',
+    형제: '형제 가운데 책임을 지는 자리가 있습니다. 내가 맡게 되면 오래 갑니다.',
+  },
+  인성: {
+    배우자: '배우자는 생각이 깊고 챙겨주는 사람입니다. 다만 속을 다 말하지 않아 답답할 때가 옵니다.',
+    자식: '아이가 공부와 인연이 있습니다. 밀어붙이기보다 물어볼 때 답해주는 방식이 맞습니다.',
+    형제: '윗사람이나 어머니 쪽에서 오는 도움이 형제 자리를 대신 채웁니다.',
+  },
+};
+
+/** 그 자리에 앉은 글자가 나에게 무엇인가 */
+function palaceOf(chart, key, who) {
+  const p = chart.pillars[key];
+  if (!p) return null;
+  const god = tenGod(chart.dayStem, MAIN_HIDDEN[p.branch]);
+  return PALACE[TEN_GOD_GROUP[god]]?.[who] ?? null;
+}
+
 /* ── 육친 ─────────────────────────────────────────────────── */
 
 function sibling(n) {
@@ -192,15 +236,26 @@ export function lifeReading(input, chart, synth) {
     late: stage('말년', L.slice(5, 8),
       `앞서 모은 것이 재물이었다면 이 시기는 이름을 얻는 때가 됩니다. ${flavor.late}.`),
 
-    sibling: `${sibling(gods.groups.비겁)} ${flavor.relation === '충' || flavor.relation === '형'
-      ? '가까운 사이일수록 기대를 말로 확인하는 편이 좋습니다. 알아서 알겠지 하고 넘기면 오해가 오래 갑니다.'
-      : '가까운 사람과의 인연은 급하게 결론내기보다 시간을 두고 쌓을수록 제 몫이 됩니다.'}`,
-    child: `${child(input.isMale ? gods.groups.관성 : gods.groups.식상)} ${flavor.relation === '육합' || flavor.relation === '반합'
-      ? '가족 안에서 서로 역할을 나누면 한 사람이 짊어질 몫이 줄어드는 구성입니다.'
-      : '가족 안에서도 각자의 생활 리듬을 존중할 때 관계가 더 편해집니다.'}`,
-    spouse: `${spouse(input.isMale ? gods.groups.재성 : gods.groups.관성, input.isMale)} ${flavor.relation === '충' || flavor.relation === '해'
-      ? '연애의 설렘보다 생활 방식과 금전·시간의 기준을 먼저 맞추는 것이 특히 중요합니다.'
-      : '서로의 일상 리듬을 자연스럽게 맞춰갈수록 인연의 장점이 잘 살아납니다.'}`,
+    // 숫자로 몇 명인지만 세면 열 사람이 같은 글을 받는다. 그 자리에
+    // 앉은 글자까지 읽어야 '어떤 형제, 어떤 배우자'인지가 나온다.
+    sibling: [sibling(gods.groups.비겁), palaceOf(chart, 'month', '형제'),
+      flavor.relation === '충' || flavor.relation === '형'
+        ? '가까운 사이일수록 기대를 말로 확인하는 편이 좋습니다. 알아서 알겠지 하고 넘기면 오해가 오래 갑니다.'
+        : '가까운 사람과의 인연은 급하게 결론내기보다 시간을 두고 쌓을수록 제 몫이 됩니다.',
+    ].filter(Boolean).join(' '),
+
+    child: [child(input.isMale ? gods.groups.관성 : gods.groups.식상), palaceOf(chart, 'hour', '자식'),
+      flavor.relation === '육합' || flavor.relation === '반합'
+        ? '가족 안에서 서로 역할을 나누면 한 사람이 짊어질 몫이 줄어드는 구성입니다.'
+        : '가족 안에서도 각자의 생활 리듬을 존중할 때 관계가 더 편해집니다.',
+    ].filter(Boolean).join(' '),
+
+    spouse: [spouse(input.isMale ? gods.groups.재성 : gods.groups.관성, input.isMale),
+      palaceOf(chart, 'day', '배우자'),
+      flavor.relation === '충' || flavor.relation === '해'
+        ? '연애의 설렘보다 생활 방식과 금전·시간의 기준을 먼저 맞추는 것이 특히 중요합니다.'
+        : '서로의 일상 리듬을 자연스럽게 맞춰갈수록 인연의 장점이 잘 살아납니다.',
+    ].filter(Boolean).join(' '),
 
     // 모자란 오행이 하나만은 아니다. 둘을 같이 채우는 쪽이 실제로 맞다.
     career:
@@ -225,8 +280,8 @@ export function lifeReading(input, chart, synth) {
    ═══════════════════════════════════════════════════════════ */
 
 import { AREAS, areaSources, forecastPeriod, makePeriod } from './forecast.js';
-import { sinsalOf, SINSAL_TONE } from './core/sinsal.js';
-import { toJDN } from './core/astro.js';
+import { sinsalOf, SINSAL_TONE, taekil } from './core/sinsal.js';
+import { toJDN, toJD, fromJD } from './core/astro.js';
 
 /** 점수를 말로 바꾼다. 숫자는 보여주지 않는다 */
 /**
@@ -320,28 +375,50 @@ const SINSAL_LINE = {
   월덕: '탈이 나도 크게 번지지 않는 날입니다. 묵은 일을 정리하기에 맞습니다.',
   천덕: '하늘이 한 겹 덜어주는 날입니다. 걱정하던 일이 가볍게 지나갑니다.',
 };
+/** 한 달치 일자별 운세. 화면의 일자별 표가 이걸 쓴다 */
+export function monthDays(input, chart, y, m) {
+  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return gradeDays(input, chart,
+    Array.from({ length: last }, (_, i) => ({ y, m, d: i + 1 })));
+}
 
 /**
- * 한 달치 일자별 운세.
+ * 오늘부터 여러 날치.
+ *
+ * 화면의 표는 이번 달만 보여주면 되지만, "수술 날짜를 잡아달라"는 질문에
+ * 답하려면 앞으로 몇 달치가 있어야 한다. 달력이 없으면 모델은 "11월 초쯤"
+ * 같은 대답밖에 할 수 없다 — 없는 날짜를 지어내지 않으려면 그럴 수밖에 없다.
+ */
+export function dayRange(input, chart, from, span = 120) {
+  const start = toJD(from.y, from.m, from.d, 12);
+  const dates = Array.from({ length: span }, (_, i) => {
+    const t = fromJD(start + i);
+    return { y: t.y, m: t.m, d: t.d };
+  });
+  return gradeDays(input, chart, dates);
+}
+
+/**
+ * 날짜 목록 하나를 계산하고, 그 목록 안에서의 순위로 등급을 매긴다.
  *
  * 하루에 열다섯 체계를 다 돌린다. 30일이면 450번인데 재보니 36밀리초라
  * 아낄 이유가 없었다. 아끼면 그만큼 근거가 얇아진다.
  */
-export function monthDays(input, chart, y, m) {
+function gradeDays(input, chart, dates) {
   const me = {
     dayStem: input.dayStem, dayBranch: input.dayBranch,
     yearBranch: input.yearBranch, monthBranch: input.monthBranch,
   };
-  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
   const WD = ['일', '월', '화', '수', '목', '금', '토'];
   const out = [];
 
-  for (let d = 1; d <= last; d++) {
+  for (const { y, m, d } of dates) {
     const jdn = toJDN(y, m, d);
     const gz = { stem: (jdn + 9) % 10, branch: (jdn + 1) % 12 };
     const sinsal = sinsalOf(me, gz);
 
-    const f = forecastPeriod(input, chart, makePeriod('day', { y, m, d }));
+    const period = makePeriod('day', { y, m, d });
+    const f = forecastPeriod(input, chart, period);
     let score = f.areas.총운.score ?? 50;
 
     // 신살은 점수를 밀어준다. 양인은 크게 끌어내린다 - 힘이 넘쳐 다치는 자리다.
@@ -349,11 +426,16 @@ export function monthDays(input, chart, y, m) {
     score = Math.max(5, Math.min(95, score));
 
     out.push({
-      d, weekday: WD[(jdn + 1) % 7], sinsal, score,
+      y, m, d, weekday: WD[(jdn + 1) % 7], sinsal, score,
+      gz: ganzhiName(gz.stem, gz.branch),
       // 같은 날엔 늘 같은 문장이 나오되, 이웃한 날끼리는 겹치지 않도록
       seed: gz.stem * 12 + gz.branch + d,
       wealth: f.areas.금전운.score ?? 50,
       love: f.areas.애정운.score ?? 50,
+      work: f.areas.직장운.score ?? 50,
+      health: f.areas.건강운.score ?? 50,
+      // 사람이 아니라 '하려는 일'을 기준으로 보는 잣대. 택일에 쓴다
+      taekil: taekil(me, period.gz.month.branch, gz),
     });
   }
 
@@ -403,9 +485,14 @@ export function luckyDays(days, weakEl) {
   // 귀인은 천을만 본다. 월덕·천덕은 탈을 덜어주는 자리지 사람이 붙는 자리가 아니다.
   const helper = days.filter((x) => x.sinsal.includes('천을')).map((x) => x.d);
   const nums = LUCKY_NUM[weakEl];
+  // 이사와 계약이 같은 날일 이유가 없다. 이사는 움직이는 날(역마)을,
+  // 계약은 일을 벌이기 좋은 날(황도) 가운데서 고른다. 예전에는 둘 다
+  // 총운 상위 세 날이라 화면에 같은 숫자가 두 번 나왔다.
+  const movers = ok.filter((x) => x.sinsal.includes('역마'));
+  const opens = ok.filter((x) => x.taekil?.good);
   return {
-    move: top(ok, 'score', 3),
-    contract: top(ok, 'score', 3),
+    move: top(movers.length >= 3 ? movers : ok, 'score', 3),
+    contract: top(opens.length >= 3 ? opens : ok, 'score', 3),
     money: top(ok, 'wealth', 3),
     love: top(ok, 'love', 3),
     best: top(ok, 'score', 4),
@@ -481,6 +568,134 @@ const P = {
 // 세운은 모두가 같은 해를 지나므로, 해 자체를 설명하면 누구에게나 같은
 // 문장이 된다. 이 해의 기운이 "이 사람의 일간과 일지"에 어떻게 닿는지를
 // 먼저 읽어 문단마다 개인 차이를 남긴다.
+/* ── 시기를 이 사람에게 맞춰 읽기 ────────────────────────────
+   오늘의 일진도, 이달의 월건도, 올해의 세운도 세상 모든 사람에게 같다.
+   그래서 시기 자체를 설명하면 누구에게나 같은 문장이 나온다. 실제 상담에서
+   갈리는 지점은 그 다음이다 — 같은 간지라도 내 일간에게 무엇으로 오느냐,
+   내 일지와 어떻게 맞물리느냐에 따라 할 말이 완전히 달라진다.
+
+   아래 두 표가 그 자리를 채운다. 용어는 쓰지 않고 뜻만 옮긴다. */
+
+/** 들어온 기운이 다섯 무리 가운데 무엇이냐 × 여섯 영역 */
+const GOD_AREA = {
+  비겁: {
+    총운: '나와 같은 목소리가 늘어나는 결입니다. 함께 움직이면 빠르지만, 내 몫과 남의 몫을 미리 갈라두지 않으면 뒤에 말이 나옵니다.',
+    애정운: '상대 마음보다 내 생각이 앞서기 쉽습니다. 양보할 자리를 하나만 미리 정해두고 이야기를 시작하세요.',
+    금전운: '나가는 자리가 사람 쪽에서 생깁니다. 밥값과 경조사, 빌려주는 일이 겹치니 한도를 먼저 정해두세요.',
+    직장운: '같은 자리를 놓고 겨루는 그림이 됩니다. 묵묵히 하는 것만으로는 표가 나지 않으니 내가 한 몫을 분명히 말해두세요.',
+    학업운: '혼자보다 같이 할 때 속도가 붙습니다. 다만 모여서 시간만 흘려보내기 쉬우니 분량을 정해놓고 만나세요.',
+    건강운: '남의 속도를 따라가다 탈이 납니다. 운동이든 일이든 옆 사람 기준이 아니라 내 기준으로 끊으세요.',
+  },
+  식상: {
+    총운: '안에 있던 것을 밖으로 꺼낼 때 길이 열립니다. 설명하기보다 만들어서 보여주는 쪽이 통합니다.',
+    애정운: '표현이 늘어납니다. 먼저 연락하고 먼저 웃는 쪽이 이득인 결이니 재지 말고 움직이세요.',
+    금전운: '내가 만든 것에서 돈이 나옵니다. 당장 큰 액수는 아니어도 손에 쥐는 방향이 생깁니다.',
+    직장운: '시키는 일보다 내가 꺼낸 일이 잘 됩니다. 다만 윗사람과 부딪히기 쉬우니 꺼내는 순서를 고르세요.',
+    학업운: '외우는 것보다 정리하고 남에게 설명해볼 때 남습니다. 말로 옮겨보는 방식으로 공부하세요.',
+    건강운: '먹고 마시는 데서 탈이 나기 쉽습니다. 늦은 식사와 술자리만 줄여도 대부분 지나갑니다.',
+  },
+  재성: {
+    총운: '눈에 보이는 결과를 챙기기 좋은 결입니다. 뜻보다 손에 쥐는 쪽을 먼저 고르세요.',
+    애정운: '마음보다 조건이 먼저 보입니다. 따지는 것 자체는 흠이 아니지만 그 말투가 상대에게 새어나가지 않게 하세요.',
+    금전운: '돈이 움직입니다. 들어올 자리도 나갈 자리도 같이 커지니, 들어온 것에서 먼저 떼어두는 사람만 남깁니다.',
+    직장운: '성과와 숫자로 말하는 자리가 생깁니다. 과정을 길게 설명하기보다 결과를 한 장으로 정리해 보여주세요.',
+    학업운: '마음이 자꾸 바깥일로 끌립니다. 공부 시간을 따로 못 박아두지 않으면 그대로 밀립니다.',
+    건강운: '일에 욕심을 내면 쉬는 시간부터 깎게 됩니다. 다른 건 몰라도 잠은 지키세요.',
+  },
+  관성: {
+    총운: '해야 할 일이 먼저 찾아옵니다. 피하면 커지고 순서를 정하면 줄어드는 종류입니다.',
+    애정운: '관계에 무게가 실립니다. 가볍게 지나가기 어렵고 책임을 말하게 되는 결입니다.',
+    금전운: '나가는 쪽이 이미 정해져 있습니다. 세금이나 보험, 갚을 것처럼 미룰 수 없는 항목을 먼저 확인하세요.',
+    직장운: '위에서 보는 눈이 늘어납니다. 맡은 것을 기한 안에 끝내는 것만으로 평가가 올라갑니다.',
+    학업운: '시험이나 자격처럼 기준이 분명한 공부에 맞습니다. 스스로 정한 규칙을 지키는 일이 그대로 성적이 됩니다.',
+    건강운: '긴장이 몸으로 갑니다. 어깨와 목, 잠자리부터 흐트러지니 저녁 시간을 비워두세요.',
+  },
+  인성: {
+    총운: '도움과 배움 쪽으로 길이 열립니다. 혼자 버티기보다 물어보고 기대는 편이 빠릅니다.',
+    애정운: '보살피고 보살핌받는 관계가 편해집니다. 다만 상대를 가르치려 들면 그 자리에서 어긋납니다.',
+    금전운: '크게 버는 결이 아니라 새는 것을 막는 결입니다. 계약서와 서류를 한 번 더 읽으면 그만큼 지켜집니다.',
+    직장운: '자격이나 결재처럼 종이로 남는 일이 유리합니다. 말로 한 약속은 기록으로 옮겨두세요.',
+    학업운: '머리가 맑아집니다. 어려운 것을 지금 붙잡으면 평소보다 멀리 갑니다.',
+    건강운: '생각이 많아 잠이 얕아집니다. 몸보다 머리를 먼저 쉬게 하세요.',
+  },
+};
+
+/** 같은 무리라도 치우친 쪽과 바른 쪽은 결이 다르다. 총평에만 덧붙인다 */
+const GOD_TONE = {
+  비견: '내 편이 생기는 대신 결정은 느려집니다.',
+  겁재: '기회와 지출이 같이 들어옵니다. 조건은 글로 남기세요.',
+  식신: '한 번에 크게보다 꾸준히 쌓는 쪽이 잘 맞습니다.',
+  상관: '하고 싶은 말이 앞섭니다. 옳은 말일수록 꺼내는 자리를 고르세요.',
+  편재: '바깥에서 오는 기회가 큽니다. 다만 한 곳에 몰아 걸지는 마세요.',
+  정재: '작고 확실한 것이 남습니다.',
+  편관: '갑작스러운 요구가 들어옵니다. 순서부터 정하면 감당이 됩니다.',
+  정관: '약속을 지킨 것이 그대로 평판이 됩니다.',
+  편인: '남들과 다른 정보에서 실마리가 나옵니다. 혼자 정리할 시간이 필요합니다.',
+  정인: '도와줄 사람이 가까이 있습니다. 부탁을 미루지 마세요.',
+};
+
+/** 네 기둥은 각각 누구의 자리인가. 같은 부딪침도 걸린 자리에 따라 뜻이 다르다 */
+const TOUCH_AT = ['집안과 윗대', '직장과 부모', '나와 배우자', '아이와 아랫사람'];
+
+/** 지지가 맞물리는 방식. {자리}에 위의 이름이 들어간다 */
+const TOUCH_KIND = {
+  충: '{자리} 자리가 정면으로 흔들립니다. 변경과 이동 이야기가 나오기 쉬우니 급한 결정은 하루만 미뤄 보세요.',
+  육합: '{자리} 자리가 맞물립니다. 혼자 정하지 말고 그쪽에 한 번 물어보면 쉽게 풀립니다.',
+  반합: '{자리} 자리가 힘을 받습니다. 미뤄둔 이야기를 꺼내기에 괜찮은 때입니다.',
+  삼형: '{자리} 쪽에서 같은 말이 두 번 오갑니다. 문서와 약속을 다시 확인하세요.',
+  상형: '{자리} 쪽에서 같은 말이 두 번 오갑니다. 문서와 약속을 다시 확인하세요.',
+  자형: '{자리} 쪽 일을 혼자 파고들다 지치기 쉽습니다. 결론을 혼자 내지 마세요.',
+  해: '{자리} 쪽은 겉으로 조용한데 속이 상하기 쉽습니다. 참기보다 그 자리에서 짧게 말하는 편이 낫습니다.',
+  파: '{자리} 쪽에서 정해둔 것이 틀어지기 쉽습니다. 일정에 여유를 두세요.',
+};
+
+/** 이 시기를 대표하는 간지. 이레는 간지가 없으므로 그중 가장 나은 날로 대신한다 */
+function rulingOf(block) {
+  if (block?.period?.ruling) {
+    return { gz: block.period.ruling, kind: block.period.kind, on: null };
+  }
+  if (block?.kind === 'week' && block.bestDay) {
+    return { gz: block.bestDay.gz, kind: 'week', on: block.bestDay.on };
+  }
+  return null;
+}
+
+/**
+ * 들어온 간지가 이 사람에게 어떻게 닿는지 한 문장.
+ *
+ * 천간은 나(일간)에게 무엇으로 오는가 — 여기서 영역별 이야기가 갈린다.
+ * 지지는 내 네 기둥 가운데 어디에 걸리는가 — 여기서 자리가 정해진다.
+ */
+function periodTouch(block, chart, area) {
+  const r = rulingOf(block);
+  if (!r?.gz || !chart) return null;
+
+  const god = tenGod(chart.dayStem, r.gz.stem);
+  const group = TEN_GOD_GROUP[god];
+  const out = [];
+
+  out.push(GOD_AREA[group]?.[area]);
+
+  if (area === '총운') {
+    out.push(GOD_TONE[god]);
+
+    // 지지는 가장 무겁게 걸린 자리 하나만 말한다. 넷을 다 늘어놓으면
+    // 어느 날이든 무언가는 걸리기 때문에 아무 말도 아니게 된다.
+    const order = ['day', 'month', 'year', 'hour'];
+    for (const key of order) {
+      const p = chart.pillars[key];
+      if (!p) continue;
+      const rel = branchRelations(p.branch, r.gz.branch)[0];
+      if (!rel || !TOUCH_KIND[rel.kind]) continue;
+      const at = TOUCH_AT[['year', 'month', 'day', 'hour'].indexOf(key)];
+      out.push(TOUCH_KIND[rel.kind].replace('{자리}', at));
+      break;
+    }
+  }
+
+  return out.filter(Boolean).join(' ') || null;
+}
+
 const YEAR_TOUCH = {
   비견: '올해는 내 판단과 같은 목소리가 늘어납니다. 함께할 사람은 생기지만, 내 몫과 남의 몫은 처음부터 분명히 해두는 편이 좋습니다.',
   겁재: '올해는 경쟁과 공동 지출이 함께 들어오기 쉽습니다. 기회가 와도 조건과 정산을 글로 남겨두면 손실을 줄일 수 있습니다.',
@@ -528,11 +743,16 @@ export function areaProse(block, area, seed = 0, chart = null) {
   const x = block?.areas?.[area];
   if (!x || x.score == null) return null;
   const bank = P[area]?.[BAND(x.score)] ?? [];
+  const isYear = block?.period?.kind === 'year';
+  // 앞 문장은 그 시기가 어떤가, 뒤 문장은 그 시기가 이 사람에게 어떻게 닿는가.
+  // 뒤가 없으면 같은 날을 사는 사람 모두가 똑같은 글을 받는다.
+  const parts = [
+    bank.length ? pick(bank, seed + chartSeed(chart) + area.length * 17) : null,
+    isYear && area === '총운' ? yearTouch(block, chart) : periodTouch(block, chart, area),
+    isYear ? yearlyAreaPosition(block, area) : null,
+  ].filter(Boolean);
   return {
-    text: bank.length ? [
-      pick(bank, seed + chartSeed(chart) + area.length * 17),
-      area === '총운' ? yearTouch(block, chart) : yearlyAreaPosition(block, area),
-    ].filter(Boolean).join(' ') : null,
+    text: parts.length ? parts.join(' ') : null,
     sources: areaSources(block, area),
   };
 }

@@ -11,6 +11,8 @@
  * 직접 그리면 공유에 맞는 비율과 여백을 따로 잡을 수 있다.
  */
 
+import { lifeReading, structureReading, areaProse, compatReading } from './reading.js';
+
 // ─────────────────────────────────────────────────────────────
 // 공유 링크
 // ─────────────────────────────────────────────────────────────
@@ -79,23 +81,10 @@ const C = {
   ink: '#e8ecf4', ink2: '#a8b2c6', ink3: '#6b768d',
   gold: '#d9b26a', goldSoft: '#8d7443',
   line: '#2a3347', card: '#171d2b',
-  elem: ['#5fbf7f', '#e0706b', '#d7a84a', '#c3ccdb', '#5f9ae0'],
-  good: '#5fbf7f', bad: '#e0706b',
 };
 
 const FONT = '"Pretendard", -apple-system, "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif';
-const SERIF = '"Noto Serif KR", serif';
-const font = (size, weight = 400, family = FONT) => `${weight} ${size}px ${family}`;
-
-function roundRect(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
-}
+const font = (size, weight = 400) => `${weight} ${size}px ${FONT}`;
 
 /** 주어진 너비에 맞춰 줄을 나눈다. 한글은 글자 단위로 끊어도 자연스럽다 */
 function wrap(ctx, text, maxW) {
@@ -181,108 +170,19 @@ function footer(ctx, y, note) {
   return y + 44;
 }
 
-/** 오행 막대 */
-function elementBar(ctx, y, pct) {
-  const h = 46;
-  roundRect(ctx, PAD, y, INNER, h, 12);
-  ctx.save(); ctx.clip();
-  let x = PAD;
-  pct.forEach((v, i) => {
-    const w = (v / 100) * INNER;
-    ctx.fillStyle = C.elem[i];
-    ctx.fillRect(x, y, w, h);
-    if (v >= 9) {
-      ctx.fillStyle = '#0d1017';
-      ctx.font = font(20, 700);
-      ctx.textAlign = 'center';
-      ctx.fillText(['목', '화', '토', '금', '수'][i], x + w / 2, y + h / 2 + 7);
-      ctx.textAlign = 'left';
-    }
-    x += w;
-  });
-  ctx.restore();
-  y += h + 28;
-
-  // 범례
-  let lx = PAD;
-  ctx.font = font(21, 400);
-  ['목', '화', '토', '금', '수'].forEach((n, i) => {
-    ctx.fillStyle = C.elem[i];
-    roundRect(ctx, lx, y - 13, 13, 13, 3); ctx.fill();
-    ctx.fillStyle = C.ink2;
-    const label = n;
-    ctx.fillText(label, lx + 21, y);
-    lx += 21 + ctx.measureText(label).width + 30;
-  });
-  return y + 36;
-}
-
-/** 알약 모양 태그들 */
-function tagRow(ctx, y, tags) {
-  let x = PAD;
-  ctx.font = font(22, 600);
-  for (const t of tags) {
-    const label = t.count ? `${t.word} ${t.count}` : t.word;
-    const w = ctx.measureText(label).width + 40;
-    if (x + w > W - PAD) { x = PAD; y += 56; }
-    const hot = t.count >= 3;
-    ctx.fillStyle = hot ? 'rgba(217,178,106,0.15)' : 'rgba(255,255,255,0.05)';
-    roundRect(ctx, x, y - 26, w, 44, 22); ctx.fill();
-    ctx.strokeStyle = hot ? C.goldSoft : C.line;
-    ctx.lineWidth = 1; ctx.stroke();
-    ctx.fillStyle = hot ? C.gold : C.ink2;
-    ctx.fillText(label, x + 20, y + 2);
-    x += w + 12;
-  }
-  return y + 56;
-}
-
-/** 가로 막대 한 줄 */
-function barRow(ctx, y, label, value, max, color, right) {
-  const labelW = 200, valW = 70;
-  ctx.fillStyle = C.ink2;
-  ctx.font = font(23, 400);
-  ctx.fillText(label, PAD, y + 7);
-
-  const trackX = PAD + labelW;
-  const trackW = INNER - labelW - valW;
-  ctx.fillStyle = 'rgba(255,255,255,0.07)';
-  roundRect(ctx, trackX, y - 5, trackW, 12, 6); ctx.fill();
+/** 본문 한 문단 */
+function para(ctx, y, text, { size = 26, color = C.ink, gap = 40 } = {}) {
   ctx.fillStyle = color;
-  roundRect(ctx, trackX, y - 5, Math.max(12, trackW * (value / max)), 12, 6); ctx.fill();
-
-  ctx.fillStyle = C.ink3;
-  ctx.font = font(21, 400);
-  ctx.textAlign = 'right';
-  ctx.fillText(right ?? String(value), W - PAD, y + 7);
-  ctx.textAlign = 'left';
-  return y + 46;
-}
-
-/** 기질 축 (가운데가 0) */
-function axisRow(ctx, y, left, right, value) {
-  ctx.font = font(20, 400);
-  ctx.fillStyle = C.ink3;
-  ctx.fillText(left, PAD, y + 6);
-  ctx.textAlign = 'right';
-  ctx.fillText(right, W - PAD, y + 6);
-  ctx.textAlign = 'left';
-
-  const x = PAD + 150, w = INNER - 300;
-  ctx.fillStyle = 'rgba(255,255,255,0.08)';
-  roundRect(ctx, x, y - 2, w, 5, 3); ctx.fill();
-  ctx.fillStyle = C.line;
-  ctx.fillRect(x + w / 2, y - 8, 1, 17);
-
-  const px = x + w * (0.5 + value / 2);
-  ctx.fillStyle = C.gold;
-  ctx.beginPath(); ctx.arc(px, y, 9, 0, Math.PI * 2); ctx.fill();
-  return y + 42;
+  ctx.font = font(size, 400);
+  for (const line of wrap(ctx, text, INNER)) {
+    ctx.fillText(line, PAD, y); y += gap;
+  }
+  return y + 14;
 }
 
 // ── 개인 운세 카드 ───────────────────────────────────────────
 
-export function buildSoloCard(form, r) {
+export function buildSoloCard(form, r, f = null) {
   const { cv, ctx } = makeCanvas(2600);
   const s = r.synthesis;
   const p = (n) => String(n).padStart(2, '0');
@@ -293,84 +193,32 @@ export function buildSoloCard(form, r) {
 
   let y = header(ctx, form.name, when);
 
-  // 사주 팔자판
-  const P = r.chart.pillars;
-  const cells = [['시', P.hour], ['일', P.day], ['월', P.month], ['년', P.year]];
-  const bw = (INNER - 24) / 4;
-  y = sectionLabel(ctx, y, '사 주');
-  cells.forEach(([pos, g], i) => {
-    const x = PAD + i * (bw + 8);
-    const me = pos === '일';
-    ctx.fillStyle = me ? 'rgba(217,178,106,0.08)' : 'rgba(255,255,255,0.035)';
-    roundRect(ctx, x, y, bw, 150, 14); ctx.fill();
-    ctx.strokeStyle = me ? C.goldSoft : C.line; ctx.lineWidth = 1; ctx.stroke();
+  // 화면에서 점수와 막대를 걷어냈으니 카드도 같아야 한다. 남에게 보내는
+  // 그림이 숫자판이면 받은 사람은 무슨 뜻인지 알 길이 없다.
+  const life = lifeReading(r.input, r.chart, s);
+  const st = structureReading(r.input, r.chart);
 
-    ctx.textAlign = 'center';
-    ctx.fillStyle = C.ink3; ctx.font = font(19, 400);
-    ctx.fillText(pos + '주' + (me ? ' · 나' : ''), x + bw / 2, y + 34);
-    ctx.fillStyle = C.ink; ctx.font = font(54, 400, SERIF);
-    ctx.fillText(g ? g.hanja : '—', x + bw / 2, y + 98);
-    ctx.fillStyle = C.ink3; ctx.font = font(19, 400);
-    ctx.fillText(g ? g.kr : '시간 미상', x + bw / 2, y + 128);
-    ctx.textAlign = 'left';
-  });
-  y += 150 + 52;
-
-  // 합의도
-  y = sectionLabel(ctx, y, '체 계 간 합 의 도');
-  if (s.consensus.word) {
-    ctx.fillStyle = C.gold; ctx.font = font(52, 700);
-    ctx.fillText(`‘${s.consensus.word}’`, PAD, y + 14);
-    ctx.fillStyle = C.ink3; ctx.font = font(23, 400);
-    ctx.fillText(`열다섯 가운데 ${s.consensus.count}개 체계가 같은 곳을 가리킵니다`, PAD, y + 54);
+  if (f) {
+    const today = areaProse(f.day, '총운', 0, r.chart);
+    if (today?.text) {
+      y = sectionLabel(ctx, y, `오 늘 — ${f.today.m}월 ${f.today.d}일`);
+      y = para(ctx, y + 6, today.text);
+      y += 12;
+    }
   }
-  y += 96;
 
-  // 오행
-  y = sectionLabel(ctx, y, '합 산 오 행');
-  y = elementBar(ctx, y, s.elements.pct);
-  y += 16;
-
-  // 겹친 태그
-  if (s.sharedTags.length) {
-    y = sectionLabel(ctx, y, '여 러 체 계 가 함 께 가 리 킨 것');
-    y = tagRow(ctx, y + 22, s.sharedTags.slice(0, 8));
+  if (st.head || st.lines.length) {
+    y = sectionLabel(ctx, y, '타 고 난 결');
+    if (st.head) y = para(ctx, y + 6, st.head, { color: C.ink2 });
+    for (const t of st.lines.slice(0, 2)) y = para(ctx, y, t);
     y += 12;
   }
 
-  // 기질
-  y = sectionLabel(ctx, y, '기 질');
-  y += 18;
-  const poles = {
-    주도: ['따라가는', '이끄는'], 외향: ['안으로', '밖으로'],
-    감성: ['이성적', '감각적'], 안정: ['움직이는', '머무는'], 실리: ['이상', '실속'],
-  };
-  for (const [k, [l, rt]] of Object.entries(poles)) {
-    y = axisRow(ctx, y, l, rt, s.traits[k].value);
-  }
-  y += 16;
+  y = sectionLabel(ctx, y, '평 생');
+  y = para(ctx, y + 6, life.career);
+  if (s.summary.length) y = para(ctx, y, s.summary[0], { color: C.ink2 });
 
-  // 영역
-  y = sectionLabel(ctx, y, '영 역 별 힘');
-  y += 20;
-  s.ranked.forEach((d, i) => {
-    // s.ranked 는 이미 높은 순이다. 절대 기준으로 자르면 다섯 개가 전부
-    // '보통'으로 나와 아무 것도 알려주지 못한다. 화면과 같이 순위로 말한다.
-    y = barRow(ctx, y, d.label, d.score, 100, C.gold,
-      i === 0 ? '가장 두터운' : i === s.ranked.length - 1 ? '가장 옅은' : '');
-  });
-  y += 34;
-
-  // 요약 문장
-  if (s.summary.length) {
-    ctx.fillStyle = C.ink2; ctx.font = font(25, 400);
-    for (const line of wrap(ctx, s.summary[0], INNER)) {
-      ctx.fillText(line, PAD, y); y += 38;
-    }
-    y += 18;
-  }
-
-  y = footer(ctx, y,
+  y = footer(ctx, y + 10,
     `${s.systemCount}개 체계를 돌린 결과입니다. 재미로 보시고, 중요한 결정은 스스로 내리시기 바랍니다.`);
   return crop(cv, y);
 }
@@ -379,64 +227,22 @@ export function buildSoloCard(form, r) {
 
 export function buildCompatCard(formA, formB, r) {
   const { cv, ctx } = makeCanvas(2200);
-  const s = r.synthesis;
   const p = (n) => String(n).padStart(2, '0');
   const when = (f) => `${f.year}.${p(f.month)}.${p(f.day)}`;
 
   let y = header(ctx, `${formA.name} × ${formB.name}`,
     `${when(formA)}  ·  ${when(formB)}`);
 
-  // 총점
-  ctx.textAlign = 'center';
-  ctx.fillStyle = C.gold; ctx.font = font(86, 700);
-  ctx.fillText(s.verdict, W / 2, y + 52);
-  y += 92;
-  ctx.fillStyle = C.ink3; ctx.font = font(26, 400);
-  ctx.fillText(`견준 ${s.count}개 체계의 판정을 모은 것입니다`, W / 2, y + 26);
-  y += 74;
-  ctx.textAlign = 'left';
-
-  // 판정 분포
-  const groups = [['좋음', C.good], ['무난', C.ink2], ['어려움', C.bad]];
-  const gw = (INNER - 24) / 3;
-  groups.forEach(([k, col], i) => {
-    const x = PAD + i * (gw + 12);
-    ctx.fillStyle = 'rgba(255,255,255,0.035)';
-    roundRect(ctx, x, y, gw, 168, 14); ctx.fill();
-    ctx.strokeStyle = C.line; ctx.lineWidth = 1; ctx.stroke();
-
-    ctx.textAlign = 'center';
-    ctx.fillStyle = col; ctx.font = font(48, 700);
-    ctx.fillText(String(s.buckets[k].length), x + gw / 2, y + 60);
-    ctx.fillStyle = C.ink3; ctx.font = font(21, 400);
-    ctx.fillText(k, x + gw / 2, y + 92);
-
-    ctx.font = font(17, 400);
-    let ly = y + 120;
-    for (const line of wrap(ctx, s.buckets[k].join(', ') || '—', gw - 28).slice(0, 3)) {
-      ctx.fillText(line, x + gw / 2, ly); ly += 24;
-    }
-    ctx.textAlign = 'left';
-  });
-  y += 168 + 54;
-
-  // 체계별 점수
-  y = sectionLabel(ctx, y, '체 계 별 판 정');
-  y += 22;
-  const sorted = [...r.results].sort((x, z) => z.score - x.score);
-  for (const x of sorted) {
-    const col = x.tone > 0 ? C.good : x.tone < 0 ? C.bad : C.gold;
-    y = barRow(ctx, y, x.name, x.score, 100, col, x.verdict);
-  }
-  y += 36;
-
-  // 요약 첫 문장
-  if (s.summary.length) {
-    ctx.fillStyle = C.ink2; ctx.font = font(25, 400);
-    for (const line of wrap(ctx, s.summary[0], INNER)) {
-      ctx.fillText(line, PAD, y); y += 38;
-    }
-    y += 18;
+  const cr = compatReading(r);
+  const blocks = [
+    ['총 평', cr.총평], ['끌 리 는 지 점', cr.끌림],
+    ['부 딪 치 는 지 점', cr.부딪침], ['오 래 가 려 면', cr.오래],
+  ];
+  for (const [label, v] of blocks) {
+    if (!v?.text) continue;
+    y = sectionLabel(ctx, y, label);
+    y = para(ctx, y + 6, v.text);
+    y += 10;
   }
 
   y = footer(ctx, y,
@@ -450,11 +256,37 @@ export function canvasToBlob(cv) {
   return new Promise((res) => cv.toBlob(res, 'image/png'));
 }
 
-export async function downloadCanvas(cv, filename) {
+/**
+ * 저장하기.
+ *
+ * 링크 태그의 download 속성은 데스크톱에서만 믿을 만하다. 카카오톡이나
+ * 인스타그램 안에서 열린 브라우저는 내려받기를 통째로 막아두는 경우가
+ * 많아서, 눌러도 아무 일도 일어나지 않는다. 실제로 그렇게 신고가 들어왔다.
+ *
+ * 휴대폰에서 확실한 길은 공유 시트다. 사진 앱에 바로 저장할 수 있고
+ * 막아둔 브라우저에서도 열린다. 쓸 수 있으면 그쪽을 먼저 쓴다.
+ */
+export async function saveCanvas(cv, filename) {
   const blob = await canvasToBlob(cv);
+  if (!blob) throw new Error('이미지를 만들지 못했습니다');
+
+  if (typeof File === 'function' && navigator.canShare) {
+    const file = new File([blob], filename, { type: 'image/png' });
+    if (navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file] });
+        return 'shared';
+      } catch (err) {
+        // 사용자가 시트를 닫은 것은 실패가 아니다
+        if (err?.name === 'AbortError') return 'cancel';
+      }
+    }
+  }
+
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url; a.download = filename;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return 'download';
 }

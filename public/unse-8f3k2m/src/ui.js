@@ -14,8 +14,8 @@ import {
 } from './share.js';
 import { pickNumbers } from './lotto.js';
 import { readForecast } from './forecast.js';
-import { lifeReading, monthDays, luckyDays, areaProse, compatReading,
-         consensusReading, structureReading, patternReading,
+import { lifeReading, monthDays, luckyDays, compatReading,
+         structureReading, patternReading,
          yearTimeline, innerReading, tabooReading } from './reading.js';
 import { aiSection, initAI, initCompatAI } from './ai.js';
 
@@ -443,27 +443,18 @@ function render(form, r, f) {
   last = { mode: 'solo', formA: form, formB: null, result: r, forecast: f };
 
   const life = lifeReading(r.input, r.chart, s);
-  const con = consensusReading(r, f.year);
   const st = structureReading(r.input, r.chart);
   const pat = patternReading(r.input, r.chart);
   const days = monthDays(r.input, r.chart, f.today.y, f.today.m);
   const lucky = luckyDays(days, life.meta.weak);
-  const today = days.find((x) => x.d === f.today.d) ?? days[0];
-  const byYearScore = f.timeline.slice().sort((a, b) => a.score - b.score);
-  const byHealthScore = f.timeline.slice().sort((a, b) =>
-    (a.areas.건강운?.score ?? 50) - (b.areas.건강운?.score ?? 50));
-  const periodName = (x) => `${x.from.m}월 ${x.from.d}일 이후`;
 
   const inner = innerReading(r.input, r.chart);
   const taboo = tabooReading(r.input, r.chart);
-  // 지난 열두 해와 앞으로 여덟 해. 사람이 실제로 맞춰보는 구간이 과거라
-  // 뒤쪽을 넉넉히 준다. 어릴 때는 맞춰볼 기억이 없으니 여덟 살부터 시작한다.
-  const tlFrom = Math.max(r.input.sajuYear + 8, f.today.y - 12);
-  const timeline = yearTimeline(r.input, r.chart, tlFrom, f.today.y + 8);
+  // 작년·올해·내년·내후년 네 해만. 작년이 맞는지로 잣대를 확인하고
+  // 앞의 세 해를 읽는 구성이다.
+  const timeline = yearTimeline(r.input, r.chart, f.today.y - 1, f.today.y + 2);
   const bondYears = timeline.filter((x) => x.bond).map((x) => x.year);
 
-  const seed = form.day + form.month;
-  const year = areaProse(f.year, '총운', seed, r.chart);
   const p2 = (n) => String(n).padStart(2, '0');
   const born = `${form.year}.${p2(form.month)}.${p2(form.day)}` +
     (form.hour == null ? ' · 시간 미상' : ` ${p2(form.hour)}:${p2(form.minute)}`) +
@@ -473,14 +464,6 @@ function render(form, r, f) {
     ? `<div class="say">${label ? `<div class="say-name">${esc(label)}</div>` : ''}
          <p class="say-text">${esc(text)}${cite(sources)}</p></div>`
     : '';
-
-  const dayRows = days.map((x) => `
-    <tr class="${x.d === f.today.d ? 'now' : ''}">
-      <td class="dt">${x.d}<small>${esc(x.weekday)}</small></td>
-      <td class="sl">${x.sinsal.map((n) => `<span class="sinsal">${esc(n)}</span>`).join('')}</td>
-      <td class="ln">${esc(x.line)}</td>
-      <td class="gd ${x.cls}">${esc(x.grade)}</td>
-    </tr>`).join('');
 
   const dayList = (arr) => arr.slice().sort((a, b) => a - b).join(', ');
 
@@ -535,7 +518,7 @@ function render(form, r, f) {
     <div class="section-label">연도별로 맞춰보기</div>
     <div class="card">
       <p class="lotto-when" style="margin-bottom:14px">
-        지난 해들이 맞는지 먼저 보세요. 과거가 맞으면 앞날도 같은 잣대로 읽힙니다.
+        작년이 맞는지 먼저 보세요. 지난 해가 맞으면 앞의 세 해도 같은 잣대로 읽힙니다.
         한 해는 양력 1월 1일이 아니라 입춘(2월 4일 무렵)에 바뀝니다.
       </p>
       <div class="daytable-wrap">
@@ -554,37 +537,6 @@ function render(form, r, f) {
         좋은 말만 늘어놓는 풀이는 쓸모가 적습니다. 원국에서 넘치는 자리와
         비어 있는 자리를 그대로 뒤집은 것이라, 이 항목은 평생 바뀌지 않습니다.
       </p>
-    </div>
-
-    <div class="section-label">열다섯이 말하는 것</div>
-    <div class="card">
-      ${block('여럿이 함께 가리킨 것', con.공통?.text, con.공통?.sources)}
-      ${con.갈림 ? block('갈리는 지점', con.갈림.text, con.갈림.sources) : ''}
-    </div>
-
-    <div class="section-label">지금</div>
-    <div class="card">
-      <h3>오늘 — ${f.today.m}월 ${f.today.d}일 (${esc(today.weekday)})<span class="hanja">${esc(f.day.period.gz.day.hanja)} · ${esc(today.grade)}</span></h3>
-      ${block(null, today.line, [])}
-      ${block('이레', `${f.week.label} 가운데 ${f.week.bestDay.on.m}월 ${f.week.bestDay.on.d}일 쪽이 낫고, ${f.week.worstDay.on.m}월 ${f.week.worstDay.on.d}일 쪽이 무겁습니다. 중요한 자리를 잡는다면 앞쪽 날로 미는 편이 낫습니다.`, [])}
-      ${block(`${f.day.period.sajuYear}년`, year?.text, year?.sources)}
-      ${block('한 해의 흐름', `가장 힘이 실리는 때는 ${periodName(byYearScore[byYearScore.length - 1])} 무렵이고, 가장 속도를 조절할 때는 ${periodName(byYearScore[0])} 무렵입니다.`, [])}
-      ${block('몸의 흐름을 살필 때', `연간 흐름과 별개로 ${periodName(byHealthScore[0])}·${periodName(byHealthScore[1])} 무렵은 무리한 일정을 겹치지 않게 잡는 편이 좋습니다.`, [])}
-      <p class="area-src" style="margin-top:8px">
-        오늘·이레·올해는 같은 기운을 크기만 달리 본 것이라, 각각을 따로 길게
-        풀면 같은 말이 세 번 됩니다. 그래서 시기마다 그 시기만 말할 수 있는 것 —
-        어느 날, 어느 달인지 — 만 적었습니다. 자세한 것은 아래 일자별 표를 보세요.
-      </p>
-    </div>
-
-    <div class="section-label">${f.today.m}월 일자별</div>
-    <div class="card">
-      <div class="daytable-wrap">
-        <table class="daytable">
-          <thead><tr><th>날</th><th>신살</th><th>풀이</th><th>등급</th></tr></thead>
-          <tbody>${dayRows}</tbody>
-        </table>
-      </div>
     </div>
 
     <div class="section-label">${f.today.m}월 길일과 처방</div>

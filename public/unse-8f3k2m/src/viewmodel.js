@@ -139,6 +139,66 @@ function evidenceOf(r, f, area) {
   return out;
 }
 
+
+/**
+ * 출생 시각을 얼마나 믿을 수 있는가.
+ *
+ * 태어난 시각을 분 단위로 아는 사람은 드물다. 병원 기록이 있어도 적는
+ * 사람에 따라 몇 분씩 다르고, 대개는 "아침 무렵"처럼 기억으로 남는다.
+ *
+ * 그런데 시각에 따라 크게 흔들리는 값과 꿈쩍도 하지 않는 값이 나뉜다.
+ * 상승점은 두 시간에 한 별자리씩 넘어가니 15분 차이로도 바뀔 수 있고,
+ * 사주 네 기둥은 두 시간 단위라 웬만해선 그대로다. 그 차이를 감추면
+ * 사람은 모든 값을 같은 무게로 믿게 된다.
+ *
+ * 그래서 앞뒤로 흔들어 보고 무엇이 바뀌는지 그대로 보여준다.
+ *
+ * @param {function} calc  시각을 바꿔 다시 계산하는 함수 (ui 가 넘긴다)
+ */
+export function sensitivity(form, calc, minutes = 30) {
+  if (form.hour == null) return null;
+
+  const shift = (delta) => {
+    const total = form.hour * 60 + (form.minute ?? 0) + delta;
+    if (total < 0 || total >= 24 * 60) return null;     // 날짜를 넘기면 다른 이야기가 된다
+    return calc({ ...form, hour: Math.floor(total / 60), minute: total % 60 });
+  };
+
+  const base = calc(form);
+  const lo = shift(-minutes);
+  const hi = shift(minutes);
+  if (!lo || !hi) return null;
+
+  const pick = (r) => {
+    const f = (id, label) => {
+      const sys = r.results.find((x) => x.id === id);
+      if (!sys) return '—';
+      const hit = sys.facts.find((x) => x.label === label);
+      return hit ? hit.value : '—';
+    };
+    return {
+      '사주 시주': r.chart.pillars.hour ? r.chart.pillars.hour.hanja : '—',
+      '자미 명궁': f('jamidusu', '명궁'),
+      '서양 상승점': f('astrology', '상승점'),
+      '서양 중천': f('astrology', '중천'),
+      '베딕 라그나': f('vedic', '라그나'),
+      '베딕 나크샤트라': f('vedic', '나크샤트라'),
+    };
+  };
+
+  const b = pick(base), l = pick(lo), h = pick(hi);
+  // 별자리 이름만 견준다. 도수는 당연히 바뀌므로 비교해봐야 다 '바뀜'이 된다.
+  const nameOnly = (x) => String(x).split(' ')[0];
+  const rows = Object.keys(b).map((k) => ({
+    key: k,
+    value: b[k],
+    stable: nameOnly(l[k]) === nameOnly(b[k]) && nameOnly(h[k]) === nameOnly(b[k]),
+    range: nameOnly(l[k]) === nameOnly(h[k]) ? null : `${nameOnly(l[k])} ~ ${nameOnly(h[k])}`,
+  }));
+
+  return { minutes, rows, shaky: rows.filter((x) => !x.stable).length };
+}
+
 /**
  * 결과 전체를 화면이 읽을 수 있는 모양으로.
  *

@@ -19,7 +19,7 @@ import { lifeReading, monthDays, luckyDays, compatReading,
          structureReading, patternReading,
          yearTimeline, innerReading, tabooReading } from './reading.js';
 import { aiSection, initAI, initCompatAI } from './ai.js';
-import { buildView } from './viewmodel.js';
+import { buildView, sensitivity } from './viewmodel.js';
 import { SYSTEM_META, TIER_LABEL, SOURCE_LABEL, ENGINE_VERSION } from './meta.js';
 
 /** 방금 본 결과. 이미지 카드와 공유 링크를 만들 때 다시 쓴다 */
@@ -425,6 +425,39 @@ function receiptPanel(v) {
     </details>`;
 }
 
+/**
+ * 출생 시각을 얼마나 믿을 수 있는가.
+ *
+ * 시각을 분 단위로 아는 사람은 드물다. 그런데 값마다 시각에 흔들리는
+ * 정도가 전혀 다르다. 상승점은 두 시간에 한 별자리씩 넘어가 15분으로도
+ * 바뀌고, 사주 네 기둥은 두 시간 단위라 웬만해선 그대로다. 그 차이를
+ * 감추면 사람은 모든 값을 같은 무게로 믿게 된다.
+ */
+function sensitivityPanel(form) {
+  const sn = sensitivity(form, (x) => readFortune(x), 30);
+  if (!sn) return '';
+  return `
+    <div class="section-label">출생 시각을 ±${sn.minutes}분 흔들면</div>
+    <div class="card">
+      <dl class="receipt">
+        ${sn.rows.map((r) => `
+          <div class="rc">
+            <dt>${esc(r.key)}</dt>
+            <dd>
+              <span class="tag-${r.stable ? 'fix' : 'shaky'}">${r.stable ? '그대로' : '바뀜'}</span>
+              ${esc(r.value)}${r.range ? `<small>${esc(r.range)}</small>` : ''}
+            </dd>
+          </div>`).join('')}
+      </dl>
+      <p class="agree-note">
+        ${sn.shaky === 0
+          ? '앞뒤로 삼십 분을 흔들어도 위 값이 모두 그대로입니다. 시각을 정확히 모르셔도 이 결과는 흔들리지 않습니다.'
+          : `앞뒤로 삼십 분을 흔들면 ${sn.shaky}개가 바뀝니다. 태어난 시각이 확실하지 않다면 그 항목에서 나온 풀이는 한 겹 물려서 보세요. 나머지는 시각이 조금 달라도 같습니다.`}
+        상승점은 두 시간에 한 별자리씩 넘어가 가장 예민하고, 사주 네 기둥은 두 시간 단위라 웬만해선 그대로입니다.
+      </p>
+    </div>`;
+}
+
 const SHOWN = ['saju', 'astrology', 'jamidusu', 'tarot'];
 
 /** 체계의 facts 에서 원하는 항목만 골라 칸으로 */
@@ -731,7 +764,7 @@ function render(form, r, f) {
         </div>
       </details>`)}
 
-    ${pane('chart', false, chartPanel(r))}
+    ${pane('chart', false, chartPanel(r) + sensitivityPanel(form))}
 
     ${pane('play', false, `
       <div class="card play">

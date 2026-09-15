@@ -126,7 +126,11 @@ function systemPortraits(r) {
 /** 공통 리딩은 실제로 두 체계 이상이 같은 태그를 든 것만 남긴다. */
 function commonTraitLenses(r, n = 4) {
   return traitLenses(r, 20)
-    .filter((x) => x.total >= 2)
+    .filter((x) =>
+      x.coreCount >= 2 ||
+      (x.coreCount === 1 && x.total >= 2) ||
+      (x.coreCount === 0 && x.total >= 3)
+    )
     .slice(0, n);
 }
 

@@ -173,6 +173,29 @@ export const TAG_LENS = {
  *
  * 그래서 핵심 넷 가운데 몇이 같은 낱말을 들었는지로 세기를 정한다.
  */
+/**
+ * 세기에 맞춰 문장 자체를 바꾼다.
+ *
+ * 위에 "가능성입니다" 한 줄을 얹는 것으로는 부족하다. 본문이 여전히
+ * 단정하고 있으면 읽는 사람은 본문을 읽지 머리말을 읽지 않는다.
+ *
+ * 결론은 어미를 바꾸고, 행동까지 좁혀 말하는 대목(현실에서는·잘 쓰면)은
+ * 근거가 얇을 때 아예 내보내지 않는다. 한 갈래에서만 잡힌 신호로
+ * "당신은 이런 상황에서 이렇게 움직입니다"까지 말할 수는 없다.
+ */
+const TAIL = {
+  strong: (core) => `${core}입니다. 이 결은 여러 갈래에서 겹쳐 나옵니다.`,
+  mid: (core) => `${core}에 가깝습니다.`,
+  weak: (core) => `${core}일 수 있습니다.`,
+  faint: (core) => `${core}인지 눈여겨볼 만합니다.`,
+};
+
+/** 결론에서 어미를 떼어 낱말 덩이만 남긴다 */
+const coreOf = (conclusion) => conclusion.replace(/입니다\.?$/, '');
+
+/** 행동까지 좁혀 말해도 되는 세기인가 */
+export const canDetail = (level) => level === 'strong' || level === 'mid';
+
 export function strengthOf(coreCount, totalCount) {
   if (coreCount >= 3) {
     return { level: 'strong', text: '여러 체계에서 반복해서 확인되는 핵심 패턴입니다.' };
@@ -210,13 +233,18 @@ export function traitLenses(r, n = 4) {
     if (!lens) continue;
     const from = t.from ?? [];
     const core = from.filter((name) => CORE_NAMES.includes(name));
+    const st = strengthOf(core.length, from.length);
     rows.push({
       word: t.word,
       coreCount: core.length,
       total: from.length,
       from,
-      ...strengthOf(core.length, from.length),
+      ...st,
       ...lens,
+      // 결론은 세기에 맞춰 어미를 바꾼다
+      conclusion: (TAIL[st.level] ?? TAIL.weak)(coreOf(lens.conclusion)),
+      // 근거가 얇으면 행동까지 좁혀 말하지 않는다
+      detail: canDetail(st.level),
       evidence: from.map((name) => {
         const sys = r.results.find((x) => x.name === name);
         return sys ? {

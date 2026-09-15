@@ -725,9 +725,16 @@ function render(form, r, f) {
         <div class="section-label">${esc(l.conclusion)}</div>
         <div class="card">
           <div class="lv lv-${l.level}">${esc(l.text)}</div>
-          <div class="say"><div class="say-name">현실에서는</div><p class="say-text">${esc(l.reality)}</p></div>
-          <div class="say"><div class="say-name">잘 쓰면</div><p class="say-text">${esc(l.strength)}</p></div>
+          ${l.detail ? `
+            <div class="say"><div class="say-name">현실에서는</div><p class="say-text">${esc(l.reality)}</p></div>
+            <div class="say"><div class="say-name">잘 쓰면</div><p class="say-text">${esc(l.strength)}</p></div>
+          ` : ''}
           <div class="say"><div class="say-name">과해지면</div><p class="say-text">${esc(l.caution)}</p></div>
+          ${l.detail ? '' : `
+            <p class="agree-note">
+              한 갈래에서만 잡힌 신호라 여기서는 어떤 상황에서 어떻게 움직이는지까지
+              좁혀 말하지 않습니다. 아래 근거를 보시고 짚이는 데가 있는지만 확인해 보세요.
+            </p>`}
           <details class="why">
             <summary>근거 ${l.evidence.length}개 보기</summary>
             ${l.evidence.map((e) => `

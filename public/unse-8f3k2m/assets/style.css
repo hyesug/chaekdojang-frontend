@@ -77,11 +77,21 @@ input, select {
   font-size: 14.5px;
   font-family: inherit;
 }
+/* 포커스할 때 배경을 바꾸지 않는다. 밝은 종이 위에서 남색이 깔리면
+   글자가 그대로 묻힌다. 테두리만 짙게 해서 어디를 쓰고 있는지 보인다. */
 input:focus, select:focus {
-  outline: none; border-color: var(--gold-soft);
-  background: #182033;
+  outline: none;
+  border-color: var(--gold);
+  background: #FFFFFF;
+  box-shadow: 0 0 0 3px rgba(139, 96, 72, .10);
 }
-input::placeholder { color: #4a5468; }
+input::placeholder { color: var(--ink-3); opacity: .75; }
+/* 브라우저 자동완성이 자기 배경을 깔아 글자를 덮는 것도 막는다 */
+input:-webkit-autofill,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--ink);
+  -webkit-box-shadow: 0 0 0 1000px #FFFFFF inset;
+}
 
 .check {
   display: flex; align-items: center; gap: 8px;
@@ -91,7 +101,7 @@ input::placeholder { color: #4a5468; }
 
 button.go {
   width: 100%; margin-top: 22px; padding: 14px;
-  background: linear-gradient(180deg, #d9b26a, #b8934f);
+  background: var(--gold);
   border: none; border-radius: 10px;
   color: #FFFFFF; font-size: 15.5px; font-weight: 700;
   font-family: inherit; letter-spacing: 0.04em; cursor: pointer;
@@ -122,7 +132,7 @@ button.go:disabled { opacity: 0.5; cursor: default; }
 .card .headline { color: var(--gold); font-size: 13.5px; margin: 0 0 16px; }
 
 /* 종합 카드 */
-.synth { border-color: var(--gold-soft); background: linear-gradient(180deg, #1b2133, var(--card)); }
+.synth { border-color: var(--gold-soft); background: var(--card); }
 
 .summary-line {
   padding: 11px 0; border-bottom: 1px solid var(--line-soft);
@@ -134,7 +144,7 @@ button.go:disabled { opacity: 0.5; cursor: default; }
 .elembar { display: flex; height: 32px; border-radius: 8px; overflow: hidden; margin: 6px 0 10px; }
 .elembar div {
   display: flex; align-items: center; justify-content: center;
-  font-size: 11.5px; font-weight: 700; color: #0d1017;
+  font-size: 11.5px; font-weight: 700; color: #FFFFFF;
   min-width: 0; transition: flex-grow .4s;
 }
 .elem-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--ink-2); }
@@ -241,7 +251,7 @@ footer strong { color: var(--ink-2); font-weight: 600; }
 
 .error {
   background: rgba(224,112,107,.1); border: 1px solid rgba(224,112,107,.35);
-  color: #f0a6a2; border-radius: 10px; padding: 13px; font-size: 13.5px; margin-bottom: 14px;
+  color: var(--stamp); border-radius: 10px; padding: 13px; font-size: 13.5px; margin-bottom: 14px;
 }
 
 #result { display: none; }
@@ -292,9 +302,9 @@ footer strong { color: var(--ink-2); font-weight: 600; }
 .vname { font-size: 12px; color: var(--ink-3); margin-bottom: 6px; }
 .vlist { font-size: 11px; color: var(--ink-3); line-height: 1.55; word-break: keep-all; }
 
-.domain-fill.good { background: linear-gradient(90deg, #3d8b59, var(--mok)); }
+.domain-fill.good { background: var(--sage); }
 .domain-fill.mid { background: linear-gradient(90deg, var(--gold-soft), var(--gold)); }
-.domain-fill.bad { background: linear-gradient(90deg, #9c4b47, var(--hwa)); }
+.domain-fill.bad { background: var(--stamp); }
 
 .vtag {
   font-size: 11.5px; font-weight: 700; padding: 2px 9px;
@@ -360,7 +370,7 @@ footer strong { color: var(--ink-2); font-weight: 600; }
   background: var(--card); color: var(--ink-2); font-family: inherit; font-size: 14px; cursor: pointer;
 }
 #imgmodal .imgacts button[data-x="dl"] {
-  background: linear-gradient(180deg, #d9b26a, #b8934f); color: #FFFFFF;
+  background: var(--gold); color: #FFFFFF;
   border: none; font-weight: 700;
 }
 #imgmodal p { font-size: 12px; color: var(--ink-3); text-align: center; margin: 12px 0 0; }
@@ -439,9 +449,9 @@ details.pool[open] > summary::before { content: '▾ '; }
 .area-score.lo { color: var(--hwa); }
 .area-track { height: 7px; background: rgba(0,0,0,.04); border-radius: 4px; overflow: hidden; }
 .area-fill { height: 100%; border-radius: 4px; }
-.area-fill.hi { background: linear-gradient(90deg, #3d8b59, var(--mok)); }
+.area-fill.hi { background: var(--sage); }
 .area-fill.mid { background: linear-gradient(90deg, var(--gold-soft), var(--gold)); }
-.area-fill.lo { background: linear-gradient(90deg, #9c4b47, var(--hwa)); }
+.area-fill.lo { background: var(--stamp); }
 .area-text { font-size: 14px; color: var(--ink-2); margin: 9px 0 0; }
 .area-src { font-size: 11px; color: var(--ink-3); margin: 5px 0 0; }
 
@@ -449,7 +459,7 @@ details.pool[open] > summary::before { content: '▾ '; }
 .tl-col { flex: 1; min-width: 46px; text-align: center; }
 .tl-barwrap { height: 108px; display: flex; align-items: flex-end; justify-content: center; }
 .tl-bar { width: 68%; border-radius: 4px 4px 0 0; }
-.tl-bar.hi { background: linear-gradient(180deg, var(--mok), #3d8b59); }
+.tl-bar.hi { background: var(--sage); }
 .tl-bar.mid { background: linear-gradient(180deg, var(--gold), var(--gold-soft)); }
 .tl-bar.lo { background: linear-gradient(180deg, var(--hwa), #9c4b47); }
 .tl-score { font-size: 11.5px; color: var(--ink-2); margin-top: 6px; font-weight: 600; }
@@ -492,7 +502,10 @@ details.pool[open] > summary::before { content: '▾ '; }
   border: 1px solid var(--line); border-radius: 10px; color: var(--ink);
   font-family: inherit; font-size: 14.5px; line-height: 1.6; resize: vertical;
 }
-.ai-input textarea:focus { outline: none; border-color: var(--gold-soft); background: #182033; }
+.ai-input textarea:focus {
+  outline: none; border-color: var(--gold); background: #FFFFFF;
+  box-shadow: 0 0 0 3px rgba(139, 96, 72, .10);
+}
 .ai-input button {
   padding: 0 20px; border: none; border-radius: 10px;
   background: linear-gradient(180deg, #d9b26a, #b8934f);

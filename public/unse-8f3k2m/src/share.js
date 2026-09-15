@@ -191,7 +191,7 @@ function para(ctx, y, text, { size = 26, color = C.ink, gap = 40 } = {}) {
  *
  * 풀이는 넣지 않는다. 풀이는 화면에 있고, 여기 담는 것은 계산 결과다.
  */
-export function chartText(form, r) {
+export function chartText(form, r, { footer = true } = {}) {
   const { chart, lunar, birth, input } = r;
   const p = (n) => String(n).padStart(2, '0');
   const line = '─'.repeat(34);
@@ -239,14 +239,83 @@ export function chartText(form, r) {
     out.push('');
   }
 
-  const t = new Date();
-  out.push(line);
-  out.push(`${t.getFullYear()}.${p(t.getMonth() + 1)}.${p(t.getDate())} 기준 · 종합 운세`);
-  out.push('천문 계산으로 구한 값입니다. 풀이는 화면에서 보세요.');
+  if (footer) out.push(...stamp(line));
 
   // 줄바꿈 문자를 직접 쓰지 않는다 - 편집 과정에서 실제 줄바꿈으로 바뀌어
   // 파일이 깨진 적이 있다
   return out.join(String.fromCharCode(10));
+}
+
+/** 어느 날 뽑은 것인지 남긴다. 명반은 안 바뀌지만 시기 자료는 바뀐다 */
+function stamp(line) {
+  const t = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  return [
+    line,
+    `${t.getFullYear()}.${p(t.getMonth() + 1)}.${p(t.getDate())} 기준 · 종합 운세`,
+    '천문 계산으로 구한 값입니다. 풀이는 화면에서 보세요.',
+  ];
+}
+
+/**
+ * 궁합 — 두 사람 명반과 견준 결과를 한 덩이로.
+ *
+ * 각자의 명반은 개인용과 똑같은 것을 그대로 쓴다. 뒤에 열다섯 체계가
+ * 두 명반을 어떻게 견줬는지를 붙인다. 이쪽도 풀이는 넣지 않는다.
+ *
+ * @param {object} rA  첫 번째 사람의 readFortune 결과
+ * @param {object} rB  두 번째 사람의 readFortune 결과
+ */
+export function compatText(formA, formB, c, rA, rB) {
+  const line = '─'.repeat(34);
+  const eq = '═'.repeat(34);
+  const nl = String.fromCharCode(10);
+  const out = [];
+
+  out.push(eq);
+  out.push(`${formA.name} 님 × ${formB.name} 님 — 궁합`);
+  out.push(eq);
+  out.push('');
+  out.push('【 첫 번째 사람 】');
+  out.push(chartText(formA, rA, { footer: false }));
+  out.push('【 두 번째 사람 】');
+  out.push(chartText(formB, rB, { footer: false }));
+
+  out.push(eq);
+  out.push('열다섯 체계가 견준 결과');
+  out.push(eq);
+  out.push('');
+
+  for (const x of c.results) {
+    out.push(`■ ${x.name}${x.hanja ? ` (${x.hanja})` : ''} — ${x.verdict}`);
+    out.push(`  ${x.headline}`);
+    for (const f of x.facts) {
+      if (!f.value || f.value === '—') continue;
+      out.push(`  · ${f.label} — ${f.value}${f.note ? ` (${f.note})` : ''}`);
+    }
+    out.push('');
+  }
+
+  const s = c.synthesis;
+  out.push(line);
+  out.push(`■ 종합 — ${s.verdict}`);
+  for (const k of ['좋음', '무난', '어려움']) {
+    const list = s.buckets[k] ?? [];
+    out.push(`  ${k} ${list.length}개${list.length ? ` — ${list.join(', ')}` : ''}`);
+  }
+  out.push('  ※ 체계마다 잣대가 달라 가로로 견주는 것은 뜻이 적습니다.');
+  out.push('    베딕 아쉬타쿠타처럼 혼인을 전제로 만든 잣대는 박하고,');
+  out.push('    요일 하나로 보는 체계는 후합니다. 어디서 갈리는지를 보세요.');
+  out.push('');
+
+  if (c.skipped?.length) {
+    out.push(`※ 견주지 못한 체계: ${c.skipped.map((x) => x.system).join(', ')}`);
+    out.push(`  ${c.skipped[0].reason}`);
+    out.push('');
+  }
+
+  out.push(...stamp(line));
+  return out.join(nl);
 }
 
 /** 글자를 복사한다. 클립보드를 막아둔 환경에서는 직접 고르게 한다 */

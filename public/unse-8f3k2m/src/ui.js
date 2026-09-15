@@ -11,7 +11,7 @@ import { lunarToSolar } from './core/lunar.js';
 import { j } from './core/josa.js';
 import {
   encodeState, decodeState, buildSoloCard, buildCompatCard, saveCanvas,
-  chartText, copyText, downloadText,
+  chartText, compatText, copyText, downloadText,
 } from './share.js';
 import { pickNumbers } from './lotto.js';
 import { readForecast } from './forecast.js';
@@ -351,6 +351,17 @@ function renderCompat(formA, formB, r) {
         </p>
       </div>` : ''}
 
+    <div class="card" style="margin-top:14px">
+      <div class="sharebar" style="margin:0">
+        <button type="button" data-act="chart-copy">두 사람 명반 텍스트 복사</button>
+        <button type="button" data-act="chart-save">텍스트 파일로 저장</button>
+      </div>
+      <p class="area-src" style="margin-top:12px">
+        두 사람의 명반과 열다섯 체계가 견준 결과가 전부 글자로 담깁니다.
+        다른 곳에 물어보거나 기록으로 남길 때 쓰세요.
+      </p>
+    </div>
+
     ${aiSection('pair')}
 
     ${shareBar()}
@@ -676,11 +687,18 @@ $('#result').addEventListener('click', (e) => {
   if (!act || !last) return;
   if (act === 'link') copyLink();
   if (act === 'chart-copy' || act === 'chart-save') {
-    // 명반 표는 개인 운세 화면에만 있다
-    if (last.mode !== 'solo') return;
-    const text = chartText(last.formA, last.result);
+    // 궁합은 두 사람 명반을 그때 세운다. 화면을 그릴 때 미리 해두면
+    // 복사하지 않는 사람에게까지 계산 값을 물리게 된다.
+    const pair = last.mode === 'pair';
+    const text = pair
+      ? compatText(last.formA, last.formB, last.result,
+                   readFortune(last.formA), readFortune(last.formB))
+      : chartText(last.formA, last.result);
+    const name = pair
+      ? `명반_${last.formA.name}_${last.formB.name}.txt`
+      : `명반_${last.formA.name}.txt`;
     if (act === 'chart-save') {
-      downloadText(text, `명반_${last.formA.name}.txt`);
+      downloadText(text, name);
       toast('텍스트 파일로 저장했습니다');
     } else {
       copyText(text).then((ok) => toast(

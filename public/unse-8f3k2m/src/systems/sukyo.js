@@ -139,10 +139,11 @@ export function analyze(input) {
   const tradIndex = lunar ? monthMansion(lunar.month, lunar.day) : null;
   const trad = tradIndex == null ? null : SU[tradIndex];
 
+  // 지배 행성도 파다도 베딕에서 온 구분이다. 숙요 이름 아래 나란히 두면
+  // 한 체계처럼 읽히므로 '베딕 대응'으로 묶어 따로 세운다.
   const facts = [
-    { label: '본명숙', value: `${hanja}宿`, note: `${kr}수 · ${sanskrit} · 달의 실제 위치로 구함` },
-    { label: '지배 행성', value: lord, note: '빔쇼타리 기준' },
-    { label: '파다', value: `제${pada}파다`, note: '한 숙을 넷으로 나눈 세부 자리 (베딕 쪽 구분)' },
+    { label: '본명숙', value: `${hanja}宿`, note: `${kr}수 · 달의 실제 위치로 구함` },
+    { label: '베딕 대응', value: sanskrit, note: `제${index + 1} 나크샤트라 · 지배 행성 ${lord}(빔쇼타리) · 제${pada}파다` },
     { label: '달의 항성 황경', value: `${sidereal.toFixed(2)}°`, note: '라히리 아야남샤 적용' },
     ...(trad ? [{
       label: '월숙방통력 기준',
@@ -181,7 +182,7 @@ export function analyze(input) {
     id: meta.id,
     name: meta.name,
     hanja: meta.hanja,
-    headline: `${hanja}宿(${kr}수) · ${lord} · 제${pada}파다`,
+    headline: `${hanja}宿(${kr}수) · 달의 실제 위치로 구함`,
     facts,
     readings,
     // 달은 하루에 13° 남짓 움직인다. 시간을 모르면 칸이 바뀔 수 있다.

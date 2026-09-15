@@ -548,12 +548,13 @@ function render(form, r, f) {
       ${bondYears.length ? block('인연이 정해지기 쉬운 해', `${bondYears.join(', ')}년입니다. 만남이든 결혼이든 관계가 한 단계 정해지는 자리가 이 해들에 몰립니다.`, []) : ''}
     </div>
 
-    <div class="section-label">절대 하면 안 되는 것</div>
+    <div class="section-label">주의해야 할 패턴</div>
     <div class="card">
       ${taboo.map((x) => block(x.head, x.text, [])).join('')}
       <p class="area-src" style="margin-top:8px">
-        좋은 말만 늘어놓는 풀이는 쓸모가 적습니다. 원국에서 넘치는 자리와
-        비어 있는 자리를 그대로 뒤집은 것이라, 이 항목은 평생 바뀌지 않습니다.
+        원국에서 넘치는 자리와 옅은 자리를 그대로 뒤집은 것이라 시기에 따라
+        바뀌지 않습니다. 금지가 아니라 되풀이되기 쉬운 결이니, 그렇게 흘러가고
+        있다 싶을 때 한 번 멈춰 보시라는 뜻입니다.
       </p>
     </div>
 
@@ -561,8 +562,8 @@ function render(form, r, f) {
     <div class="card">
       ${block('좋은 날', `자리 이동이나 이사에 좋은 날은 ${dayList(lucky.move)}일이고, 문서와 계약·면접에 좋은 날은 ${dayList(lucky.contract)}일입니다. 재물의 흐름이 좋은 날은 ${dayList(lucky.money)}일이며, 사람을 만나기 좋은 날은 ${dayList(lucky.love)}일입니다.`, [])}
       ${lucky.helper.length ? block('귀인이 드는 날', `운의 흐름과 관계없이 돕는 사람이 붙는 날은 ${dayList(lucky.helper)}일입니다. 아쉬운 말을 꺼내야 한다면 이 날을 쓰세요.`, []) : ''}
-      ${block('피해야 할 날', `${dayList(lucky.avoid)}일은 기운이 넘쳐 도리어 다치기 쉬우니 반드시 피하시고, 그다음으로 조심할 날은 ${dayList(lucky.worst)}일입니다.`, [])}
-      ${block('처방', `모자란 기운을 채우는 색은 ${lucky.color.join('·')}이고 숫자는 ${lucky.num.join(', ')}입니다. 방향은 ${lucky.dir}이며, 이름의 첫 자음이 ${lucky.consonant.join('·')}인 사람과 인연이 좋습니다.`, [])}
+      ${block('우선순위를 낮출 날', `${dayList(lucky.avoid)}일은 기운이 넘쳐 도리어 무리하기 쉬운 날이고, 그다음으로 조심할 날은 ${dayList(lucky.worst)}일입니다. 다른 날을 고를 수 있다면 뒤로 미루시라는 뜻이지, 이미 잡힌 수술이나 계약·면접 일정을 이 표 때문에 바꾸실 일은 아닙니다.`, [])}
+      ${block('처방', `모자란 기운을 채우는 색은 ${lucky.color.join('·')}이고 숫자는 ${lucky.num.join(', ')}, 방향은 ${lucky.dir}입니다. 이름의 첫 자음이 ${lucky.consonant.join('·')}인 사람과 결이 맞는다고 보는데, 이 대목은 사주가 아니라 한글 자음을 오행에 배정하는 성명학 쪽 규칙이라 참고로만 보세요.`, [])}
     </div>
 
     ${lottoSection(r.input, r.chart)}

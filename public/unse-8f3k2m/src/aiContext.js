@@ -172,7 +172,7 @@ export function buildContext(form, r, f = null) {
   }
   const taboo = tabooReading(r.input, r.chart);
   if (taboo.length) {
-    out.push('## 이 사람이 하지 말아야 할 것');
+    out.push('## 이 사람에게 되풀이되기 쉬운 패턴 (금지가 아니라 경향이다. 명령하듯 옮기지 말 것)');
     for (const x of taboo) out.push(`- ${x.head}: ${x.text}`);
     out.push('');
   }

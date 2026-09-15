@@ -117,7 +117,9 @@ export function synthesize(results) {
     sentences.push(TRAIT_SENTENCE[k][v > 0 ? 1 : 0]);
   }
   if (!strongTraits.length) {
-    sentences.push('어느 한쪽으로 뚜렷하게 기울지 않은 구조입니다. 상황에 따라 다른 얼굴을 쓸 수 있다는 뜻이기도 합니다.');
+    // '구조'라고 쓰면 앞에 나온 오행 이야기와 어긋나 보인다. 이건 오행이
+    // 아니라 다섯 기질 축을 모은 값이므로 무엇에 대한 말인지 밝힌다.
+    sentences.push('열다섯을 모아 보면 성향이 어느 한쪽으로 뚜렷하게 기울지 않습니다. 상황에 따라 다른 얼굴을 쓸 수 있다는 뜻이기도 합니다.');
   }
 
   // 상위 태그 두엇을 문장으로도 풀어준다

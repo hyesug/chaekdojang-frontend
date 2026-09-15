@@ -140,8 +140,10 @@ export function analyze(input) {
     }] : []),
     // 값 자리에 지배 행성이 들어가 있어서 '나크샤트라 — 수성'처럼 읽혔다.
     // 수성은 칸의 이름이 아니라 그 칸을 다스리는 별이다.
-    { label: '나크샤트라', value: `${NAKSHATRA_NAMES[d.nak].sanskrit} (${NAKSHATRA_NAMES[d.nak].hanja}宿)`,
-      note: `제${d.nak + 1}수 · 지배 행성 ${NAKSHATRA_LORDS[d.nak]} · 제${Math.floor(d.progressed * 4) + 1}파다` },
+    // 한자 이름을 괄호로 붙이면 같은 것의 다른 표기처럼 읽힌다. 27수와
+    // 나크샤트라는 서로 대응시키는 별개 체계라 여기서는 베딕 이름만 쓴다.
+    { label: '나크샤트라', value: NAKSHATRA_NAMES[d.nak].sanskrit,
+      note: `제${d.nak + 1} 나크샤트라 · 지배 행성 ${NAKSHATRA_LORDS[d.nak]} · 제${Math.floor(d.progressed * 4) + 1}파다` },
     { label: '아야남샤', value: `${ayan.toFixed(3)}°`, note: '라히리 · 회귀 좌표와의 차이' },
     { label: '현재 다샤', value: `${current.lord} 다샤`,
       note: `${Math.max(0, current.fromAge).toFixed(1)}세 ~ ${current.toAge.toFixed(1)}세` },

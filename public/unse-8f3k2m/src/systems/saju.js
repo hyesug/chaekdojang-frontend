@@ -186,6 +186,25 @@ const LUCK = [
 /**
  * @param {object} input  normalizeBirth 결과 + 사용자 입력
  */
+/**
+ * 지금 대운이 언제 다음으로 넘어가는지.
+ *
+ * 대운은 태어난 날로부터 startAgeExact 년 뒤에 시작해 열 해씩 간다.
+ * 그 경계를 달력으로 환산해 준다. 절기 폭만큼 오차가 있어 '무렵'으로 쓴다.
+ */
+function daeunTurn(input, daeun, now) {
+  const i = daeun.list.indexOf(now);
+  if (i < 0) return `${now.fromAge}~${now.toAge}세`;
+  const next = daeun.list[i + 1];
+  const yearsFromBirth = daeun.startAgeExact + (i + 1) * 10;
+  const at = new Date(Date.UTC(input.year, input.month - 1, input.day));
+  at.setUTCMonth(at.getUTCMonth() + Math.round(yearsFromBirth * 12));
+  const when = `${at.getUTCFullYear()}년 ${at.getUTCMonth() + 1}월`;
+  return next
+    ? `${now.fromAge}~${now.toAge}세 · ${when} 무렵까지, 이후 ${next.hanja}(${next.kr})`
+    : `${now.fromAge}세 이후`;
+}
+
 export function analyze(input) {
   const { jdUT, jdTST, timeKnown, isMale, age, currentYear } = input;
 
@@ -209,7 +228,11 @@ export function analyze(input) {
     { label: '띠', value: chart.zodiac, note: `${chart.sajuYear}년생 (입춘 기준)` },
     { label: '오행', value: ELEMENTS.map((e, i) => `${e} ${dist.count[i]}`).join(' · '), note: `가장 강한 기운 ${ELEMENTS[strong]}, 가장 약한 기운 ${ELEMENTS[weak]}` },
     { label: '십신', value: Object.entries(gods.groups).map(([k, v]) => `${k} ${v}`).join(' · '), note: `우세: ${gods.dominant}` },
-    { label: '대운', value: `${daeun.forward ? '순행' : '역행'} · ${daeun.startAge}세 시작`, note: now ? `현재 ${now.hanja} (${now.fromAge}~${now.toAge}세)` : '대운 시작 전' },
+    // 지금 대운이 언제 끝나는지가 실제로 쓸모 있는 정보다. 나이만 적으면
+    // 사람이 다시 세어야 한다. 대운은 태어난 날에서 startAgeExact 년 뒤부터
+    // 열 해씩 가므로 달까지 환산할 수 있다.
+    { label: '대운', value: `${daeun.forward ? '순행' : '역행'} · 약 ${daeun.startAge}세 시작`,
+      note: now ? `현재 ${now.hanja}(${now.kr}) · ${daeunTurn(input, daeun, now)}` : '대운 시작 전' },
   ];
 
   // ── 해석 ──

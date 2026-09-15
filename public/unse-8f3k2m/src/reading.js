@@ -14,7 +14,7 @@
  * 그게 열다섯을 다 돌려서 얻는 것이다.
  */
 
-import { elementDistribution, tenGodDistribution, computeDaeun, branchRelations, tenGod,
+import { elementDistribution, tenGodDistribution, computeDaeun, currentDaeun, branchRelations, tenGod,
          TEN_GOD_GROUP, MAIN_HIDDEN, HIDDEN_STEMS, ganzhiName, yearPillar,
          ELEMENTS, ELEMENT_HANJA } from './core/ganzhi.js';
 import { j } from './core/josa.js';
@@ -472,21 +472,78 @@ export function dayRange(input, chart, from, span = 120) {
  * 수술·시술처럼 몸에 손대는 일을 위한 전용 순위.
  *
  * 일반 일진 등급은 하루 전체의 흐름일 뿐 수술 전용 점수가 아니다.
- * 따라서 아래 순서를 사전식(lexicographic)으로 고정한다.
+ * 그래서 다음 순서를 사전식(lexicographic)으로 고정한다.
  *
- *  1) 일지충·띠충·양인 제외
+ *  1) 일지충·양인 제외
  *  2) 천의
  *  3) 황도
- *  4) 해당 절기월 건강 흐름
- *  5) 당일 건강 흐름
- *  6) 일반 일진 등급
+ *  4) 원국의 다른 지지와 그 날짜의 실제 대운 지지에 걸리는 충 감점
+ *  5) 형·해·파 감점
+ *  6) 해당 절기월 건강 흐름
+ *  7) 당일 건강 흐름
+ *  8) 일반 일진 등급
  *
- * 대운 전환은 순위를 임의로 바꾸는 점수로 쓰지 않고, 후보 설명에만
- * 표시한다. 전환기 자체를 좋다/나쁘다로 단정할 근거가 없기 때문이다.
+ * 년지·월지·시지·대운과의 충까지 전부 탈락시키면 실제로 남는 날이
+ * 거의 없어지므로 '제외'가 아니라 차등 감점한다. 일지는 본인의 중심축이라
+ * 충만큼은 별도로 강하게 제외한다. 대운은 후보 날짜 기준으로 다시 고른다.
  */
 const SURGERY_GRADE_RANK = {
   '아주 좋음': 5, '좋음': 4, '무난': 3, '조심': 2, '나쁨': 1, '특히 조심': 0,
 };
+
+const SURGERY_REL_RISK = {
+  충: { kind: 'clash', value: 4 },
+  삼형: { kind: 'minor', value: 2.2 },
+  상형: { kind: 'minor', value: 2.2 },
+  자형: { kind: 'minor', value: 1.8 },
+  해: { kind: 'minor', value: 1.5 },
+  파: { kind: 'minor', value: 1.3 },
+};
+
+/**
+ * 수술 택일에서 지지 관계를 같은 무게로 보지 않는다.
+ * 일지의 형·해·파는 다른 자리보다 무겁고, 년·시주는 한 단계 가볍게 본다.
+ * 원진은 보조 관계라 여기서는 점수에 넣지 않는다.
+ */
+const SURGERY_BRANCH_WEIGHT = {
+  day: 1.35,
+  month: 1.00,
+  year: 0.75,
+  hour: 0.75,
+  daeun: 1.05,
+};
+
+function surgeryBranchRisk(chart, activeDaeun, dayBranch) {
+  const targets = [
+    ['day', '일지', chart.pillars.day?.branch],
+    ['month', '월지', chart.pillars.month?.branch],
+    ['year', '년지', chart.pillars.year?.branch],
+    ['hour', '시지', chart.pillars.hour?.branch],
+    ['daeun', '대운', activeDaeun?.branch],
+  ].filter(([, , branch]) => branch != null);
+
+  let clashPenalty = 0;
+  let minorPenalty = 0;
+  const details = [];
+
+  for (const [slot, label, target] of targets) {
+    const weight = SURGERY_BRANCH_WEIGHT[slot] ?? 1;
+    for (const rel of branchRelations(target, dayBranch)) {
+      const risk = SURGERY_REL_RISK[rel.kind];
+      if (!risk) continue;
+      const value = Math.round(risk.value * weight * 100) / 100;
+      if (risk.kind === 'clash') clashPenalty += value;
+      else minorPenalty += value;
+      details.push({ slot, label, relation: rel.kind, value });
+    }
+  }
+
+  return {
+    clashPenalty: Math.round(clashPenalty * 100) / 100,
+    minorPenalty: Math.round(minorPenalty * 100) / 100,
+    details,
+  };
+}
 
 export function rankSurgeryDays(input, chart, days) {
   const monthHealth = new Map();
@@ -522,7 +579,6 @@ export function rankSurgeryDays(input, chart, days) {
   for (const x of days) {
     const reasons = [];
     if (x.taekil.clashDay) reasons.push('일지충');
-    if (x.taekil.clashYear) reasons.push('띠충');
     if (x.sinsal.includes('양인')) reasons.push('양인');
 
     if (reasons.length) {
@@ -537,12 +593,23 @@ export function rankSurgeryDays(input, chart, days) {
       monthHealth.set(key, mf.areas.건강운.score ?? 50);
     }
 
+    const candidateJD = toJD(x.y, x.m, x.d, 12);
+    const candidateElapsed = (candidateJD - input.jdUT) / 365.2425;
+    const activeDaeun = currentDaeun(daeun, candidateElapsed);
+    const risk = surgeryBranchRisk(chart, activeDaeun, x.gz.branch);
+
     candidates.push({
       ...x,
       surgery: {
         cheonui: x.taekil.cheonui,
         hwangdo: x.taekil.good,
         hwangdoName: x.taekil.hwangdo,
+        clashPenalty: risk.clashPenalty,
+        minorPenalty: risk.minorPenalty,
+        branchRisk: risk.details,
+        activeDaeun: activeDaeun
+          ? { hanja: activeDaeun.hanja, branch: activeDaeun.branch, god: activeDaeun.god }
+          : null,
         monthHealth: monthHealth.get(key),
         dayHealth: x.health ?? 50,
         gradeRank: SURGERY_GRADE_RANK[x.grade] ?? 0,
@@ -554,6 +621,8 @@ export function rankSurgeryDays(input, chart, days) {
   candidates.sort((a, b) =>
     Number(b.surgery.cheonui) - Number(a.surgery.cheonui) ||
     Number(b.surgery.hwangdo) - Number(a.surgery.hwangdo) ||
+    a.surgery.clashPenalty - b.surgery.clashPenalty ||
+    a.surgery.minorPenalty - b.surgery.minorPenalty ||
     b.surgery.monthHealth - a.surgery.monthHealth ||
     b.surgery.dayHealth - a.surgery.dayHealth ||
     b.surgery.gradeRank - a.surgery.gradeRank ||

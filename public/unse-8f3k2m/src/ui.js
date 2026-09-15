@@ -13,8 +13,8 @@ import {
   encodeState, decodeState, buildSoloCard, buildCompatCard, saveCanvas,
 } from './share.js';
 import { pickNumbers } from './lotto.js';
-import { readForecast, AREAS } from './forecast.js';
-import { lifeReading, monthDays, luckyDays, periodProse, compatReading,
+import { readForecast } from './forecast.js';
+import { lifeReading, monthDays, luckyDays, areaProse, compatReading,
          consensusReading, structureReading, patternReading } from './reading.js';
 import { aiSection, initAI, initCompatAI } from './ai.js';
 
@@ -288,6 +288,19 @@ function renderCompat(formA, formB) {
 
 // ─────────────────────────────────────────────────────────────
 
+/**
+ * 개인 운세 화면.
+ *
+ * 순서가 뜻을 만든다. 맨 위는 타고난 구성과 평생 — 원국을 그대로 읽은
+ * 것이라 사람마다 다르고 시기에 따라 바뀌지도 않는다. 사람의 실제 삶에
+ * 들어맞은 것도 늘 이쪽이었다.
+ *
+ * 시기 운세는 '언제'만 말한다. 예전에는 오늘·이레·이달·올해를 각각 여섯
+ * 영역으로 풀었는데, 재보니 한 사람 안에서 여섯 중 5.9개가 같은 문장이었다.
+ * 당연한 일이다 — 오늘은 이레 안에 있고 이레는 이달 안에 있어 같은 월건과
+ * 세운을 쓴다. 시기끼리 정말로 비슷한 것이라 문장을 더 써도 고쳐지지 않는다.
+ * 그래서 각 시기가 저만 말할 수 있는 것 — 어느 날, 어느 달 — 만 남겼다.
+ */
 function render(form) {
   const r = readFortune(form);
   const f = readForecast(form);
@@ -307,16 +320,16 @@ function render(form) {
   const periodName = (x) => `${x.from.m}월 ${x.from.d}일 이후`;
 
   const seed = form.day + form.month;
+  const year = areaProse(f.year, '총운', seed, r.chart);
+  const p2 = (n) => String(n).padStart(2, '0');
+  const born = `${form.year}.${p2(form.month)}.${p2(form.day)}` +
+    (form.hour == null ? ' · 시간 미상' : ` ${p2(form.hour)}:${p2(form.minute)}`) +
+    ` · ${form.birthPlace}`;
+
   const block = (label, text, sources) => text
     ? `<div class="say">${label ? `<div class="say-name">${esc(label)}</div>` : ''}
          <p class="say-text">${esc(text)}${cite(sources)}</p></div>`
     : '';
-
-  const period = (blk, label, kind) => {
-    const p = periodProse(blk, seed + label.length, r.chart);
-    return AREAS.map((a) => p[a]?.text
-      ? block(label === '오늘' ? a : `${label} ${a}`, p[a].text, p[a].sources) : '').join('');
-  };
 
   const dayRows = days.map((x) => `
     <tr class="${x.d === f.today.d ? 'now' : ''}">
@@ -329,22 +342,53 @@ function render(form) {
   const dayList = (arr) => arr.slice().sort((a, b) => a - b).join(', ');
 
   return `
-    <div class="section-label">오늘 — ${f.today.m}월 ${f.today.d}일 (${esc(today.weekday)})</div>
+    <div class="section-label">타고난 구성</div>
     <div class="card synth">
-      <h3>${esc(form.name)} 님<span class="hanja">${esc(f.day.period.gz.day.hanja)} · ${esc(today.grade)}</span></h3>
-      ${block('오늘 총평', today.line, [])}
-      ${period(f.day, '오늘', 'day')}
+      <h3>${esc(form.name)} 님</h3>
+      <p class="headline">${esc(born)}</p>
+      ${block(st.level === 'strong' ? '크게 치우친 사주입니다' : '치우친 자리', st.head, [])}
+      ${st.lines.map((t) => block(null, t, [])).join('')}
+      ${pat.map((x) => block(x.name, x.text, [])).join('')}
+      <p class="area-src" style="margin-top:8px">
+        이 대목은 열다섯을 평균 낸 값이 아니라 사주 원국을 그대로 읽은 것입니다.
+        네 기둥은 각각 조상·부모·나·자식의 자리라, 같은 부딪침이라도 어느 자리에
+        걸렸느냐에 따라 뜻이 달라집니다.
+        시기에 따라 바뀌지 않는 결이라 시기 운세보다 무겁게 보셔도 됩니다.
+      </p>
     </div>
 
-    <div class="section-label">이번 주</div>
+    <div class="section-label">평생</div>
     <div class="card">
+      ${block('초년운', life.early, [])}
+      ${block('중년운', life.middle, [])}
+      ${block('말년운', life.late, [])}
+      ${block('형제운', life.sibling, [])}
+      ${block('자식운', life.child, [])}
+      ${block('부부운', life.spouse, [])}
+      ${block('직업운', life.career, [])}
+      ${block('나의 체질', life.body, [])}
+      ${s.summary.length ? block('종합', s.summary.join(' '), s.consensus.from) : ''}
+    </div>
+
+    <div class="section-label">열다섯이 말하는 것</div>
+    <div class="card">
+      ${block('여럿이 함께 가리킨 것', con.공통?.text, con.공통?.sources)}
+      ${con.갈림 ? block('갈리는 지점', con.갈림.text, con.갈림.sources) : ''}
+    </div>
+
+    <div class="section-label">지금</div>
+    <div class="card">
+      <h3>오늘 — ${f.today.m}월 ${f.today.d}일 (${esc(today.weekday)})<span class="hanja">${esc(f.day.period.gz.day.hanja)} · ${esc(today.grade)}</span></h3>
+      ${block(null, today.line, [])}
       ${block('이레', `${f.week.label} 가운데 ${f.week.bestDay.on.m}월 ${f.week.bestDay.on.d}일 쪽이 낫고, ${f.week.worstDay.on.m}월 ${f.week.worstDay.on.d}일 쪽이 무겁습니다. 중요한 자리를 잡는다면 앞쪽 날로 미는 편이 낫습니다.`, [])}
-      ${period(f.week, '이번 주', 'week')}
-    </div>
-
-    <div class="section-label">${f.today.m}월</div>
-    <div class="card">
-      ${period(f.month, '이번 달', 'month')}
+      ${block(`${f.day.period.sajuYear}년`, year?.text, year?.sources)}
+      ${block('한 해의 흐름', `가장 힘이 실리는 때는 ${periodName(byYearScore[byYearScore.length - 1])} 무렵이고, 가장 속도를 조절할 때는 ${periodName(byYearScore[0])} 무렵입니다.`, [])}
+      ${block('몸의 흐름을 살필 때', `연간 흐름과 별개로 ${periodName(byHealthScore[0])}·${periodName(byHealthScore[1])} 무렵은 무리한 일정을 겹치지 않게 잡는 편이 좋습니다.`, [])}
+      <p class="area-src" style="margin-top:8px">
+        오늘·이레·올해는 같은 기운을 크기만 달리 본 것이라, 각각을 따로 길게
+        풀면 같은 말이 세 번 됩니다. 그래서 시기마다 그 시기만 말할 수 있는 것 —
+        어느 날, 어느 달인지 — 만 적었습니다. 자세한 것은 아래 일자별 표를 보세요.
+      </p>
     </div>
 
     <div class="section-label">${f.today.m}월 일자별</div>
@@ -363,46 +407,6 @@ function render(form) {
       ${lucky.helper.length ? block('귀인이 드는 날', `운의 흐름과 관계없이 돕는 사람이 붙는 날은 ${dayList(lucky.helper)}일입니다. 아쉬운 말을 꺼내야 한다면 이 날을 쓰세요.`, []) : ''}
       ${block('피해야 할 날', `${dayList(lucky.avoid)}일은 기운이 넘쳐 도리어 다치기 쉬우니 반드시 피하시고, 그다음으로 조심할 날은 ${dayList(lucky.worst)}일입니다.`, [])}
       ${block('처방', `모자란 기운을 채우는 색은 ${lucky.color.join('·')}이고 숫자는 ${lucky.num.join(', ')}입니다. 방향은 ${lucky.dir}이며, 이름의 첫 자음이 ${lucky.consonant.join('·')}인 사람과 인연이 좋습니다.`, [])}
-    </div>
-
-    <div class="section-label">${f.day.period.sajuYear}년</div>
-    <div class="card">
-      ${period(f.year, '올해', 'year')}
-      ${block('한 해의 흐름', `가장 힘이 실리는 때는 ${periodName(byYearScore[byYearScore.length - 1])} 무렵이고, 가장 속도를 조절할 때는 ${periodName(byYearScore[0])} 무렵입니다.`, [])}
-      ${block('몸의 흐름을 살필 때', `연간 흐름과 별개로 ${periodName(byHealthScore[0])}·${periodName(byHealthScore[1])} 무렵은 무리한 일정을 겹치지 않게 잡는 편이 좋습니다.`, [])}
-    </div>
-
-    ${(st.lines.length || pat.length) ? `
-    <div class="section-label">타고난 구성</div>
-    <div class="card">
-      ${block(st.level === 'strong' ? '크게 치우친 사주입니다' : '치우친 자리', st.head, [])}
-      ${st.lines.map((t) => block(null, t, [])).join('')}
-      ${pat.map((x) => block(x.name, x.text, [])).join('')}
-      <p class="area-src" style="margin-top:8px">
-        이 대목은 열다섯을 평균 낸 값이 아니라 사주 원국을 그대로 읽은 것입니다.
-        네 기둥은 각각 조상·부모·나·자식의 자리라, 같은 부딪침이라도 어느 자리에
-        걸렸느냐에 따라 뜻이 달라집니다.
-        시기에 따라 바뀌지 않는 결이라 시기 운세보다 무겁게 보셔도 됩니다.
-      </p>
-    </div>` : ''}
-
-    <div class="section-label">열다섯이 말하는 것</div>
-    <div class="card">
-      ${block('여럿이 함께 가리킨 것', con.공통?.text, con.공통?.sources)}
-      ${con.갈림 ? block('갈리는 지점', con.갈림.text, con.갈림.sources) : ''}
-    </div>
-
-    <div class="section-label">평생</div>
-    <div class="card">
-      ${block('초년운', life.early, [])}
-      ${block('중년운', life.middle, [])}
-      ${block('말년운', life.late, [])}
-      ${block('형제운', life.sibling, [])}
-      ${block('자식운', life.child, [])}
-      ${block('부부운', life.spouse, [])}
-      ${block('직업운', life.career, [])}
-      ${block('나의 체질', life.body, [])}
-      ${s.summary.length ? block('종합', s.summary.join(' '), s.consensus.from) : ''}
     </div>
 
     ${lottoSection(r.input, r.chart)}

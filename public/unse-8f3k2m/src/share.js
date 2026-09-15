@@ -198,17 +198,9 @@ export function buildSoloCard(form, r, f = null) {
   const life = lifeReading(r.input, r.chart, s);
   const st = structureReading(r.input, r.chart);
 
-  if (f) {
-    const today = areaProse(f.day, '총운', 0, r.chart);
-    if (today?.text) {
-      y = sectionLabel(ctx, y, `오 늘 — ${f.today.m}월 ${f.today.d}일`);
-      y = para(ctx, y + 6, today.text);
-      y += 12;
-    }
-  }
-
+  // 화면과 같은 차례로 — 타고난 것이 먼저, 시기는 뒤에 한 줄
   if (st.head || st.lines.length) {
-    y = sectionLabel(ctx, y, '타 고 난 결');
+    y = sectionLabel(ctx, y, '타 고 난 구 성');
     if (st.head) y = para(ctx, y + 6, st.head, { color: C.ink2 });
     for (const t of st.lines.slice(0, 2)) y = para(ctx, y, t);
     y += 12;
@@ -217,6 +209,15 @@ export function buildSoloCard(form, r, f = null) {
   y = sectionLabel(ctx, y, '평 생');
   y = para(ctx, y + 6, life.career);
   if (s.summary.length) y = para(ctx, y, s.summary[0], { color: C.ink2 });
+  y += 12;
+
+  if (f) {
+    const today = areaProse(f.day, '총운', 0, r.chart);
+    if (today?.text) {
+      y = sectionLabel(ctx, y, `오 늘 — ${f.today.m}월 ${f.today.d}일`);
+      y = para(ctx, y + 6, today.text);
+    }
+  }
 
   y = footer(ctx, y + 10,
     `${s.systemCount}개 체계를 돌린 결과입니다. 재미로 보시고, 중요한 결정은 스스로 내리시기 바랍니다.`);

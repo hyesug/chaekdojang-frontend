@@ -46,6 +46,13 @@ const GOD_LIFE = {
 
 // 같은 오행 비율이라도 월·일·시의 관계가 다르면 삶에서 드러나는 자리가 달라진다.
 // 평생 운세의 반복을 줄이기 위해, 실제 네 기둥에서만 만드는 짧은 개인 문장을 붙인다.
+/**
+ * 자리마다 뜻이 다르다.
+ *
+ * 같은 편관이라도 년주에 있으면 어릴 적 환경이 엄했다는 말이고, 시주에
+ * 있으면 말년까지 책임이 따라온다는 말이다. 예전에는 표 하나를 세 자리에
+ * 돌려썼는데, 년간과 시간이 같은 십신이면 똑같은 문장이 두 번 나왔다.
+ */
 const GOD_AT_PILLAR = {
   비견: '자기 방식이 강해, 어릴 때부터 남의 기준보다 스스로 납득하는 기준을 먼저 세우는 편입니다',
   겁재: '또래와 부딪치며 자기 몫을 만드는 경험이 일찍 들어오는 편입니다',
@@ -59,6 +66,34 @@ const GOD_AT_PILLAR = {
   정인: '배움·문서·윗사람의 도움을 잘 활용할 때 길이 넓어지는 편입니다',
 };
 
+/** 월주 — 한창때. 직업과 사회생활의 결 */
+const GOD_AT_MONTH = {
+  비견: '남 밑에 오래 있기보다 자기 이름으로 일할 때 힘이 붙습니다',
+  겁재: '사람과 같이 벌이는 일이 많은데, 돈 계산만 분명히 해두면 크게 갑니다',
+  식신: '만들고 기르는 일에서 자리를 잡습니다. 한 분야를 오래 파는 쪽이 유리합니다',
+  상관: '남이 하지 않는 방식으로 길을 냅니다. 조직 안에서는 답답함을 자주 느낍니다',
+  편재: '여러 판을 함께 굴리는 쪽이 맞습니다. 한 곳에 묶이면 오히려 힘이 줄어듭니다',
+  정재: '한 곳에서 오래 쌓는 쪽이 맞습니다. 급하게 키우려 들면 도리어 늦어집니다',
+  편관: '거친 자리를 맡아 해내며 인정을 얻습니다. 몸을 먼저 축내지 않게 살펴야 합니다',
+  정관: '조직과 제도 안에서 자리가 섭니다. 맡은 것을 끝까지 하는 태도가 곧 경력이 됩니다',
+  편인: '남들과 다른 전문성으로 먹고삽니다. 자리를 여러 번 옮겨도 실력은 쌓입니다',
+  정인: '배운 것으로 먹고사는 결입니다. 가르치거나 자격이 필요한 일이 잘 맞습니다',
+};
+
+/** 시주 — 말년과 자식의 자리 */
+const GOD_AT_HOUR = {
+  비견: '말년에도 일을 스스로 쥐고 있습니다. 자식에게 기대는 쪽은 아닙니다',
+  겁재: '말년에 나가는 자리가 늘기 쉬우니 재산을 한 곳에 몰아두지 않는 편이 낫습니다',
+  식신: '말년이 편안합니다. 먹고 누리는 복이 있고 아랫사람 덕도 따릅니다',
+  상관: '말년까지 하고 싶은 말이 많습니다. 자식과는 한 발 물러설수록 사이가 좋습니다',
+  편재: '말년에도 돈이 오갑니다. 새로 벌이기보다 정리해두는 쪽이 낫습니다',
+  정재: '말년에 쓸 것이 남습니다. 미리 정리해둔 만큼 그대로 지켜집니다',
+  편관: '말년까지 책임이 따라옵니다. 내려놓는 연습이 필요한 자리입니다',
+  정관: '말년에 이름이 남습니다. 아랫사람이 반듯하게 서는 쪽입니다',
+  편인: '말년에 안으로 파고듭니다. 혼자 있는 시간이 늘어나니 사람 자리를 일부러 만들어두세요',
+  정인: '말년에 배움과 도움이 붙습니다. 늦게 시작한 공부가 잘 되는 결입니다',
+};
+
 function pillarFlavor(chart) {
   const P = chart.pillars;
   const monthGod = tenGod(chart.dayStem, P.month.stem);
@@ -70,8 +105,8 @@ function pillarFlavor(chart) {
       : `태어난 환경의 리듬과 자기 기질 사이에 긴장이 있어, 남이 정한 길을 그대로 따르기보다 자기 기준을 만드는 과정이 중요합니다`;
   return {
     early: GOD_AT_PILLAR[yearGod],
-    middle: `${GOD_AT_PILLAR[monthGod]}. ${relationText}`,
-    late: hourGod ? GOD_AT_PILLAR[hourGod] : '출생 시각이 없어 후반 흐름은 넓게만 읽습니다. 나이가 들수록 무엇을 남길지 스스로 정하는 일이 중요합니다',
+    middle: `${GOD_AT_MONTH[monthGod]}. ${relationText}`,
+    late: hourGod ? GOD_AT_HOUR[hourGod] : '출생 시각이 없어 후반 흐름은 넓게만 읽습니다. 나이가 들수록 무엇을 남길지 스스로 정하는 일이 중요합니다',
     relation: relation?.kind ?? null,
   };
 }
@@ -79,12 +114,15 @@ function pillarFlavor(chart) {
 // 같은 오행 비율만으로 사람을 읽으면 원국이 다른 사람도 같은 말이 된다.
 // 네 기둥이 일간과 맺는 실제 관계를 한 번 더 풀어, 평생 리딩의 뼈대를
 // 각 명반에 고정한다. 전문 용어는 드러내지 않는다.
+/**
+ * 네 기둥을 하나로 묶어 본 결.
+ *
+ * 예전에는 여기서도 자리별 글자를 다시 설명했는데, 그건 바로 위의
+ * 초년·중년·말년이 이미 한 말이라 같은 문장이 두 번 나왔다. 여기서는
+ * 거기서 하지 않는 말 — 일지와 나머지 기둥이 어떻게 얽혔는가 — 만 한다.
+ */
 function nativeSignature(chart) {
   const p = chart.pillars;
-  const gods = [p.year, p.month, p.hour].filter(Boolean)
-    .map((x) => tenGod(chart.dayStem, x.stem));
-  const unique = [...new Set(gods)];
-  const descriptions = unique.slice(0, 2).map((god) => GOD_AT_PILLAR[god]).filter(Boolean);
   const ties = [p.year, p.month, p.hour].filter(Boolean)
     .map((x) => branchRelations(p.day.branch, x.branch)[0])
     .filter(Boolean);
@@ -95,7 +133,7 @@ function nativeSignature(chart) {
     : smooth
       ? '사람과 환경의 도움을 자기 힘으로 바꿔 쓰기 좋은 연결이 들어 있습니다'
       : '한쪽에 기대기보다 상황을 읽고 자기 자리를 만들어 가는 구성이 뚜렷합니다';
-  return `${descriptions.join('. ')}. ${relation}`;
+  return relation;
 }
 
 function stage(label, periods, tail) {
@@ -428,8 +466,10 @@ function gradeDays(input, chart, dates) {
     out.push({
       y, m, d, weekday: WD[(jdn + 1) % 7], sinsal, score,
       gz: ganzhiName(gz.stem, gz.branch),
-      // 같은 날엔 늘 같은 문장이 나오되, 이웃한 날끼리는 겹치지 않도록
-      seed: gz.stem * 12 + gz.branch + d,
+      // 같은 날엔 늘 같은 문장이 나오되, 이웃한 날끼리는 겹치지 않도록.
+      // 사람마다 다른 값을 더하지 않으면 같은 날 같은 등급인 사람이
+      // 전부 똑같은 문장을 받는다 (40명 중 아홉 가지밖에 나오지 않았다).
+      seed: gz.stem * 12 + gz.branch + d + me.dayStem * 7 + me.dayBranch * 13,
       wealth: f.areas.금전운.score ?? 50,
       love: f.areas.애정운.score ?? 50,
       work: f.areas.직장운.score ?? 50,
@@ -755,13 +795,6 @@ export function areaProse(block, area, seed = 0, chart = null) {
     text: parts.length ? parts.join(' ') : null,
     sources: areaSources(block, area),
   };
-}
-
-/** 한 시기 전체 — 여섯 영역을 문단으로 */
-export function periodProse(block, seed = 0, chart = null) {
-  const out = {};
-  for (const a of AREAS) out[a] = areaProse(block, a, seed, chart);
-  return out;
 }
 
 /* ═══════════════════════════════════════════════════════════

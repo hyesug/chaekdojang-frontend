@@ -17,7 +17,7 @@
 
 import { ELEMENTS, computeDaeun } from './core/ganzhi.js';
 import { AREAS } from './forecast.js';
-import { dayRange, structureReading, patternReading,
+import { dayRange, rankSurgeryDays, structureReading, patternReading,
          yearTimeline, innerReading, tabooReading } from './reading.js';
 
 const p2 = (n) => String(n).padStart(2, '0');
@@ -232,13 +232,37 @@ export function buildContext(form, r, f = null) {
     out.push('120일 가운데 영역별로 앞서는 날');
     out.push(`재물 ${tops('wealth')} · 관계 ${tops('love')} · 일 ${tops('work')} · 몸 ${tops('health')}`);
     out.push('');
+
+    // 수술은 일반 일진과 별도로 우선순위를 고정한다.
+    // 모델이 '좋음' 등급 하나만 보고 흑도 날짜를 위로 올리지 못하게,
+    // 엔진이 먼저 순서를 계산해서 그대로 넘긴다.
+    const surgery = rankSurgeryDays(r.input, r.chart, days);
+    const topSurgery = surgery.candidates.slice(0, 10);
+    out.push('## 수술·시술 택일 전용 순위');
+    out.push('이 순서는 이미 엔진에서 계산한 것이다. 수술·시술 날짜를 물으면 아래 순서를 임의로 재정렬하지 말 것.');
+    out.push('우선순위: 일지충·띠충·양인 제외 → 천의 → 황도 → 해당 절기월 건강 흐름 → 당일 건강 흐름 → 일반 일진 등급.');
+    out.push('황도/흑도보다 일반 일진 등급을 앞세우지 말 것. 대운 전환 표시는 주의 정보일 뿐 자동 감점·가점하지 않는다.');
+    for (const [i, x] of topSurgery.entries()) {
+      const s = x.surgery;
+      const t = s.daeunTransition;
+      const trans = t
+        ? ` · 대운전환 약 ${Math.abs(t.delta)}일 ${t.delta < 0 ? '전' : '후'}(${t.from}→${t.to}, 약 ${t.date.y}.${t.date.m}.${t.date.d})`
+        : '';
+      out.push(
+        `${i + 1}순위 ${x.y}.${x.m}.${x.d}(${x.weekday}) ${x.gz.hanja} · ` +
+        `${s.cheonui ? '천의' : '천의 아님'} · ${s.hwangdo ? '황도' : '흑도'} ${s.hwangdoName} · ` +
+        `절기월 건강 ${s.monthHealth} · 당일 건강 ${s.dayHealth} · 일반등급 ${x.grade}${trans}`
+      );
+    }
+    out.push('※ 이 순위는 전통 택일 규칙을 사이트 내부 기준으로 정렬한 것이며, 실제 수술의 안전성·예후를 예측하는 의학적 근거는 아니다. 실제 날짜는 집도의와 병원의 판단을 우선할 것.');
+    out.push('');
   }
 
   out.push('## 읽는 법');
   out.push('위 값은 모두 천문 계산으로 구한 것이다. 간지·절기·음력·행성 위치를 다시 계산하지 말고 그대로 쓸 것.');
   out.push('체계마다 보는 대상이 다르므로 결론이 갈릴 수 있다. 갈리면 갈린다고 말할 것.');
   out.push('날짜를 물으면 위 일자별 표에서 실제 날짜를 골라 답할 것. 표에 있는 날은 이미 계산된 날이므로 지어내는 것이 아니다. "월 초"처럼 뭉개지 말고 "11월 3일(화)"처럼 날짜와 요일을 적고, 왜 그 날인지 한 줄로 밝힐 것. 두세 개를 우선순위대로 주고, 함께 피할 날도 같이 적을 것.');
-  out.push('택일의 기준: 몸에 손대는 일(수술·시술·치료 시작)은 천의가 든 날을 먼저 보고, 일지충·띠충·양인이 든 날은 뺀다. 계약·문서·면접은 황도이면서 등급이 높은 날을 고른다. 이사·출발은 역마가 든 날이 맞고, 사람을 만나거나 부탁할 일은 천을이 든 날이 맞다. 등급은 이 120일 안에서의 순위다.');
+  out.push('택일의 기준: 몸에 손대는 일(수술·시술·치료 시작)은 위의 "수술·시술 택일 전용 순위"를 그대로 쓸 것. 일지충·띠충·양인을 먼저 제외하고, 천의 → 황도 → 절기월 건강 → 당일 건강 → 일반 일진 등급 순으로 본다. 일반 등급이 높다는 이유로 흑도 날짜를 황도 날짜보다 앞세우지 말 것. 계약·문서·면접은 황도이면서 등급이 높은 날을 고른다. 이사·출발은 역마, 부탁·지원 요청은 천을을 참고한다.');
   out.push('표 밖의 날짜(120일 이후)를 물으면 그때는 월·절기 단위로만 답하고 표가 거기까지 없다고 한 줄로 밝힐 것.');
 
   return out.join('\n');

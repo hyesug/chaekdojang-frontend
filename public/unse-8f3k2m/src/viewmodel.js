@@ -15,7 +15,8 @@
 import { AREAS } from './forecast.js';
 import { lifeReading, structureReading, patternReading, innerReading,
          tabooReading, yearTimeline, consensusReading, areaProse,
-         monthDays, luckyDays } from './reading.js';
+         monthDays, luckyDays, compatReading,
+         PAIR_WEIGHT, PAIR_AREAS } from './reading.js';
 
 /**
  * 명반을 통째로 세우는 넷.
@@ -266,5 +267,80 @@ export function buildView(form, r, f) {
     month: { days, lucky, label: `${f.today.m}월` },
     life,
     raw: { r, f },
+  };
+}
+
+/* ═══════════════════════════════════════════════════════════
+   궁합 - 체계별 결론을 주제별 결론으로 되돌린다
+   ═══════════════════════════════════════════════════════════ */
+
+/** 축마다 사람이 실제로 궁금해하는 말 */
+const AXIS_LABEL = {
+  끌림: '서로 끌리는 힘',
+  현실: '같이 사는 일',
+  돈: '돈에 대해',
+  대화: '말이 통하는가',
+  오래: '오래 가는가',
+};
+
+/**
+ * 궁합 결과를 주제 축으로 다시 세운다.
+ *
+ * 예전 화면은 '사주 좋음 / 자미 주의 / 베딕 어려움'처럼 체계별 판정을
+ * 늘어놓았다. 그런데 사람이 궁금한 것은 체계가 아니라 축이다 - 끌리는가,
+ * 같이 살 만한가, 돈 이야기가 되는가, 말이 통하는가, 오래 가는가.
+ *
+ * 계산은 이미 축마다 가중치를 달리 매겨 두었다(PAIR_WEIGHT). 여기서는
+ * 그 가중치를 그대로 근거로 뒤집어, 축마다 '어느 체계가 이 축을 주로
+ * 보는가'와 '그 체계가 무엇을 근거로 그렇게 말하는가'를 붙인다.
+ */
+export function buildCompatView(formA, formB, c) {
+  const cr = compatReading(c);
+  const s = c.synthesis;
+
+  const axes = PAIR_AREAS.map((area, i) => {
+    // 이 축을 주로 보는 체계 순으로. 가중치는 이미 정해져 있다.
+    const ranked = c.results
+      .map((r) => ({ r, w: (PAIR_WEIGHT[r.id]?.[i] ?? 0.5) * (r.weight ?? 1) }))
+      .sort((a, b) => b.w - a.w);
+
+    const lead = ranked.filter((x) => CORE_IDS.includes(x.r.id)).slice(0, 4);
+    const evidence = (lead.length ? lead : ranked.slice(0, 3)).map(({ r, w }) => ({
+      name: r.name,
+      verdict: r.verdict,
+      tone: r.tone,
+      headline: r.headline,
+      facts: r.facts.slice(0, 2).map((x) => `${x.label} ${x.value}`),
+      // 이 축에서 그 체계의 말이 얼마나 무겁게 실렸는가
+      lead: w >= 1,
+    }));
+
+    return {
+      key: area,
+      label: AXIS_LABEL[area] ?? area,
+      text: cr[area] ? cr[area].text : '',
+      evidence,
+      // 갈린다고 말하려면 두 가지가 같이 있어야 한다. 한쪽은 좋다 하고
+      // 다른 쪽은 어렵다고 할 것, 그리고 그 둘이 이 축을 주로 보는
+      // 체계일 것. 핵심 넷 전체로 세면 어느 축에나 같은 표가 붙어서
+      // 축마다 다른 말을 하지 못한다.
+      split: (() => {
+        const lead = evidence.filter((e) => e.lead);
+        const pool = lead.length >= 2 ? lead : evidence;
+        return pool.some((e) => e.tone > 0) && pool.some((e) => e.tone < 0);
+      })(),
+    };
+  });
+
+  return {
+    who: { a: formA.name, b: formB.name },
+    verdict: s.verdict,
+    core: s.coreBuckets ?? null,
+    buckets: s.buckets,
+    summary: cr['총평'] ? cr['총평'].text : '',
+    axes,
+    strong: cr['강점'] ?? null,
+    friction: cr['부딪침'] ?? null,
+    raw: { c },
   };
 }

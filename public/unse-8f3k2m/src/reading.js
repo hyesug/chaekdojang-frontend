@@ -963,7 +963,7 @@ export function areaProse(block, area, seed = 0, chart = null) {
  * 태을신수는 국운을 보는 것이라 두 사람 사이에 할 말이 적다.
  * 그래서 항목마다 무게를 달리 준다. 개인 운세와 같은 방식이다.
  */
-const PAIR_WEIGHT = {
+export const PAIR_WEIGHT = {
   //           끌림  현실  돈   대화  오래
   saju:      [1.0, 1.0, 1.0, 0.7, 1.0],
   jamidusu:  [1.0, 1.0, 0.9, 0.6, 1.0],
@@ -981,7 +981,7 @@ const PAIR_WEIGHT = {
   tojeong:   [0.5, 0.7, 0.7, 0.4, 0.6],
   taeeul:    [0.3, 0.6, 0.5, 0.3, 0.5],
 };
-const PAIR_AREAS = ['끌림', '현실', '돈', '대화', '오래'];
+export const PAIR_AREAS = ['끌림', '현실', '돈', '대화', '오래'];
 
 const PAIR_TEXT = {
   끌림: {

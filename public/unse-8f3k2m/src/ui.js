@@ -19,8 +19,8 @@ import { lifeReading, monthDays, luckyDays, compatReading,
          structureReading, patternReading,
          yearTimeline, innerReading, tabooReading } from './reading.js';
 import { aiSection, initAI, initCompatAI } from './ai.js';
-import { buildView, sensitivity } from './viewmodel.js';
-import { SYSTEM_META, TIER_LABEL, SOURCE_LABEL, ENGINE_VERSION } from './meta.js';
+import { buildView, sensitivity, buildCompatView } from './viewmodel.js';
+import { SYSTEM_META, TIER_LABEL, SOURCE_LABEL, ENGINE_VERSION, CALC_CHANGES } from './meta.js';
 
 /** 방금 본 결과. 이미지 카드와 공유 링크를 만들 때 다시 쓴다 */
 let last = null;
@@ -306,51 +306,86 @@ function lottoSection(input, chart) {
 const cite = (names) => names && names.length
   ? ` <span class="cite">(${names.map(esc).join(', ')})</span>` : '';
 
-/** 문장 한 덩이 */
-const say = (name, html) =>
-  `<div class="say">${name ? `<div class="say-name">${esc(name)}</div>` : ''}<p class="say-text">${html}</p></div>`;
-
-
-// ─────────────────────────────────────────────────────────────
-// 궁합 화면
-// ─────────────────────────────────────────────────────────────
-
+/**
+ * 궁합 화면.
+ *
+ * 예전에는 '사주 좋음 / 자미 주의 / 베딕 어려움'처럼 체계별 판정을
+ * 늘어놓았다. 그런데 사람이 궁금한 건 체계가 아니라 축이다 - 끌리는가,
+ * 같이 살 만한가, 돈 이야기가 되는가, 말이 통하는가, 오래 가는가.
+ *
+ * 계산은 이미 축마다 가중치를 달리 매겨 두었으므로, 그 가중치를 그대로
+ * 뒤집어 축마다 '어느 체계가 이 축을 주로 보는가'를 근거로 붙인다.
+ */
 function renderCompat(formA, formB, r) {
   last = { mode: 'pair', formA, formB, result: r };
-  const p = (n) => String(n).padStart(2, '0');
-  const when = (f) => `${f.year}.${p(f.month)}.${p(f.day)}` +
-    (f.hour == null ? ' 시간 미상' : ` ${p(f.hour)}:${p(f.minute)}`);
+  const v = buildCompatView(formA, formB, r);
+  const p2 = (n) => String(n).padStart(2, '0');
+  const when = (f) => `${f.year}.${p2(f.month)}.${p2(f.day)}` +
+    (f.hour == null ? ' 시각 미상' : ` ${p2(f.hour)}:${p2(f.minute)}`);
 
-  const cr = compatReading(r);
-  const block = (label, v) => v?.text
-    ? `<div class="say"><div class="say-name">${esc(label)}</div>
-         <p class="say-text">${esc(v.text)}${cite(v.sources)}</p></div>`
+  const block = (label, text, sources) => text
+    ? `<div class="say">${label ? `<div class="say-name">${esc(label)}</div>` : ''}
+         <p class="say-text">${esc(text)}${cite(sources)}</p></div>`
     : '';
 
+  const axisCard = (a) => `
+    <div class="section-label">${esc(a.label)}${a.split ? ' <span class="split-tag">체계가 갈림</span>' : ''}</div>
+    <div class="card">
+      ${block(null, a.text, [])}
+      <details class="why">
+        <summary>왜 이렇게 나왔나요</summary>
+        ${a.evidence.map((e) => `
+          <div class="ev">
+            <span class="ev-dot ${e.tone > 0 ? 'on' : ''}"></span>
+            <div>
+              <div class="ev-name">${esc(e.name)} — ${esc(e.verdict)}${e.lead ? ' · 이 축을 주로 보는 체계' : ''}</div>
+              <div class="ev-head">${esc(e.headline)}</div>
+              <div class="ev-facts">${esc(e.facts.join(' · '))}</div>
+            </div>
+          </div>`).join('')}
+        <p class="agree-note">
+          이 축을 원래 무엇을 보라고 만든 체계인지에 따라 무게를 달리 줍니다.
+          별표가 붙은 쪽이 이 축에서 가장 크게 실린 잣대입니다.
+        </p>
+      </details>
+    </div>`;
+
   return `
-    <div class="section-label">궁합</div>
-    <div class="card synth">
-      <h3>${esc(formA.name)} <span style="color:var(--gold-soft)">×</span> ${esc(formB.name)}</h3>
-      <p class="headline">${esc(when(formA))} &nbsp;·&nbsp; ${esc(when(formB))}</p>
+    <div class="hero">
+      <div class="hero-who">궁합</div>
+      <h2 class="hero-title">${esc(formA.name)} <span style="color:var(--gold-soft)">×</span> ${esc(formB.name)}</h2>
+      <p class="hero-born">${esc(when(formA))} &nbsp;·&nbsp; ${esc(when(formB))}</p>
 
-      ${block('총평', cr.총평)}
-      ${block('끌리는 지점', cr.끌림)}
-      ${block('같이 사는 일', cr.현실)}
-      ${block('돈에 대해', cr.돈)}
-      ${block('대화', cr.대화)}
-      ${block('오래 가려면', cr.오래)}
-      ${block('가장 든든한 자리', cr.강점)}
-      ${block('가장 걸리는 자리', cr.부딪침)}
+      <div class="hero-label">열다섯을 모은 결론</div>
+      <p class="hero-theme">${esc(v.summary)}</p>
 
-      <p class="area-src" style="margin-top:14px">
-        열다섯 체계를 모두 견주되, 항목마다 그 주제를 보는 체계에 무게를 더 줍니다.
-        괄호 안이 그 항목을 실제로 끈 체계입니다.
-      </p>
+      ${v.core ? `
+        <div class="hero-label">명반을 통째로 세우는 넷만 따로 세면</div>
+        ${['좋음', '무난', '어려움'].map((k) => `
+          <div class="agree-row">
+            <span class="agree-name">${k}</span>
+            ${`<div class="dots">${Array.from({ length: 4 }, (_, i) =>
+              `<i class="${i < v.core[k].length ? 'on' : ''}"></i>`).join('')}</div>`}
+            <span class="agree-n">${v.core[k].length ? esc(v.core[k].join(', ')) : '없음'}</span>
+          </div>`).join('')}
+        <p class="agree-note">
+          요일 하나로 보는 잣대와 여덟 항목을 따지는 잣대를 같은 한 표로 세면
+          실제보다 평평해 보입니다. 개수만 볼 때는 이쪽을 먼저 보세요.
+        </p>` : ''}
     </div>
+
+    ${v.axes.map(axisCard).join('')}
+
+    ${v.strong || v.friction ? `
+    <div class="section-label">양 끝</div>
+    <div class="card">
+      ${v.strong ? block('가장 후하게 본 곳', v.strong.text, v.strong.sources) : ''}
+      ${v.friction ? block('가장 어렵게 본 곳', v.friction.text, v.friction.sources) : ''}
+    </div>` : ''}
 
     ${r.skipped.length ? `
       <div class="card" style="margin-top:14px">
-        <p class="area-src" style="margin:0">
+        <p class="agree-note" style="margin:0">
           ${esc(r.skipped.map((x) => x.system).join(', '))} — ${esc(r.skipped[0].reason)}
         </p>
       </div>` : ''}
@@ -360,9 +395,8 @@ function renderCompat(formA, formB, r) {
         <button type="button" data-act="chart-copy">두 사람 명반 텍스트 복사</button>
         <button type="button" data-act="chart-save">텍스트 파일로 저장</button>
       </div>
-      <p class="area-src" style="margin-top:12px">
+      <p class="agree-note" style="margin-top:12px">
         두 사람의 명반과 열다섯 체계가 견준 결과가 전부 글자로 담깁니다.
-        다른 곳에 물어보거나 기록으로 남길 때 쓰세요.
       </p>
     </div>
 
@@ -418,6 +452,22 @@ function receiptPanel(v) {
         ${row('베딕 아야남샤', ayanFact ? `라히리 ${ayanFact.value}` : '—')}
         ${row('엔진', ENGINE_VERSION)}
       </dl>
+      <details class="why" style="margin-top:10px">
+        <summary>값이 달라진 수정 이력</summary>
+        ${CALC_CHANGES.map((c) => `
+          <div class="ev">
+            <span class="ev-dot on"></span>
+            <div>
+              <div class="ev-name">계산 v${esc(c.version)} · ${esc(c.at)}</div>
+              <div class="ev-facts">${esc(c.fields.join(' · '))}</div>
+              <div class="ev-head">${esc(c.why)}</div>
+            </div>
+          </div>`).join('')}
+        <p class="agree-note">
+          값이 달라질 수 있는 수정만 적었습니다. 문장만 다듬은 것은 넣지 않습니다 —
+          넣기 시작하면 목록이 길어져 정작 값이 바뀐 자리를 못 찾습니다.
+        </p>
+      </details>
       <p class="agree-note">
         진태양시는 사주에만 씁니다. 서양점성술과 베딕은 표준시(KST)와 출생지 경위도를
         그대로 넣어 계산합니다. 같은 시각을 두 번 보정하지 않기 위해서입니다.
@@ -960,3 +1010,13 @@ $('#result').addEventListener('click', (e) => {
   if (st.formB) fill('b-', st.formB);
   $('#form').requestSubmit();
 })();
+
+// 화면 아래에 판 번호를 박아 둔다. "예전과 다른데요"라는 말이 나올 때
+// 어느 판을 보고 있는지부터 맞춰야 이야기가 된다.
+{
+  const el = $('#ver');
+  if (el) {
+    const last = CALC_CHANGES[0];
+    el.textContent = `${ENGINE_VERSION} · 계산이 마지막으로 달라진 날 ${last ? last.at : '—'}`;
+  }
+}

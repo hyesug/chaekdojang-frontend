@@ -8,6 +8,9 @@
  *   중괘 = (생월 + 그 달의 대소) ÷ 6 의 나머지  … 달의 결
  *   하괘 = (생일 + 일진수) ÷ 3 의 나머지        … 마무리
  *
+ * 셋 다 간지에서 나온 수를 쓴다. 중괘만 음력 월 숫자를 쓰면 잣대가
+ * 어긋난다.
+ *
  * 수는 선천수를 쓴다. 甲己子午 9, 乙庚丑未 8, 丙辛寅申 7, 丁壬卯酉 6,
  * 戊癸辰戌 5, 巳亥 4.
  *
@@ -90,8 +93,16 @@ export function analyze(input) {
   const dayBranch = (jdn + 1) % 12;
   const iljinNum = STEM_NUM[dayStem] + BRANCH_NUM[dayBranch];
 
+  // 월건 — 그 해 그 음력 달의 간지. 음력 1월이 寅월이고 천간은 오호둔으로 돈다.
+  // 예전에는 여기서 음력 월 숫자(12)를 그대로 더했는데, 상괘는 태세수를
+  // 하괘는 일진수를 쓰면서 중괘만 맨 숫자를 쓰는 셈이었다. 산법 셋이
+  // 나란히 간지 수를 쓰는 것이 맞고, 그래야 세 괘가 같은 잣대가 된다.
+  const wolGeonBranch = (lunar.month + 1) % 12;
+  const wolGeonStem = (((taeSe.stem % 5) * 2 + 2) % 10 + (lunar.month - 1)) % 10;
+  const wolGeonNum = STEM_NUM[wolGeonStem] + BRANCH_NUM[wolGeonBranch];
+
   const upper = modFrom1(koreanAge + taeSeNum, 8);
-  const middle = modFrom1(lunar.month + (lunar.isBigMonth ? 30 : 29), 6);
+  const middle = modFrom1(wolGeonNum + (lunar.isBigMonth ? 30 : 29), 6);
   const lower = modFrom1(lunar.day + iljinNum, 3);
 
   const gwaeNo = upper * 100 + middle * 10 + lower;
@@ -110,7 +121,8 @@ export function analyze(input) {
     { label: '괘', value: `${upper}·${middle}·${lower}`,
       note: `제${gwaeNo}괘 · ${U.title} (문구는 원전을 옮긴 것이 아니라 이 사이트에서 새로 쓴 것)` },
     { label: '상괘', value: String(upper), note: `세는나이 ${koreanAge} + 태세수 ${taeSeNum} → ÷8` },
-    { label: '중괘', value: String(middle), note: `음력 ${lunar.month}월 + 월대소 ${lunar.isBigMonth ? 30 : 29} → ÷6` },
+    { label: '중괘', value: String(middle),
+      note: `월건 ${STEMS[wolGeonStem]}${BRANCHES[wolGeonBranch]} 수 ${wolGeonNum} + 월대소 ${lunar.isBigMonth ? 30 : 29} → ÷6` },
     { label: '하괘', value: String(lower),
       note: `음력 ${lunar.day}일 + 일진수 ${iljinNum} → ÷3 (일진수는 선천수 ${STEMS[dayStem]}+${BRANCHES[dayBranch]})` },
     { label: '태세', value: taeSe.hanja, note: `${currentYear}년 · ${taeSe.kr}` },

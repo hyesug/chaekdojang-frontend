@@ -151,7 +151,9 @@ export function analyze(input) {
     { label: '월명성', value: STARS[getsumei].hanja, note: STARS[getsumei].name },
     { label: `${currentYear}년 중궁`, value: STARS[centerThisYear].hanja, note: STARS[centerThisYear].name },
     { label: '내 별의 자리', value: myDir ?? '중앙', note: `${currentYear}년 기준` },
-    { label: '9년 주기', value: `${phase + 1}번째 해`, note: PHASE_TEXT[phase].split('.')[0] },
+    // 별을 정하는 셈은 조견과 맞지만, 국면에 붙이는 이름은 해석 쪽이다
+    { label: '9년 주기', value: `${phase + 1}번째 해`,
+      note: `${PHASE_TEXT[phase].split('.')[0]} (국면 이름은 유파에 따른 해석)` },
   ];
 
   const readings = [

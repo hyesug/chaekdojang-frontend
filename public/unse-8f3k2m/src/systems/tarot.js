@@ -141,8 +141,11 @@ export function analyze(input) {
 
   const facts = [
     { label: '생일 카드', value: `${birthIndex}. ${bKr}`, note: bEn },
+    // 씨앗에 올해가 들어간다. 즉 이 석 장은 생일 카드와 달리 평생 고정이
+    // 아니라 해마다 바뀐다. 출생 고정 자료로 읽히면 곤란해서 밝혀 둔다.
     ...drawn.map((c, i) => ({
-      label: POSITIONS[i].label, value: c.title, note: POSITIONS[i].hint,
+      label: POSITIONS[i].label, value: c.title,
+      note: `${POSITIONS[i].hint} · ${currentYear}년 배열 (생년월일시로 고정한 씨앗에서 뽑음. 해가 바뀌면 달라진다)`,
     })),
   ];
 

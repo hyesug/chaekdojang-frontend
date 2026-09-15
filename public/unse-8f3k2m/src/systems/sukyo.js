@@ -125,6 +125,9 @@ export function monthMansion(lunarMonth, lunarDay) {
   return (start + lunarDay - 1) % 27;
 }
 
+/** 스물일곱 수의 이름. 베딕 쪽에서도 같은 칸을 쓰므로 여기서 함께 쓴다 */
+export const NAKSHATRA_NAMES = SU.map(([hanja, kr, sanskrit]) => ({ hanja, kr, sanskrit }));
+
 export function analyze(input) {
   const { jdUT, timeKnown, lunar } = input;
 

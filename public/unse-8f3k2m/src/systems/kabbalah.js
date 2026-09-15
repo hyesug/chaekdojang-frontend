@@ -84,7 +84,8 @@ export function analyze(input) {
 
   const facts = [
     { label: '라이프 패스', value: String(lifePath), note: `${sephira.name} · ${sephira.mean}` },
-    { label: '세피라', value: sephira.hebrew, note: sephira.name },
+    { label: '세피라', value: sephira.hebrew,
+      note: `${sephira.name} · 라이프 패스 수를 세피라에 잇는 것은 현대 수비학 쪽 대응이지 전통 카발라의 고정 산법이 아니다` },
     { label: '생일수', value: String(birthday), note: '타고난 재능의 결' },
     { label: `${currentYear} 개인년`, value: String(personalYear), note: '9년 주기 안의 위치' },
     { label: '원소', value: sephira.element, note: '오행 환산 시 근사 적용' },

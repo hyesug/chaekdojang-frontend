@@ -15,7 +15,7 @@
 import { planetPositions, houses, toSidereal, PLANET_ORDER } from '../core/planets.js';
 import { j } from '../core/josa.js';
 import { norm360, lahiriAyanamsa } from '../core/astro.js';
-import { NAKSHATRA_LORDS } from './sukyo.js';
+import { NAKSHATRA_LORDS, NAKSHATRA_NAMES } from './sukyo.js';
 import { result, WESTERN_TO_OHAENG } from './_base.js';
 
 export const meta = {
@@ -100,7 +100,7 @@ function vimshottari(moonSidereal, birthYearFraction) {
     list.push({ lord: L, fromAge: age, toAge: age + span });
     age += span;
   }
-  return { nak, lord, balance: (1 - progressed) * DASHA_YEARS[lord], list };
+  return { nak, lord, progressed, balance: (1 - progressed) * DASHA_YEARS[lord], list };
 }
 
 export function analyze(input) {
@@ -138,7 +138,10 @@ export function analyze(input) {
       label: '라그나', value: `${RASHI[lagna].name} (${RASHI[lagna].kr})`,
       note: `상승점 ${(lagnaLon % 30).toFixed(1)}° · 1하우스`,
     }] : []),
-    { label: '나크샤트라', value: NAKSHATRA_LORDS[d.nak], note: `제${d.nak + 1}수의 지배 행성` },
+    // 값 자리에 지배 행성이 들어가 있어서 '나크샤트라 — 수성'처럼 읽혔다.
+    // 수성은 칸의 이름이 아니라 그 칸을 다스리는 별이다.
+    { label: '나크샤트라', value: `${NAKSHATRA_NAMES[d.nak].sanskrit} (${NAKSHATRA_NAMES[d.nak].hanja}宿)`,
+      note: `제${d.nak + 1}수 · 지배 행성 ${NAKSHATRA_LORDS[d.nak]} · 제${Math.floor(d.progressed * 4) + 1}파다` },
     { label: '아야남샤', value: `${ayan.toFixed(3)}°`, note: '라히리 · 회귀 좌표와의 차이' },
     { label: '현재 다샤', value: `${current.lord} 다샤`,
       note: `${Math.max(0, current.fromAge).toFixed(1)}세 ~ ${current.toAge.toFixed(1)}세` },

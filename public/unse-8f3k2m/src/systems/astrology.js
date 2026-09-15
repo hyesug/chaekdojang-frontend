@@ -172,9 +172,9 @@ export function analyze(input) {
       { label: '상승점', value: `${SIGNS[asc].name} ${degInSign(h.asc).toFixed(1)}°`, note: '겉으로 드러나는 나' },
       { label: '중천', value: `${SIGNS[signOf(h.mc)].name} ${degInSign(h.mc).toFixed(1)}°`, note: '사회적 목표점' },
     ] : []),
-    { label: '원소', value: Object.entries(elCount).map(([k, v]) => `${k}${v}`).join(' '),
+    { label: timeKnown ? '원소 (7행성+상승점)' : '원소 (7행성)', value: Object.entries(elCount).map(([k, v]) => `${k}${v}`).join(' '),
       note: `${word(topEls)}${lowEl.value === 0 ? ` · ${lowEl.names.join('·')} 없음` : ''}` },
-    { label: '성질', value: Object.entries(modeCount).map(([k, v]) => `${k}${v}`).join(' '),
+    { label: timeKnown ? '성질 (7행성+상승점)' : '성질 (7행성)', value: Object.entries(modeCount).map(([k, v]) => `${k}${v}`).join(' '),
       note: `${word(topModes)}` },
     { label: '하우스 방식', value: h.system, note: timeKnown ? '' : '출생 시간 미상이라 참고용' },
   ];

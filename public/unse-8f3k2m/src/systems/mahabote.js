@@ -112,7 +112,10 @@ export function analyze(input) {
     { label: '내 행성', value: planet.name, note: planet.my },
     { label: '버마력', value: `${by}년`, note: `서기 ${year} − ${year - by} (버마 새해는 4월 중순)` },
     { label: '나머지', value: String(remainder), note: `${by} ÷ 7` },
-    { label: '내 자리', value: house.name, note: `${house.my} · ${house.mean}` },
+    // 버마력과 나머지까지는 규칙이 분명한데, 그 나머지를 여덟 자리에
+    // 어떻게 얹느냐는 자료마다 다르다. 어느 배치를 썼는지 밝혀 둔다.
+    { label: '내 자리', value: house.name,
+      note: `${house.my} · ${house.mean} · 요일 행성 자리에서 나머지만큼 나아가는 배치를 따랐다. 자리 배치는 유파마다 달라 다른 책과 결과가 다를 수 있다` },
   ];
 
   const readings = [

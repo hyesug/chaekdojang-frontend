@@ -91,7 +91,10 @@ export function analyze(input) {
   const samePalace = nowPalace.n === palace.n;
 
   const facts = [
-    { label: '적년', value: `${accYear}년`, note: `${sajuYear}년 − 4 (갑자년 기준)` },
+    // 고전 태을의 적년은 상원부터 누적한 아주 큰 수다. 그걸 쓰지 않으면서
+    // 이름만 '적년'이라고 달면 같은 것인 줄로 읽힌다.
+    { label: '기준 햇수', value: `${accYear}년째`,
+      note: `갑자년(서기 4년)부터 ${sajuYear}년까지. 고전의 적년(상원부터 누적한 큰 수)이 아니라 이 사이트가 잡은 기준점이다` },
     { label: '태을궁', value: `${palace.hanja}(${palace.name})`, note: `${palace.dir} · 24년 주기의 ${cycle + 1}번째 해` },
     { label: '머문 해', value: `${stayYear}년째`, note: '한 궁에 세 해를 머문다' },
     { label: '계신', value: `${BRANCHES[gyesin]}(${BRANCHES_KR[gyesin]})`, note: `${monthBranch === 2 ? '인' : BRANCHES_KR[monthBranch]}월 기준` },

@@ -105,10 +105,14 @@ export function analyze(input) {
   }
 
   const facts = [
-    { label: '괘', value: `${upper}·${middle}·${lower}`, note: `제${gwaeNo}괘 · ${U.title}` },
+    // 괘 번호는 산법대로 나온 값이고, 그 옆의 문구는 이 사이트에서 쓴 것이다.
+    // 원전의 표제처럼 보이면 곤란해서 밝혀 둔다.
+    { label: '괘', value: `${upper}·${middle}·${lower}`,
+      note: `제${gwaeNo}괘 · ${U.title} (문구는 원전을 옮긴 것이 아니라 이 사이트에서 새로 쓴 것)` },
     { label: '상괘', value: String(upper), note: `세는나이 ${koreanAge} + 태세수 ${taeSeNum} → ÷8` },
     { label: '중괘', value: String(middle), note: `음력 ${lunar.month}월 + 월대소 ${lunar.isBigMonth ? 30 : 29} → ÷6` },
-    { label: '하괘', value: String(lower), note: `음력 ${lunar.day}일 + 일진수 ${iljinNum} → ÷3` },
+    { label: '하괘', value: String(lower),
+      note: `음력 ${lunar.day}일 + 일진수 ${iljinNum} → ÷3 (일진수는 선천수 ${STEMS[dayStem]}+${BRANCHES[dayBranch]})` },
     { label: '태세', value: taeSe.hanja, note: `${currentYear}년 · ${taeSe.kr}` },
     { label: '일진', value: STEMS[dayStem] + BRANCHES[dayBranch], note: '태어난 날의 간지' },
   ];

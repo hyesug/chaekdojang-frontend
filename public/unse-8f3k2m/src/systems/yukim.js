@@ -160,7 +160,10 @@ export function analyze(input) {
     { label: '초전', value: `${bn(first)} ${gAt(first)}`, note: '일의 시작' },
     { label: '중전', value: `${bn(second)} ${gAt(second)}`, note: '과정' },
     { label: '말전', value: `${bn(third)} ${gAt(third)}`, note: '결말' },
-    { label: '귀인', value: bn(noblePos), note: `${isDay ? '주귀' : '야귀'} · ${forward ? '순행' : '역행'}` },
+    // 귀인은 일간이 정하는 글자이고, 그것이 어느 지반에 올라탔는지가 따로다.
+    // 지반만 적어두면 그 자리가 귀인인 줄로 읽힌다.
+    { label: '귀인', value: `${bn(nobleSeat)} → ${bn(noblePos)}`,
+      note: `${isDay ? '주귀' : '야귀'} ${BRANCHES[nobleSeat]}가 지반 ${BRANCHES[noblePos]}에 임함 · ${forward ? '순행' : '역행'}` },
   ];
 
   const readings = [

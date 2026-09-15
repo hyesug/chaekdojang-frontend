@@ -104,19 +104,49 @@ const SU = [
   ['奎', '규', 'Revati', '마무리합니다. 27수의 마지막 자리라 끝맺고 배웅하는 역할이 붙습니다. 온화하고 보호하는 기운이 강합니다.', { 감성: 0.6, 안정: 0.4, 주도: -0.2 }],
 ];
 
+/**
+ * 전통 숙요의 본명숙 — 월숙방통력(月宿傍通暦).
+ *
+ * 위의 nakshatraOf 는 실제 달의 항성 황경으로 칸을 정한다. 그게 나크샤트라
+ * 본래의 정의지만, 일본에 자리 잡은 숙요도(宿曜道)에서 본명숙을 잡는 방식은
+ * 다르다 — 음력 월·일 대조표를 쓴다. 두 방식은 대개 다른 숙이 나온다.
+ *
+ * 어느 하나가 틀린 게 아니라 잣대가 둘인 것이라, 둘 다 보여주고 무엇으로
+ * 구한 값인지 밝힌다. 한 줄에 섞어 쓰면 그게 오류가 된다.
+ *
+ * 달마다 정해진 시작 숙에서 (일 − 1)만큼 나아간다. 시작 숙이 달마다
+ * 두세 칸씩 밀리는 것은 음력 한 달(약 29.5일)과 27수의 차이에서 온다.
+ */
+const MONTH_START = [24, 26, 1, 3, 5, 7, 10, 13, 15, 17, 20, 22];
+
+export function monthMansion(lunarMonth, lunarDay) {
+  const start = MONTH_START[(lunarMonth - 1) % 12];
+  if (start == null) return null;
+  return (start + lunarDay - 1) % 27;
+}
+
 export function analyze(input) {
-  const { jdUT, timeKnown } = input;
+  const { jdUT, timeKnown, lunar } = input;
 
   const { index, sidereal, pada } = nakshatraOf(jdUT);
   const [hanja, kr, sanskrit, text, traits] = SU[index];
   const lord = NAKSHATRA_LORDS[index];
   const element = LORD_ELEMENT[lord];
 
+  const tradIndex = lunar ? monthMansion(lunar.month, lunar.day) : null;
+  const trad = tradIndex == null ? null : SU[tradIndex];
+
   const facts = [
-    { label: '본명숙', value: `${hanja}宿`, note: `${kr}수 · ${sanskrit}` },
+    { label: '본명숙', value: `${hanja}宿`, note: `${kr}수 · ${sanskrit} · 달의 실제 위치로 구함` },
     { label: '지배 행성', value: lord, note: '빔쇼타리 기준' },
-    { label: '파다', value: `제${pada}파다`, note: '한 숙을 넷으로 나눈 세부 자리' },
+    { label: '파다', value: `제${pada}파다`, note: '한 숙을 넷으로 나눈 세부 자리 (베딕 쪽 구분)' },
     { label: '달의 항성 황경', value: `${sidereal.toFixed(2)}°`, note: '라히리 아야남샤 적용' },
+    ...(trad ? [{
+      label: '월숙방통력 기준',
+      value: `${trad[0]}宿`,
+      note: `${trad[1]}수 · 음력 ${lunar.month}월 ${lunar.day}일 대조표${
+        tradIndex === index ? ' — 위와 같음' : ' — 위와 다름'}`,
+    }] : []),
   ];
 
   const readings = [

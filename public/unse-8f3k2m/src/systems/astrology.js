@@ -138,9 +138,20 @@ export function analyze(input) {
   }
   if (timeKnown) { elCount[SIGNS[asc].el]++; modeCount[SIGNS[asc].mode]++; }
 
-  const topEl = Object.entries(elCount).sort((a, b) => b[1] - a[1])[0];
-  const lowEl = Object.entries(elCount).sort((a, b) => a[1] - b[1])[0];
-  const topMode = Object.entries(modeCount).sort((a, b) => b[1] - a[1])[0];
+  // 동률을 그냥 정렬해서 첫 번째만 집으면 "흙3 공기3 → 흙 우세"처럼
+  // 바로 옆의 숫자와 어긋나는 문장이 나온다. 같은 값은 같이 말한다.
+  const tops = (obj) => {
+    const max = Math.max(...Object.values(obj));
+    return Object.keys(obj).filter((k) => obj[k] === max);
+  };
+  const lows = (obj) => {
+    const min = Math.min(...Object.values(obj));
+    return { names: Object.keys(obj).filter((k) => obj[k] === min), value: min };
+  };
+  const topEls = tops(elCount);
+  const lowEl = lows(elCount);
+  const topModes = tops(modeCount);
+  const word = (names) => `${names.join('·')} ${names.length > 1 ? '공동 우세' : '우세'}`;
 
   // 각 — 주요 천체끼리만, 오차가 작은 순서로
   const aspects = [];
@@ -162,9 +173,9 @@ export function analyze(input) {
       { label: '중천', value: `${SIGNS[signOf(h.mc)].name} ${degInSign(h.mc).toFixed(1)}°`, note: '사회적 목표점' },
     ] : []),
     { label: '원소', value: Object.entries(elCount).map(([k, v]) => `${k}${v}`).join(' '),
-      note: `${topEl[0]} 우세${lowEl[1] === 0 ? ` · ${lowEl[0]} 없음` : ''}` },
+      note: `${word(topEls)}${lowEl.value === 0 ? ` · ${lowEl.names.join('·')} 없음` : ''}` },
     { label: '성질', value: Object.entries(modeCount).map(([k, v]) => `${k}${v}`).join(' '),
-      note: `${topMode[0]} 우세` },
+      note: `${word(topModes)}` },
     { label: '하우스 방식', value: h.system, note: timeKnown ? '' : '출생 시간 미상이라 참고용' },
   ];
 
@@ -195,29 +206,29 @@ export function analyze(input) {
   }
 
   readings.push({
-    title: `${topEl[0]}의 기운이 두텁습니다`,
+    title: `${topEls.join('·')}의 기운이 두텁습니다`,
     text: {
       불: '움직이고 나서 생각하는 쪽입니다. 열이 빨리 오르고 빨리 식으니 판을 벌인 뒤 지켜줄 사람이 필요합니다.',
       흙: '손에 잡히는 것으로 확인해야 하는 쪽입니다. 착실하게 쌓지만 변화가 필요한 국면에서 늦습니다.',
       공기: '생각과 말이 먼저인 쪽입니다. 연결하고 설명하는 데 강하고, 감정을 다루는 일은 뒤로 미룹니다.',
       물: '느낌으로 먼저 아는 쪽입니다. 공감이 깊은 만큼 남의 감정까지 떠안아 소진되기 쉽습니다.',
-    }[topEl[0]] + (lowEl[1] === 0
-      ? ` 반대로 ${j(lowEl[0], '이')} 하나도 없습니다. ` + {
+    }[topEls[0]] + (lowEl.value === 0
+      ? ` 반대로 ${j(lowEl.names[0], '이')} 하나도 없습니다. ` + {
           불: '스스로 불을 붙이는 계기가 잘 안 생기니, 시작할 이유를 밖에서 빌려오는 편이 낫습니다.',
           흙: '현실로 내려앉히는 힘이 약합니다. 숫자와 마감으로 묶어두는 장치가 필요합니다.',
           공기: '한발 물러서서 보는 눈이 약합니다. 말로 꺼내 남에게 설명해보는 과정이 그 자리를 메웁니다.',
           물: '감정을 읽고 다루는 훈련이 덜 되어 있습니다. 논리로 안 풀리는 문제에서 막힙니다.',
-        }[lowEl[0]]
+        }[lowEl.names[0]]
       : ''),
   });
 
   readings.push({
-    title: `${topMode[0]}의 성질이 강합니다`,
+    title: `${topModes.join('·')}의 성질이 강합니다`,
     text: {
       활동: '판을 여는 쪽입니다. 시작은 잘하는데 남이 시작한 일에 얹혀 가는 것을 답답해합니다.',
       고정: '붙들고 가는 쪽입니다. 지구력이 무기이고, 방향이 틀렸을 때 갈아타는 것이 가장 어렵습니다.',
       변통: '맞춰 가는 쪽입니다. 적응이 빠른 대신 중심을 어디에 둘지가 평생의 질문이 됩니다.',
-    }[topMode[0]],
+    }[topModes[0]],
   });
 
   if (aspects.length) {
@@ -265,7 +276,7 @@ export function analyze(input) {
       traits,
       domains: timeKnown ? domains : { 재물: null, 관계: null, 직업: null, 건강: null, 학업: null },
       tags: [...new Set([...SIGNS[sun].tags, ...(timeKnown ? SIGNS[asc].tags : SIGNS[moon].tags)])],
-      keywords: [SIGNS[sun].name, SIGNS[moon].name, topEl[0], topMode[0]],
+      keywords: [SIGNS[sun].name, SIGNS[moon].name, topEls[0], topModes[0]],
     },
   });
 }

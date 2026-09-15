@@ -6,7 +6,7 @@
  *
  *   1. 태어난 요일 → 일곱 행성 중 하나. 수요일은 낮과 밤을 갈라
  *      밤에 태어나면 라후가 되어 여덟이 된다.
- *   2. 버마력 연도(서기 − 638)를 7로 나눈 나머지로 배치를 돌린다.
+ *   2. 버마력 연도를 7로 나눈 나머지로 배치를 돌린다.
  *   3. 자기 행성이 여덟 자리 중 어디에 떨어지는지가 핵심이다.
  *
  * 배치 규칙은 전승마다 차이가 있어, 여기서는 가장 널리 소개된 방식을
@@ -66,8 +66,21 @@ const HOUSES = [
     tags: ['변화', '자유'], domains: { 직업: 56, 재물: 52 } },
 ];
 
-/** 버마력 = 서기 − 638 */
-export const burmeseYear = (y) => y - 638;
+/**
+ * 버마력.
+ *
+ * 버마의 새해(띤잔)는 1월 1일이 아니라 4월 중순이다. 그래서 서기에서
+ * 빼는 값이 해의 앞뒤로 달라진다 — 새해 전이면 639, 뒤면 638을 뺀다.
+ * 638만 쓰면 1~4월 출생자가 통째로 한 해씩 밀린다.
+ *
+ * 띤잔 날짜는 해마다 4월 13~17일 사이에서 움직이지만, 새해 첫날은
+ * 대개 16~17일이다. 여기서는 4월 17일을 경계로 잡는다. 그 며칠 사이에
+ * 태어난 사람은 전승을 따로 확인하는 편이 낫다.
+ */
+export function burmeseYear(y, m = 12, d = 31) {
+  const beforeNewYear = m < 4 || (m === 4 && d < 17);
+  return y - (beforeNewYear ? 639 : 638);
+}
 
 export function analyze(input) {
   const { year, month, day, hour, timeKnown } = input;
@@ -80,7 +93,7 @@ export function analyze(input) {
   const planetIndex = isWedNight ? 7 : weekday;
   const planet = PLANETS[planetIndex];
 
-  const by = burmeseYear(year);
+  const by = burmeseYear(year, month, day);
   const remainder = ((by % 7) + 7) % 7;
 
   // 나머지만큼 배치를 돌린다
@@ -97,7 +110,7 @@ export function analyze(input) {
   const facts = [
     { label: '태어난 요일', value: `${WEEKDAY_KR[weekday]}요일`, note: isWedNight ? '수요일 오후 → 라후로 본다' : '' },
     { label: '내 행성', value: planet.name, note: planet.my },
-    { label: '버마력', value: `${by}년`, note: `서기 ${year} − 638` },
+    { label: '버마력', value: `${by}년`, note: `서기 ${year} − ${year - by} (버마 새해는 4월 중순)` },
     { label: '나머지', value: String(remainder), note: `${by} ÷ 7` },
     { label: '내 자리', value: house.name, note: `${house.my} · ${house.mean}` },
   ];
@@ -158,7 +171,7 @@ function seatOf(x) {
   const wd = weekdayFromJDN(jdn);
   const wedNight = wd === 3 && x.timeKnown && x.hour >= 12;
   const pi = wedNight ? 7 : wd;
-  const rem = (((x.year - 638) % 7) + 7) % 7;
+  const rem = ((burmeseYear(x.year, x.month, x.day) % 7) + 7) % 7;
   return { planet: PLANETS[pi], house: HOUSES[(pi + rem) % 8], idx: (pi + rem) % 8, weekday: wd };
 }
 
@@ -231,7 +244,7 @@ export function forecast(input, chart, period) {
   const wedNight = wd === 3 && input.timeKnown && input.hour >= 12;
   const pi = wedNight ? 7 : wd;
   const age = period.sajuYear - input.year;
-  const rem = (((input.year - 638 + age) % 7) + 7) % 7;
+  const rem = (((burmeseYear(input.year, input.month, input.day) + age) % 7) + 7) % 7;
   const house = HOUSES[(pi + rem) % 8];
   const eff = SEAT_AREA[house.name] ?? {};
 

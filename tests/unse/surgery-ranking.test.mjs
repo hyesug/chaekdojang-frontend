@@ -31,10 +31,12 @@ test('수술 후보에서는 일지충·양인만 강하게 제외한다', () =>
     assert.equal(x.sinsal.includes('양인'), false);
   }
   assert.ok(ranked.excluded.length > 0);
-  assert.ok(
-    ranked.candidates.some((x) => x.taekil.clashYear),
-    '년지충까지 전부 제외하면 안 된다',
-  );
+  for (const x of ranked.excluded) {
+    assert.ok(
+      x.surgeryExclude.every((reason) => reason === '일지충' || reason === '양인'),
+      '년지·월지·시지·대운 충을 강제 제외 사유로 쓰면 안 된다',
+    );
+  }
 });
 
 test('수술 전용 순위는 천의 → 황도 → 충 감점 → 형해파 감점 → 건강 흐름 → 일반등급 순을 보존한다', () => {
@@ -132,6 +134,30 @@ test('대희 2026 남은 평일 상위 후보를 로그로 남긴다', () => {
     dayHealth: x.surgery.dayHealth,
     grade: x.grade,
   }))));
+
+  const weekdayAll = ranked.candidates
+    .filter((x) => x.y === 2026 && !['토', '일'].includes(x.weekday));
+  const compareDates = ['2026-09-28', '2026-11-13', '2026-11-25', '2026-12-02', '2026-11-20'];
+  console.log('SURGERY_COMPARE=' + JSON.stringify(compareDates.map((date) => {
+    const i = weekdayAll.findIndex((x) => key(x) === date);
+    if (i < 0) return { date, excluded: true };
+    const x = weekdayAll[i];
+    return {
+      date,
+      rank: i + 1,
+      gz: x.gz.hanja,
+      cheonui: x.surgery.cheonui,
+      hwangdo: x.surgery.hwangdo,
+      hwangdoName: x.surgery.hwangdoName,
+      clashPenalty: x.surgery.clashPenalty,
+      minorPenalty: x.surgery.minorPenalty,
+      branchRisk: x.surgery.branchRisk.map((r) => r.label + r.relation),
+      daeun: x.surgery.activeDaeun?.hanja ?? null,
+      monthHealth: x.surgery.monthHealth,
+      dayHealth: x.surgery.dayHealth,
+      grade: x.grade,
+    };
+  })));
 });
 
 test('대운 전환 45일 이내 후보에는 전환 주의 정보를 붙인다', () => {

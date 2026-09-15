@@ -252,19 +252,24 @@ export function compare(a, b) {
   const onB = hB[giA];     // B의 판 위에 놓인 A
   const onA = hA[giB];     // A의 판 위에 놓인 B
 
-  const el = (x) => BRANCH_ELEMENT[x];
+  // 생극을 가리는 주체는 일간이다. 예전에는 기궁 지지의 오행으로 쟀는데,
+  // 기궁은 일간이 몸을 붙이는 '자리'이지 일간 자신이 아니다. 乙(목)의
+  // 기궁이 辰(토)이라고 해서 乙을 토로 보면 생극이 통째로 뒤집힌다.
+  const be = (x) => BRANCH_ELEMENT[x];
+  const se = (x) => STEM_ELEMENT[x];
   const ovc = (x, y) => (x + 2) % 5 === y;
   const gen = (x, y) => (x + 1) % 5 === y;
 
-  const judge = (me, over) => {
-    if (gen(el(over), el(me))) return [22, '상대의 자리가 나를 낳아줍니다'];
-    if (gen(el(me), el(over))) return [17, '내가 상대의 자리를 낳아줍니다'];
-    if (el(me) === el(over)) return [19, '같은 기운이라 나란히 섭니다'];
-    if (ovc(el(over), el(me))) return [8, '상대의 자리가 나를 누릅니다'];
+  const judge = (myStem, over) => {
+    const me = se(myStem), it = be(over);
+    if (gen(it, me)) return [22, '상대의 자리가 나를 낳아줍니다'];
+    if (gen(me, it)) return [17, '내가 상대의 자리를 낳아줍니다'];
+    if (me === it) return [19, '같은 기운이라 나란히 섭니다'];
+    if (ovc(it, me)) return [8, '상대의 자리가 나를 누릅니다'];
     return [12, '내가 상대의 자리를 누릅니다'];
   };
-  const [sA, tA] = judge(giA, onB);
-  const [sB, tB] = judge(giB, onA);
+  const [sA, tA] = judge(a.dayStem, onB);
+  const [sB, tB] = judge(b.dayStem, onA);
 
   const rel = branchRelations(a.dayBranch, b.dayBranch);
   const relScore = rel.length ? (rel.some((r) => r.good) ? 20 : 6) : 13;
@@ -279,8 +284,9 @@ export function compare(a, b) {
     facts: [
       { label: `${a.name}의 기궁`, value: `${STEMS[a.dayStem]} → ${bn(giA)}`, note: '' },
       { label: `${b.name}의 기궁`, value: `${STEMS[b.dayStem]} → ${bn(giB)}`, note: '' },
-      { label: `${b.name} 판 위의 ${a.name}`, value: bn(onB), note: tA },
-      { label: `${a.name} 판 위의 ${b.name}`, value: bn(onA), note: tB },
+      // '나'가 누구인지 적어두지 않으면 어느 쪽 이야기인지 헷갈린다
+      { label: `${b.name} 판 위의 ${a.name}`, value: bn(onB), note: `${a.name}(${STEMS[a.dayStem]}) 기준 — ${tA}` },
+      { label: `${a.name} 판 위의 ${b.name}`, value: bn(onA), note: `${b.name}(${STEMS[b.dayStem]}) 기준 — ${tB}` },
       { label: '일지 관계', value: rel.length ? rel.map((r) => r.kind).join('·') : '무관', note: '' },
     ],
     readings: [

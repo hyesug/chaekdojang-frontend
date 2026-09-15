@@ -253,16 +253,17 @@ export function compare(a, b) {
       { label: `${a.name}의 괘`, value: HEXAGRAMS[hA.num][0], note: HEXAGRAMS[hA.num][1] },
       { label: `${b.name}의 괘`, value: HEXAGRAMS[hB.num][0], note: HEXAGRAMS[hB.num][1] },
       { label: '관계괘', value: `${num}. ${name}`, note: `${kr} · ${TRIGRAMS[upper].symbol}${TRIGRAMS[lower].symbol}` },
-      { label: '상괘 / 하괘', value: `${TRIGRAMS[upper].nature} / ${TRIGRAMS[lower].nature}`, note: `${TRIGRAMS[upper].hanja} / ${TRIGRAMS[lower].hanja}` },
+      { label: '상괘 / 하괘', value: `${TRIGRAMS[upper].nature} / ${TRIGRAMS[lower].nature}`,
+        note: `${TRIGRAMS[upper].hanja} / ${TRIGRAMS[lower].hanja} · 두 사람의 괘에서 상·하괘를 하나씩 뽑아 관계괘를 세우는 것은 이 사이트의 방식이다` },
     ],
     readings: [
       { title: `관계괘 — ${name} (${kr})`, text },
       {
-        title: '두 기운이 만나는 방식',
+        title: '두 기운이 만나는 방식 (괘사가 아니라 상·하괘 오행으로 본 것)',
         text: `위는 ${a.name}의 ${TRIGRAMS[upper].nature}, 아래는 ${b.name}의 ${TRIGRAMS[lower].nature}입니다. ` +
           (gen(eU, eL) ? '위가 아래를 낳아주는 배치라 관계가 순하게 흐릅니다.'
             : gen(eL, eU) ? '아래가 위를 받쳐주는 배치라 든든합니다.'
-            : ovc(eU, eL) ? '위가 아래를 누르는 배치입니다. 한쪽이 주도하고 다른 쪽이 따르는 형태가 되기 쉽습니다.'
+            : ovc(eU, eL) ? '두 기운 가운데 위쪽이 더 센 배치입니다. 한쪽이 주도하고 다른 쪽이 맞추는 형태가 되기 쉬우니, 역할을 미리 나눠두면 덜 부딪칩니다.'
             : ovc(eL, eU) ? '아래가 위를 거스르는 배치입니다. 겉으로는 조용해도 속에서 밀고 당기는 힘이 있습니다.'
             : '두 기운이 같은 결이라 서로 간섭하지 않습니다. 편안하지만 밋밋할 수 있습니다.'),
       },

@@ -295,6 +295,10 @@ export function buildCompatContext(formA, formB, c, forecastA = null, forecastB 
   out.push(`견준 ${s.count}개 가운데 좋게 본 것 ${s.buckets['좋음'].length}개(${s.buckets['좋음'].join(', ') || '없음'}), ` +
     `무난 ${s.buckets['무난'].length}개(${s.buckets['무난'].join(', ') || '없음'}), ` +
     `어렵게 본 것 ${s.buckets['어려움'].length}개(${s.buckets['어려움'].join(', ') || '없음'})`);
+  if (s.coreBuckets) {
+    const cb = s.coreBuckets;
+    out.push(`명반을 통째로 세우는 넷(사주·자미두수·점성술·베딕)만 세면 — 좋음 ${cb['좋음'].length} / 무난 ${cb['무난'].length} / 어려움 ${cb['어려움'].length}. 개수만 볼 때는 이쪽을 먼저 볼 것. 요일 하나로 보는 잣대와 여덟 항목을 따지는 잣대가 같은 한 표일 수 없다.`);
+  }
   if (s.best) out.push(`가장 좋게 보는 곳 — ${s.best.name}: ${s.best.headline}`);
   if (s.worst) out.push(`가장 어렵게 보는 곳 — ${s.worst.name}: ${s.worst.headline}`);
   if (s.summary?.length) out.push(`요약 — ${s.summary.join(' ')}`);

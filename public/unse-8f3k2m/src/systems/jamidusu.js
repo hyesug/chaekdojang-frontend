@@ -326,6 +326,9 @@ export function compare(a, b) {
   const matchBA = B.spouseStars.filter((s) => A.myeongStars.includes(s));
 
   const rel = branchRelations(A.myeong, B.myeong);
+  // 부처궁은 배우자를 보는 자리다. 명궁만 견주고 이쪽을 빼면 궁합에서
+  // 가장 중요한 축 하나가 빠진다.
+  const spouseRel = branchRelations(A.spousePos, B.spousePos);
   const relGood = rel.some((r) => r.good);
   const relBad = rel.some((r) => !r.good);
 
@@ -345,6 +348,8 @@ export function compare(a, b) {
       { label: `${a.name} 부처궁`, value: `${BRANCHES[A.spousePos]} — ${show(A.spouseStars)}`, note: '그리는 짝의 모습' },
       { label: `${b.name} 부처궁`, value: `${BRANCHES[B.spousePos]} — ${show(B.spouseStars)}`, note: '그리는 짝의 모습' },
       { label: '명궁 관계', value: rel.length ? rel.map((r) => r.kind).join('·') : '무관', note: '두 명궁 지지 사이' },
+      { label: '부처궁 관계', value: `${BRANCHES[A.spousePos]} / ${BRANCHES[B.spousePos]}${spouseRel.length ? ' · ' + spouseRel.map((r) => r.kind).join('·') : ''}`,
+        note: spouseRel.length ? '두 배우자 자리 사이' : '두 배우자 자리 사이 · 뚜렷한 관계 없음' },
     ],
     readings: [
       {

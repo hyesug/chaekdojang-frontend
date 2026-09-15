@@ -172,7 +172,7 @@ export function compare(a, b) {
     facts: [
       { label: `${a.name}`, value: `${WEEKDAY_KR[A.wd]}요일 · ${pA}`, note: `${A.d.color} · ${A.d.dir}` },
       { label: `${b.name}`, value: `${WEEKDAY_KR[B.wd]}요일 · ${pB}`, note: `${B.d.color} · ${B.d.dir}` },
-      { label: '행성 관계', value: label, note: '태국 요일 체계는 인도 점성술의 행성 친소를 따른다' },
+      { label: '행성 관계', value: label, note: '태국 전통의 요일 친구·적(คู่มิตร/คู่ศัตรู) 규칙과는 별개로, 인도식 행성 친소를 빌려 쓴 이 사이트의 보조 기준이다' },
     ],
     readings: [
       { title: `${pA} × ${pB} — ${label}`, text },

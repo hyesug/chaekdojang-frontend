@@ -303,6 +303,10 @@ export function compatText(formA, formB, c, rA, rB) {
     const list = s.buckets[k] ?? [];
     out.push(`  ${k} ${list.length}개${list.length ? ` — ${list.join(', ')}` : ''}`);
   }
+  if (s.coreBuckets) {
+    const cb = s.coreBuckets;
+    out.push(`  · 명반을 통째로 세우는 넷(사주·자미두수·점성술·베딕)만: 좋음 ${cb['좋음'].length} / 무난 ${cb['무난'].length} / 어려움 ${cb['어려움'].length}`);
+  }
   out.push('  ※ 체계마다 잣대가 달라 가로로 견주는 것은 뜻이 적습니다.');
   out.push('    베딕 아쉬타쿠타처럼 혼인을 전제로 만든 잣대는 박하고,');
   out.push('    요일 하나로 보는 체계는 후합니다. 어디서 갈리는지를 보세요.');

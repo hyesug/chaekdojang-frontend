@@ -68,6 +68,15 @@ export function compareFortune(formA, formB) {
   };
 }
 
+/**
+ * 명반을 통째로 세우는 네 체계.
+ *
+ * 열다섯을 한 표씩 세면 여덟 항목을 따지는 아쉬타쿠타와 요일 하나로 보는
+ * 잣대가 같은 무게가 된다. 그건 셈이 아니라 착시다. 점수 합산에는 이미
+ * weight 가 걸려 있지만, 화면에 보이는 것은 개수라 그쪽도 갈라 보여준다.
+ */
+const CORE = new Set(['saju', 'jamidusu', 'astrology', 'vedic']);
+
 function synthesizeCompat(results, nameA, nameB) {
   if (!results.length) {
     return { score: 0, verdict: '판정 불가', text: '견줄 수 있는 체계가 없습니다.', buckets: {}, split: null, best: [], worst: [] };
@@ -79,9 +88,11 @@ function synthesizeCompat(results, nameA, nameB) {
   const v = toVerdict(score);
 
   const buckets = { 좋음: [], 무난: [], 어려움: [] };
+  const coreBuckets = { 좋음: [], 무난: [], 어려움: [] };
   for (const r of results) {
     const key = r.tone > 0 ? '좋음' : r.tone < 0 ? '어려움' : '무난';
     buckets[key].push(r.name);
+    if (CORE.has(r.id)) coreBuckets[key].push(r.name);
   }
 
   const sorted = [...results].sort((a, b) => b.score - a.score);
@@ -107,6 +118,18 @@ function synthesizeCompat(results, nameA, nameB) {
       : `잘 맞는다는 쪽이 ${good}개, 무난이 ${buckets['무난'].length}개, 쉽지 않다는 쪽이 ${bad}개입니다. 한쪽으로 쏠리지 않은 평범한 분포입니다.`
   );
 
+  // 명반을 통째로 보는 넷만 따로 센다. 개수만 보면 잣대가 굵은 체계와
+  // 가는 체계가 한 표씩이라 실제보다 평평해 보인다.
+  const coreTotal = Object.values(coreBuckets).flat().length;
+  if (coreTotal) {
+    sentences.push(
+      `이 가운데 명반을 통째로 세우는 네 체계(사주·자미두수·점성술·베딕)만 따로 보면 ` +
+      `잘 맞는다 ${coreBuckets['좋음'].length}, 무난 ${coreBuckets['무난'].length}, ` +
+      `쉽지 않다 ${coreBuckets['어려움'].length}입니다. ` +
+      `잣대가 굵은 쪽이라 개수보다 이쪽을 먼저 보시는 편이 낫습니다.`
+    );
+  }
+
   if (best.length) {
     sentences.push(
       `가장 후하게 본 쪽은 ${best.map((r) => r.name).join(', ')}입니다.`
@@ -120,7 +143,7 @@ function synthesizeCompat(results, nameA, nameB) {
 
   return {
     score, verdict: v.label, tone: v.tone,
-    buckets, split, best, worst,
+    buckets, coreBuckets, split, best, worst,
     summary: sentences,
     count: results.length,
     names: [nameA, nameB],

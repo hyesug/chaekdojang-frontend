@@ -390,7 +390,7 @@ export function compare(a, b) {
 
   const readings = [
     {
-      title: `아쉬타쿠타 ${k.total} / 36점 — ${verdict}`,
+      title: `아쉬타쿠타 ${k.total} / 36점 — ${verdict} (세부 점수는 유파마다 조금씩 다릅니다)`,
       text: '인도에서 혼담이 오갈 때 실제로 맞춰보는 여덟 항목입니다. 18점이 기준선이고 24점 이상이면 좋게 봅니다. ' +
         (k.total >= 24
           ? '항목 대부분이 맞물려 있습니다. 크게 어긋나는 지점 없이 오래 갈 수 있는 조합입니다.'

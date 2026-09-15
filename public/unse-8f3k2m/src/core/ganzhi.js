@@ -92,6 +92,15 @@ export const isStemCombine = (a, b) => STEM_COMBINE[a] === b;
 /** 천간충: 여섯 칸 떨어져 마주 선다 */
 export const isStemClash = (a, b) => Math.abs(a - b) === 6;
 
+/**
+ * 원진(元嗔) — 까닭 없이 서로 껄끄러운 짝. 귀문(鬼門)이라고도 한다.
+ *
+ * 충·형·해·파처럼 뚜렷한 부딪침은 아니고 보조로 보는 관계지만, 궁합에서는
+ * 흔히 쓴다. 이것이 없으면 巳戌 같은 짝이 '무관'으로 나온다.
+ */
+const WONJIN = { 0: 7, 7: 0, 1: 6, 6: 1, 2: 9, 9: 2, 3: 8, 8: 3, 4: 11, 11: 4, 5: 10, 10: 5 };
+export const isWonjin = (a, b) => WONJIN[a] === b;
+
 /** 두 지지 사이의 모든 관계를 한 번에 훑는다 */
 export function branchRelations(a, b) {
   const out = [];
@@ -106,6 +115,9 @@ export function branchRelations(a, b) {
   if (pun) out.push({ kind: pun, good: false, text: '서로 벼르는 자리입니다. 사소한 일로 오래 끕니다' });
   if (isHarm(a, b)) out.push({ kind: '해', good: false, text: '겉은 멀쩡한데 속으로 갉아먹는 관계입니다' });
   if (isBreak(a, b)) out.push({ kind: '파', good: false, text: '이뤄놓은 것이 깨지기 쉬운 조합입니다' });
+  // 원진은 보조 관계라 맨 뒤에 붙인다. 앞의 [0] 을 보는 곳들이 영향을 받지
+  // 않도록 순서를 지킨다.
+  if (isWonjin(a, b)) out.push({ kind: '원진', good: false, minor: true, text: '까닭 없이 서로 껄끄러워지는 짝입니다. 크게 부딪치지는 않아도 편치 않은 결이 오래 갑니다' });
   return out;
 }
 

@@ -303,8 +303,17 @@ function lottoSection(input, chart) {
  * 어차피 열다섯을 평균 낸 값이라 그 자체로 알려주는 게 적었고, 어느 체계가
  * 그렇게 말하는지가 훨씬 쓸모 있다.
  */
-const cite = (names) => names && names.length
-  ? ` <span class="cite">(${names.map(esc).join(', ')})</span>` : '';
+/**
+ * 근거는 본문에 붙이지 않는다.
+ *
+ * 예전에는 문장 끝에 "(사주, 홍국기문, 구성학, 토정비결)"처럼 체계 이름을
+ * 줄줄이 달았다. 읽는 사람에게는 알아볼 수 없는 낱말이 네 개 더 붙는
+ * 것이고, 정작 '그 체계가 무슨 값을 보고 그렇게 말했는가'는 여전히 없다.
+ *
+ * 그래서 본문은 읽히는 글만 두고, 근거는 '왜 이렇게 나왔나요' 안으로
+ * 내렸다. 거기에는 이름뿐 아니라 그 체계가 세운 값이 함께 있다.
+ */
+const cite = () => '';
 
 /**
  * 궁합 화면.
@@ -329,11 +338,16 @@ function renderCompat(formA, formB, r) {
     : '';
 
   const axisCard = (a) => `
-    <div class="section-label">${esc(a.label)}${a.split ? ' <span class="split-tag">체계가 갈림</span>' : ''}</div>
+    <div class="section-label">${esc(a.label)}</div>
     <div class="card">
-      ${block(null, a.text, [])}
+      <div class="lv lv-${a.band === 'hi' ? 'strong' : a.band === 'mid' ? 'mid' : 'weak'}">
+        ${esc(a.conclusion)}
+      </div>
+      <div class="say"><div class="say-name">현실에서는</div><p class="say-text">${esc(a.reality)}</p></div>
+      <div class="say"><div class="say-name">잘 맞는 조건</div><p class="say-text">${esc(a.good)}</p></div>
+      <div class="say"><div class="say-name">갈등이 커지는 조건</div><p class="say-text">${esc(a.bad)}</p></div>
       <details class="why">
-        <summary>왜 이렇게 나왔나요</summary>
+        <summary>근거 ${a.evidence.length}개 보기</summary>
         ${a.evidence.map((e) => `
           <div class="ev">
             <span class="ev-dot ${e.tone > 0 ? 'on' : ''}"></span>
@@ -343,10 +357,7 @@ function renderCompat(formA, formB, r) {
               <div class="ev-facts">${esc(e.facts.join(' · '))}</div>
             </div>
           </div>`).join('')}
-        <p class="agree-note">
-          이 축을 원래 무엇을 보라고 만든 체계인지에 따라 무게를 달리 줍니다.
-          별표가 붙은 쪽이 이 축에서 가장 크게 실린 잣대입니다.
-        </p>
+        <p class="agree-note">${esc(a.note)}. 이 축을 원래 무엇을 보라고 만든 체계인지에 따라 무게를 달리 줍니다.</p>
       </details>
     </div>`;
 
@@ -356,17 +367,17 @@ function renderCompat(formA, formB, r) {
       <h2 class="hero-title">${esc(formA.name)} <span style="color:var(--gold-soft)">×</span> ${esc(formB.name)}</h2>
       <p class="hero-born">${esc(when(formA))} &nbsp;·&nbsp; ${esc(when(formB))}</p>
 
-      <div class="hero-label">열다섯을 모은 결론</div>
-      <p class="hero-theme">${esc(v.summary)}</p>
+      <div class="hero-label">체계별 판정</div>
+      <p class="hero-theme">${esc(v.counts.text)}</p>
 
       ${v.core ? `
-        <div class="hero-label">명반을 통째로 세우는 넷만 따로 세면</div>
+        <div class="hero-label">한눈에</div>
         ${['좋음', '무난', '어려움'].map((k) => `
           <div class="agree-row">
             <span class="agree-name">${k}</span>
             ${`<div class="dots">${Array.from({ length: 4 }, (_, i) =>
               `<i class="${i < v.core[k].length ? 'on' : ''}"></i>`).join('')}</div>`}
-            <span class="agree-n">${v.core[k].length ? esc(v.core[k].join(', ')) : '없음'}</span>
+            <span class="agree-n">핵심 ${v.core[k].length} · 전체 ${v.counts.all[k]}</span>
           </div>`).join('')}
         <p class="agree-note">
           요일 하나로 보는 잣대와 여덟 항목을 따지는 잣대를 같은 한 표로 세면
@@ -374,7 +385,7 @@ function renderCompat(formA, formB, r) {
         </p>` : ''}
     </div>
 
-    ${v.axes.map(axisCard).join('')}
+    ${v.eightAxes.map(axisCard).join('')}
 
     ${v.strong || v.friction ? `
     <div class="section-label">양 끝</div>
@@ -710,6 +721,32 @@ function render(form, r, f) {
     </div>
 
     ${pane('me', true, `
+      ${v.me.lenses.map((l) => `
+        <div class="section-label">${esc(l.conclusion)}</div>
+        <div class="card">
+          <div class="lv lv-${l.level}">${esc(l.text)}</div>
+          <div class="say"><div class="say-name">현실에서는</div><p class="say-text">${esc(l.reality)}</p></div>
+          <div class="say"><div class="say-name">잘 쓰면</div><p class="say-text">${esc(l.strength)}</p></div>
+          <div class="say"><div class="say-name">과해지면</div><p class="say-text">${esc(l.caution)}</p></div>
+          <details class="why">
+            <summary>근거 ${l.evidence.length}개 보기</summary>
+            ${l.evidence.map((e) => `
+              <div class="ev">
+                <span class="ev-dot ${e.core ? 'on' : ''}"></span>
+                <div>
+                  <div class="ev-name">${esc(e.name)}${e.core ? ' · 명반을 통째로 세우는 체계' : ''}</div>
+                  <div class="ev-head">${esc(e.headline)}</div>
+                  <div class="ev-facts">${esc(e.facts.join(' · '))}</div>
+                </div>
+              </div>`).join('')}
+            <p class="agree-note">
+              이 낱말을 든 체계입니다. 채워진 점이 명반을 통째로 세우는 쪽이고,
+              그 수가 많을수록 위의 세기 표시가 올라갑니다.
+            </p>
+          </details>
+        </div>`).join('')}
+
+      <div class="section-label">속으로 자주 하는 말</div>
       <div class="card">
         <div class="scope">평생 바뀌지 않는 결 · 원국</div>
         ${v.me.inner.map((x) => block(x.title, x.text, [])).join('')}

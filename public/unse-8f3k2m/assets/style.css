@@ -770,3 +770,12 @@ details.pool[open] > summary::before { content: '▾ '; }
   padding: 1px 6px; margin-left: 6px; letter-spacing: 0;
 }
 footer .ver { font-size: 11.5px; color: var(--ink-3); margin-top: 18px; letter-spacing: .02em; }
+
+/* 말의 세기 — 몇 개 체계가 같은 곳을 가리키는가 */
+.lv {
+  font-size: 12.5px; line-height: 1.6; padding: 9px 12px;
+  border-radius: 8px; margin-bottom: 16px;
+}
+.lv-strong { background: rgba(139,96,72,.10); color: var(--ink); border: 1px solid var(--gold-soft); }
+.lv-mid    { background: var(--card-2); color: var(--ink-2); border: 1px solid var(--line); }
+.lv-weak, .lv-faint { background: transparent; color: var(--ink-3); border: 1px dashed var(--line); }

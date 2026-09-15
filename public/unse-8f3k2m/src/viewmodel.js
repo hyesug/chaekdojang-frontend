@@ -13,6 +13,7 @@
  */
 
 import { AREAS } from './forecast.js';
+import { traitLenses, verdictSummary, compatAxes } from './lens.js';
 import { lifeReading, structureReading, patternReading, innerReading,
          tabooReading, yearTimeline, consensusReading, areaProse,
          monthDays, luckyDays, compatReading,
@@ -252,7 +253,7 @@ export function buildView(form, r, f) {
     twist: con['갈림'] || null,
     evidence: (area) => evidenceOf(r, f, area),
 
-    me: { inner, taboo, structure: st, patterns: pat },
+    me: { inner, taboo, structure: st, patterns: pat, lenses: traitLenses(r, 4) },
     now: {
       today, line: today ? today.line : '', grade: today ? today.grade : '',
       week: f.week, year: areaProse(f.year, '총운', form.day + form.month, r.chart),
@@ -298,6 +299,28 @@ export function buildCompatView(formA, formB, c) {
   const cr = compatReading(c);
   const s = c.synthesis;
 
+  // 다섯 축의 점수를 먼저 구한다. 여덟 축은 이걸 겹쳐 읽는다.
+  const scores = {};
+  const evidenceByAxis = {};
+  PAIR_AREAS.forEach((area, i) => {
+    let sum = 0, w = 0;
+    const ranked = c.results
+      .map((r) => ({ r, w: (PAIR_WEIGHT[r.id]?.[i] ?? 0.5) * (r.weight ?? 1) }))
+      .sort((a, b) => b.w - a.w);
+    for (const { r, w: rw } of ranked) { sum += r.score * rw; w += rw; }
+    scores[area] = w ? sum / w : 50;
+
+    const lead = ranked.filter((x) => CORE_IDS.includes(x.r.id)).slice(0, 4);
+    evidenceByAxis[area] = (lead.length ? lead : ranked.slice(0, 3)).map(({ r, w: rw }) => ({
+      name: r.name, verdict: r.verdict, tone: r.tone, headline: r.headline,
+      facts: r.facts.slice(0, 2).map((x) => `${x.label} ${x.value}`),
+      lead: rw >= 1,
+    }));
+  });
+
+  const eightAxes = compatAxes(scores, (k) => evidenceByAxis[k] ?? []);
+  if (globalThis.__AXIS_PROBE) globalThis.__AXIS_PROBE.push({ ...scores });
+
   const axes = PAIR_AREAS.map((area, i) => {
     // 이 축을 주로 보는 체계 순으로. 가중치는 이미 정해져 있다.
     const ranked = c.results
@@ -335,6 +358,8 @@ export function buildCompatView(formA, formB, c) {
   return {
     who: { a: formA.name, b: formB.name },
     verdict: s.verdict,
+    counts: verdictSummary(s.buckets, s.coreBuckets),
+    eightAxes,
     core: s.coreBuckets ?? null,
     buckets: s.buckets,
     summary: cr['총평'] ? cr['총평'].text : '',

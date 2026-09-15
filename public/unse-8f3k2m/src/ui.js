@@ -15,9 +15,6 @@ import {
 } from './share.js';
 import { pickNumbers } from './lotto.js';
 import { readForecast } from './forecast.js';
-import { lifeReading, monthDays, luckyDays, compatReading,
-         structureReading, patternReading,
-         yearTimeline, innerReading, tabooReading } from './reading.js';
 import { aiSection, initAI, initCompatAI } from './ai.js';
 import { buildView, sensitivity, buildCompatView } from './viewmodel.js';
 import { SYSTEM_META, TIER_LABEL, SOURCE_LABEL, ENGINE_VERSION, CALC_CHANGES } from './meta.js';
@@ -677,38 +674,6 @@ function render(form, r, f) {
       ${receiptPanel(v)}
     </div>
 
-    <div class="section-label">이 명반에서 눈에 띄는 것</div>
-    <div class="card">
-      ${v.highlights.map((h, i) => `
-        <div class="mark">
-          <div class="mark-no">${String(i + 1).padStart(2, '0')}</div>
-          <div>
-            <div class="mark-tag">${esc(h.tag)}${h.value ? `<em>${esc(h.value)}</em>` : ''}</div>
-            <p class="mark-text">${esc(h.text)}</p>
-          </div>
-        </div>`).join('')}
-      <p class="agree-note">
-        아무 사주에나 붙는 말이 아니라, 이 명반에서 드물거나 무겁게 걸린 자리부터 골랐습니다.
-      </p>
-    </div>
-
-    ${v.consensus ? `
-    <div class="section-label">여러 체계가 함께 짚은 것</div>
-    <div class="card">
-      ${block(null, v.consensus.text, v.consensus.sources)}
-      ${why(v.hero.themes[0].area, v.hero.themes[0].label)}
-    </div>` : ''}
-
-    ${v.twist ? `
-    <div class="section-label">한 체계만 보면 놓치는 것</div>
-    <div class="card">
-      ${block(null, v.twist.text, v.twist.sources)}
-      <p class="agree-note">
-        이견을 감추지 않습니다. 열다섯을 함께 돌리는 값어치가 가장 크게 나오는 대목이고,
-        한 체계의 결론만으로 단정하지 마시라는 뜻입니다.
-      </p>
-    </div>` : ''}
-
     <div class="tabs">
       <button type="button" class="on" data-tab="me">나라는 사람</button>
       <button type="button" data-tab="now">지금의 나</button>
@@ -721,10 +686,28 @@ function render(form, r, f) {
     </div>
 
     ${pane('me', true, `
-      ${v.me.lenses.map((l) => `
-        <div class="section-label">${esc(l.conclusion)}</div>
-        <div class="card">
-          <div class="lv lv-${l.level}">${esc(l.text)}</div>
+      <div class="section-label">${v.me.systemCount}체계가 본 나 · 한눈에</div>
+      <div class="card system-view">
+        ${v.me.systems.map((s) => `
+          <div class="system-view-row">
+            <div class="system-view-name">
+              ${esc(s.name)}
+              ${s.core ? '<span class="system-core">핵심</span>' : ''}
+            </div>
+            <div class="system-view-text">${esc(s.line)}</div>
+          </div>`).join('')}
+        <p class="agree-note">
+          각 체계가 원래 계산에서 낸 성향 태그를 짧은 생활 언어로만 바꾼 요약입니다.
+          사주·자미두수·점성술·베딕은 <strong>핵심</strong>으로 표시하고, 아래 상세 리딩에서는
+          여러 체계가 실제로 겹친 특징만 다시 풉니다.
+        </p>
+      </div>
+
+      <div class="section-label">여러 체계에서 반복되는 특징</div>
+      ${v.me.lenses.length ? v.me.lenses.map((l) => `
+        <div class="card trait-card">
+          <h3 class="trait-title">${esc(l.conclusion)}</h3>
+          <div class="trait-confidence trait-${l.level}">${esc(l.text)}</div>
           ${l.detail ? `
             <div class="say"><div class="say-name">현실에서는</div><p class="say-text">${esc(l.reality)}</p></div>
             <div class="say"><div class="say-name">잘 쓰면</div><p class="say-text">${esc(l.strength)}</p></div>
@@ -732,8 +715,8 @@ function render(form, r, f) {
           <div class="say"><div class="say-name">과해지면</div><p class="say-text">${esc(l.caution)}</p></div>
           ${l.detail ? '' : `
             <p class="agree-note">
-              한 갈래에서만 잡힌 신호라 여기서는 어떤 상황에서 어떻게 움직이는지까지
-              좁혀 말하지 않습니다. 아래 근거를 보시고 짚이는 데가 있는지만 확인해 보세요.
+              핵심 명반 체계에서 겹침이 아직 적어서, 어떤 상황에서 어떻게 움직이는지까지
+              단정하지 않습니다.
             </p>`}
           <details class="why">
             <summary>근거 ${l.evidence.length}개 보기</summary>
@@ -741,50 +724,21 @@ function render(form, r, f) {
               <div class="ev">
                 <span class="ev-dot ${e.core ? 'on' : ''}"></span>
                 <div>
-                  <div class="ev-name">${esc(e.name)}${e.core ? ' · 명반을 통째로 세우는 체계' : ''}</div>
+                  <div class="ev-name">${esc(e.name)}${e.core ? ' · 핵심 체계' : ''}</div>
                   <div class="ev-head">${esc(e.headline)}</div>
                   <div class="ev-facts">${esc(e.facts.join(' · '))}</div>
                 </div>
               </div>`).join('')}
-            <p class="agree-note">
-              이 낱말을 든 체계입니다. 채워진 점이 명반을 통째로 세우는 쪽이고,
-              그 수가 많을수록 위의 세기 표시가 올라갑니다.
-            </p>
           </details>
-        </div>`).join('')}
-
-      <div class="section-label">사주에서 보는 내적 긴장</div>
-      <div class="card">
-        <div class="scope">사주 원국 단독 해석 · 핵심 4체계 교차검증 아님</div>
-        ${v.me.inner.map((x) => block(x.title, x.text, [])).join('')}
-      </div>
-      <div class="section-label">사주 원국에서 강한 구조</div>
-      <div class="card">
-        <div class="scope">사주 원국 단독 해석 · 핵심 4체계 교차검증 아님</div>
-        ${block(null, v.me.structure.head, [])}
-        ${v.me.structure.lines.map((t) => block(null, t, [])).join('')}
-        ${v.me.patterns.map((x) => block(x.name, x.text, [])).join('')}
-        <p class="agree-note">
-          이 부분은 사주 원국만으로 읽은 단독 해석입니다.
-          다른 핵심 체계와 같은 결론이라는 뜻은 아니며, 교차검증된 성향보다 한 단계 가볍게 보세요.
-        </p>
-      </div>
-      <div class="section-label">사주에서 보는 반복 패턴</div>
-      <div class="card">
-        <div class="scope">사주 원국 단독 해석 · 핵심 4체계 교차검증 아님</div>
-        ${v.me.taboo.map((x, i) => `
-          <div class="mark">
-            <div class="mark-no">${String(i + 1).padStart(2, '0')}</div>
-            <div>
-              <div class="mark-tag">${esc(x.head)}</div>
-              <p class="mark-text">${esc(x.text)}</p>
-            </div>
-          </div>`).join('')}
-        <p class="agree-note">
-          금지가 아니라 되풀이되기 쉬운 결입니다. 그렇게 흘러가고 있다 싶을 때
-          한 번 멈춰 보시라는 뜻입니다.
-        </p>
-      </div>`)}
+        </div>`).join('') : `
+        <div class="card">
+          <p class="mark-text">두 체계 이상에서 반복되는 특징이 뚜렷하지 않습니다. 한 가지 성향으로 잘라 말하기보다 상황에 따라 다른 면이 나오는 명반으로 보는 편이 맞습니다.</p>
+        </div>`}
+      <p class="agree-note common-note">
+        이곳은 두 체계 이상에서 반복된 특징만 자세히 풉니다. 한 체계의 단독 해석과 원자료는
+        <strong>명반 근거</strong> 탭에서 확인할 수 있습니다.
+      </p>
+    `)}
 
     ${pane('now', false, `
       <div class="card synth">
@@ -794,7 +748,14 @@ function render(form, r, f) {
         ${block('이레', `${f.week.label} 가운데 ${f.week.bestDay.on.m}월 ${f.week.bestDay.on.d}일 쪽이 낫고, ${f.week.worstDay.on.m}월 ${f.week.worstDay.on.d}일 쪽이 무겁습니다.`, [])}
         ${v.now.year ? block(`${v.who.year}년`, v.now.year.text, v.now.year.sources) : ''}
         ${why('총운', '전체')}
-      </div>`)}
+      </div>
+      ${v.twist ? `
+        <div class="section-label">올해 체계가 갈리는 부분</div>
+        <div class="card">
+          ${block(null, v.twist.text, v.twist.sources)}
+          <p class="agree-note">이견을 감추지 않고, 올해 흐름에서 서로 다른 체계가 반대로 보는 부분만 따로 표시합니다.</p>
+        </div>` : ''}
+    `)}
 
     ${pane('work', false, `
       <div class="card">

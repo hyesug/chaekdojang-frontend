@@ -4,7 +4,7 @@
  * 계산은 engine.js가 전부 한다. 여기서는 폼을 읽고 결과를 그린다.
  */
 
-import { readFortune } from './engine.js';
+import { readFortune, prepareInput } from './engine.js';
 import { compareFortune } from './compat.js';
 import { CITIES } from './core/place.js';
 import { lunarToSolar } from './core/lunar.js';
@@ -86,25 +86,95 @@ wireNoTime('');
 wireNoTime('b-');
 
 // ── 제출 ──
-$('#form').addEventListener('submit', (e) => {
+/**
+ * 계산 과정을 보여준다.
+ *
+ * 전부 합쳐 0.3초면 끝나는 계산이라 예전에는 결과가 툭 튀어나왔다. 그러면
+ * 무엇을 했는지가 전혀 보이지 않아서, 어딘가에서 글을 받아온 것처럼 보인다.
+ * 실제로 하는 일을 순서대로 보여주는 편이 낫다.
+ *
+ * 체크 표시는 그 단계가 진짜로 끝났을 때만 켠다. 다만 사람이 읽을 수 있게
+ * 단계마다 최소 시간을 준다 — 없는 일을 하는 척하지는 않는다.
+ */
+const SOLO_STEPS = [
+  '태어난 곳의 경도와 균시차로 진태양시를 맞춥니다',
+  '열다섯 체계의 명반을 세웁니다',
+  '지금의 흐름을 얹습니다',
+  '겹치는 것을 추려 풀이를 씁니다',
+  '앞으로 120일의 일진을 계산합니다',
+];
+const PAIR_STEPS = [
+  '두 사람의 진태양시를 각각 맞춥니다',
+  '열다섯 체계로 두 명반을 견줍니다',
+  '풀이를 씁니다',
+  '두 사람에게 같이 맞는 날을 찾습니다',
+];
+
+const progressShell = (steps) => `
+  <div class="card progress">
+    <ol class="steps">
+      ${steps.map((t) => `<li><span class="mark"></span>${esc(t)}</li>`).join('')}
+    </ol>
+  </div>`;
+
+/** 한 단계가 끝날 때마다 부른다. 최소 시간을 채우고 다음으로 넘어간다 */
+function stepper(minMs = 260) {
+  const items = [...document.querySelectorAll('#result .steps li')];
+  let i = 0, due = performance.now();
+  if (items[0]) items[0].classList.add('doing');
+  return async () => {
+    const wait = due - performance.now();
+    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+    items[i]?.classList.remove('doing');
+    items[i]?.classList.add('done');
+    i += 1;
+    items[i]?.classList.add('doing');
+    due = performance.now() + minMs;
+    // 켜진 표시가 실제로 그려지도록 한 번 양보한다.
+    // requestAnimationFrame 은 탭이 뒤로 가면 아예 멈춘다. 그러면 사용자가
+    // 잠깐 다른 탭을 봤다 왔을 때 진행 화면에서 영영 끝나지 않는다.
+    await new Promise((r) => setTimeout(r, 0));
+  };
+}
+
+$('#form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const box = $('#result');
   try {
     const form = collect('');
     const formB = mode === 'pair' ? collect('b-') : null;
-    box.innerHTML = mode === 'pair' ? renderCompat(form, formB) : render(form);
-    box.classList.add('on');
 
-    // 두 화면 모두 AI 구획이 있다. 개인은 명반과 시기 운세를 함께 넘겨야
-    // AI 가 "지금"까지 알고 답한다. render 가 계산해 둔 것을 그대로 쓴다.
-    if (last?.result) {
-      if (mode === 'pair') initCompatAI(form, formB, last.result);
-      else initAI(form, last.result, last.forecast);
+    box.innerHTML = progressShell(mode === 'pair' ? PAIR_STEPS : SOLO_STEPS);
+    box.classList.add('on');
+    box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const next = stepper();
+    await new Promise((r) => setTimeout(r, 0));
+
+    if (mode === 'pair') {
+      prepareInput(form); prepareInput(formB);
+      await next();
+      const c = compareFortune(form, formB);
+      await next();
+      box.innerHTML = renderCompat(form, formB, c);
+      await next();
+      initCompatAI(form, formB, c);
+      await next();
+    } else {
+      prepareInput(form);
+      await next();
+      const r = readFortune(form);
+      await next();
+      const f = readForecast(form);
+      await next();
+      box.innerHTML = render(form, r, f);
+      await next();
+      initAI(form, r, f);
+      await next();
     }
+
     // 주소를 지금 보고 있는 결과에 맞춰 둔다.
     // 새로고침해도 같은 결과가 나오고, 주소창을 그대로 복사해도 된다.
     history.replaceState(null, '', encodeState(last.mode, last.formA, last.formB));
-    box.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (err) {
     box.innerHTML = `<div class="error">${esc(err.message)}</div>`;
     box.classList.add('on');
@@ -240,8 +310,7 @@ const say = (name, html) =>
 // 궁합 화면
 // ─────────────────────────────────────────────────────────────
 
-function renderCompat(formA, formB) {
-  const r = compareFortune(formA, formB);
+function renderCompat(formA, formB, r) {
   last = { mode: 'pair', formA, formB, result: r };
   const p = (n) => String(n).padStart(2, '0');
   const when = (f) => `${f.year}.${p(f.month)}.${p(f.day)}` +
@@ -289,6 +358,73 @@ function renderCompat(formA, formB) {
 
 // ─────────────────────────────────────────────────────────────
 
+
+/**
+ * 명반 — 계산된 값만 표로.
+ *
+ * 전에 이걸 뺐던 건 명반을 '글로 설명'하던 대목이 전문용어 범벅이라
+ * 읽히지 않았기 때문이다. 표 자체는 다르다. 뜻을 몰라도 "이만큼 계산했구나"가
+ * 보이고, 그게 뒤에 오는 풀이를 믿게 만든다. 그래서 여기서는 설명하지 않는다.
+ *
+ * 열다섯을 다 펼치지는 않는다. 눈에 보이는 형태가 있는 넷만 펼치고
+ * 나머지 열하나는 한 줄씩 접어둔다. 다 펼치면 표만 두 화면이 된다.
+ */
+const SHOWN = ['saju', 'astrology', 'jamidusu', 'tarot'];
+
+/** 체계의 facts 에서 원하는 항목만 골라 칸으로 */
+function cells(sys, labels) {
+  if (!sys) return '';
+  return labels.map((k) => {
+    const f = sys.facts.find((x) => x.label === k);
+    if (!f || !f.value || f.value === '—') return '';
+    return `<div class="mb-cell"><dt>${esc(k)}</dt><dd>${esc(f.value)}${
+      f.note ? `<small>${esc(f.note)}</small>` : ''}</dd></div>`;
+  }).join('');
+}
+
+function chartPanel(r) {
+  const by = (id) => r.results.find((x) => x.id === id);
+  const P = r.chart.pillars;
+  const pillar = [['시', P.hour], ['일', P.day], ['월', P.month], ['년', P.year]]
+    .map(([pos, g]) => `
+      <div class="pillar${pos === '일' ? ' me' : ''}">
+        <div class="pos">${pos}주${pos === '일' ? ' · 나' : ''}</div>
+        <div class="gz">${g ? esc(g.hanja) : '—'}</div>
+        <div class="kr">${g ? esc(g.kr) : '시간 미상'}</div>
+      </div>`).join('');
+
+  const group = (title, body) => body
+    ? `<div class="mb-group"><div class="mb-head">${esc(title)}</div>${body}</div>` : '';
+
+  const rest = r.results.filter((x) => !SHOWN.includes(x.id));
+
+  return `
+    <div class="section-label">명반</div>
+    <div class="card">
+      ${group('사주팔자', `<div class="pillars">${pillar}</div>`)}
+      ${group('점성술 네이탈', `<dl class="mb-grid">${
+        cells(by('astrology'), ['태양', '달', '상승점', '중천'])}</dl>`)}
+      ${group('자미두수 명반', `<dl class="mb-grid">${
+        cells(by('jamidusu'), ['명궁', '부처궁', '재백궁', '관록궁', '질액궁', '천이궁'])}</dl>`)}
+      ${group('타로', `<dl class="mb-grid">${
+        cells(by('tarot'), ['생일 카드', '상황', '과제', '조언'])}</dl>`)}
+
+      <details class="pool">
+        <summary>나머지 ${rest.length}개 체계가 세운 것</summary>
+        <dl class="facts">
+          ${rest.map((x) => `<div class="fact"><dt>${esc(x.name)}</dt>
+            <dd>${esc(x.headline)}</dd></div>`).join('')}
+        </dl>
+      </details>
+
+      <p class="area-src" style="margin-top:12px">
+        천문 계산으로 구한 값만 적었습니다. 뜻은 아래 풀이에 있으니
+        이 표를 이해하실 필요는 없습니다.
+      </p>
+    </div>
+  `;
+}
+
 /**
  * 개인 운세 화면.
  *
@@ -302,9 +438,7 @@ function renderCompat(formA, formB) {
  * 세운을 쓴다. 시기끼리 정말로 비슷한 것이라 문장을 더 써도 고쳐지지 않는다.
  * 그래서 각 시기가 저만 말할 수 있는 것 — 어느 날, 어느 달 — 만 남겼다.
  */
-function render(form) {
-  const r = readFortune(form);
-  const f = readForecast(form);
+function render(form, r, f) {
   const s = r.synthesis;
   last = { mode: 'solo', formA: form, formB: null, result: r, forecast: f };
 
@@ -359,6 +493,8 @@ function render(form) {
     </tr>`).join('');
 
   return `
+    ${chartPanel(r)}
+
     <div class="section-label">타고난 구성</div>
     <div class="card synth">
       <h3>${esc(form.name)} 님</h3>

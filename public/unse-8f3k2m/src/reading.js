@@ -15,7 +15,7 @@
  */
 
 import { elementDistribution, tenGodDistribution, computeDaeun, branchRelations, tenGod,
-         TEN_GOD_GROUP, MAIN_HIDDEN, ganzhiName,
+         TEN_GOD_GROUP, MAIN_HIDDEN, ganzhiName, yearPillar,
          ELEMENTS, ELEMENT_HANJA } from './core/ganzhi.js';
 import { j } from './core/josa.js';
 
@@ -136,12 +136,12 @@ function nativeSignature(chart) {
   return relation;
 }
 
-function stage(label, periods, tail) {
+function stage(label, periods, tail, who = '회원님') {
   if (!periods || !periods.length) return null;
   const from = periods[0].fromAge;
   const to = periods[periods.length - 1].toAge;
   const head = label === '초년'
-    ? `회원님의 초년 흐름은 ${to}세까지 이어집니다.`
+    ? `${who}의 초년 흐름은 ${to}세까지 이어집니다.`
     : label === '중년'
       ? `중년 흐름은 ${from}세부터 ${to}세까지입니다.`
       : `말년 흐름은 ${from}세 이후부터입니다.`;
@@ -248,6 +248,8 @@ const seasonOf = (b) =>
  * @param {object} synth  readFortune().synthesis — 합의도를 여기서 본다
  */
 export function lifeReading(input, chart, synth) {
+  // 이름으로 부르면 남의 이야기가 내 이야기가 된다
+  const who = input.name ? `${input.name} 님` : '회원님';
   const gods = tenGodDistribution(chart.pillars, chart.dayStem);
   const el = elementDistribution(chart.pillars);
   const daeun = computeDaeun(chart, input.isMale, input.jdUT);
@@ -268,7 +270,7 @@ export function lifeReading(input, chart, synth) {
 
   return {
     early: stage('초년', L.slice(0, 2),
-      `이 무렵에 성격의 뼈대가 잡히고, 그때 곁에 있던 사람이 오래 남습니다. ${flavor.early}. ${native}.${c.hedge}`),
+      `이 무렵에 성격의 뼈대가 잡히고, 그때 곁에 있던 사람이 오래 남습니다. ${flavor.early}. ${native}.${c.hedge}`, who),
     middle: stage('중년', L.slice(2, 5),
       `어려움과 성공을 한 차례씩 겪는데, 주관이 뚜렷해 뒤로 갈수록 자리가 단단해집니다. ${flavor.middle}.`),
     late: stage('말년', L.slice(5, 8),
@@ -303,7 +305,7 @@ export function lifeReading(input, chart, synth) {
       `${JOB[weak]}. 또한 ${JOB[weak2]}.`,
 
     body:
-      `회원님은 ${SEASONS[seasonOf(input.monthBranch)]}에 태어난 ` +
+      `${who}은 ${SEASONS[seasonOf(input.monthBranch)]}에 태어난 ` +
       `${ELEMENTS[dayEl]}(${ELEMENT_HANJA[dayEl]})의 기운입니다. ` +
       `오행 가운데 ${j(ELEMENTS[weak], '이')} 특히 모자라니 그 자리를 메우는 데 신경 쓰셔야 합니다. ` +
       `몸에서는 ${b.organ}의 기능을 각별히 살피셔야 하고, 얼굴 주변으로는 ${j(b.part, '이')} 가장 약한 자리입니다. ` +
@@ -500,6 +502,128 @@ function gradeDays(input, chart, dates) {
         ? `${pick(DAY_LINE[key], x.seed)} ${SINSAL_LINE[x.sinsal[0]]}`
         : pick(DAY_LINE[key], x.seed);
     delete x.seed;
+  }
+  return out;
+}
+
+/* ── 연도별 타임라인 ──────────────────────────────────────────
+   이 화면의 쓸모는 미래가 아니라 과거에 있다.
+
+   사람들이 사주를 믿게 되는 자리는 언제나 같다 — "작년에 그만뒀는데
+   그게 여기 나오네." 지난 십 년을 연도별로 펼쳐놓고 직접 맞춰보게 하면,
+   맞는지 안 맞는지를 본인이 판정한다. 그게 어떤 설명보다 강하다.
+
+   명리에서 한 해를 보는 법은 정해져 있다. 그 해의 천간이 나에게 무엇으로
+   오는가(무슨 일이 생기는가), 그 해의 지지가 내 네 기둥 중 어디를 건드리는가
+   (어느 자리에서 생기는가). 이 둘을 겹치면 한 줄이 나온다. */
+
+/**
+ * 그 해가 무슨 해인가 — 천간이 나에게 무엇으로 오느냐.
+ *
+ * 다섯 무리로만 묶으면 안 된다. 천간은 두 해마다 같은 오행으로 돌아서
+ * 무리로 묶으면 2014·2015가, 2016·2017이 글자 그대로 같은 문장이 된다.
+ * 열 가지로 갈라야 해마다 다른 말이 나온다.
+ *
+ * 문장은 '…하는 해'로 끝맺는다. 뒤에 붙는 꼬리만 바꿔 지난 해는 '였습니다',
+ * 올해와 앞날은 '입니다'로 쓰기 위해서다.
+ */
+const YEAR_KIND = {
+  비견: { tag: '겨룸', body: '내 몫을 두고 겨루게 되는 해. 함께할 사람이 생기는 대신 결정은 느려지는 때' },
+  겁재: { tag: '지출', body: '기회와 지출이 같이 들어오는 해. 동업이나 공동 지출, 빌려주는 일이 겹치는 때' },
+  식신: { tag: '결실', body: '손에 잡히는 것을 만들어내는 해. 한 가지를 꾸준히 밀어 결과가 쌓이는 때' },
+  상관: { tag: '변동', body: '하고 싶은 말과 재주가 밖으로 나오는 해. 그만두거나 새로 벌이는 일, 윗사람과 부딪치는 일이 생기는 때' },
+  편재: { tag: '큰돈', body: '바깥에서 온 기회로 큰돈이 오가는 해. 벌이는 폭이 넓어지는 만큼 새는 자리도 같이 커지는 때' },
+  정재: { tag: '실속', body: '꾸준한 수입과 생활의 질서가 잡히는 해. 크지 않아도 손에 남는 것이 생기는 때' },
+  편관: { tag: '책임', body: '갑작스러운 책임이 들어오는 해. 견디면 자리가 오르고 버티지 못하면 몸이 먼저 상하는 때' },
+  정관: { tag: '자리', body: '맡은 자리와 이름이 정해지는 해. 취업이나 승진, 시험과 자격처럼 남이 인정하는 형태로 결과가 나오는 때' },
+  편인: { tag: '공부', body: '남들과 다른 공부와 정보에 빠지는 해. 배움에는 좋으나 결정이 늦어지는 때' },
+  정인: { tag: '문서', body: '문서와 도움이 붙는 해. 자격이나 계약, 집 문제처럼 종이로 남는 일이 잘 되는 때' },
+};
+
+/** 남녀에 따라 인연이 걸리는 자리가 다르다 */
+const MARRY_GOD = { male: '재성', female: '관성' };
+
+/** 그 해의 지지가 내 어느 기둥을 건드렸나. 이쪽도 '…는 때'로 끝맺는다 */
+const YEAR_HIT = {
+  day: {
+    충: '이사나 이직, 이별, 수술처럼 사는 자리가 통째로 흔들리는 때',
+    육합: '사람과 엮여 만남이나 약속이 정해지는 때',
+    반합: '주변이 밀어주어 혼자 애쓰지 않아도 풀리는 때',
+    삼형: '같은 문제로 두 번 말이 오가는 때',
+    상형: '같은 문제로 두 번 말이 오가는 때',
+    자형: '혼자 파고들다 마음이 먼저 소모되는 때',
+    해: '겉은 조용한데 속이 상하는 때',
+    파: '정해둔 것이 틀어져 계획을 다시 짜는 때',
+  },
+  month: {
+    충: '직장과 부모 쪽이 흔들려 자리를 옮기게 되는 때',
+    육합: '일자리나 집안 쪽에서 도움이 붙는 때',
+    반합: '일자리나 집안 쪽에서 도움이 붙는 때',
+    삼형: '직장이나 집안 일로 같은 말이 오가는 때',
+    상형: '직장이나 집안 일로 같은 말이 오가는 때',
+    자형: '일을 혼자 떠안고 지치는 때',
+    해: '직장이나 집안에서 속으로 상하는 때',
+    파: '직장이나 집안 쪽 계획이 틀어지는 때',
+  },
+  year: {
+    충: '집안이나 윗대 쪽에서 일이 생기는 때. 어른의 건강이나 고향 일로 움직이기 쉬운 때',
+    육합: '집안 쪽에서 좋은 소식이 오는 때',
+    반합: '집안 쪽에서 좋은 소식이 오는 때',
+    삼형: '집안 일로 말이 오가는 때',
+    상형: '집안 일로 말이 오가는 때',
+    자형: '뿌리 쪽 일로 혼자 앓는 때',
+    해: '집안 쪽에서 속으로 상하는 때',
+    파: '집안 쪽 계획이 틀어지는 때',
+  },
+  hour: {
+    충: '아이나 아랫사람, 또는 세워둔 앞날의 계획 쪽에서 변동이 생기는 때',
+    육합: '아이나 아랫사람 쪽에서 기쁜 일이 있는 때',
+    반합: '아이나 아랫사람 쪽에서 기쁜 일이 있는 때',
+    삼형: '아랫사람 일로 말이 오가는 때',
+    상형: '아랫사람 일로 말이 오가는 때',
+    자형: '앞날을 혼자 고민하며 보내는 때',
+    해: '아랫사람 쪽에서 속으로 상하는 때',
+    파: '세워둔 계획이 틀어지는 때',
+  },
+};
+
+export function yearTimeline(input, chart, from, to) {
+  const daeun = computeDaeun(chart, input.isMale, input.jdUT);
+  const marry = MARRY_GOD[input.isMale ? 'male' : 'female'];
+  const out = [];
+
+  for (let y = from; y <= to; y++) {
+    const gz = yearPillar(y);
+    const god = tenGod(chart.dayStem, gz.stem);
+    const kind = YEAR_KIND[god];
+    // 명리에서 한 해는 입춘에 바뀐다. 입춘을 몇 번 지났는지가 곧 나이다
+    const age = y - input.sajuYear;
+    const dae = daeun.list.find((p) => age >= p.fromAge && age <= p.toAge) ?? null;
+    // 지난 해는 맞춰보는 자리라 단정해서 쓰고, 앞날은 아직 오지 않았다
+    const tail = y < input.currentYear ? '였습니다.' : '입니다.';
+
+    // 지지가 건드린 자리. 일지가 가장 무겁고, 없으면 월·년·시 차례로 본다
+    let hit = null;
+    for (const key of ['day', 'month', 'year', 'hour']) {
+      const p = chart.pillars[key];
+      if (!p) continue;
+      const rel = branchRelations(p.branch, gz.branch)[0];
+      if (!rel || !YEAR_HIT[key][rel.kind]) continue;
+      hit = { at: key, kind: rel.kind, text: YEAR_HIT[key][rel.kind], good: rel.good };
+      break;
+    }
+
+    // 인연이 걸리는 십신이 들어오고 지지까지 맞물리면 그 해가 유력하다
+    const bond = TEN_GOD_GROUP[god] === marry && !!hit && hit.good;
+
+    out.push({
+      year: y, age, gz, tag: kind.tag,
+      past: y < input.currentYear,
+      text: [kind.body, hit?.text].filter(Boolean).map((t) => t + tail).join(' '),
+      bond,
+      daeunFrom: dae && dae.fromAge === age ? dae : null,
+      hit,
+    });
   }
   return out;
 }
@@ -998,7 +1122,7 @@ export function consensusReading(r, block) {
     const [first, second] = agreed;
     const parts = [
       `계산 방식이 전혀 다른 ${first.count}곳이 나란히 짚는 것이 있습니다. ` +
-      `${j(tagWord(first.word), '이')} 회원님의 바탕입니다.`,
+      `${j(tagWord(first.word), '이')} 이 사람의 바탕입니다.`,
     ];
     if (tagShows(first.word)) parts.push(`${tagShows(first.word)}.`);
     if (second) {
@@ -1142,6 +1266,137 @@ export function structureReading(input, chart) {
  *
  * 실제 삶과 맞춰보니 이 두 가지가 맞히고 오행 퍼센트는 못 맞혔다.
  */
+
+/* ── 내면과 금기 ──────────────────────────────────────────────
+   운세를 보러 온 사람이 "어떻게 알았지" 하는 자리는 대개 앞날이 아니라
+   지금 자기 속이다. 돈이 들어온다는 말보다 "당신은 다 해내고도 잘하고
+   있는 건지 계속 의심하죠"가 훨씬 세게 꽂힌다.
+
+   명리에서 그 자리는 정해져 있다. 십신 가운데 무엇이 넘치고 무엇이
+   비었는가 — 넘치는 것이 불안의 모양이고, 빈 것이 결핍의 모양이다. */
+
+/** 넘치는 자리가 만드는 속엣말 */
+const INNER_TOO_MUCH = {
+  비겁: { voice: '왜 나만 이렇게 애쓰지', text: '혼자 다 떠안고는 알아주지 않는다고 서운해지는 쪽입니다. 도와달라는 말을 꺼내는 것이 지는 일처럼 느껴져서, 정작 필요할 때 손을 내밀지 못합니다' },
+  식상: { voice: '이걸로 먹고살 수 있을까', text: '하고 싶은 것이 많은데 그게 돈이 되지 않을까 봐 불안한 쪽입니다. 재능을 의심하는 게 아니라 쓸모를 의심하는 것이라, 남이 인정해줘도 잘 가라앉지 않습니다' },
+  재성: { voice: '이만큼 해도 왜 불안하지', text: '손에 쥔 것으로 자기를 증명하려다 보니 아무리 모아도 충분하다는 느낌이 오지 않는 쪽입니다. 쉬는 것 자체에 죄책감이 붙습니다' },
+  관성: { voice: '내가 잘하고 있는 걸까', text: '끊임없이 스스로를 검열합니다. 남이 정한 기준을 어느새 내 기준으로 삼아버려서, 다 해내고도 불안이 남습니다. 완벽하지 않으면 시작하지 않으려는 버릇이 여기서 나옵니다' },
+  인성: { voice: '아직 준비가 덜 된 것 같은데', text: '시작하기 전에 다 알아야 한다고 믿어 자꾸 미루는 쪽입니다. 게으른 것이 아니라 무서운 것인데, 남들 눈에는 굼떠 보여서 그 오해가 또 상처가 됩니다' },
+};
+
+/** 비어 있는 자리가 만드는 결핍 */
+const INNER_EMPTY = {
+  비겁: '밑바닥에 "내 편이 없다"는 느낌이 깔려 있습니다. 사람들 사이에 있어도 혼자라는 감각이 잘 지워지지 않습니다',
+  식상: '속에 든 말을 밖으로 꺼내는 일이 유독 어렵습니다. 참고 참다가 한 번에 터지고, 터진 뒤에 더 후회합니다',
+  재성: '현실 감각을 스스로 믿지 못해 큰 결정 앞에서 꼭 남에게 물어보게 됩니다. 정작 답은 이미 알고 있는 경우가 많습니다',
+  관성: '규칙을 스스로 만들어야 해서 자유로운 대신 기준이 늘 흔들립니다. 누가 정해주면 편할 텐데 그건 또 싫습니다',
+  인성: '기댈 언덕이 없다고 느껴 혼자 버티는 것이 습관이 됐습니다. 쉬는 법을 배운 적이 없어 멈추면 불안해집니다',
+};
+
+/** 일간의 오행 — 감정을 처리하는 방식 */
+const INNER_ELEMENT = [
+  '감정이 쌓이면 새 일을 벌여 잊으려 합니다. 바쁘게 지내는 것으로 덮는 쪽이라, 정작 무엇이 힘들었는지 나중에야 압니다',
+  '그 자리에서 다 드러내고 뒤끝은 없습니다. 다만 말이 앞서서, 식은 뒤에 후회할 말을 남기기 쉽습니다',
+  '속으로 삼키고 오래 담아둡니다. 겉으로 티가 나지 않아 주변은 괜찮은 줄 알고, 그래서 더 외로워집니다',
+  '딱 잘라내고 정리해버립니다. 사람도 그렇게 자르고 나서 한참 뒤에 후회하는 쪽입니다',
+  '혼자 오래 곱씹습니다. 겉으로는 정리된 것처럼 보이지만 안에서는 같은 장면이 계속 돌아갑니다',
+];
+
+/**
+ * 내면 — 이 사람이 속으로 가장 자주 하는 말.
+ *
+ * 넘치는 십신에서 불안의 모양을, 비어 있는 십신에서 결핍의 모양을,
+ * 일간 오행에서 감정을 다루는 방식을 읽는다.
+ */
+export function innerReading(input, chart) {
+  const gods = tenGodDistribution(chart.pillars, chart.dayStem);
+  const g = gods.groups;
+  const order = GOD_GROUPS.slice().sort((a, b) => g[b] - g[a]);
+  const most = order[0];
+  const empty = GOD_GROUPS.filter((k) => g[k] === 0);
+  const out = [];
+
+  const tm = INNER_TOO_MUCH[most];
+  if (tm) {
+    out.push({
+      title: '속으로 가장 자주 하는 말',
+      text: `“${tm.voice}” — ${tm.text}.`,
+    });
+  }
+  if (empty.length) {
+    // 비어 있는 자리가 여럿이면 가장 무거운 하나만 말한다. 다 늘어놓으면
+    // 결핍 목록이 되어 읽는 사람이 자기를 고장난 사람으로 여기게 된다.
+    const pick = ['관성', '인성', '재성', '식상', '비겁'].find((k) => empty.includes(k));
+    out.push({ title: '비어 있는 자리', text: `${INNER_EMPTY[pick]}.` });
+  }
+  out.push({
+    title: '감정을 다루는 방식',
+    text: `${INNER_ELEMENT[Math.floor(chart.pillars.day.stem / 2)]}.`,
+  });
+  return out;
+}
+
+/** 넘치는 자리마다 하지 말아야 할 것이 정해져 있다 */
+const TABOO_GOD = {
+  비겁: { head: '보증과 동업, 돈 빌려주는 일', text: '사람 때문에 재물이 나가는 구성입니다. 가까운 사이일수록 금액과 기한을 글로 남기고, 보증은 어떤 사정이 있어도 서지 마세요. 한 번 나간 돈은 사람까지 같이 가져갑니다' },
+  식상: { head: '윗사람 앞에서 하고 싶은 말을 다 하는 것', text: '맞는 말이어도 꺼내는 자리와 순서가 틀리면 그 말이 그대로 부메랑이 됩니다. 옳음을 증명하려다 자리를 잃는 일이 반복되기 쉬운 구성입니다' },
+  재성: { head: '한 곳에 몰아 넣는 것', text: '벌이는 폭을 키우려는 힘이 강해 규모를 감당 못 할 때까지 늘리기 쉽습니다. 여윳돈의 한도를 미리 정해두고, 그 선을 넘는 결정은 하루를 재우고 다시 보세요' },
+  관성: { head: '남의 기준에 나를 맞춘 채 버티는 것', text: '견디는 힘이 좋아서 잘못된 자리에서도 오래 버팁니다. 그런데 버틴 시간이 곧 손해가 되는 구성이라, 아니라고 느낀 자리는 남보다 빨리 정리하는 편이 낫습니다' },
+  인성: { head: '준비만 하다 때를 놓치는 것', text: '자격과 공부를 하나 더 쌓으면 그때 시작하겠다고 미루기 쉽습니다. 이 구성은 실전에서 배우는 속도가 훨씬 빠르니, 칠 할쯤 준비되면 일단 시작하세요' },
+};
+
+/** 비어 있는 자리도 금기를 만든다 */
+const TABOO_EMPTY = {
+  인성: { head: '시험으로만 승부를 보는 것', text: '종이로 증명하는 길이 유독 더딘 구성입니다. 붙을 때까지 매달리면 시간과 돈이 같이 빠집니다. 만든 것과 해낸 것으로 증명하는 길을 같이 열어두세요' },
+  재성: { head: '남의 말만 듣고 큰돈을 움직이는 것', text: '현실 감각을 스스로 못 믿어 결정을 남에게 넘기기 쉬운 구성입니다. 남이 권한 투자로 잃는 일이 특히 잦으니, 내가 설명할 수 없는 곳에는 넣지 마세요' },
+  식상: { head: '참았다가 한 번에 터뜨리는 것', text: '그때그때 말하지 못하고 쌓아두는 구성입니다. 쌓인 것은 반드시 엉뚱한 자리에서 터지니, 작게 여러 번 말하는 연습이 관계를 지킵니다' },
+  관성: { head: '규칙 없이 흘러가게 두는 것', text: '스스로 기준을 세우지 않으면 아무도 세워주지 않는 구성입니다. 시간과 돈만큼은 남이 정해준 것처럼 규칙을 박아두세요' },
+  비겁: { head: '혼자 다 떠안는 것', text: '기대는 법을 배우지 못한 구성입니다. 도움을 청하는 것을 지는 일로 여기다 몸이 먼저 무너집니다' },
+};
+
+/**
+ * 절대 하면 안 되는 것.
+ *
+ * 좋은 말만 늘어놓은 풀이는 아무 쓸모가 없다. 사람이 실제로 쓰는 것은
+ * "이건 하지 마세요" 쪽이다. 넘치는 자리와 비어 있는 자리, 그리고
+ * 원국에 든 부딪침에서 뽑는다.
+ */
+export function tabooReading(input, chart) {
+  const gods = tenGodDistribution(chart.pillars, chart.dayStem);
+  const g = gods.groups;
+  const order = GOD_GROUPS.slice().sort((a, b) => g[b] - g[a]);
+  const out = [];
+
+  const tg = TABOO_GOD[order[0]];
+  if (tg) out.push({ head: tg.head, text: `${tg.text}.` });
+
+  const empty = GOD_GROUPS.filter((k) => g[k] === 0);
+  const pick = ['인성', '재성', '식상', '관성', '비겁'].find((k) => empty.includes(k));
+  if (pick && TABOO_EMPTY[pick]) out.push({ head: TABOO_EMPTY[pick].head, text: `${TABOO_EMPTY[pick].text}.` });
+
+  // 양인이 든 사람은 고집이 곧 사고로 이어진다
+  const YANGIN = { 0: 3, 1: 4, 2: 6, 3: 7, 4: 6, 5: 7, 6: 9, 7: 10, 8: 0, 9: 1 };
+  const hasYangin = Object.values(chart.pillars).filter(Boolean)
+    .some((p) => YANGIN[chart.dayStem] === p.branch);
+  if (hasYangin) {
+    out.push({
+      head: '힘으로 밀어붙이는 것',
+      text: '기운이 넘치는 자리를 타고나 한번 마음먹으면 끝까지 가는데, 그 힘이 안으로 돌면 몸을 상하게 합니다. 운전과 연장, 운동에서 다치는 일이 잦은 구성이니 속도와 고집을 같이 줄이세요.',
+    });
+  }
+
+  // 일지가 부딪치는 사람은 가까운 사이에서 말로 무너진다
+  const dayHit = ['year', 'month', 'hour']
+    .map((k) => chart.pillars[k] && branchRelations(chart.pillars.day.branch, chart.pillars[k].branch)[0])
+    .find((x) => x && !x.good);
+  if (dayHit) {
+    out.push({
+      head: '가까운 사람에게 감정을 그대로 쏟는 것',
+      text: '가장 가까운 자리에 부딪침이 들어 있어, 밖에서 눌린 감정이 집 안에서 터지기 쉬운 구성입니다. 화가 난 날은 그 자리에서 말하지 말고 하루를 넘기세요. 이 하나만 지켜도 관계에서 잃는 것이 크게 줄어듭니다.',
+    });
+  }
+  return out;
+}
 
 const PILLAR_MEANING = ['조상과 부모', '부모와 형제, 그리고 직업', '나와 배우자', '자식과 말년'];
 

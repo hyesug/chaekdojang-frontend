@@ -17,7 +17,8 @@
 
 import { ELEMENTS, computeDaeun } from './core/ganzhi.js';
 import { AREAS } from './forecast.js';
-import { dayRange, structureReading, patternReading } from './reading.js';
+import { dayRange, structureReading, patternReading,
+         yearTimeline, innerReading, tabooReading } from './reading.js';
 
 const p2 = (n) => String(n).padStart(2, '0');
 
@@ -161,6 +162,21 @@ export function buildContext(form, r, f = null) {
     out.push('');
   }
 
+  // ── 내면과 금기 ──
+  // 사람이 가장 세게 반응하는 자리다. 모델이 이걸 모르면 앞날 이야기만 한다.
+  const inner = innerReading(r.input, r.chart);
+  if (inner.length) {
+    out.push('## 내면 (원국의 십신 분포에서 읽은 것)');
+    for (const x of inner) out.push(`- ${x.title}: ${x.text}`);
+    out.push('');
+  }
+  const taboo = tabooReading(r.input, r.chart);
+  if (taboo.length) {
+    out.push('## 이 사람이 하지 말아야 할 것');
+    for (const x of taboo) out.push(`- ${x.head}: ${x.text}`);
+    out.push('');
+  }
+
   // ── 대운 ──
   const daeun = computeDaeun(r.chart, r.input.isMale, r.input.jdUT);
   if (daeun?.list?.length) {
@@ -168,6 +184,20 @@ export function buildContext(form, r, f = null) {
     out.push(daeun.list
       .map((p) => `${p.fromAge}~${p.toAge}세 ${p.hanja}(${p.kr})`)
       .join(' · '));
+    out.push('');
+  }
+
+  // ── 연도별 ──
+  // "2019년에 무슨 일 있었나요" 같은 질문에 답하려면 해마다의 값이 있어야 한다.
+  if (f) {
+    const tl = yearTimeline(r.input, r.chart,
+      Math.max(r.input.sajuYear + 8, f.today.y - 15), f.today.y + 10);
+    out.push('## 연도별 (지난 해는 맞춰보는 자리, 앞으로는 준비하는 자리)');
+    for (const x of tl) {
+      out.push(`${x.year}(${x.age}세) ${x.gz.hanja} [${x.tag}]` +
+        `${x.bond ? ' 인연' : ''}${x.daeunFrom ? ' 대운시작' : ''} — ${x.text}`);
+    }
+    out.push('특정 연도를 물으면 위 줄을 근거로 답할 것. 지난 해는 단정해서 말하고, 앞날은 경향으로 말할 것.');
     out.push('');
   }
 

@@ -556,3 +556,15 @@ details.pool[open] > summary::before { content: '▾ '; }
   .daytable td { padding: 6px 6px; border-bottom: 1px solid #ddd; }
   .sinsal { background: #eee; color: #333; }
 }
+
+/* ── 연도별 타임라인 ── */
+/* 일자별 표와 달리 풀이가 길다. 가로로 밀지 말고 접히게 둔다 */
+.yeartable { min-width: 0; }
+.yeartable td.dt { white-space: nowrap; }
+.yeartable td.dt small { display: block; font-size: 10px; color: var(--gold-soft); margin-top: 2px; }
+.yeartable td.sl { white-space: nowrap; color: var(--ink-3); font-size: 12.5px; }
+.yeartable td.yk { white-space: nowrap; color: var(--gold); font-weight: 600; font-size: 13px; }
+.yeartable td.yk .sinsal { margin-left: 6px; }
+/* 아직 오지 않은 해는 한 겹 물린다. 맞춰볼 수 있는 구간과 구분된다 */
+.yeartable tr.ahead td { opacity: .62; }
+.yeartable tr.now td { opacity: 1; }

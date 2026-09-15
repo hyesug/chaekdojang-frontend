@@ -19,9 +19,13 @@ import { lifeReading, monthDays, luckyDays, compatReading,
          structureReading, patternReading,
          yearTimeline, innerReading, tabooReading } from './reading.js';
 import { aiSection, initAI, initCompatAI } from './ai.js';
+import { buildView } from './viewmodel.js';
+import { SYSTEM_META, TIER_LABEL, SOURCE_LABEL, ENGINE_VERSION } from './meta.js';
 
 /** 방금 본 결과. 이미지 카드와 공유 링크를 만들 때 다시 쓴다 */
 let last = null;
+/** 그 결과를 화면용으로 가공한 것. AI 추천 질문이 이걸 본다 */
+let lastView = null;
 
 const shareBar = () => `
   <div class="sharebar">
@@ -381,6 +385,46 @@ function renderCompat(formA, formB, r) {
  * 열다섯을 다 펼치지는 않는다. 눈에 보이는 형태가 있는 넷만 펼치고
  * 나머지 열하나는 한 줄씩 접어둔다. 다 펼치면 표만 두 화면이 된다.
  */
+
+/**
+ * 계산 기준 보기.
+ *
+ * "왜 다른 사이트와 값이 다른가"에 답할 수 있어야 한다. 어떤 시각을
+ * 썼는지, 어떤 하우스 방식인지, 어느 아야남샤인지를 감추지 않는다.
+ */
+function receiptPanel(v) {
+  const { r } = v.raw;
+  const b = r.birth;
+  const p2 = (n) => String(n).padStart(2, '0');
+  const astro = r.results.find((x) => x.id === 'astrology');
+  const ved = r.results.find((x) => x.id === 'vedic');
+  const houseFact = astro?.facts.find((x) => x.label === '하우스 방식');
+  const ayanFact = ved?.facts.find((x) => x.label === '아야남샤');
+
+  const row = (k, val) => val
+    ? `<div class="rc"><dt>${esc(k)}</dt><dd>${esc(val)}</dd></div>` : '';
+
+  return `
+    <details class="why" style="margin-top:6px">
+      <summary>계산 기준 보기</summary>
+      <dl class="receipt">
+        ${row('출생 시각', `${r.input.year}.${p2(r.input.month)}.${p2(r.input.day)}` +
+          (r.input.timeKnown ? ` ${p2(r.input.hour)}:${p2(r.input.minute)} KST` : ' (시각 미상)'))}
+        ${row('출생지', `${r.input.birthPlace} · 동경 ${r.input.place.lon.toFixed(2)}° 북위 ${r.input.place.lat.toFixed(2)}°`)}
+        ${r.input.timeKnown ? row('진태양시', `${p2(b.tst.h)}:${p2(b.tst.mi)} · 경도·균시차 ${b.totalShiftMinutes >= 0 ? '+' : '−'}${Math.abs(b.totalShiftMinutes).toFixed(0)}분`) : ''}
+        ${row('음력', `${r.lunar.year}.${r.lunar.isLeap ? '윤' : ''}${p2(r.lunar.month)}.${p2(r.lunar.day)}`)}
+        ${row('사주 기준', '절기 · 연주는 입춘, 월주는 절입')}
+        ${row('서양 하우스', houseFact ? houseFact.value : '—')}
+        ${row('베딕 아야남샤', ayanFact ? `라히리 ${ayanFact.value}` : '—')}
+        ${row('엔진', ENGINE_VERSION)}
+      </dl>
+      <p class="agree-note">
+        진태양시는 사주에만 씁니다. 서양점성술과 베딕은 표준시(KST)와 출생지 경위도를
+        그대로 넣어 계산합니다. 같은 시각을 두 번 보정하지 않기 위해서입니다.
+      </p>
+    </details>`;
+}
+
 const SHOWN = ['saju', 'astrology', 'jamidusu', 'tarot'];
 
 /** 체계의 facts 에서 원하는 항목만 골라 칸으로 */
@@ -446,46 +490,63 @@ function chartPanel(r) {
 /**
  * 개인 운세 화면.
  *
- * 순서가 뜻을 만든다. 맨 위는 타고난 구성과 평생 — 원국을 그대로 읽은
- * 것이라 사람마다 다르고 시기에 따라 바뀌지도 않는다. 사람의 실제 삶에
- * 들어맞은 것도 늘 이쪽이었다.
+ * 순서가 뜻을 만든다. 예전에는 계산한 차례대로 늘어놓았는데, 사람이
+ * 궁금한 차례는 다르다 - 나는 어떤 사람인가, 지금 왜 이런가, 여러 체계가
+ * 어디서 같은 말을 하는가, 왜 그렇게 읽었는가.
  *
- * 시기 운세는 '언제'만 말한다. 예전에는 오늘·이레·이달·올해를 각각 여섯
- * 영역으로 풀었는데, 재보니 한 사람 안에서 여섯 중 5.9개가 같은 문장이었다.
- * 당연한 일이다 — 오늘은 이레 안에 있고 이레는 이달 안에 있어 같은 월건과
- * 세운을 쓴다. 시기끼리 정말로 비슷한 것이라 문장을 더 써도 고쳐지지 않는다.
- * 그래서 각 시기가 저만 말할 수 있는 것 — 어느 날, 어느 달 — 만 남겼다.
+ * 그래서 맨 위는 올해 한 줄과 체계 일치도, 그다음이 이 명반에서 드문 것,
+ * 그다음이 겹친 것과 갈린 것이다. 나머지는 탭 안으로 넣는다.
+ *
+ * 화면에 쓰는 문장은 전부 reading.js 가 이미 쓴 것이다. 여기서 새로 짓지
+ * 않는다. viewmodel.js 가 고르고 이 함수는 배치만 한다.
  */
 function render(form, r, f) {
-  const s = r.synthesis;
   last = { mode: 'solo', formA: form, formB: null, result: r, forecast: f };
-
-  const life = lifeReading(r.input, r.chart, s);
-  const st = structureReading(r.input, r.chart);
-  const pat = patternReading(r.input, r.chart);
-  const days = monthDays(r.input, r.chart, f.today.y, f.today.m);
-  const lucky = luckyDays(days, life.meta.weak);
-
-  const inner = innerReading(r.input, r.chart);
-  const taboo = tabooReading(r.input, r.chart);
-  // 작년·올해·내년·내후년 네 해만. 작년이 맞는지로 잣대를 확인하고
-  // 앞의 세 해를 읽는 구성이다.
-  const timeline = yearTimeline(r.input, r.chart, f.today.y - 1, f.today.y + 2);
-  const bondYears = timeline.filter((x) => x.bond).map((x) => x.year);
-
-  const p2 = (n) => String(n).padStart(2, '0');
-  const born = `${form.year}.${p2(form.month)}.${p2(form.day)}` +
-    (form.hour == null ? ' · 시간 미상' : ` ${p2(form.hour)}:${p2(form.minute)}`) +
-    ` · ${form.birthPlace}`;
+  const v = buildView(form, r, f);
+  lastView = v;
 
   const block = (label, text, sources) => text
     ? `<div class="say">${label ? `<div class="say-name">${esc(label)}</div>` : ''}
          <p class="say-text">${esc(text)}${cite(sources)}</p></div>`
     : '';
 
-  const dayList = (arr) => arr.slice().sort((a, b) => a - b).join(', ');
+  const dots = (on, of_) => `<div class="dots">${
+    Array.from({ length: of_ }, (_, i) => `<i class="${i < on ? 'on' : ''}"></i>`).join('')}</div>`;
 
-  const yearRows = timeline.map((x) => `
+  // 왜 이렇게 나왔는지 - 핵심 넷이 세운 값을 그대로 보여준다
+  const why = (area, label) => `
+    <details class="why">
+      <summary>왜 이렇게 나왔나요</summary>
+      ${v.evidence(area).map((e) => `
+        <div class="ev">
+          <span class="ev-dot ${e.lit ? 'on' : ''}"></span>
+          <div>
+            <div class="ev-name">${esc(e.name)}${e.lit ? ' - 이 주제를 앞세움' : ''}</div>
+            <div class="ev-head">${esc(e.headline)}</div>
+            <div class="ev-facts">${esc(e.facts.join(' · '))}</div>
+          </div>
+        </div>`).join('')}
+      <p class="agree-note">
+        ${esc(label)} 항목에서 핵심 체계가 각자 어디를 앞세웠는지입니다.
+        채워진 점은 그 체계가 여섯 영역 가운데 이 주제를 위에 둔 경우입니다.
+      </p>
+    </details>`;
+
+  const pane = (id, on, html) =>
+    `<div class="tab-pane" data-tab="${id}" ${on ? '' : 'hidden'}>${html}</div>`;
+
+  const dayList = (arr) => arr.slice().sort((a, b) => a - b).join(', ');
+  const L = v.month.lucky;
+
+  const dayRows = v.month.days.map((x) => `
+    <tr class="${x.d === f.today.d ? 'now' : ''}">
+      <td class="dt">${x.d}<small>${esc(x.weekday)}</small></td>
+      <td class="sl">${x.sinsal.map((n) => `<span class="sinsal">${esc(n)}</span>`).join('')}</td>
+      <td class="ln">${esc(x.line)}</td>
+      <td class="gd ${x.cls}">${esc(x.grade)}</td>
+    </tr>`).join('');
+
+  const yearRows = v.ahead.timeline.map((x) => `
     <tr class="${x.year === f.today.y ? 'now' : ''}${x.past ? '' : ' ahead'}">
       <td class="dt">${x.year}${x.daeunFrom ? '<small>큰 흐름 바뀜</small>' : ''}</td>
       <td class="sl">${x.age}세</td>
@@ -494,81 +555,195 @@ function render(form, r, f) {
     </tr>`).join('');
 
   return `
-    ${chartPanel(r)}
+    <div class="hero">
+      <div class="hero-who">${v.who.year}년 종합 운세</div>
+      <h2 class="hero-title">${esc(v.who.name)} 님</h2>
+      <p class="hero-born">${esc(v.who.born)}</p>
 
-    <div class="section-label">타고난 구성</div>
-    <div class="card synth">
-      <h3>${esc(form.name)} 님</h3>
-      <p class="headline">${esc(born)}</p>
-      ${block(st.level === 'strong' ? '크게 치우친 사주입니다' : '치우친 자리', st.head, [])}
-      ${st.lines.map((t) => block(null, t, [])).join('')}
-      ${pat.map((x) => block(x.name, x.text, [])).join('')}
-      <p class="area-src" style="margin-top:8px">
-        이 대목은 열다섯을 평균 낸 값이 아니라 사주 원국을 그대로 읽은 것입니다.
-        네 기둥은 각각 조상·부모·나·자식의 자리라, 같은 부딪침이라도 어느 자리에
-        걸렸느냐에 따라 뜻이 달라집니다.
-        시기에 따라 바뀌지 않는 결이라 시기 운세보다 무겁게 보셔도 됩니다.
+      ${v.hero.tag ? `<div class="hero-tag">${esc(v.hero.tag)}</div>` : ''}
+      <div class="hero-label">올해의 주제</div>
+      <p class="hero-theme">${esc(v.hero.theme)}</p>
+
+      ${v.hero.keywords.length ? `
+        <div class="hero-label">여러 체계가 함께 든 낱말</div>
+        <div class="kw">${v.hero.keywords.map((w) => `<span>${esc(w)}</span>`).join('')}</div>` : ''}
+
+      <div class="hero-label">핵심 ${v.hero.themes[0].of}개 체계가 같은 주제를 가리키는 정도</div>
+      ${v.hero.themes.map((t) => `
+        <div class="agree-row">
+          <span class="agree-name">${esc(t.label)}</span>
+          ${dots(t.on, t.of)}
+          <span class="agree-n">${t.on} / ${t.of}</span>
+        </div>`).join('')}
+      <p class="agree-note">
+        운이 몇 점인지가 아닙니다. 명반을 통째로 세우는 체계(사주·자미두수·점성술·베딕)가
+        각자 여섯 영역 가운데 어디를 위에 두었는지 세어, 같은 곳을 가리키는 횟수를 표시한 것입니다.${
+          v.hero.themes[0].of < 4 ? ' 출생 시각을 몰라 자미두수는 세지 못했습니다.' : ''}
+      </p>
+      ${receiptPanel(v)}
+    </div>
+
+    <div class="section-label">이 명반에서 눈에 띄는 것</div>
+    <div class="card">
+      ${v.highlights.map((h, i) => `
+        <div class="mark">
+          <div class="mark-no">${String(i + 1).padStart(2, '0')}</div>
+          <div>
+            <div class="mark-tag">${esc(h.tag)}${h.value ? `<em>${esc(h.value)}</em>` : ''}</div>
+            <p class="mark-text">${esc(h.text)}</p>
+          </div>
+        </div>`).join('')}
+      <p class="agree-note">
+        아무 사주에나 붙는 말이 아니라, 이 명반에서 드물거나 무겁게 걸린 자리부터 골랐습니다.
       </p>
     </div>
 
-    <div class="section-label">내면</div>
+    ${v.consensus ? `
+    <div class="section-label">여러 체계가 함께 짚은 것</div>
     <div class="card">
-      ${inner.map((x) => block(x.title, x.text, [])).join('')}
-      <p class="area-src" style="margin-top:8px">
-        넘치는 자리가 불안의 모양을, 비어 있는 자리가 결핍의 모양을 만듭니다.
-        앞날보다 지금 속을 먼저 읽은 것입니다.
+      ${block(null, v.consensus.text, v.consensus.sources)}
+      ${why(v.hero.themes[0].area, v.hero.themes[0].label)}
+    </div>` : ''}
+
+    ${v.twist ? `
+    <div class="section-label">한 체계만 보면 놓치는 것</div>
+    <div class="card">
+      ${block(null, v.twist.text, v.twist.sources)}
+      <p class="agree-note">
+        이견을 감추지 않습니다. 열다섯을 함께 돌리는 값어치가 가장 크게 나오는 대목이고,
+        한 체계의 결론만으로 단정하지 마시라는 뜻입니다.
       </p>
+    </div>` : ''}
+
+    <div class="tabs">
+      <button type="button" class="on" data-tab="me">나라는 사람</button>
+      <button type="button" data-tab="now">지금의 나</button>
+      <button type="button" data-tab="work">일과 돈</button>
+      <button type="button" data-tab="love">사랑과 관계</button>
+      <button type="button" data-tab="ahead">앞으로의 흐름</button>
+      <button type="button" data-tab="month">이번 달</button>
+      <button type="button" data-tab="chart">명반 근거</button>
+      <button type="button" data-tab="play">재미로 보기</button>
     </div>
 
-    <div class="section-label">평생</div>
-    <div class="card">
-      ${block('초년운', life.early, [])}
-      ${block('중년운', life.middle, [])}
-      ${block('말년운', life.late, [])}
-      ${block('형제운', life.sibling, [])}
-      ${block('자식운', life.child, [])}
-      ${block('부부운', life.spouse, [])}
-      ${block('직업운', life.career, [])}
-      ${block('나의 체질', life.body, [])}
-      ${s.summary.length ? block('종합', s.summary.join(' '), s.consensus.from) : ''}
-    </div>
-
-    <div class="section-label">연도별로 맞춰보기</div>
-    <div class="card">
-      <p class="lotto-when" style="margin-bottom:14px">
-        작년이 맞는지 먼저 보세요. 지난 해가 맞으면 앞의 세 해도 같은 잣대로 읽힙니다.
-        한 해는 양력 1월 1일이 아니라 입춘(2월 4일 무렵)에 바뀝니다.
-      </p>
-      <div class="daytable-wrap">
-        <table class="daytable yeartable">
-          <thead><tr><th>해</th><th>나이</th><th>무슨 해</th><th>풀이</th></tr></thead>
-          <tbody>${yearRows}</tbody>
-        </table>
+    ${pane('me', true, `
+      <div class="card">
+        <div class="scope">평생 바뀌지 않는 결 · 원국</div>
+        ${v.me.inner.map((x) => block(x.title, x.text, [])).join('')}
       </div>
-      ${bondYears.length ? block('인연이 정해지기 쉬운 해', `${bondYears.join(', ')}년입니다. 만남이든 결혼이든 관계가 한 단계 정해지는 자리가 이 해들에 몰립니다.`, []) : ''}
-    </div>
+      <div class="section-label">강하게 드러나는 성향</div>
+      <div class="card">
+        ${block(null, v.me.structure.head, [])}
+        ${v.me.structure.lines.map((t) => block(null, t, [])).join('')}
+        ${v.me.patterns.map((x) => block(x.name, x.text, [])).join('')}
+        <p class="agree-note">
+          열다섯을 평균 낸 값이 아니라 사주 원국을 그대로 읽은 것입니다.
+          시기에 따라 바뀌지 않는 결이라 시기 운세보다 무겁게 보셔도 됩니다.
+        </p>
+      </div>
+      <div class="section-label">반복해서 손해 보기 쉬운 패턴</div>
+      <div class="card">
+        ${v.me.taboo.map((x, i) => `
+          <div class="mark">
+            <div class="mark-no">${String(i + 1).padStart(2, '0')}</div>
+            <div>
+              <div class="mark-tag">${esc(x.head)}</div>
+              <p class="mark-text">${esc(x.text)}</p>
+            </div>
+          </div>`).join('')}
+        <p class="agree-note">
+          금지가 아니라 되풀이되기 쉬운 결입니다. 그렇게 흘러가고 있다 싶을 때
+          한 번 멈춰 보시라는 뜻입니다.
+        </p>
+      </div>`)}
 
-    <div class="section-label">주의해야 할 패턴</div>
-    <div class="card">
-      ${taboo.map((x) => block(x.head, x.text, [])).join('')}
-      <p class="area-src" style="margin-top:8px">
-        원국에서 넘치는 자리와 옅은 자리를 그대로 뒤집은 것이라 시기에 따라
-        바뀌지 않습니다. 금지가 아니라 되풀이되기 쉬운 결이니, 그렇게 흘러가고
-        있다 싶을 때 한 번 멈춰 보시라는 뜻입니다.
-      </p>
-    </div>
+    ${pane('now', false, `
+      <div class="card synth">
+        <div class="scope">올해와 이레 · 세운·일진</div>
+        <h3>오늘 - ${f.today.m}월 ${f.today.d}일<span class="hanja">${esc(f.day.period.gz.day.hanja)} · ${esc(v.now.grade)}</span></h3>
+        ${block(null, v.now.line, [])}
+        ${block('이레', `${f.week.label} 가운데 ${f.week.bestDay.on.m}월 ${f.week.bestDay.on.d}일 쪽이 낫고, ${f.week.worstDay.on.m}월 ${f.week.worstDay.on.d}일 쪽이 무겁습니다.`, [])}
+        ${v.now.year ? block(`${v.who.year}년`, v.now.year.text, v.now.year.sources) : ''}
+        ${why('총운', '전체')}
+      </div>`)}
 
-    <div class="section-label">${f.today.m}월 길일과 처방</div>
-    <div class="card">
-      ${block('좋은 날', `자리 이동이나 이사에 좋은 날은 ${dayList(lucky.move)}일이고, 문서와 계약·면접에 좋은 날은 ${dayList(lucky.contract)}일입니다. 재물의 흐름이 좋은 날은 ${dayList(lucky.money)}일이며, 사람을 만나기 좋은 날은 ${dayList(lucky.love)}일입니다.`, [])}
-      ${lucky.helper.length ? block('귀인이 드는 날', `운의 흐름과 관계없이 돕는 사람이 붙는 날은 ${dayList(lucky.helper)}일입니다. 아쉬운 말을 꺼내야 한다면 이 날을 쓰세요.`, []) : ''}
-      ${block('우선순위를 낮출 날', `${dayList(lucky.avoid)}일은 기운이 넘쳐 도리어 무리하기 쉬운 날이고, 그다음으로 조심할 날은 ${dayList(lucky.worst)}일입니다. 다른 날을 고를 수 있다면 뒤로 미루시라는 뜻이지, 이미 잡힌 수술이나 계약·면접 일정을 이 표 때문에 바꾸실 일은 아닙니다.`, [])}
-      ${block('처방', `모자란 기운을 채우는 색은 ${lucky.color.join('·')}이고 숫자는 ${lucky.num.join(', ')}, 방향은 ${lucky.dir}입니다. 이름의 첫 자음이 ${lucky.consonant.join('·')}인 사람과 결이 맞는다고 보는데, 이 대목은 사주가 아니라 한글 자음을 오행에 배정하는 성명학 쪽 규칙이라 참고로만 보세요.`, [])}
-    </div>
+    ${pane('work', false, `
+      <div class="card">
+        <div class="scope">일하는 방식은 원국 · 올해 항목은 세운</div>
+        ${block('일하는 방식', v.work.career, [])}
+        ${v.work.job ? block('올해의 일', v.work.job.text, v.work.job.sources) : ''}
+        ${v.work.money ? block('올해의 돈', v.work.money.text, v.work.money.sources) : ''}
+        ${why('직장운', '일')}
+      </div>`)}
 
-    ${lottoSection(r.input, r.chart)}
+    ${pane('love', false, `
+      <div class="card">
+        <div class="scope">관계의 결은 원국 · 올해 항목은 세운</div>
+        ${block('관계의 결', v.love.spouse, [])}
+        ${v.love.area ? block('올해의 관계', v.love.area.text, v.love.area.sources) : ''}
+        ${why('애정운', '관계')}
+        <p class="agree-note">
+          두 사람을 견주려면 맨 위의 <strong>궁합</strong>에서 상대의 생년월일을 넣으세요.
+        </p>
+      </div>`)}
 
-    ${aiSection('solo')}
+    ${pane('ahead', false, `
+      <div class="card">
+        <div class="scope">해마다 바뀌는 흐름 · 세운</div>
+        <p class="agree-note" style="margin:0 0 14px">
+          작년이 맞는지 먼저 보세요. 지난 해가 맞으면 앞의 세 해도 같은 잣대로 읽힙니다.
+          한 해는 양력 1월 1일이 아니라 입춘(2월 4일 무렵)에 바뀝니다.
+        </p>
+        <div class="daytable-wrap">
+          <table class="daytable yeartable">
+            <thead><tr><th>해</th><th>나이</th><th>주제</th><th>풀이</th></tr></thead>
+            <tbody>${yearRows}</tbody>
+          </table>
+        </div>
+        ${v.ahead.bond.length ? block('인연이 정해지기 쉬운 해', `${v.ahead.bond.join(', ')}년입니다. 관계가 한 단계 정해지는 자리가 이 해들에 몰립니다. 다만 어떤 형태가 될지는 정해져 있지 않습니다.`, []) : ''}
+      </div>
+      <details class="why" style="margin-top:14px">
+        <summary>큰 흐름 자세히 보기 - 초년·중년·말년</summary>
+        <div style="margin-top:12px">
+          ${block('초년', v.life.early, [])}
+          ${block('중년', v.life.middle, [])}
+          ${block('말년', v.life.late, [])}
+          ${block('형제', v.life.sibling, [])}
+          ${block('자식', v.life.child, [])}
+          ${block('타고난 리듬', v.life.body, [])}
+        </div>
+      </details>`)}
+
+    ${pane('month', false, `
+      <div class="card">
+        <div class="scope">이번 달 · 일진</div>
+        ${block('좋은 날', `자리 이동이나 이사에 좋은 날은 ${dayList(L.move)}일이고, 문서와 계약·면접에 좋은 날은 ${dayList(L.contract)}일입니다. 재물의 흐름이 좋은 날은 ${dayList(L.money)}일이며, 사람을 만나기 좋은 날은 ${dayList(L.love)}일입니다.`, [])}
+        ${L.helper.length ? block('귀인이 드는 날', `돕는 사람이 붙는 날은 ${dayList(L.helper)}일입니다.`, []) : ''}
+        ${block('우선순위를 낮출 날', `${dayList(L.avoid)}일은 기운이 넘쳐 도리어 무리하기 쉬운 날이고, 그다음으로 조심할 날은 ${dayList(L.worst)}일입니다. 다른 날을 고를 수 있다면 뒤로 미루시라는 뜻이지, 이미 잡힌 수술이나 계약·면접 일정을 이 표 때문에 바꾸실 일은 아닙니다.`, [])}
+      </div>
+      <details class="why" style="margin-top:14px">
+        <summary>${esc(v.month.label)} 일자별로 보기</summary>
+        <div class="daytable-wrap" style="margin-top:12px">
+          <table class="daytable">
+            <thead><tr><th>날</th><th>신살</th><th>풀이</th><th>등급</th></tr></thead>
+            <tbody>${dayRows}</tbody>
+          </table>
+        </div>
+      </details>`)}
+
+    ${pane('chart', false, chartPanel(r))}
+
+    ${pane('play', false, `
+      <div class="card play">
+        <p class="play-note">
+          아래는 핵심 분석이 아닙니다. 전통에서 쓰던 상징을 그대로 옮긴 것이라
+          앞의 풀이와 같은 무게로 보지 마세요.
+        </p>
+        ${block('행운의 색과 숫자', `모자란 기운을 채우는 색은 ${L.color.join('·')}이고 숫자는 ${L.num.join(', ')}, 방향은 ${L.dir}입니다. 이름의 첫 자음이 ${L.consonant.join('·')}인 사람과 결이 맞는다고 보는데, 이 대목은 사주가 아니라 한글 자음을 오행에 배정하는 성명학 쪽 규칙이라 참고로만 보세요.`, [])}
+      </div>
+      ${lottoSection(r.input, r.chart)}`)}
+
+    ${aiSection('solo', v)}
 
     ${shareBar()}
   `;
@@ -673,6 +848,16 @@ $('#result').addEventListener('click', (e) => {
   if (!ft) return;
   document.querySelectorAll('.ft').forEach((b) => b.classList.toggle('on', b.dataset.ft === ft));
   document.querySelectorAll('.flow-pane').forEach((x) => { x.hidden = x.dataset.fp !== ft; });
+});
+
+// 결과 탭 - 길게 스크롤하는 대신 필요한 데로 바로 간다
+$('#result').addEventListener('click', (e) => {
+  const btn = e.target.closest('.tabs button[data-tab]');
+  if (!btn) return;
+  const id = btn.dataset.tab;
+  document.querySelectorAll('.tabs button').forEach((x) => x.classList.toggle('on', x === btn));
+  document.querySelectorAll('.tab-pane').forEach((x) => { x.hidden = x.dataset.tab !== id; });
+  document.querySelector('.tabs').scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 
 // 로또 탭

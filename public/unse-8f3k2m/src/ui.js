@@ -753,23 +753,25 @@ function render(form, r, f) {
           </details>
         </div>`).join('')}
 
-      <div class="section-label">속으로 자주 하는 말</div>
+      <div class="section-label">사주에서 보는 내적 긴장</div>
       <div class="card">
-        <div class="scope">평생 바뀌지 않는 결 · 원국</div>
+        <div class="scope">사주 원국 단독 해석 · 핵심 4체계 교차검증 아님</div>
         ${v.me.inner.map((x) => block(x.title, x.text, [])).join('')}
       </div>
-      <div class="section-label">강하게 드러나는 성향</div>
+      <div class="section-label">사주 원국에서 강한 구조</div>
       <div class="card">
+        <div class="scope">사주 원국 단독 해석 · 핵심 4체계 교차검증 아님</div>
         ${block(null, v.me.structure.head, [])}
         ${v.me.structure.lines.map((t) => block(null, t, [])).join('')}
         ${v.me.patterns.map((x) => block(x.name, x.text, [])).join('')}
         <p class="agree-note">
-          열다섯을 평균 낸 값이 아니라 사주 원국을 그대로 읽은 것입니다.
-          시기에 따라 바뀌지 않는 결이라 시기 운세보다 무겁게 보셔도 됩니다.
+          이 부분은 사주 원국만으로 읽은 단독 해석입니다.
+          다른 핵심 체계와 같은 결론이라는 뜻은 아니며, 교차검증된 성향보다 한 단계 가볍게 보세요.
         </p>
       </div>
-      <div class="section-label">반복해서 손해 보기 쉬운 패턴</div>
+      <div class="section-label">사주에서 보는 반복 패턴</div>
       <div class="card">
+        <div class="scope">사주 원국 단독 해석 · 핵심 4체계 교차검증 아님</div>
         ${v.me.taboo.map((x, i) => `
           <div class="mark">
             <div class="mark-no">${String(i + 1).padStart(2, '0')}</div>

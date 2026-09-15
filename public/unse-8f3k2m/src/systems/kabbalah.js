@@ -73,7 +73,10 @@ const PERSONAL_YEAR = [
 ];
 
 export function analyze(input) {
-  const { year, month, day, currentYear } = input;
+  // 개인년은 양력 1월 1일에 바뀐다. 입춘 기준 해를 쓰면 1월생 화면에서
+  // 개인년이 한 해 뒤처진다.
+  const { year, month, day, civilYear } = input;
+  const currentYear = civilYear;
 
   const digitSum = String(year).split('').reduce((a, c) => a + Number(c), 0) + month + day;
   const lifePath = digitRoot(digitSum);

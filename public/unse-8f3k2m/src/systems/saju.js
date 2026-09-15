@@ -196,9 +196,10 @@ function daeunTurn(input, daeun, now) {
   const i = daeun.list.indexOf(now);
   if (i < 0) return `${now.fromAge}~${now.toAge}세`;
   const next = daeun.list[i + 1];
-  const yearsFromBirth = daeun.startAgeExact + (i + 1) * 10;
+  // 판정에 쓴 경계(toExact)를 그대로 달력으로 옮긴다. 다른 값을 쓰면
+  // 화면에 적힌 전환월과 실제로 바뀌는 시점이 어긋난다.
   const at = new Date(Date.UTC(input.year, input.month - 1, input.day));
-  at.setUTCMonth(at.getUTCMonth() + Math.round(yearsFromBirth * 12));
+  at.setUTCMonth(at.getUTCMonth() + Math.round(now.toExact * 12));
   const when = `${at.getUTCFullYear()}년 ${at.getUTCMonth() + 1}월`;
   return next
     ? `${now.fromAge}~${now.toAge}세 · ${when} 무렵까지, 이후 ${next.hanja}(${next.kr})`
@@ -206,14 +207,14 @@ function daeunTurn(input, daeun, now) {
 }
 
 export function analyze(input) {
-  const { jdUT, jdTST, timeKnown, isMale, age, currentYear } = input;
+  const { jdUT, jdTST, timeKnown, isMale, age, currentYear, elapsedYears } = input;
 
   const chart = computeFourPillars(jdUT, jdTST, { timeKnown });
   const { pillars, dayStem } = chart;
   const dist = elementDistribution(pillars);
   const gods = tenGodDistribution(pillars, dayStem);
   const daeun = computeDaeun(chart, isMale, jdUT);
-  const now = currentDaeun(daeun, age);
+  const now = currentDaeun(daeun, elapsedYears);
   const seun = yearPillar(currentYear);
 
   const me = DAY_STEM_READING[dayStem];

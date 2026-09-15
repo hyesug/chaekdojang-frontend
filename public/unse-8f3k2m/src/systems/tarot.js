@@ -126,7 +126,10 @@ const POSITIONS = [
 ];
 
 export function analyze(input) {
-  const { year, month, day, hour, minute, timeKnown, currentYear } = input;
+  // 석 장 배열의 씨앗은 양력 해를 쓴다. 입춘을 쓰면 1월에 배열이
+  // 바뀌지 않아 '해가 바뀌면 달라진다'는 설명과 어긋난다.
+  const { year, month, day, hour, minute, timeKnown, civilYear } = input;
+  const currentYear = civilYear;
 
   // 생일 카드 — 월 + 일 + 연도를 더해 22 이하로 줄인다
   let sum = month + day + year;

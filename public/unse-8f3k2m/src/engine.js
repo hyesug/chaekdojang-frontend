@@ -43,19 +43,44 @@ export const SYSTEMS = [
 /** 전부 붙였다. 더 넣을 체계가 생기면 여기에 이름만 추가한다. */
 export const PLANNED = [];
 
-/** 오늘이 속한 사주 연도 (입춘 기준). 세운·구성학 연반이 이 값을 쓴다 */
-function currentSajuYear(now = new Date()) {
-  const jd = toJD(now.getUTCFullYear(), now.getUTCMonth() + 1, now.getUTCDate(),
-                  now.getUTCHours(), now.getUTCMinutes());
-  return fromJD(prevSolarTermJD(315, jd) + 9 / 24).y;
+/**
+ * 지금이라는 값.
+ *
+ * 체계마다 한 해가 바뀌는 자리가 다르다. 명리와 구성학은 입춘에 바뀌고,
+ * 수비학과 타로는 양력 1월 1일에 바뀐다. 하나를 돌려쓰면 1월과 2월 초에
+ * 어느 한쪽이 한 해씩 어긋난다. 그래서 갈라서 넘긴다.
+ *
+ * 나이도 마찬가지다. 대운과 다샤의 경계는 30.2세처럼 소수로 떨어지는데
+ * 정수 만 나이로 고르면 최대 한 해까지 늦게 바뀐다. 태어난 순간부터
+ * 지금까지를 그대로 잰 값을 따로 둔다.
+ */
+export function nowJD(now = new Date()) {
+  return toJD(now.getUTCFullYear(), now.getUTCMonth() + 1, now.getUTCDate(),
+              now.getUTCHours(), now.getUTCMinutes());
 }
 
-/** 만 나이 */
+/** 오늘이 속한 사주 연도 (입춘 기준). 세운·구성학 연반이 이 값을 쓴다 */
+function currentSajuYear(now = new Date()) {
+  return fromJD(prevSolarTermJD(315, nowJD(now)) + 9 / 24).y;
+}
+
+/** 오늘이 속한 양력 연도 (한국 시각). 수비학 개인년과 타로 씨앗이 쓴다 */
+function currentCivilYear(now = new Date()) {
+  const k = new Date(now.getTime() + 9 * 3600000);
+  return k.getUTCFullYear();
+}
+
+/** 만 나이 — 정수. 화면에 '만 34세'로 적을 때 쓴다 */
 function exactAge(y, m, d, now = new Date()) {
   let age = now.getFullYear() - y;
   const passed = now.getMonth() + 1 > m || (now.getMonth() + 1 === m && now.getDate() >= d);
   if (!passed) age -= 1;
   return Math.max(0, age);
+}
+
+/** 태어난 순간부터 지금까지, 해 단위 소수. 대운·다샤 경계가 이걸 쓴다 */
+function elapsedYears(jdBirth, now = new Date()) {
+  return (nowJD(now) - jdBirth) / 365.2425;
 }
 
 /**
@@ -71,7 +96,7 @@ function exactAge(y, m, d, now = new Date()) {
  * @param {string} form.homePlace   도시 이름
  * @param {boolean} [form.dst]      해외 출생 시 서머타임 여부
  */
-export function prepareInput(form) {
+export function prepareInput(form, opts = {}) {
   const integers = ['year', 'month', 'day'];
   if (integers.some((key) => !Number.isInteger(form[key]))) {
     throw new Error('생년월일은 숫자로 정확히 입력해주세요.');
@@ -118,8 +143,11 @@ export function prepareInput(form) {
   const lunar = solarToLunar(form.year, form.month, form.day);
   const chart = computeFourPillars(birth.jdUT, birth.jdTST, { timeKnown });
 
-  const currentYear = currentSajuYear();
-  const age = exactAge(form.year, form.month, form.day);
+  const at = opts.now instanceof Date ? opts.now : new Date();
+  const currentYear = currentSajuYear(at);
+  const civilYear = currentCivilYear(at);
+  const age = exactAge(form.year, form.month, form.day, at);
+  const elapsed = elapsedYears(birth.jdUT, at);
 
   // 3) 체계 모듈에 넘길 입력 한 벌
   const input = {
@@ -144,7 +172,13 @@ export function prepareInput(form) {
     hourBranch: timeKnown ? chart.pillars.hour.branch : null,
     isMale: form.gender === 'male',
     age,
+    // 입춘에 바뀌는 해. 세운·구성학 연반·태을이 쓴다
     currentYear,
+    // 양력 1월 1일에 바뀌는 해. 수비학 개인년·타로 씨앗이 쓴다
+    civilYear,
+    // 소수로 떨어지는 나이. 대운·다샤 경계 판정이 쓴다
+    elapsedYears: elapsed,
+    nowJD: nowJD(at),
   };
 
   return { input, birth, lunar, chart };
@@ -154,8 +188,8 @@ export function prepareInput(form) {
  * 한 사람의 운세를 본다.
  * @param {object} form prepareInput과 같은 형식
  */
-export function readFortune(form) {
-  const { input, birth, lunar, chart } = prepareInput(form);
+export function readFortune(form, opts = {}) {
+  const { input, birth, lunar, chart } = prepareInput(form, opts);
   const timeKnown = input.timeKnown;
 
   // 4) 체계별로 돌린다.

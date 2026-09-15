@@ -104,7 +104,7 @@ function vimshottari(moonSidereal, birthYearFraction) {
 }
 
 export function analyze(input) {
-  const { jdUT, place, timeKnown, age } = input;
+  const { jdUT, place, timeKnown, age, elapsedYears } = input;
 
   const trop = planetPositions(jdUT);
   const ayan = lahiriAyanamsa(jdUT);
@@ -126,8 +126,15 @@ export function analyze(input) {
   const sunSign = Math.floor(sid.태양.lon / 30);
 
   const d = vimshottari(sid.달.lon, 0);
-  const current = d.list.find((x) => age >= x.fromAge && age < x.toAge) ?? d.list[0];
+  // 다샤 경계는 30.2세처럼 소수로 떨어진다. 정수 만 나이로 고르면
+  // 전환이 최대 한 해까지 어긋난다. 태어난 순간부터 잰 값을 쓴다.
+  const elapsed = elapsedYears ?? age;
+  const current = d.list.find((x) => elapsed >= x.fromAge && elapsed < x.toAge) ?? d.list[0];
   const next = d.list[d.list.indexOf(current) + 1];
+  // 전환일을 달력으로 옮겨 화면에 쓸 수 있게 한다
+  const turnAt = new Date(Date.UTC(input.year, input.month - 1, input.day));
+  turnAt.setUTCMonth(turnAt.getUTCMonth() + Math.round(current.toAge * 12));
+  const turnText = `${turnAt.getUTCFullYear()}년 ${turnAt.getUTCMonth() + 1}월 무렵까지`;
 
   const facts = [
     { label: '찬드라 라시', value: `${RASHI[moonSign].name} (${RASHI[moonSign].kr})`,
@@ -146,7 +153,8 @@ export function analyze(input) {
       note: `제${d.nak + 1} 나크샤트라 · 지배 행성 ${NAKSHATRA_LORDS[d.nak]} · 제${Math.floor(d.progressed * 4) + 1}파다` },
     { label: '아야남샤', value: `${ayan.toFixed(3)}°`, note: '라히리 · 회귀 좌표와의 차이' },
     { label: '현재 다샤', value: `${current.lord} 다샤`,
-      note: `${Math.max(0, current.fromAge).toFixed(1)}세 ~ ${current.toAge.toFixed(1)}세` },
+      note: `${Math.max(0, current.fromAge).toFixed(1)}세 ~ ${current.toAge.toFixed(1)}세 · ${turnText}` +
+        (next ? `, 이후 ${next.lord} 다샤` : '') },
   ];
 
   for (const n of PLANET_ORDER.slice(0, 10)) {
@@ -185,7 +193,7 @@ export function analyze(input) {
   readings.push({
     title: '다가올 흐름',
     text: d.list
-      .filter((x) => x.toAge > age && x.fromAge < age + 45)
+      .filter((x) => x.toAge > elapsed && x.fromAge < elapsed + 45)
       .slice(0, 4)
       .map((x) => `${Math.max(0, x.fromAge).toFixed(0)}~${x.toAge.toFixed(0)}세 ${x.lord}`)
       .join('  ·  ') + '\n빔쇼타리는 120년을 아홉 행성이 나눠 갖는 구조라, 한 사람이 평생 겪는 순서가 태어날 때 이미 정해집니다.',
@@ -474,7 +482,9 @@ export function forecast(input, chart, period) {
   const nB = Math.floor(nowMoon / (360 / 27));
 
   const d = vimshottari(natalMoon, 0);
-  const cur = d.list.find((x) => input.age >= x.fromAge && input.age < x.toAge) ?? d.list[0];
+  // analyze 와 같은 기준으로 고른다. 여기만 정수를 쓰면 두 화면이 다른 다샤를 말한다
+  const elapsed = input.elapsedYears ?? input.age;
+  const cur = d.list.find((x) => elapsed >= x.fromAge && elapsed < x.toAge) ?? d.list[0];
   const eff = DASHA_AREA[cur.lord] ?? {};
 
   // 타라 — 본명 나크샤트라에서 오늘 달까지 세어 아홉으로 나눈 나머지

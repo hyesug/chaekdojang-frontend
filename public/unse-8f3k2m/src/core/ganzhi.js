@@ -316,8 +316,13 @@ export function computeDaeun(chart, isMale, jdUT, count = 9) {
     const b = ((branch + step) % 12 + 12) % 12;
     list.push({
       ...ganzhiName(s, b),
+      // 화면에 적는 나이는 정수로 반올림한 것
       fromAge: startAge + (i - 1) * 10,
       toAge: startAge + i * 10 - 1,
+      // 실제 경계는 소수로 떨어진다. 어느 대운인지 고를 때는 이쪽을 쓴다.
+      // 정수로 고르면 전환이 최대 반년까지 늦게 잡힌다.
+      fromExact: startAgeExact + (i - 1) * 10,
+      toExact: startAgeExact + i * 10,
       god: tenGod(chart.dayStem, s),
     });
   }
@@ -326,8 +331,18 @@ export function computeDaeun(chart, isMale, jdUT, count = 9) {
 }
 
 /** 지금 나이에 해당하는 대운을 고른다 */
-export function currentDaeun(daeun, age) {
-  return daeun.list.find((d) => age >= d.fromAge && age <= d.toAge) ?? null;
+/**
+ * 지금 지나는 대운.
+ *
+ * 경계가 소수라 정수 만 나이로 고르면 안 된다. 예를 들어 경계가 32.4세인
+ * 사람은 32세가 된 날부터 다음 대운으로 잡히는데, 실제 전환은 그로부터
+ * 다섯 달 뒤다. 화면에 적는 전환월과도 어긋난다.
+ *
+ * @param {number} elapsed 태어난 순간부터 지금까지, 해 단위 소수
+ */
+export function currentDaeun(daeun, elapsed) {
+  if (elapsed < daeun.startAgeExact) return null;   // 아직 대운 전
+  return daeun.list.find((d) => elapsed >= d.fromExact && elapsed < d.toExact) ?? null;
 }
 
 /** 특정 연도의 세운(그 해의 간지) */

@@ -180,6 +180,102 @@ function para(ctx, y, text, { size = 26, color = C.ink, gap = 40 } = {}) {
   return y + 14;
 }
 
+// ── 명반 텍스트 ──────────────────────────────────────────────
+
+/**
+ * 열다섯 체계가 세운 명반을 글자로.
+ *
+ * 그림 카드는 예쁘지만 다시 쓸 수가 없다. 명반은 다르다 — 다른 데 물어보러
+ * 갈 때도, 기록으로 남길 때도 글자여야 쓸모가 있다. 사주 여덟 글자를
+ * 손으로 옮겨 적다 틀리는 일이 흔한데, 그럴 바에 통째로 복사하는 편이 낫다.
+ *
+ * 풀이는 넣지 않는다. 풀이는 화면에 있고, 여기 담는 것은 계산 결과다.
+ */
+export function chartText(form, r) {
+  const { chart, lunar, birth, input } = r;
+  const p = (n) => String(n).padStart(2, '0');
+  const line = '─'.repeat(34);
+  const out = [];
+
+  out.push(line);
+  out.push(`${form.name} 님 · ${form.gender === 'male' ? '남성' : '여성'} · 만 ${input.age}세 · ${chart.zodiac}띠`);
+  out.push(`양력 ${form.year}.${p(form.month)}.${p(form.day)}` +
+    (input.timeKnown ? ` ${p(form.hour)}:${p(form.minute)}` : ' (시각 미상)'));
+  if (input.timeKnown) {
+    out.push(`진태양시 ${p(birth.tst.h)}:${p(birth.tst.mi)} ` +
+      `(경도·균시차 ${birth.totalShiftMinutes >= 0 ? '+' : '−'}${Math.abs(birth.totalShiftMinutes).toFixed(0)}분)`);
+  }
+  out.push(`음력 ${lunar.year}.${lunar.isLeap ? '윤' : ''}${p(lunar.month)}.${p(lunar.day)}`);
+  out.push(`출생 ${form.birthPlace} · 거주 ${form.homePlace}`);
+  if (chart.sajuYear !== form.year) {
+    out.push(`※ 입춘 전이라 명리에서는 ${chart.sajuYear}년생으로 봅니다`);
+  }
+  out.push(line);
+  out.push('');
+
+  // 사주 여덟 글자는 맨 앞에 따로. 사람들이 가장 자주 옮겨 적는 것이다
+  const P = chart.pillars;
+  // 칸을 맞추려 들지 않는다. 한자는 두 칸을 차지해서 글자 수로 맞추면
+  // 보는 곳마다 어긋난다. 이름표를 앞에 붙이는 편이 어디서든 읽힌다.
+  out.push('■ 사주팔자');
+  out.push('  ' + [['시주', P.hour], ['일주', P.day], ['월주', P.month], ['년주', P.year]]
+    .map(([pos, g]) => `${pos} ${g ? `${g.hanja}(${g.kr})` : '미상'}`)
+    .join('   '));
+  out.push('');
+
+  for (const sys of r.results) {
+    out.push(`■ ${sys.name}${sys.hanja ? ` (${sys.hanja})` : ''}`);
+    out.push(`  ${sys.headline}`);
+    for (const f of sys.facts) {
+      if (!f.value || f.value === '—') continue;
+      out.push(`  · ${f.label} — ${f.value}${f.note ? ` (${f.note})` : ''}`);
+    }
+    out.push('');
+  }
+
+  if (r.skipped?.length) {
+    out.push(`※ 계산하지 못한 체계: ${r.skipped.map((x) => x.system).join(', ')}`);
+    out.push(`  ${r.skipped[0].reason}`);
+    out.push('');
+  }
+
+  const t = new Date();
+  out.push(line);
+  out.push(`${t.getFullYear()}.${p(t.getMonth() + 1)}.${p(t.getDate())} 기준 · 종합 운세`);
+  out.push('천문 계산으로 구한 값입니다. 풀이는 화면에서 보세요.');
+
+  // 줄바꿈 문자를 직접 쓰지 않는다 - 편집 과정에서 실제 줄바꿈으로 바뀌어
+  // 파일이 깨진 적이 있다
+  return out.join(String.fromCharCode(10));
+}
+
+/** 글자를 복사한다. 클립보드를 막아둔 환경에서는 직접 고르게 한다 */
+export async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const box = document.createElement('textarea');
+    box.value = text;
+    box.style.cssText = 'position:fixed;top:10%;left:5%;width:90%;height:60%;z-index:99;font-size:14px';
+    document.body.appendChild(box);
+    box.select();
+    const done = document.execCommand?.('copy');
+    box.remove();
+    return !!done;
+  }
+}
+
+/** 글자를 파일로 내려받는다 */
+export function downloadText(text, filename) {
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 // ── 개인 운세 카드 ───────────────────────────────────────────
 
 export function buildSoloCard(form, r, f = null) {

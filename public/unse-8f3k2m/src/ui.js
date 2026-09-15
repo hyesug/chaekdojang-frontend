@@ -11,6 +11,7 @@ import { lunarToSolar } from './core/lunar.js';
 import { j } from './core/josa.js';
 import {
   encodeState, decodeState, buildSoloCard, buildCompatCard, saveCanvas,
+  chartText, copyText, downloadText,
 } from './share.js';
 import { pickNumbers } from './lotto.js';
 import { readForecast } from './forecast.js';
@@ -417,9 +418,15 @@ function chartPanel(r) {
         </dl>
       </details>
 
+      <div class="sharebar" style="margin-top:16px">
+        <button type="button" data-act="chart-copy">명반 텍스트 복사</button>
+        <button type="button" data-act="chart-save">텍스트 파일로 저장</button>
+      </div>
+
       <p class="area-src" style="margin-top:12px">
         천문 계산으로 구한 값만 적었습니다. 뜻은 아래 풀이에 있으니
-        이 표를 이해하실 필요는 없습니다.
+        이 표를 이해하실 필요는 없습니다. 복사하면 열다섯 체계가 세운 값이
+        전부 글자로 담깁니다 — 다른 곳에 물어보거나 기록으로 남길 때 쓰세요.
       </p>
     </div>
   `;
@@ -668,6 +675,18 @@ $('#result').addEventListener('click', (e) => {
   const act = e.target.closest('[data-act]')?.dataset.act;
   if (!act || !last) return;
   if (act === 'link') copyLink();
+  if (act === 'chart-copy' || act === 'chart-save') {
+    // 명반 표는 개인 운세 화면에만 있다
+    if (last.mode !== 'solo') return;
+    const text = chartText(last.formA, last.result);
+    if (act === 'chart-save') {
+      downloadText(text, `명반_${last.formA.name}.txt`);
+      toast('텍스트 파일로 저장했습니다');
+    } else {
+      copyText(text).then((ok) => toast(
+        ok ? '명반을 복사했습니다' : '복사가 막혀 있습니다. 창에 뜬 글을 직접 복사하세요', ok));
+    }
+  }
   if (act === 'image') saveImage().catch((err) => toast('이미지를 만들지 못했습니다: ' + err.message, false));
   if (act === 'print') {
     // 인쇄에는 접힌 카드까지 다 펼쳐서 내보낸다

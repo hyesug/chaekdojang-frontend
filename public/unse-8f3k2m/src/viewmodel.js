@@ -14,8 +14,7 @@
 
 import { AREAS } from './forecast.js';
 import { traitLenses, verdictSummary, compatAxes } from './lens.js';
-import { lifeReading, structureReading, patternReading, innerReading,
-         tabooReading, yearTimeline, consensusReading, areaProse,
+import { lifeReading, yearTimeline, consensusReading, areaProse,
          monthDays, luckyDays, compatReading,
          PAIR_WEIGHT, PAIR_AREAS } from './reading.js';
 
@@ -77,43 +76,58 @@ const AREA_LABEL = {
 };
 
 /**
- * 이 명반에서 눈에 띄는 것.
+ * 열다섯 체계가 각자 어떤 성향을 가장 먼저 들었는지 한 줄로 보여준다.
  *
- * 아무 사주에나 붙는 말은 넣지 않는다. 후보마다 '얼마나 드문가'를 적어
- * 두고 드문 것부터 고른다. 드묾은 어림이 아니라 규칙에서 나온다 —
- * 세운 간지가 일주와 같은 해는 예순 해에 한 번이다.
+ * 여기서는 새 해석을 만들지 않는다. 각 체계가 종합용으로 이미 낸 tags를
+ * 사람이 바로 읽을 수 있는 짧은 표현으로만 바꾼다. 아래의 공통 리딩은
+ * 이 한 줄들 가운데 실제로 여러 체계가 겹친 것만 다시 자세히 푼다.
  */
-function highlights(chart, f, pat, st, inner) {
-  const out = [];
-  const day = chart.pillars.day;
-  const gz = (p) => `${p.hanja}(${p.kr})`;
+const TAG_SYSTEM_LINE = {
+  독립: '자기 기준을 세우는 편',
+  주도: '먼저 방향을 잡는 편',
+  결단: '판단 뒤 정리가 빠른 편',
+  실행: '생각을 행동으로 옮기는 편',
+  책임: '맡은 것을 오래 붙드는 편',
+  표현: '생각을 밖으로 꺼내는 편',
+  사교: '사람 사이에서 힘을 얻는 편',
+  자유: '선택권과 자율성을 중시',
+  변화: '익숙함보다 변화를 향하는 편',
+  내향: '안에서 정리한 뒤 움직이는 편',
+  직관: '설명보다 감각이 먼저 오는 편',
+  감수성: '분위기와 감정 변화에 민감',
+  돌봄: '주변 사람을 챙기는 편',
+  분석: '조건과 근거를 확인하는 편',
+  학습: '배우고 연결하는 힘이 두드러짐',
+  완벽: '기준을 높게 잡고 다듬는 편',
+  인내: '시간을 들여 버티는 힘이 있음',
+  안정: '흔들리지 않는 기반을 중시',
+  재물: '자원과 실리를 따지는 감각',
+  명예: '역할과 인정의 의미를 중시',
+};
 
-  const yearGZ = f.year?.period?.ruling;
-  if (yearGZ && yearGZ.stem === day.stem && yearGZ.branch === day.branch) {
-    out.push({
-      rarity: 60, tag: '같은 글자가 돌아온 해', value: gz(day),
-      text: '올해의 간지가 태어난 날의 간지와 똑같습니다. 육십갑자가 한 바퀴 돌아 같은 자리에 선 해라, 예전에 한 번 겪은 것과 닮은 국면이 다시 옵니다.',
-    });
-  }
+function systemPortraits(r) {
+  return r.results.map((sys) => {
+    const tags = (sys.signals?.tags ?? []).slice(0, 2);
+    const line = tags.map((t) => TAG_SYSTEM_LINE[t]).filter(Boolean).join(' · ')
+      || sys.readings?.[0]?.title
+      || sys.headline
+      || '뚜렷한 한 줄 특징 없음';
+    return {
+      id: sys.id,
+      name: sys.name,
+      core: CORE_IDS.includes(sys.id),
+      line,
+      tags,
+      headline: sys.headline,
+    };
+  });
+}
 
-  for (const p of pat) {
-    out.push({ rarity: 20, tag: p.name, value: '', text: p.text });
-  }
-  for (const line of st.lines.slice(0, 3)) {
-    out.push({ rarity: 12, tag: '강하게 드러나는 자리', value: '', text: line });
-  }
-
-  // 고르게 퍼진 명반은 위의 어느 후보에도 걸리지 않는다. 그렇다고 이 칸을
-  // 비워두면 '아무것도 없는 사람'처럼 보인다. 그럴 때는 원국에서 늘
-  // 나오는 것 - 전체 구성과 속엣말 - 을 뒤에 세운다. 순위가 낮으므로
-  // 걸린 것이 있으면 밀려난다.
-  if (st.head) {
-    out.push({ rarity: 3, tag: '전체 구성', value: '', text: st.head });
-  }
-  if (inner && inner.length) {
-    out.push({ rarity: 2, tag: inner[0].title, value: '', text: inner[0].text });
-  }
-  return out.sort((a, b) => b.rarity - a.rarity).slice(0, 3);
+/** 공통 리딩은 실제로 두 체계 이상이 같은 태그를 든 것만 남긴다. */
+function commonTraitLenses(r, n = 4) {
+  return traitLenses(r, 20)
+    .filter((x) => x.total >= 2)
+    .slice(0, n);
 }
 
 /** 지금 가장 세게 켜져 있는 주제. 점수 순이 아니라 합의 순이다 */
@@ -211,10 +225,6 @@ export function sensitivity(form, calc, minutes = 30) {
 export function buildView(form, r, f) {
   const s = r.synthesis;
   const life = lifeReading(r.input, r.chart, s);
-  const st = structureReading(r.input, r.chart);
-  const pat = patternReading(r.input, r.chart);
-  const inner = innerReading(r.input, r.chart);
-  const taboo = tabooReading(r.input, r.chart);
   const con = consensusReading(r, f.year);
   const timeline = yearTimeline(r.input, r.chart, f.today.y - 1, f.today.y + 2);
   const thisYear = timeline.find((x) => x.year === f.today.y) ?? timeline[0];
@@ -248,12 +258,14 @@ export function buildView(form, r, f) {
       themes,
     },
 
-    highlights: highlights(r.chart, f, pat, st, inner),
-    consensus: con['공통'] || null,
     twist: con['갈림'] || null,
     evidence: (area) => evidenceOf(r, f, area),
 
-    me: { inner, taboo, structure: st, patterns: pat, lenses: traitLenses(r, 4) },
+    me: {
+      systems: systemPortraits(r),
+      lenses: commonTraitLenses(r, 4),
+      systemCount: r.results.length,
+    },
     now: {
       today, line: today ? today.line : '', grade: today ? today.grade : '',
       week: f.week, year: areaProse(f.year, '총운', form.day + form.month, r.chart),

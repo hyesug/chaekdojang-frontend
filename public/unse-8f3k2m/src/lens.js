@@ -184,10 +184,10 @@ export const TAG_LENS = {
  * "당신은 이런 상황에서 이렇게 움직입니다"까지 말할 수는 없다.
  */
 const TAIL = {
-  strong: (core) => `${core}입니다. 이 결은 여러 갈래에서 겹쳐 나옵니다.`,
+  strong: (core) => `${core}입니다.`,
   mid: (core) => `${core}에 가깝습니다.`,
   weak: (core) => `${core}일 수 있습니다.`,
-  faint: (core) => `${core}인지 눈여겨볼 만합니다.`,
+  faint: (core) => `${core}인지 참고해볼 만합니다.`,
 };
 
 /** 결론에서 어미를 떼어 낱말 덩이만 남긴다 */
@@ -197,19 +197,14 @@ const coreOf = (conclusion) => conclusion.replace(/입니다\.?$/, '');
 export const canDetail = (level) => level === 'strong' || level === 'mid';
 
 export function strengthOf(coreCount, totalCount) {
-  if (coreCount >= 3) {
-    return { level: 'strong', text: '여러 체계에서 반복해서 확인되는 핵심 패턴입니다.' };
-  }
-  if (coreCount === 2) {
-    return { level: 'mid', text: '이 성향은 비교적 분명하게 나타납니다.' };
-  }
-  if (coreCount === 1) {
-    return { level: 'weak', text: '이런 성향이 나타날 수 있습니다. 명반을 통째로 세우는 체계 가운데 하나에서만 잡힌 신호입니다.' };
-  }
-  return {
-    level: 'faint',
-    text: `보조 체계 ${totalCount}곳에서만 잡힌 신호입니다. 참고 정도로 보세요.`,
-  };
+  const text = coreCount > 0
+    ? `핵심 4체계 중 ${coreCount}개 · 전체 ${totalCount}개 체계에서 같은 특징을 짚었습니다.`
+    : `보조 체계 ${totalCount}개에서만 같은 특징을 짚었습니다.`;
+
+  if (coreCount >= 3) return { level: 'strong', text };
+  if (coreCount === 2) return { level: 'mid', text };
+  if (coreCount === 1) return { level: 'weak', text };
+  return { level: 'faint', text };
 }
 
 /**

@@ -469,26 +469,36 @@ export function dayRange(input, chart, from, span = 120) {
 }
 
 /**
- * 수술·시술처럼 몸에 손대는 일을 위한 전용 순위.
+ * 수술·시술처럼 몸에 손대는 일을 위한 내부 참고 후보.
  *
- * 일반 일진 등급은 하루 전체의 흐름일 뿐 수술 전용 점수가 아니다.
- * 그래서 다음 순서를 사전식(lexicographic)으로 고정한다.
+ * 이 엔진은 천의·황도·원국/대운 지지 관계·건강 흐름을 계산하지만
+ * 求醫/治病 宜忌나 十二直, 각 통서의 전체 택일법을 구현한 것은 아니다.
+ * 따라서 어느 한 신호도 절대 게이트로 두지 않고 내부 참고점수로 합산한다.
  *
- *  1) 일지충·양인 제외
- *  2) 천의
- *  3) 황도
- *  4) 원국의 다른 지지와 그 날짜의 실제 대운 지지에 걸리는 충 감점
- *  5) 형·해·파 감점
- *  6) 해당 절기월 건강 흐름
- *  7) 당일 건강 흐름
- *  8) 일반 일진 등급
+ * 일지충·양인은 강하게 제외한다. 년지·월지·시지·대운의 충과
+ * 형·해·파는 후보가 사라지지 않도록 차등 감점한다. 천의와 황도는
+ * 가점 요소이지만 다른 위험 신호를 무조건 덮지 못한다.
  *
- * 년지·월지·시지·대운과의 충까지 전부 탈락시키면 실제로 남는 날이
- * 거의 없어지므로 '제외'가 아니라 차등 감점한다. 일지는 본인의 중심축이라
- * 충만큼은 별도로 강하게 제외한다. 대운은 후보 날짜 기준으로 다시 고른다.
+ * 이 순위는 사이트 내부 비교용이며 외부 통서의 확정 판정이 아니다.
  */
 const SURGERY_GRADE_RANK = {
   '아주 좋음': 5, '좋음': 4, '무난': 3, '조심': 2, '나쁨': 1, '특히 조심': 0,
+};
+
+/**
+ * 수술 참고점수의 내부 가중치.
+ * 검증된 의학 점수가 아니라 서로 다른 전통 신호가 하나를 독점하지 않게
+ * 만드는 비교용 휴리스틱이다. 값 자체보다 후보 간 상대 비교에만 쓴다.
+ */
+const SURGERY_SCORE_WEIGHT = {
+  cheonui: 7,
+  hwangdo: 5,
+  clashPenalty: 3.5,
+  minorPenalty: 2,
+  monthHealth: 0.06,
+  dayHealth: 0.08,
+  gradeRank: 1,
+  overall: 0.02,
 };
 
 const SURGERY_REL_RISK = {
@@ -545,6 +555,21 @@ function surgeryBranchRisk(chart, activeDaeun, dayBranch) {
   };
 }
 
+function surgeryReferenceScore(x, risk, monthHealthScore) {
+  const gradeRank = SURGERY_GRADE_RANK[x.grade] ?? 0;
+  const w = SURGERY_SCORE_WEIGHT;
+  const score =
+    (x.taekil.cheonui ? w.cheonui : 0) +
+    (x.taekil.good ? w.hwangdo : 0) -
+    risk.clashPenalty * w.clashPenalty -
+    risk.minorPenalty * w.minorPenalty +
+    (monthHealthScore - 50) * w.monthHealth +
+    ((x.health ?? 50) - 50) * w.dayHealth +
+    gradeRank * w.gradeRank +
+    (x.score - 50) * w.overall;
+  return Math.round(score * 100) / 100;
+}
+
 export function rankSurgeryDays(input, chart, days) {
   const monthHealth = new Map();
 
@@ -597,6 +622,8 @@ export function rankSurgeryDays(input, chart, days) {
     const candidateElapsed = (candidateJD - input.jdUT) / 365.2425;
     const activeDaeun = currentDaeun(daeun, candidateElapsed);
     const risk = surgeryBranchRisk(chart, activeDaeun, x.gz.branch);
+    const monthHealthScore = monthHealth.get(key);
+    const referenceScore = surgeryReferenceScore(x, risk, monthHealthScore);
 
     candidates.push({
       ...x,
@@ -610,23 +637,17 @@ export function rankSurgeryDays(input, chart, days) {
         activeDaeun: activeDaeun
           ? { hanja: activeDaeun.hanja, branch: activeDaeun.branch, god: activeDaeun.god }
           : null,
-        monthHealth: monthHealth.get(key),
+        monthHealth: monthHealthScore,
         dayHealth: x.health ?? 50,
         gradeRank: SURGERY_GRADE_RANK[x.grade] ?? 0,
+        referenceScore,
         daeunTransition: nearestTransition(x),
       },
     });
   }
 
   candidates.sort((a, b) =>
-    Number(b.surgery.cheonui) - Number(a.surgery.cheonui) ||
-    Number(b.surgery.hwangdo) - Number(a.surgery.hwangdo) ||
-    a.surgery.clashPenalty - b.surgery.clashPenalty ||
-    a.surgery.minorPenalty - b.surgery.minorPenalty ||
-    b.surgery.monthHealth - a.surgery.monthHealth ||
-    b.surgery.dayHealth - a.surgery.dayHealth ||
-    b.surgery.gradeRank - a.surgery.gradeRank ||
-    b.score - a.score ||
+    b.surgery.referenceScore - a.surgery.referenceScore ||
     toJD(a.y, a.m, a.d, 12) - toJD(b.y, b.m, b.d, 12)
   );
 

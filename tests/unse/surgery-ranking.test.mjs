@@ -39,53 +39,26 @@ test('수술 후보에서는 일지충·양인만 강하게 제외한다', () =>
   }
 });
 
-test('수술 전용 순위는 천의 → 황도 → 충 감점 → 형해파 감점 → 건강 흐름 → 일반등급 순을 보존한다', () => {
-  const tuple = (x) => [
-    Number(x.surgery.cheonui),
-    Number(x.surgery.hwangdo),
-    -x.surgery.clashPenalty,
-    -x.surgery.minorPenalty,
-    x.surgery.monthHealth,
-    x.surgery.dayHealth,
-    x.surgery.gradeRank,
-    x.score,
-  ];
-
-  const cmp = (a, b) => {
-    for (let i = 0; i < a.length; i++) {
-      if (a[i] !== b[i]) return b[i] - a[i];
-    }
-    return 0;
-  };
-
+test('수술 참고 후보는 복합 참고점수 내림차순을 보존한다', () => {
   for (let i = 1; i < ranked.candidates.length; i++) {
     assert.ok(
-      cmp(tuple(ranked.candidates[i - 1]), tuple(ranked.candidates[i])) <= 0,
-      '우선순위가 뒤집힘: ' + key(ranked.candidates[i - 1]) + ' / ' + key(ranked.candidates[i]),
+      ranked.candidates[i - 1].surgery.referenceScore >= ranked.candidates[i].surgery.referenceScore,
+      '참고점수 순서가 뒤집힘: ' + key(ranked.candidates[i - 1]) + ' / ' + key(ranked.candidates[i]),
     );
   }
 });
 
-test('대희 실제 후보에서 황도 천의 날짜가 흑도 천의 날짜보다 앞선다', () => {
-  const d1001 = byDate.get('2026-10-01');
-  const d1108 = byDate.get('2026-11-08');
-  const d1120 = byDate.get('2026-11-20');
+test('천의는 절대 게이트가 아니며 원국 위험 감점에 따라 비천의 후보가 앞설 수 있다', () => {
   const d1202 = byDate.get('2026-12-02');
-  const d1227 = byDate.get('2026-12-27');
+  const d1224 = byDate.get('2026-12-24');
 
-  for (const v of [d1001, d1108, d1120, d1202, d1227]) assert.ok(v);
-
-  assert.equal(d1001.x.surgery.cheonui, true);
-  assert.equal(d1001.x.surgery.hwangdo, false);
-  assert.equal(d1227.x.surgery.cheonui, true);
-  assert.equal(d1227.x.surgery.hwangdo, false);
-
-  for (const v of [d1108, d1120, d1202]) {
-    assert.equal(v.x.surgery.cheonui, true);
-    assert.equal(v.x.surgery.hwangdo, true);
-    assert.ok(v.i < d1001.i);
-    assert.ok(v.i < d1227.i);
-  }
+  for (const v of [d1202, d1224]) assert.ok(v);
+  assert.equal(d1202.x.surgery.cheonui, true);
+  assert.equal(d1224.x.surgery.cheonui, false);
+  assert.ok(
+    d1224.x.i < d1202.x.i,
+    '천의 여부 하나가 원국 충 감점을 무조건 덮으면 안 된다',
+  );
 });
 
 test('대희 원국·대운의 직접 충과 형해파를 실제 후보마다 잡는다', () => {
@@ -133,6 +106,7 @@ test('대희 2026 남은 평일 상위 후보를 로그로 남긴다', () => {
     monthHealth: x.surgery.monthHealth,
     dayHealth: x.surgery.dayHealth,
     grade: x.grade,
+    referenceScore: x.surgery.referenceScore,
   }))));
 
   const weekdayAll = ranked.candidates

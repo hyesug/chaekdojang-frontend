@@ -107,7 +107,11 @@ export function hwangdo(monthBranch, dayBranch) {
   return { name: HWANGDO_ORDER[i], good: HWANGDO_GOOD.has(i) };
 }
 
-/** 천의성(天醫星) — 월건 바로 앞 지지. 치료·수술·침을 놓는 날로 쓴다 */
+/**
+ * 천의성(天醫星) — 월건 바로 앞 지지.
+ * 일부 전통 택일법에서 치료 관련 참고 신호로 쓰는 규칙이다.
+ * 求醫/治病 宜忌, 十二直, 통서 전체의 의료 택일 규칙을 대신하지 않는다.
+ */
 export const isCheonui = (monthBranch, dayBranch) => (monthBranch + 11) % 12 === dayBranch;
 
 /**

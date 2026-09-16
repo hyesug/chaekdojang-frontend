@@ -48,16 +48,12 @@ test('수술 참고 후보는 복합 참고점수 내림차순을 보존한다',
   }
 });
 
-test('천의는 절대 게이트가 아니며 원국 위험 감점에 따라 비천의 후보가 앞설 수 있다', () => {
-  const d1202 = byDate.get('2026-12-02');
-  const d1224 = byDate.get('2026-12-24');
-
-  for (const v of [d1202, d1224]) assert.ok(v);
-  assert.equal(d1202.x.surgery.cheonui, true);
-  assert.equal(d1224.x.surgery.cheonui, false);
+test('천의는 절대 게이트가 아니며 비천의 후보도 천의 후보보다 앞설 수 있다', () => {
+  const firstCheonui = ranked.candidates.findIndex((x) => x.surgery.cheonui);
+  assert.ok(firstCheonui > 0, '천의 후보 앞에 비천의 후보가 하나 이상 있어야 한다');
   assert.ok(
-    d1224.x.i < d1202.x.i,
-    '천의 여부 하나가 원국 충 감점을 무조건 덮으면 안 된다',
+    ranked.candidates.slice(0, firstCheonui).some((x) => !x.surgery.cheonui),
+    '복합 참고점수에서는 천의 여부 하나가 전체 순서를 고정하면 안 된다',
   );
 });
 

@@ -43,3 +43,7 @@ frontend-local*.log
 next-env.d.ts
 
 .vercel
+
+# 블라인드 검증용 실제 사례 — 개인정보라 올리지 않는다 (보기는 cases.example.json)
+validation/cases.json
+validation/last-run.json

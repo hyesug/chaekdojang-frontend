@@ -1,0 +1,41 @@
+[
+  {
+    "id": "본인",
+    "birth": {
+      "name": "본인",
+      "gender": "female",
+      "year": 1992,
+      "month": 1,
+      "day": 30,
+      "hour": 16,
+      "minute": 28,
+      "birthPlace": "여주",
+      "homePlace": "대전"
+    },
+    "events": [
+      { "domain": "직업", "year": 2019, "month": 3, "what": "이직" },
+      { "domain": "이사", "year": 2019, "month": 5, "what": "회사 근처로 이사" },
+      { "domain": "재물", "year": 2021, "what": "성과급 목돈" },
+      { "domain": "직업", "year": 2023, "month": 11, "what": "부서 이동" }
+    ]
+  },
+  {
+    "id": "가족A",
+    "birth": {
+      "name": "가족A",
+      "gender": "male",
+      "year": 1988,
+      "month": 7,
+      "day": 3,
+      "hour": 9,
+      "minute": 10,
+      "birthPlace": "서울",
+      "homePlace": "성남"
+    },
+    "events": [
+      { "domain": "결혼", "year": 2020, "month": 10, "what": "결혼" },
+      { "domain": "주거", "year": 2021, "month": 2, "what": "전세 계약" },
+      { "domain": "직업", "year": 2022, "what": "퇴사 후 이직" }
+    ]
+  }
+]

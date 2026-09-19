@@ -95,7 +95,9 @@ export function buildHiRes(r, f = null, plan) {
   // 그렇게 세면 모든 질문이 Tier S 가 된다. 실제로 그렇게 나왔다.
   // 그래서 가장 강한 구간 **그 해**를 함께 짚는 기법만 센다.
   const tiers = inferences.map((inf) => {
-    const top = inf.windows.find((w) => w.band === '최강') ?? inf.windows[0] ?? null;
+    // 시간 순서로 첫 구간을 집으면 앞쪽 달이 구조적으로 유리해진다.
+    // 점수가 가장 높은 달이 든 구간을 쓴다.
+    const top = inf.bestWindow ?? null;
     if (!top) {
       return { domain: inf.domain, ...tierOf([], []), techs: [], window: null };
     }

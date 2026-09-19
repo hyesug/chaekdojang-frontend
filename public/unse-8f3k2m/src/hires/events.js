@@ -350,9 +350,18 @@ export function scoreMonth(m, domain) {
     bump(tend, p.tend);
   }
 
-  // 기존 엔진이 이미 낸 그 달의 영역 점수. 새로 계산하지 않고 얹기만 한다
+  // 기존 엔진이 낸 그 달의 영역 점수는 **합산에 넣지 않는다.**
+  //
+  // 넣었다가 뺐다. 그 점수는 readForecast 가 계산하는 올해 열두 달에만 있고
+  // 이듬해부터는 없다. 그런데 이 점수가 들어가면 올해 달들만 폭이 넓어지고,
+  // 우리는 여러 해 가운데 **가장 높은 달**을 고르므로 폭이 넓은 쪽이 이긴다.
+  // 실제로 명반 120개를 돌려 보니 직업·결혼·재물 세 분야가 모두 첫해 2월을
+  // 최빈 답으로 내놓았다 — 그 사람이 아니라 계산 구조가 만든 답이었다.
+  //
+  // 해마다 15체계를 다시 돌려 채울 수도 있지만, 그러면 핵심 넷을 두 번 세는
+  // 셈이 된다(아래 parts 가 이미 그 넷이다). 빼는 쪽이 맞다.
+  // 화면 표시용으로만 들고 간다.
   const area = m.areas?.[AREA_OF[domain]]?.score ?? null;
-  if (area != null) total += (area - 50) / 10;
 
   const active = Object.entries(bySystem).filter(([, v]) => v.score >= 1.5).map(([k]) => k);
   // 단언 등급에 쓰는 더 엄한 기준. 한마디 거든 것과 실제로 그 달을 끌고 간
@@ -591,6 +600,7 @@ export function inferEvents(grid, domain) {
       band: w.members.some((m) => m.band === '최강') ? '최강' : '강함',
       // 정점 달에서 실제로 말한 체계만 따로 들고 간다. 구간 전체의 합집합을
       // 쓰면 넉 달 동안 네 체계가 한 번씩만 끼어도 '넷이 합의'가 되어 버린다.
+      peakKey: best.key,
       peak: { label: best.label, year: best.year, from: best.from, phase: best.phase,
               systems: best.strong },
       phases: w.members.map((m) => ({ label: m.label, phase: m.phase, band: m.band })),
@@ -600,6 +610,19 @@ export function inferEvents(grid, domain) {
       reasons: reasons.sort((a, b) => b.w - a.w).slice(0, 6),
     };
   });
+
+  // 어느 구간이 '그' 구간인가.
+  //
+  // windows 는 시간 순서다. 그래서 `windows.find(band==='최강')` 으로 집으면
+  // 최강 구간이 여럿일 때 **언제나 가장 이른 것**이 뽑힌다. 명반 60개를 돌려
+  // 보니 절기월 위치별 1위 횟수가 16,11,6,6,4,2,… 로 앞쪽에 쏠렸는데
+  // 달별 평균 점수는 26.4~27.6 으로 평평했다. 즉 사람이 아니라 고르는 방식이
+  // 만든 쏠림이었다. 점수가 가장 높은 달이 든 구간을 집는다.
+  const bestWindow = windows.slice().sort((a, b) => {
+    const pa = rows.find((r) => r.key === a.peakKey)?.total ?? 0;
+    const pb = rows.find((r) => r.key === b.peakKey)?.total ?? 0;
+    return pb - pa;
+  })[0] ?? null;
 
   // 전체 성향 — 강한 구간의 신호만 모은다
   const overall = {};
@@ -626,6 +649,9 @@ export function inferEvents(grid, domain) {
     span: { from: grid.fromYear, to: grid.toYear },
     rows,
     windows,
+    // 시간 순서가 아니라 **점수가 가장 높은 달이 든** 구간. 시기를 하나만
+    // 집어야 할 때는 반드시 이쪽을 쓴다 (windows[0] 을 쓰면 앞쪽이 유리하다)
+    bestWindow,
     candidates: cands,
     attributes: attrs,
     conflicts,

@@ -451,6 +451,72 @@ test('지역을 물으면 방향은 계산으로, 도시는 추정으로 표시�
   assert.equal(h.location.relocation.length, 2);
 });
 
+// ─────────────────────────────────────────────────────────────
+// 시기 선택의 공정성 — 블라인드 검증을 준비하다 찾은 두 가지
+// ─────────────────────────────────────────────────────────────
+
+test('대표 구간은 시간 순서가 아니라 점수로 고른다', () => {
+  // windows 는 시간 순서다. 거기서 첫 최강 구간을 집으면 최강이 여럿일 때
+  // 언제나 이른 쪽이 뽑혀, 앞쪽 달이 구조적으로 유리해진다.
+  const { r, f } = load(FORM);
+  const grid = buildGrid(r.input, r.chart, { fromYear: 2026, years: 5, domain: '직업', forecast: f });
+  const inf = inferEvents(grid, '직업');
+  assert.ok(inf.bestWindow, 'bestWindow 가 없다');
+
+  const scoreOf = (w) => inf.rows.find((x) => x.key === w.peakKey)?.total ?? -Infinity;
+  for (const w of inf.windows) {
+    assert.ok(scoreOf(inf.bestWindow) >= scoreOf(w),
+      `${w.label} 이 대표 구간보다 점수가 높은데 뽑히지 않았다`);
+  }
+});
+
+test('한 해만 점수 항이 더 붙지 않는다', () => {
+  // readForecast 의 영역 점수는 올해 열두 달에만 있다. 그것을 합산에 넣으면
+  // 올해 달들만 폭이 넓어지고, 최댓값을 고르므로 올해가 과대표집된다.
+  const { r, f } = load(FORM);
+  const withF = inferEvents(
+    buildGrid(r.input, r.chart, { fromYear: 2026, years: 3, domain: '직업', forecast: f }), '직업');
+  const withoutF = inferEvents(
+    buildGrid(r.input, r.chart, { fromYear: 2026, years: 3, domain: '직업' }), '직업');
+  // forecast 를 주든 안 주든 점수가 같아야 한다 — 합산에 쓰지 않는다는 뜻
+  for (let i = 0; i < withF.rows.length; i++) {
+    assert.equal(withF.rows[i].total, withoutF.rows[i].total,
+      `${withF.rows[i].label} 점수가 forecast 유무로 달라진다`);
+  }
+});
+
+test('절기월 위치가 1위를 고르게 나눠 가진다', () => {
+  // 엔진이 사람을 읽는다면 1위 달은 사람마다 흩어져야 한다.
+  // 특정 위치(특히 첫 달)에 쏠리면 그건 사람이 아니라 계산 구조가 만든 답이다.
+  const cities = ['서울', '대전', '부산', '대구', '수원', '전주'];
+  let seed = 777;
+  const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+  const idx = new Array(12).fill(0);
+  let n = 0;
+
+  for (let i = 0; i < 30; i++) {
+    const form = {
+      name: 'p' + i, gender: rnd() < 0.5 ? 'male' : 'female',
+      year: 1975 + Math.floor(rnd() * 25), month: 1 + Math.floor(rnd() * 12),
+      day: 1 + Math.floor(rnd() * 27), hour: Math.floor(rnd() * 24),
+      minute: Math.floor(rnd() * 60),
+      birthPlace: cities[Math.floor(rnd() * 6)], homePlace: cities[Math.floor(rnd() * 6)],
+    };
+    const rr = readFortune(form, { now: NOW });
+    const inf = inferEvents(
+      buildGrid(rr.input, rr.chart, { fromYear: 2026, years: 3, domain: '직업' }), '직업');
+    const row = inf.rows.find((x) => x.key === inf.bestWindow?.peakKey);
+    if (row) { idx[row.index] += 1; n += 1; }
+  }
+
+  assert.ok(n >= 25, `1위를 낸 명반이 ${n}개뿐이다`);
+  // 한 위치가 전체의 3분의 1을 넘게 가져가면 쏠린 것이다.
+  // (고르게 나뉘면 위치당 8% 남짓이다)
+  const max = Math.max(...idx);
+  assert.ok(max / n < 0.34,
+    `절기월 ${idx.indexOf(max)}번 위치가 1위를 ${max}/${n}번 가져갔다 — 위치 쏠림이다 (${idx.join(',')})`);
+});
+
 test('구조화 JSON 이 약속한 모양대로 나온다', () => {
   const { r, f } = load(FORM);
   const { json } = buildHiRes(r, f, defaultPlan(2026));

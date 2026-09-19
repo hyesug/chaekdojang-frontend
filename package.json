@@ -12,6 +12,7 @@
     "unse:url": "node scripts/rename-unse-path.mjs",
     "unse:bundle": "node scripts/bundle-unse.mjs",
     "unse:watch": "node scripts/bundle-unse.mjs --watch",
+    "unse:validate": "node scripts/blind-validate.mjs",
     "test": "npm run test:unse"
   },
   "dependencies": {

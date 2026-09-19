@@ -13,6 +13,7 @@ import { buildContext, READING_PROMPT, buildCompatContext, COMPAT_PROMPT } from 
 import { readForecast } from './forecast.js';
 import { routeQuestion } from './hires/router.js';
 import { buildHiRes } from './hires/context.js';
+import * as PAIR from './hires/pair.js';
 
 const ENDPOINT = '/fortune-ai';
 
@@ -145,12 +146,33 @@ export function initCompatAI(formA, formB, compat) {
   wire(buildCompatContext(
     formA, formB, compat,
     readForecast(formA), readForecast(formB),
-  ));
+  ), null, compat);
+}
+
+/**
+ * 두 사람 화면에서 결혼 시기를 물으면 양쪽을 겹쳐 센다.
+ *
+ * 한 사람에게만 결혼운이 있는 해는 뜻이 없다. **두 사람 모두 같은 기간에
+ * 켜지는가**가 조건이라, 그 계산을 질문이 들어올 때 돌린다.
+ */
+function pairFocus(question, compat) {
+  if (!compat?.A?.input || !compat?.B?.input) return null;
+  if (!/결혼|혼인|예식|언제|시기|날짜|신혼/.test(question)) return null;
+  try {
+    const from = compat.A.input.currentYear;
+    const mw = PAIR.marriageWindow(compat.A, compat.B, from, 6);
+    const rel = PAIR.relationshipCharts(compat.A, compat.B, mw.rows.map((r) => r.year));
+    const nav = PAIR.navamsaPair(compat.A, compat.B);
+    return PAIR.formatPair(mw, rel, nav, compat.A.input.name, compat.B.input.name);
+  } catch (e) {
+    console.warn('[운세] 두 사람 겹침 계산을 건너뜁니다:', e.message);
+    return null;
+  }
 }
 
 /** 화면이 그려진 뒤 입력칸과 버튼을 붙인다. 개인·궁합이 같은 배선을 쓴다 */
-function wire(context, calc = null) {
-  session = { context, calc, messages: [], busy: false };
+function wire(context, calc = null, compat = null) {
+  session = { context, calc, compat, messages: [], busy: false };
 
   const log = document.querySelector('#ai-log');
   const box = document.querySelector('#ai-q');
@@ -185,7 +207,9 @@ function wire(context, calc = null) {
     let acc = '';
 
     try {
-      const focus = focusFor(question, session.calc);
+      const focus = session.compat
+        ? pairFocus(question, session.compat)
+        : focusFor(question, session.calc);
       const res = await fetch(ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

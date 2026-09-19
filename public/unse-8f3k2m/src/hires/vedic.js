@@ -162,10 +162,19 @@ export function chaturthamsa(lon) {
   return (sign + part * 3) % 12;
 }
 
+/** D7 삽탐샤 — 30/7 도마다. 홀수 별자리는 자기 자리부터, 짝수는 일곱 번째부터 */
+export function saptamsa(lon) {
+  const sign = Math.floor(lon / 30);
+  const part = Math.floor((lon % 30) / (30 / 7));
+  const odd = sign % 2 === 0;
+  return (sign + (odd ? 0 : 6) + part) % 12;
+}
+
 export const VARGA = {
   D1: (lon) => Math.floor(lon / 30),
   D2: hora,
   D4: chaturthamsa,
+  D7: saptamsa,
   D9: navamsa,
   D10: dasamsa,
 };
@@ -174,9 +183,10 @@ export const VARGA = {
 export const DOMAIN_VARGA = {
   직업: ['D1', 'D10'], 이직: ['D1', 'D10'],
   결혼: ['D1', 'D9'], 관계: ['D1', 'D9'],
-  재물: ['D1', 'D2'],
+  재물: ['D1', 'D2', 'D10'],
   이사: ['D1', 'D4'], 주거: ['D1', 'D4'],
-  건강: ['D1'], 학업: ['D1'],
+  자녀: ['D1', 'D7'],
+  건강: ['D1'], 학업: ['D1', 'D7'],
 };
 
 /**

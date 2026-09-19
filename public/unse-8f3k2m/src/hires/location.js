@@ -32,6 +32,7 @@
 import {
   planetPositions, gmst, raFromLon, declFromLon, PLANET_ORDER, houses, houseOf,
 } from '../core/planets.js';
+// planetPositions·houses·houseOf 는 릴로케이션 비교에서도 쓴다
 import { obliquity, norm360, DEG } from '../core/astro.js';
 import { CITIES, findCity } from '../core/place.js';
 import { SIGNS, signOf, degInSign } from '../systems/astrology.js';
@@ -270,6 +271,122 @@ export function candidatesToward(origin, dirDeg, opts = {}) {
  * systems/saju.js 의 LUCK 표와 같은 대응을 쓴다 (목=동, 화=남, 토=중앙, 금=서, 수=북).
  */
 export const ELEMENT_DIR_DEG = [90, 180, null, 270, 0];
+
+/**
+ * 후보가 주어지지 않았을 때 견줄 국내 주요 생활권.
+ *
+ * "어디서 살면 좋은가"를 물었는데 사용자가 도시를 대지 않으면, 방향만
+ * 말하고 끝나기 쉽다. 그러면 답이 지도까지 내려가지 못한다. 그래서
+ * 전국 주요 생활권을 미리 정해 두고 릴로케이션을 전부 돌려 견준다.
+ *
+ * 여기 있는 것은 계산 대상 목록일 뿐이다. 이 목록에 있다는 이유로
+ * 어떤 도시가 결과에 나오는 것이 아니다.
+ */
+export const MAJOR_ZONES = [
+  '서울', '성남', '수원', '인천', '고양', '용인',
+  '춘천', '강릉', '원주',
+  '대전', '세종', '청주', '천안',
+  '전주', '광주광역시', '목포', '여수',
+  '대구', '포항', '안동', '구미',
+  '부산', '울산', '창원', '진주',
+  '제주',
+];
+
+/** 하우스가 바뀌면 삶의 어느 자리가 달라지는지 */
+const FOCUS_HOUSE = { 10: '직업', 2: '돈', 7: '관계', 4: '주거' };
+
+/**
+ * 주요 생활권을 전부 릴로케이션으로 돌려 견준다.
+ *
+ * **중요한 전제**: 릴로케이션은 하우스만 바꾼다. 그런데 국내는 경도 폭이
+ * 3도, 위도 폭이 5도밖에 안 돼서 도시를 옮겨도 커스프가 몇 도 움직일 뿐이다.
+ * 그래서 대부분의 명반에서 국내 도시끼리는 **실제로 차이가 없다.**
+ *
+ * 그걸 모르고 점수를 매기면 전부 동점이 나오고, 동점을 정렬하면 목록에
+ * 적어 둔 순서가 그대로 1·2·3위가 된다. 실제로 그렇게 나왔다 — 네 주제가
+ * 전부 '서울·성남·수원'으로 같았다. 순위처럼 보이지만 아무 뜻이 없는 값이다.
+ *
+ * 그래서 여기서는 **기준 도시와 견주어 실제로 달라지는 것만** 센다.
+ *   · 행성이 하우스를 갈아타는가 (갈아타야 뜻이 달라진다)
+ *   · 아스트로카토그래피 라인이 가까운가 (이건 경도에 따라 실제로 다르다)
+ * 달라지는 것이 없으면 **없다고 말한다.** 없는 순위를 만들지 않는다.
+ *
+ * @param {object} input prepareInput 결과
+ * @param {string[]} zones 견줄 도시. 기본은 MAJOR_ZONES
+ */
+export function compareZones(input, zones = MAJOR_ZONES, maxLineKm = 300) {
+  if (!input.timeKnown) {
+    return { unavailable: '출생 시각을 알아야 하우스를 세울 수 있습니다. 도시 비교는 하지 않는다.' };
+  }
+  const origin = input.home ?? input.place;
+  const base = relocation(input, origin.name);
+  if (!base || base.unavailable) return { unavailable: '기준 도시의 차트를 세우지 못했습니다.' };
+
+  const pos = planetPositions(input.jdUT);
+  const baseHouse = {};
+  const baseH = houses(input.jdUT, origin.lat, origin.lon);
+  for (const p of PLANET_ORDER.slice(0, 10)) baseHouse[p] = houseOf(pos[p].lon, baseH.cusps);
+
+  const rows = [];
+  for (const name of zones) {
+    if (name === origin.name) continue;
+    const city = findCity(name);
+    if (!city) continue;
+    const h = houses(input.jdUT, city.lat, city.lon);
+
+    // 기준 도시와 견주어 하우스를 갈아탄 행성만
+    const moved = [];
+    for (const p of PLANET_ORDER.slice(0, 10)) {
+      const to = houseOf(pos[p].lon, h.cusps);
+      if (to !== baseHouse[p]) {
+        moved.push({ planet: p, from: baseHouse[p], to, focus: FOCUS_HOUSE[to] ?? null });
+      }
+    }
+    const near = linesNear(astrocartography(input.jdUT, [Math.round(city.lat)]),
+                           city.lat, city.lon, maxLineKm);
+
+    rows.push({
+      city: name,
+      km: distanceKm(origin, city),
+      dir: dir16(bearing(origin, city)),
+      moved,
+      lines: near.map((x) => `${x.planet} ${x.kind}선 ${x.km}km`),
+      // 실제로 달라지는 것이 있는 도시만 뜻이 있다
+      meaningful: moved.length > 0 || near.length > 0,
+    });
+  }
+
+  const different = rows.filter((r) => r.meaningful)
+    .sort((a, b) => (b.moved.length + b.lines.length) - (a.moved.length + a.lines.length));
+
+  // 주제별로는 그 주제 하우스가 실제로 바뀐 도시만 모은다
+  const byFocus = {};
+  for (const focus of Object.values(FOCUS_HOUSE)) {
+    byFocus[focus] = different
+      .filter((r) => r.moved.some((m) => m.focus === focus))
+      .slice(0, 4)
+      .map((r) => `${r.city}(${r.dir} ${r.km}km — ${r.moved.filter((m) => m.focus === focus).map((m) => `${m.planet}이 ${m.to}하우스로`).join(', ')})`);
+  }
+
+  return {
+    origin: origin.name,
+    checked: rows.length,
+    different: different.slice(0, 8).map((r) =>
+      `${r.city}(${r.dir} ${r.km}km)` +
+      (r.moved.length ? ` — ${r.moved.map((m) => `${m.planet} ${m.from}→${m.to}H`).join(', ')}` : '') +
+      (r.lines.length ? ` · ${r.lines.join(', ')}` : '')),
+    byFocus,
+    // 아무 데도 안 달라지면 그렇다고 말한다
+    noDifference: different.length === 0,
+    caveat: different.length === 0
+      ? `기준 ${origin.name} 에서 국내 ${rows.length}곳을 다시 세워 봤지만 행성이 하우스를 갈아타는 곳도, ` +
+        `가까운 라인이 걸리는 곳도 없다. **국내 안에서는 이 명반의 하우스 배치가 사실상 같다.** ` +
+        `도시별 우열을 만들지 말 것.`
+      : `같은 명반을 그 도시 좌표에 다시 세웠을 때 **기준 ${origin.name} 과 실제로 달라지는 것만** 적었다. ` +
+        `여기 없는 도시는 기준과 차이가 없다는 뜻이지 나쁘다는 뜻이 아니다. ` +
+        `도시 이름은 계산된 하우스 배치를 실제 지도에 대본 결과이지 명반이 가리킨 것이 아니다.`,
+  };
+}
 
 /**
  * 여러 체계의 방향 신호를 한데 모은다.

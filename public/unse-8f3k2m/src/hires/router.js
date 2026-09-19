@@ -16,6 +16,7 @@ import { CITIES } from '../core/place.js';
 const RULES = [
   { domain: '이사', words: ['이사', '이주', '전세', '월세', '집을 옮', '거처', '이삿', '이전'] },
   { domain: '주거', words: ['집', '부동산', '아파트', '매매', '매수', '청약', '전셋', '내 집'] },
+  { domain: '자녀', words: ['아이', '자녀', '출산', '임신', '아기', '둘째', '첫째'] },
   { domain: '결혼', words: ['결혼', '혼인', '예식', '상견례', '약혼', '청혼', '웨딩', '신혼'] },
   { domain: '관계', words: ['연애', '애인', '남친', '여친', '썸', '소개팅', '이별', '재회', '인연', '짝'] },
   { domain: '직업', words: ['이직', '직장', '회사', '취업', '퇴사', '승진', '연봉', '커리어', '일자리', '면접', '입사', '직무', '부서', '창업', '사업'] },
@@ -75,6 +76,9 @@ export function routeQuestion(question, thisYear) {
   if (domains.includes('결혼') && !domains.includes('주거') && /집|살림|신혼/.test(q)) {
     domains.push('주거');
   }
+  // 결혼을 물으면 상대의 직업·경제가 곧바로 따라 나온다 (확장 추론).
+  // 묻지 않았어도 계산이 되는 자리는 미리 켜 둔다.
+  if (domains.includes('결혼') && !domains.includes('재물')) domains.push('재물');
 
   const primary = domains[0] ?? null;
   const span = spanFromQuestion(q, thisYear);
@@ -123,10 +127,13 @@ export function pipelineFor(domains, flags = {}) {
     p.vedic.push('D9');
   }
   if (d.has('재물')) p.vedic.push('D2');
+  if (d.has('자녀')) p.vedic.push('D7');
   if (d.has('주거') || d.has('이사')) {
     p.vedic.push('D4');
     p.location = true;
   }
+  // 연도를 좁히는 기법은 어느 분야에서나 쓴다
+  p.western.push('solarArc', 'profection');
   if (d.has('건강')) p.bazi.push('오행편중');
   return p;
 }

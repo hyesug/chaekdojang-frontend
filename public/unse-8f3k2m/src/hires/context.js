@@ -15,8 +15,12 @@ import { buildGrid } from './grid.js';
 import { inferEvents, chainOf } from './events.js';
 import * as LOC from './location.js';
 import * as WS from './western.js';
+import * as WE from './westernExt.js';
 import * as VD from './vedic.js';
+import * as VE from './vedicExt.js';
 import * as ZW from './ziwei.js';
+import * as ZE from './ziweiExt.js';
+import { profileFor, formatProfile, tierOf, describeTier } from './profile.js';
 
 /** 신뢰도 표기 — 답변에서 이 등급을 그대로 쓰게 한다 */
 export const CONFIDENCE_LEGEND =
@@ -58,6 +62,63 @@ export function buildHiRes(r, f = null, plan) {
   const chain = chainOf(inferences);
   const location = plan.needsPlace ? buildLocation(r, plan) : null;
 
+  // ── 분야별 프로파일 — "누구와·어떤 모양으로" ──
+  // 층(원국·대한·유년·유월)을 한 번만 세워 여러 프로파일이 나눠 쓴다
+  const stack = safe(() => input.timeKnown
+    ? ZW.stackAt(input, grid.fromYear, null) : null);
+  const profiles = domains
+    .map((d) => safe(() => profileFor(input, d, stack)))
+    .filter(Boolean);
+
+  // ── 연 단위 타이밍 기법 — 솔라 아크와 프로펙션 ──
+  const arcYears = safe(() => WS.natalPack(input)) ;
+  const solarArc = arcYears ? safe(() => WE.solarArcYears(input, arcYears, grid.fromYear, grid.toYear)) ?? [] : [];
+  const profections = arcYears ? safe(() => WE.profectionYears(input, arcYears, input.year, grid.fromYear, grid.toYear)) ?? [] : [];
+
+  // ── 단언 등급 ──
+  // 여기서 중요한 것은 "여러 기법이 있다"가 아니라 **같은 시기를 함께 짚는가**다.
+  // 기법이 있기만 하면 세 해쯤 보는 동안 거의 언제나 뭔가 하나는 걸리므로,
+  // 그렇게 세면 모든 질문이 Tier S 가 된다. 실제로 그렇게 나왔다.
+  // 그래서 가장 강한 구간 **그 해**를 함께 짚는 기법만 센다.
+  const tiers = inferences.map((inf) => {
+    const top = inf.windows.find((w) => w.band === '최강') ?? inf.windows[0] ?? null;
+    if (!top) {
+      return { domain: inf.domain, ...tierOf([], []), techs: [], window: null };
+    }
+    const y = top.peak.year;
+    const techs = [];
+
+    // 베딕 — 그 해에 안타르·프라탼타르다샤가 바뀌는가
+    const changes = safe(() => VD.dashaChanges(grid.dashaTree, y, y)) ?? [];
+    if (changes.length) techs.push('다샤전환');
+
+    // 솔라 아크 — 그 해에 맺히는 각이 있는가
+    if (solarArc.some((h) => h.year === y)) techs.push('솔라아크');
+
+    // 프로펙션 — 그 해의 무대가 이 분야의 자리인가
+    const prof = profections.find((p) => p.year === y);
+    if (prof && (WE.DOMAIN_HOUSES[inf.domain] ?? []).includes(prof.house)) techs.push('프로펙션');
+
+    // 자미 — 그 해 유년에서 분야 궁이 되풀이 켜지는가
+    const zw = safe(() => {
+      const st2 = input.timeKnown ? ZW.stackAt(input, y) : null;
+      if (!st2) return false;
+      const rows = ZE.domainPalaces(input, inf.domain, st2.layers);
+      return rows.some((p) => p.repeated.length > 0 || p.rows.some((x) => x.sihwa.length >= 2));
+    });
+    if (zw) techs.push('유년사화');
+
+    // 구간 전체가 아니라 **정점 달**에서 실제로 말한 체계만 센다
+    const core = top.peak.systems ?? top.systems;
+    const t = tierOf(core, techs);
+    // 핵심 체계가 정면으로 갈리면 단언까지 올리지 않는다
+    if (inf.conflicts.length && t.tier === 'S') {
+      return { domain: inf.domain, ...tierOf(core, techs.slice(0, 1)), techs,
+        window: top.label, cappedBy: '상충 신호가 있어 한 단계 내렸다' };
+    }
+    return { domain: inf.domain, ...t, techs, window: top.label };
+  });
+
   const json = {
     questionType: plan.primary ?? 'general',
     matchedQuestion: plan.matched,
@@ -74,6 +135,14 @@ export function buildHiRes(r, f = null, plan) {
         conflicts: i.conflicts,
       })),
     },
+    tiers,
+    profiles,
+    yearTiming: { solarArc, profections },
+    // 자미 — 질문 분야의 궁을 층마다 삼방사정·길성·살성까지 펴 본다
+    ziweiPalaces: stack ? domains.map((d) => ({
+      domain: d,
+      palaces: safe(() => ZE.domainPalaces(input, d, stack.layers)) ?? [],
+    })).filter((x) => x.palaces.length) : [],
     timingWindows: inferences.flatMap((i) =>
       i.windows.map((w) => ({ domain: i.domain, label: w.label, band: w.band,
         peak: w.peak.label, systems: w.systems, phases: w.phases }))),
@@ -86,7 +155,13 @@ export function buildHiRes(r, f = null, plan) {
     chain,
   };
 
-  return { json, grid, inferences, chain, location, text: formatHiRes(json, plan) };
+  return { json, grid, inferences, chain, location, profiles, tiers, stack,
+           text: formatHiRes(json, plan) };
+}
+
+/** 한 군데가 터져도 나머지는 나가야 한다 */
+function safe(fn) {
+  try { return fn(); } catch { return null; }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -197,6 +272,44 @@ function westernJson(grid, input) {
   };
 }
 
+/** 베딕 분야 묶음을 한 줄씩 편다 */
+function formatPack(kind, d) {
+  const h = (x, label) => x ? `${label} ${x.sign}(${x.quality}) 주 ${x.lord}→${x.lordIn}H` +
+    `${x.lordDignity && x.lordDignity !== '보통' ? `·${x.lordDignity}` : ''}` +
+    `${x.lordCombust ? '·조합' : ''}${x.occupants?.length ? ` 내 ${x.occupants.join('·')}` : ''}` +
+    `${x.aspects?.length ? ` 조견 ${x.aspects.join('·')}` : ''}` : null;
+  const L = [];
+  if (kind === '결혼') {
+    L.push(h(d.d1_7, 'D1 7궁'), h(d.d9_7, 'D9 7궁'));
+    L.push(`D9 라그나 ${d.d9Lagna ?? '—'} · 금성 ${d.venus?.signName}${d.venus?.dignity && d.venus.dignity !== '보통' ? `(${d.venus.dignity})` : ''}${d.venus?.combust ? '·조합' : ''} ${d.venus?.house}H · 목성 ${d.jupiter?.signName} ${d.jupiter?.house}H`);
+    if (d.darakaraka) L.push(`다라카라카 ${d.darakaraka.planet} — D1 ${d.darakaraka.d1.sign} ${d.darakaraka.d1.house}H / D9 ${d.darakaraka.d9?.sign ?? '—'} ${d.darakaraka.d9?.house ?? '—'}H`);
+    if (d.upapada) L.push(`우파파다(UL) ${d.upapada.signName} — 라그나에서 ${d.upapada.fromLagna}번째${d.upapada.occupants.length ? ` (${d.upapada.occupants.join('·')})` : ''} / UL2 ${d.upapada2?.signName ?? '—'}${d.upapada2?.occupants?.length ? ` (${d.upapada2.occupants.join('·')})` : ' 비어 있음'}`);
+    L.push(`결혼을 여는 행성(다샤에서 이것이 오면 무대에 오른다): ${d.activators.join('·')}`);
+  }
+  if (kind === '자녀') {
+    L.push(h(d.d1_5, 'D1 5궁'), h(d.d7_5, 'D7 5궁'));
+    L.push(`D7 라그나 ${d.d7Lagna ?? '—'} · 목성 ${d.jupiter?.signName}${d.jupiter?.dignity && d.jupiter.dignity !== '보통' ? `(${d.jupiter.dignity})` : ''} ${d.jupiter?.house}H / D7 목성 ${d.jupiterInD7?.signName ?? '—'} ${d.jupiterInD7?.house ?? '—'}H`);
+    if (d.maleficsOn5.length) L.push(`5하우스 흉성 ${d.maleficsOn5.join('·')}`);
+    L.push(`자녀 자리를 여는 행성: ${d.activators.join('·')}`);
+  }
+  if (kind === '재물') {
+    L.push(h(d.d1_2, 'D1 2궁'), h(d.d1_11, 'D1 11궁'), h(d.d1_10, 'D1 10궁'), h(d.d1_6, 'D1 6궁'));
+    L.push(`D10 라그나 ${d.d10Lagna ?? '—'}`, h(d.d10_10, 'D10 10궁'), h(d.d10_7, 'D10 7궁(거래처)'), h(d.d10_6, 'D10 6궁(고용)'));
+    if (d.hora) L.push(`D2 호라 — 태양 쪽 ${d.hora.sunHora}개 / 달 쪽 ${d.hora.moonHora}개 (태양 쪽=스스로 버는 결, 달 쪽=받아 버는 결)`);
+    if (d.arudha) L.push(`아루다 AL ${d.arudha.AL?.signName ?? '—'} · A2(보이는 재물) ${d.arudha.A2?.signName ?? '—'} · A10(보이는 직업) ${d.arudha.A10?.signName ?? '—'}`);
+    if (d.dhanaYogas.length) L.push(`다나 요가 ${d.dhanaYogas.length}개 — ${d.dhanaYogas.map((y) => y.note).join(' / ')}`);
+    if (d.rajaYogas.length) L.push(`라자 요가 ${d.rajaYogas.length}개 — ${d.rajaYogas.map((y) => y.note).join(' / ')}`);
+    L.push(`재물 자리를 여는 행성: ${d.activators.join('·')}`);
+  }
+  if (kind === '주거') {
+    L.push(h(d.d1_4, 'D1 4궁'), h(d.d4_4, 'D4 4궁'));
+    L.push(`D4 라그나 ${d.d4Lagna ?? '—'} · 화성 ${d.mars?.signName} ${d.mars?.house}H · 달 ${d.moon?.signName} ${d.moon?.house}H`);
+    L.push(h(d.d1_3, 'D1 3궁'), h(d.d1_9, 'D1 9궁'), h(d.d1_12, 'D1 12궁'));
+    L.push(`주거 자리를 여는 행성: ${d.activators.join('·')}`);
+  }
+  return L.filter(Boolean);
+}
+
 function vedicJson(grid, input, plan) {
   const codes = [...new Set((plan.pipeline?.vedic ?? []).filter((x) => /^D\d+$/.test(x)))];
   const vargas = {};
@@ -216,6 +329,14 @@ function vedicJson(grid, input, plan) {
   const all = VD.dashaChanges(grid.dashaTree, grid.fromYear, grid.toYear);
   const ad = all.filter((c) => c.level === 'AD');
   const pd = all.filter((c) => c.level === 'PD').slice(0, 8);
+  // 분야 전용 묶음 — 7궁·5궁·2/11궁·4궁을 궁주까지 펴서 본다
+  const packs = {};
+  for (const d of plan.domains ?? []) {
+    const p = VE.packFor(input, d);
+    if (p?.data) packs[p.kind] = p.data;
+  }
+  const karakas = (() => { try { return VE.charaKarakas(input); } catch { return null; } })();
+
   return {
     dasha: {
       nakshatra: grid.dashaTree.nakName, lord: grid.dashaTree.nakLord,
@@ -224,6 +345,12 @@ function vedicJson(grid, input, plan) {
         .sort((a, b) => (a.from.y - b.from.y) || (a.from.m - b.from.m))
         .map((c) => `${c.level} ${c.lord} ${c.from.y}.${p2(c.from.m)}`),
     },
+    karakas: karakas && {
+      atmakaraka: karakas.atmakaraka?.planet ?? null,
+      darakaraka: karakas.darakaraka?.planet ?? null,
+      order: karakas.list.map((x) => `${x.role ?? '-'}:${x.planet}`).join(' '),
+    },
+    packs,
     transits: grid.months.filter((_, i) => i % 3 === 0).map((m) => ({
       year: m.year, label: m.label,
       rows: (m.vedic.gochara?.rows ?? []).map((x) => `${x.planet} ${x.sign}(달에서 ${x.fromMoon})`),
@@ -257,6 +384,9 @@ export function buildLocation(r, plan) {
   const candidates = pickDeg == null ? [] : LOC.candidatesToward(input.home, pickDeg, { maxKm: 300 });
 
   const cities = (plan.cities ?? []).map((c) => LOC.relocation(input, c)).filter(Boolean);
+  // 후보 도시를 대지 않았으면 국내 주요 생활권을 전부 돌려 견준다.
+  // 방향만 말하고 끝나면 답이 지도까지 내려가지 못한다.
+  const zones = cities.length ? null : safe(() => LOC.compareZones(input));
 
   return {
     origin: input.home.name,
@@ -270,6 +400,7 @@ export function buildLocation(r, plan) {
       city: c.city, asc: c.asc, mc: c.mc,
       byFocus: c.byFocus, lines: c.lines.map((x) => `${x.planet} ${x.kind} ${x.km}km`),
     }),
+    zones,
     caveat: '방향은 계산값이고, 도시 이름은 그 방향을 실제 지도에 대본 초구체화 추정이다. 명반이 도시를 직접 가리킨 것이 아니다.',
   };
 }
@@ -330,6 +461,15 @@ export function formatHiRes(j, plan) {
           `${x.palace}×${x.repeated.map((r2) => r2.layers).join('/')}(${x.repeated.map((r2) => r2.branchName).join(',')})`).join(' '));
       }
     }
+    // 질문 분야의 궁 — 자미두수는 한 궁만 보지 않고 삼방사정을 함께 본다
+    for (const g of j.ziweiPalaces ?? []) {
+      out.push(`[${g.domain}] 관련 궁 — 층마다 삼방사정·길성·살성까지`);
+      for (const p of g.palaces) {
+        out.push(`  ${p.palace} (층 합계 ${p.toneSum}` +
+          (p.repeated.length ? ` · 겹침 ${p.repeated.map((x) => `${x.branchName}×${x.layers}`).join(',')}` : '') + ')');
+        for (const row of p.rows) out.push(`    ${ZE.formatPalace(row)}`);
+      }
+    }
     out.push('유월 (음력 달 기준. 앞의 날짜는 짝지은 절기월의 시작일이다):');
     for (const m of cap(j.ziwei.monthly, 72)) {
       out.push(`  ${m.label} 음${m.lunarMonth}월 명궁 ${m.myeong}(원국 ${m.natalPalace})` +
@@ -369,10 +509,35 @@ export function formatHiRes(j, plan) {
     out.push(`${code} 라그나 ${v.lagna ?? '—'} · ` +
       Object.entries(v.placements).slice(0, 7).map(([k, x]) => `${k} ${x}`).join(' '));
   }
+  if (j.vedic.karakas) {
+    out.push(`차라 카라카(일곱 방식) ${j.vedic.karakas.order}`);
+    out.push(`  아트마카라카 ${j.vedic.karakas.atmakaraka ?? '—'} · 다라카라카(배우자) ${j.vedic.karakas.darakaraka ?? '—'}`);
+  }
+  for (const [kind, d] of Object.entries(j.vedic.packs ?? {})) {
+    out.push(`[${kind}] 전용 배치`);
+    for (const line of formatPack(kind, d)) out.push(`  ${line}`);
+  }
   for (const t of j.vedic.transits) {
     out.push(`  고차라 ${t.label} ${t.rows.join(' ')}${t.sadeSati ? ' ※사데사티' : ''}`);
   }
   out.push('');
+
+  // ── 연 단위 타이밍 기법 ──
+  const yt = j.yearTiming ?? { solarArc: [], profections: [] };
+  if (yt.solarArc.length || yt.profections.length) {
+    out.push('### [A] 계산 사실 — 연도를 좁히는 기법 (솔라 아크 · 프로펙션)');
+    if (yt.solarArc.length) {
+      out.push('솔라 아크 — 한 해에 약 1도라 한 각이 한두 해로 좁혀진다. 큰 사건의 연도를 고르는 자리다.');
+      for (const h of yt.solarArc) out.push(`  ${h.year} ${h.from}→${h.to} ${h.aspect} (오차 ${h.orb}°)`);
+    }
+    if (yt.profections.length) {
+      out.push('프로펙션 — 그 해의 무대와 주인. 주인 행성에 걸린 트랜싯이 그 해 사건을 만든다고 본다.');
+      for (const p of yt.profections) {
+        out.push(`  ${p.year} ${p.age}세 → ${p.house}하우스(${p.topic}) ${p.sign} · 그 해 주인 ${p.timeLord} → 출생 ${p.lordNatalHouse}하우스 ${p.lordNatalSign}${p.lordRetro ? ' 역행' : ''}`);
+      }
+    }
+    out.push('');
+  }
 
   // ── B~E. 사건 추론 ──
   out.push('### [B~E] 사건 추론 — 위 계산값을 현실 사건으로 옮긴 것 (계산이 아니라 해석)');
@@ -401,6 +566,31 @@ export function formatHiRes(j, plan) {
     if (c.scenarios.contrary) out.push(`  반대 근거: ${c.scenarios.contrary.name} 쪽을 막는 신호가 있다`);
   }
   out.push('');
+
+  // ── 분야별 프로파일 — 누구와·어떤 모양으로 ──
+  if (j.profiles?.length) {
+    out.push('### [B~E] 프로파일 — "무엇이 일어나는가"를 "어떤 것인가"까지 내린 것');
+    out.push('항목마다 근거를 달았다. 근거를 대지 못하는 항목은 아예 만들지 않았으니, 여기 없는 차원은 답에서도 만들지 말 것.');
+    for (const p of j.profiles) {
+      const t = formatProfile(p);
+      if (t) out.push(t);
+    }
+    out.push('');
+  }
+
+  // ── 단언 등급 ──
+  if (j.tiers?.length) {
+    out.push('### 단언 등급 — 얼마나 세게 말해도 되는가');
+    out.push('근거가 모인 만큼만 세게 말한다. 단언은 근거의 강도를 드러내는 표현 방식이지, 빈자리를 채우는 허가증이 아니다.');
+    out.push('등급은 "가장 강한 구간 그 해"를 함께 짚는 기법만 세어 매겼다. 기법이 있기만 한 것은 세지 않았다.');
+    for (const t of j.tiers) {
+      out.push(`  [${t.domain}] ${describeTier(t)}` +
+        (t.window ? ` · 대상 구간 ${t.window}` : '') +
+        (t.techs.length ? ` · 같은 시기를 짚은 기법 ${t.techs.join('·')}` : ' · 같은 시기를 짚은 기법 없음') +
+        (t.cappedBy ? ` ※${t.cappedBy}` : ''));
+    }
+    out.push('');
+  }
 
   const conf = j.crossValidation.byDomain;
   out.push('신뢰도 등급:');
@@ -436,17 +626,35 @@ export function formatHiRes(j, plan) {
         Object.entries(rl.byFocus).map(([k, v]) => `${k}[${v.join('·') || '비어 있음'}]`).join(' ') +
         (rl.lines.length ? ` · 라인 ${rl.lines.join(', ')}` : ''));
     }
+    const z = j.location.zones;
+    if (z && !z.unavailable) {
+      out.push(`국내 주요 생활권 ${z.checked}곳을 같은 명반으로 다시 세워 기준 ${z.origin} 과 견준 결과:`);
+      if (z.noDifference) {
+        out.push(`  실제로 달라지는 곳이 없다. ${z.caveat}`);
+      } else {
+        out.push(`  달라지는 곳: ${z.different.join(' / ')}`);
+        for (const [focus, list] of Object.entries(z.byFocus)) {
+          // 이 함수의 매개변수 이름이 j 라 core/josa.js 의 j() 를 쓸 수 없다.
+          // 조사가 필요 없게 적는다.
+          if (list.length) out.push(`  '${focus}' 쪽이 달라지는 곳: ${list.join(' / ')}`);
+        }
+        out.push(`  ※ ${z.caveat}`);
+      }
+    } else if (z?.unavailable) {
+      out.push(`  도시 비교 불가 — ${z.unavailable}`);
+    }
     out.push(`※ ${j.location.caveat}`);
     out.push('');
   }
 
   out.push('### 이 구획을 쓰는 법');
   out.push('- [A] 로 표시된 값은 이미 계산된 것이다. 다시 계산하지 말고 그대로 쓸 것.');
-  out.push('- [B~E] 는 해석이다. "~로 나타나기 쉽습니다" 처럼 읽었다는 것이 드러나게 쓸 것.');
-  out.push('- 여기 적히지 않은 달·구간·도시를 만들어내지 말 것. 없으면 없다고 적는 것이 답의 일부다.');
+  out.push('- [B~E] 는 해석이다. 다만 위의 **단언 등급**이 허락하는 만큼은 세게 말할 것. Tier S 에서까지 "~일 수도 있습니다"로 흐리면 계산한 보람이 없다.');
+  out.push('- 여기 적히지 않은 달·구간·도시·사람을 만들어내지 말 것. 없으면 없다고 적는 것이 답의 일부다.');
   out.push('- 구간 등급(최강·강함·보조·약함)은 이 사람의 이 기간 안에서의 상대 순위다. 확률·퍼센트로 옮기지 말 것.');
-  out.push('- 좁히지 못한 속성은 억지로 채우지 말고 근거가 얇다고 적을 것.');
-  out.push('- 회사 규모·직원 수·동네 이름을 말해야 하면 반드시 [E] 초구체화 추정이라고 표시할 것.');
+  out.push('- 프로파일의 각 항목은 근거를 달고 나왔다. 그 근거 밖의 차원(이름·얼굴·회사명·정확한 나이)은 만들지 말 것.');
+  out.push('- 숫자는 범위로만 쓰고, 명반에서 직접 나온 값이 아니라는 것을 한 번 밝힐 것.');
+  out.push('- 가능성을 셋 이상 늘어놓지 말 것. 주 시나리오 하나와 대안 하나로 끝낼 것.');
   void plan;
   return out.join('\n');
 }

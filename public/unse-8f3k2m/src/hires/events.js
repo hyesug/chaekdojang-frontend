@@ -32,7 +32,7 @@
 import { j } from '../core/josa.js';
 
 /** 다룰 수 있는 분야. 여기 없는 질문은 '직업'으로 떨어뜨리지 않고 따로 표시한다 */
-export const DOMAINS = ['직업', '재물', '관계', '결혼', '주거', '이사', '건강', '학업'];
+export const DOMAINS = ['직업', '재물', '관계', '결혼', '주거', '이사', '건강', '학업', '자녀'];
 
 /** LEVEL 3 — 분야별 사건 후보 */
 export const EVENT_CANDIDATES = {
@@ -45,6 +45,7 @@ export const EVENT_CANDIDATES = {
   이사: ['근거리 이사', '타지역 이동', '통근 조건 변화', '해외·장거리'],
   건강: ['누적 피로', '검진·치료 시작', '생활 리듬 재편'],
   학업: ['시험·자격 준비', '합격·수료', '진학·전공 전환'],
+  자녀: ['임신·출산', '자녀 계획 논의', '육아와 일의 충돌', '자녀 문제로 생활 재편'],
 };
 
 /** LEVEL 4 — 사건 속성 축. 양쪽 이름과 어느 쪽으로 기우는지만 본다 */
@@ -69,6 +70,10 @@ export const ATTRIBUTE_AXES = {
   재물: [
     { key: '방향', a: '들어오는 쪽', b: '나가고 정리하는 쪽' },
     { key: '경로', a: '일해서 버는 돈', b: '남의 돈·목돈' },
+  ],
+  자녀: [
+    { key: '속도', a: '빠르게 진행', b: '천천히 다져감' },
+    { key: '형태', a: '계획대로', b: '상황에 떠밀려' },
   ],
 };
 
@@ -98,12 +103,14 @@ const DOMAIN_GODS = {
   이사: ['인성', '비겁'],
   건강: ['식상', '관성'],
   학업: ['인성', '식상'],
+  // 식상은 명리에서 자식을 보는 자리다
+  자녀: ['식상', '인성'],
 };
 
 /** 자미 궁이 가리키는 분야 */
 const PALACE_DOMAIN = {
   관록궁: '직업', 재백궁: '재물', 천이궁: '이사', 전택궁: '주거',
-  부처궁: '결혼', 질액궁: '건강', 자녀궁: '학업', 복덕궁: '관계', 명궁: null,
+  부처궁: '결혼', 질액궁: '건강', 자녀궁: '자녀', 복덕궁: '관계', 명궁: null,
 };
 
 /** 서양 하우스가 가리키는 분야 */
@@ -321,7 +328,7 @@ function readVedic(m, domain) {
 /** 기존 열두 달 점수가 있으면 보태 준다 — 이미 보정된 값이라 그대로 쓴다 */
 const AREA_OF = {
   직업: '직장운', 재물: '금전운', 관계: '애정운', 결혼: '애정운',
-  주거: '총운', 이사: '총운', 건강: '건강운', 학업: '학업운',
+  주거: '총운', 이사: '총운', 건강: '건강운', 학업: '학업운', 자녀: '애정운',
 };
 
 /** 한 달을 점수로 — 어디까지나 그 사람 안에서의 상대값이다 */
@@ -348,11 +355,15 @@ export function scoreMonth(m, domain) {
   if (area != null) total += (area - 50) / 10;
 
   const active = Object.entries(bySystem).filter(([, v]) => v.score >= 1.5).map(([k]) => k);
+  // 단언 등급에 쓰는 더 엄한 기준. 한마디 거든 것과 실제로 그 달을 끌고 간
+  // 것은 다르다. 그 달 전체 무게의 20% 이상을 낸 체계만 '지지했다'로 센다.
+  const bar = Math.max(2.5, total * 0.2);
+  const strong = Object.entries(bySystem).filter(([, v]) => v.score >= bar).map(([k]) => k);
 
   return {
     key: m.key, year: m.year, index: m.index, label: m.label, from: m.from,
     total: Math.round(total * 100) / 100,
-    bySystem, active, tend,
+    bySystem, active, strong, tend,
     areaScore: area,
   };
 }
@@ -492,6 +503,11 @@ export function candidatesOf(tend, domain) {
     '시험·자격 준비': t('준비') + t('제도화') * 0.5,
     '합격·수료': t('확정') + t('제도화') * 0.5,
     '진학·전공 전환': t('전환') + t('준비') * 0.5,
+
+    '임신·출산': t('확정') + t('정착') * 0.6,
+    '자녀 계획 논의': t('준비') + t('확정') * 0.5,
+    '육아와 일의 충돌': t('경쟁') + t('비자발') * 0.6,
+    '자녀 문제로 생활 재편': t('전환') + t('환경') * 0.5,
   };
 
   return list
@@ -573,7 +589,10 @@ export function inferEvents(grid, domain) {
       from: w.from, to: w.to,
       months: w.members.length,
       band: w.members.some((m) => m.band === '최강') ? '최강' : '강함',
-      peak: { label: best.label, year: best.year, from: best.from, phase: best.phase },
+      // 정점 달에서 실제로 말한 체계만 따로 들고 간다. 구간 전체의 합집합을
+      // 쓰면 넉 달 동안 네 체계가 한 번씩만 끼어도 '넷이 합의'가 되어 버린다.
+      peak: { label: best.label, year: best.year, from: best.from, phase: best.phase,
+              systems: best.strong },
       phases: w.members.map((m) => ({ label: m.label, phase: m.phase, band: m.band })),
       systems: [...systems],
       confidence: confidenceOf([...systems]),

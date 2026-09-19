@@ -19,6 +19,7 @@ import { ELEMENTS, computeDaeun } from './core/ganzhi.js';
 import { AREAS } from './forecast.js';
 import { dayRange, rankSurgeryDays, structureReading, patternReading,
          yearTimeline, innerReading, tabooReading } from './reading.js';
+import { buildMultilayer, formatMultilayer } from './multilayerInterpretation.js';
 
 const p2 = (n) => String(n).padStart(2, '0');
 
@@ -149,6 +150,13 @@ export function buildContext(form, r, f = null) {
     out.push('');
   }
 
+  // ── 다층 해석 근거 ──
+  // 위까지는 체계별 결과를 늘어놓은 것이고, 여기서부터는 그걸 센 것이다.
+  // 모델이 "몇 개가 같은 말을 하는가"를 눈대중으로 세면 매번 답이 달라지므로
+  // 세는 일은 코드가 하고 개수만 넘긴다.
+  out.push(formatMultilayer(buildMultilayer(r, f)));
+  out.push('');
+
   // ── 타고난 구성 ──
   // 시기 점수는 '그 시기'를 재는 값이라, 구조가 무너진 명반도 평범하게 나온다.
   // 사람의 삶에 실제로 들어맞은 건 늘 이쪽이었다. 그래서 따로 싣는다.
@@ -263,6 +271,7 @@ export function buildContext(form, r, f = null) {
   out.push('## 읽는 법');
   out.push('위 값은 모두 천문 계산으로 구한 것이다. 간지·절기·음력·행성 위치를 다시 계산하지 말고 그대로 쓸 것.');
   out.push('체계마다 보는 대상이 다르므로 결론이 갈릴 수 있다. 갈리면 갈린다고 말할 것.');
+  out.push('"다층 해석 근거"에 적힌 개수와 구간은 이미 센 것이다. 다시 세지 말고 그대로 쓸 것. 거기에 없는 달·구간을 만들어내지 말 것.');
   out.push('날짜를 물으면 위 일자별 표에서 실제 날짜를 골라 답할 것. 표에 있는 날은 이미 계산된 날이므로 지어내는 것이 아니다. "월 초"처럼 뭉개지 말고 "11월 3일(화)"처럼 날짜와 요일을 적고, 왜 그 날인지 한 줄로 밝힐 것. 두세 개를 우선순위대로 주고, 함께 피할 날도 같이 적을 것.');
   out.push('택일의 기준: 몸에 손대는 일(수술·시술·치료 시작)은 위의 "수술·시술 택일 전용 순위"를 그대로 쓸 것. 일지충·양인을 먼저 제외하고, 천의 → 황도 → 다른 원국 지지·그날 대운의 충 감점 → 형·해·파 감점 → 절기월 건강 → 당일 건강 → 일반 일진 등급 순으로 본다. 년지·월지·시지·대운 충은 후보를 전부 없애지 않도록 차등 감점하고, 일지충만 강하게 제외한다. 일반 등급이 높다는 이유로 흑도 날짜를 황도 날짜보다 앞세우지 말 것. 계약·문서·면접은 황도이면서 등급이 높은 날을 고른다. 이사·출발은 역마, 부탁·지원 요청은 천을을 참고한다.');
   out.push('표 밖의 날짜(120일 이후)를 물으면 그때는 월·절기 단위로만 답하고 표가 거기까지 없다고 한 줄로 밝힐 것.');

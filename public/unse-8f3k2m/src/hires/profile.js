@@ -156,7 +156,10 @@ export function spouseProfile(input, st = null) {
     trade[PLANET_TRADE[p]] = (trade[PLANET_TRADE[p]] ?? 0) + w;
     basis.push(why);
   };
-  add(dk, 3, `다라카라카 ${dk}`);
+  // 다라카라카는 도수 순서로만 정해진다. 그 순서가 흔들린다고 신고된 경우
+  // 무게를 낮춘다 — 배우자상 전체가 이 한 행성에 매달려 있기 때문이다.
+  const dkShaky = !!mp.darakaraka?.uncertain;
+  add(dk, dkShaky ? 1 : 3, dkShaky ? `다라카라카 ${dk} (순서가 흔들릴 수 있어 무게를 낮춤)` : `다라카라카 ${dk}`);
   add(l7, 2.5, `D1 7궁주 ${l7}`);
   add(d9l7, 2, `D9 7궁주 ${d9l7}`);
   for (const p of mp.d1_7?.occupants ?? []) add(p, 1.5, `7궁에 든 ${p}`);
@@ -268,6 +271,12 @@ export function spouseProfile(input, st = null) {
     spouseStars,
     systems: [...systems],
     activators: mp.activators,
+    // 계산 불확실성을 해석 층까지 끌고 올라온다
+    darakarakaUncertain: dkShaky,
+    caveat: dkShaky
+      ? `다라카라카(${dk})는 도수 순서로 정해지는데 그 순서가 흔들릴 수 있다. ` +
+        `${(mp.darakaraka?.uncertainWhy ?? []).join(' / ')} — 배우자상을 이 한 행성으로 단언하지 말 것.`
+      : null,
     // 그림 하나로 묶어 쓸 때 쓰라고 미리 한 줄로 접어 둔다
     oneLine: items.length >= 3
       ? `${tradeLean?.name ?? '직업 결은 좁히기 어렵다'}. ` +

@@ -210,28 +210,84 @@ const KARAKA_NAMES = ['아트마카라카', '아마탸카라카', '브라트리�
                       '피트리카라카', '그냐티카라카', '다라카라카'];
 
 /**
+ * 행성 위치의 불확실 폭 (분각).
+ *
+ * core/planets.js 는 JPL 근사 궤도요소를 쓴다. 독립 구현(celestine)과
+ * 1900~2050 을 대조해 실제로 벌어지는 폭을 쟀고, 거기에 여유를 둔 값이다.
+ * 재는 방법과 결과는 tests/unse/ephemeris-accuracy.test.mjs 에 있다.
+ *
+ * 수성만 두 값이다. 태양에 붙으면(내합 근처) 지심 경도가 급변해 작은
+ * 위치차가 각도로 크게 벌어진다. 기하학적 확대라 어느 구현을 써도 생긴다.
+ */
+const UNCERTAINTY = { 태양: 1, 달: 1, 금성: 2, 화성: 3, 목성: 11, 토성: 15, 수성: 5 };
+const MERCURY_NEAR_SUN = 90;
+
+/** 그 행성의 위치를 얼마나 믿을 수 있는가 (분각) */
+function uncertaintyOf(planet, sidLon, sunLon) {
+  if (planet !== '수성') return UNCERTAINTY[planet] ?? 5;
+  const elong = Math.abs(((sidLon - sunLon + 540) % 360) - 180);
+  return elong < 20 ? MERCURY_NEAR_SUN : UNCERTAINTY.수성;
+}
+
+/**
  * 차라 카라카 — 별자리 안에서 도(度)가 높은 순서로 일곱 자리를 준다.
  * 다라카라카(맨 아래)가 배우자를 가리킨다.
  *
  * **일곱 카라카 방식이다.** 라후를 넣는 여덟 방식에서는 다라카라카가
  * 달라진다. 한쪽만 쓴다.
+ *
+ * ── 순서가 흔들릴 수 있다는 것을 함께 돌려준다 ──────────────
+ * 카라카는 **도수 순서**로만 정해진다. 그래서 두 행성의 도수가 가까우면
+ * 계산 오차만으로 순서가 뒤집히고, 뒤집히면 다라카라카가 바뀌어 배우자
+ * 해석이 통째로 달라진다. 그런 일이 조용히 일어나면 안 된다.
+ *
+ * 그래서 이웃한 두 카라카의 도수 차이가 두 행성의 불확실 폭을 합친 것보다
+ * 작으면 `uncertain` 에 담아 내보낸다. 해석 층은 그때 단언을 낮춘다.
  */
 export function charaKarakas(input) {
   const trop = planetPositions(input.jdUT);
+  const sunSid = toSidereal(trop.태양.lon, input.jdUT);
+
   const rows = SEVEN.map((n) => {
     const sid = toSidereal(trop[n].lon, input.jdUT);
-    return { planet: n, deg: sid % 30, sign: Math.floor(sid / 30) };
+    return {
+      planet: n, deg: sid % 30, sign: Math.floor(sid / 30),
+      band: uncertaintyOf(n, sid, sunSid),
+    };
   }).sort((a, b) => b.deg - a.deg);
+
+  // 이웃끼리 도수 차이가 불확실 폭 안쪽이면 순서를 장담할 수 없다
+  const uncertain = [];
+  for (let i = 1; i < rows.length; i++) {
+    const gapArcmin = (rows[i - 1].deg - rows[i].deg) * 60;
+    const band = rows[i - 1].band + rows[i].band;
+    if (gapArcmin <= band) {
+      uncertain.push({
+        between: [rows[i - 1].planet, rows[i].planet],
+        roles: [KARAKA_NAMES[i - 1] ?? null, KARAKA_NAMES[i] ?? null].filter(Boolean),
+        gapArcmin: Math.round(gapArcmin * 10) / 10,
+        bandArcmin: band,
+        why: `${j(rows[i - 1].planet, '과')} ${rows[i].planet}의 도수 차이가 ${gapArcmin.toFixed(1)}분각인데 ` +
+             `위치 불확실 폭이 ${band}분각이다 — 순서가 뒤집힐 수 있다`,
+      });
+    }
+  }
 
   const out = {};
   rows.forEach((r, i) => {
     if (i < KARAKA_NAMES.length) out[KARAKA_NAMES[i]] = { ...r, deg: Math.round(r.deg * 100) / 100 };
   });
+
+  const shaky = (role) => uncertain.some((u) => u.roles.includes(role));
   return {
     list: rows.map((r, i) => ({ ...r, role: KARAKA_NAMES[i] ?? null })),
     atmakaraka: out['아트마카라카'] ?? null,
     darakaraka: out['다라카라카'] ?? null,
     all: out,
+    uncertain,
+    // 이 둘이 흔들리면 해석 층이 단언을 낮춘다
+    darakarakaUncertain: shaky('다라카라카'),
+    atmakarakaUncertain: shaky('아트마카라카'),
   };
 }
 
@@ -396,8 +452,12 @@ export function marriagePack(input) {
       planet: dk,
       d1: { sign: d1.planets[dk].signName, house: d1.planets[dk].house, dignity: d1.planets[dk].dignity },
       d9: d9 ? { sign: d9.planets[dk].signName, house: d9.planets[dk].house } : null,
+      // 도수 순서가 흔들리면 다라카라카 자체가 바뀐다. 조용히 넘기지 않는다
+      uncertain: k.darakarakaUncertain,
+      uncertainWhy: k.uncertain.filter((u) => u.roles.includes('다라카라카')).map((u) => u.why),
     },
     atmakaraka: k.atmakaraka?.planet ?? null,
+    karakaUncertain: k.uncertain,
     upapada: ar?.UL ?? null,
     upapada2: ar?.UL2 ?? null,
     // 7궁·7궁주를 건드리는 다샤 주인 후보

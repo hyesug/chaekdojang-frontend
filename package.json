@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "smoke:prod": "node scripts/smoke-prod.mjs"
+    "smoke:prod": "node scripts/smoke-prod.mjs",
+    "test:unse": "node --experimental-default-type=module --test tests/unse/*.test.mjs",
+    "test": "npm run test:unse"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

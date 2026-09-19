@@ -771,6 +771,42 @@ details.pool[open] > summary::before { content: '▾ '; }
 }
 footer .ver { font-size: 11.5px; color: var(--ink-3); margin-top: 18px; letter-spacing: .02em; }
 
+/* 15체계 한눈에 보기 */
+.system-view { padding-top: 12px; padding-bottom: 16px; }
+.system-view-row {
+  display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 14px;
+  align-items: baseline; padding: 11px 0; border-bottom: 1px solid var(--line-soft);
+}
+.system-view-row:last-of-type { border-bottom: none; }
+.system-view-name { font-size: 12.5px; font-weight: 700; color: var(--ink); white-space: nowrap; }
+.system-core {
+  display: inline-block; margin-left: 5px; padding: 1px 5px; border-radius: 4px;
+  border: 1px solid var(--gold-soft); color: var(--gold); font-size: 9.5px;
+  font-weight: 700; vertical-align: 1px;
+}
+.system-view-text { font-size: 13.5px; line-height: 1.65; color: var(--ink-2); }
+
+/* 공통 성향 카드 — 결론이 가장 크고, 근거 강도는 보조 정보다 */
+.trait-card { padding-top: 19px; }
+.trait-title {
+  font-size: 18px !important; line-height: 1.45; font-weight: 700 !important;
+  color: var(--ink); margin: 0 0 6px !important;
+}
+.trait-confidence {
+  font-size: 11.5px; line-height: 1.55; color: var(--ink-3);
+  margin: 0 0 12px; padding-bottom: 10px; border-bottom: 1px solid var(--line-soft);
+}
+.trait-strong { color: var(--gold); }
+.trait-mid { color: var(--ink-2); }
+.trait-weak, .trait-faint { color: var(--ink-3); }
+.common-note { margin: 4px 2px 18px; }
+
+@media (max-width: 480px) {
+  .system-view-row { grid-template-columns: 92px minmax(0, 1fr); gap: 10px; }
+  .system-view-name { white-space: normal; }
+  .trait-title { font-size: 17px !important; }
+}
+
 /* 말의 세기 — 몇 개 체계가 같은 곳을 가리키는가 */
 .lv {
   font-size: 12.5px; line-height: 1.6; padding: 9px 12px;

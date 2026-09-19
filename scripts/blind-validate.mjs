@@ -52,23 +52,36 @@ const CASES = join(DIR, 'cases.json');
  * 이 함수는 **출생 정보만 받는다.** 사건을 인자로 받지 않는 것이 요점이다.
  * 실수로라도 답을 보고 예측을 만들 수 없게 하려는 것이다.
  */
+/** buildGrid 는 한 번에 여섯 해까지만 만든다 (브라우저에서 도는 계산이라) */
+const CHUNK = 6;
+
 function predict(birth, domains, fromYear, years) {
   const r = readFortune(birth, { now: new Date(`${fromYear}-06-01T00:00:00Z`) });
   const out = {};
+
   for (const d of domains) {
-    const grid = buildGrid(r.input, r.chart, { fromYear, years, domain: d });
-    const inf = inferEvents(grid, d);
-    // 점수가 높은 순서. 채점은 "실제 사건이 이 순위의 몇 번째였나"만 본다
-    const ranked = inf.rows.slice().sort((a, b) => b.total - a.total)
-      .map((x, i) => ({ rank: i, year: x.year, month: x.from.m, y: x.from.y, band: x.band }));
+    // 검증은 열 해 스무 해를 보는 일이 흔하다. 여섯 해씩 끊어 돌리고 잇는다.
+    //
+    // 이어 붙여도 되는 이유: scoreMonth 의 total 은 가중치를 그냥 더한 값이라
+    // 구간 길이에 영향을 받지 않는다. 구간마다 다시 매기는 것은 등급(band)
+    // 뿐인데, 채점은 등급이 아니라 순위를 쓰므로 상관이 없다.
+    const rows = [];
+    for (let y = fromYear; y <= fromYear + years - 1; y += CHUNK) {
+      const span = Math.min(CHUNK, fromYear + years - y);
+      const grid = buildGrid(r.input, r.chart, { fromYear: y, years: span, domain: d });
+      rows.push(...inferEvents(grid, d).rows);
+    }
+
+    const ranked = rows.slice().sort((a, b) => b.total - a.total)
+      .map((x, i) => ({ rank: i, year: x.year, month: x.from.m, y: x.from.y, total: x.total }));
+
     out[d] = {
       ranked,
       n: ranked.length,
-      best: inf.bestWindow ? {
-        label: inf.bestWindow.label,
-        peak: `${inf.bestWindow.peak.from.y}-${String(inf.bestWindow.peak.from.m).padStart(2, '0')}`,
-        band: inf.bestWindow.band,
-      } : null,
+      // 전체 기간에서 점수가 가장 높은 달
+      best: ranked.length
+        ? `${ranked[0].y}-${String(ranked[0].month).padStart(2, '0')}`
+        : null,
     };
   }
   return out;

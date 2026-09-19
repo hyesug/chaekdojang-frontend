@@ -11,6 +11,8 @@
 
 import { buildContext, READING_PROMPT, buildCompatContext, COMPAT_PROMPT } from './aiContext.js';
 import { readForecast } from './forecast.js';
+import { routeQuestion } from './hires/router.js';
+import { buildHiRes } from './hires/context.js';
 
 const ENDPOINT = '/fortune-ai';
 
@@ -110,9 +112,30 @@ export function aiSection(mode = 'solo', view = null) {
     </div>`;
 }
 
-/** 결과 화면이 그려진 뒤 호출한다 */
+/**
+ * 결과 화면이 그려진 뒤 호출한다.
+ *
+ * 명반 본문은 한 사람에 대해 고정이라 그대로 캐시에 태운다. 고해상도
+ * 계산은 질문에 따라 봐야 할 것이 달라서 (§ 질문별 계산 파이프라인)
+ * 물을 때마다 다시 만든다. 그래서 두 덩이를 갈라 보낸다.
+ */
 export function initAI(form, fortune, forecast) {
-  wire(buildContext(form, fortune, forecast));
+  wire(buildContext(form, fortune, forecast), { fortune, forecast });
+}
+
+/**
+ * 이 질문에 필요한 고해상도 계산만 돌려 한 덩이로 만든다.
+ * 계산이 터져도 질문 자체는 가야 하므로 실패는 조용히 삼킨다.
+ */
+function focusFor(question, calc) {
+  if (!calc?.fortune) return null;
+  try {
+    const plan = routeQuestion(question, calc.fortune.input.currentYear);
+    return buildHiRes(calc.fortune, calc.forecast, plan).text;
+  } catch (e) {
+    console.warn('[운세] 고해상도 계산을 건너뜁니다:', e.message);
+    return null;
+  }
 }
 
 /** 궁합 화면용. 두 사람 명반을 통째로 싣는다 */
@@ -126,8 +149,8 @@ export function initCompatAI(formA, formB, compat) {
 }
 
 /** 화면이 그려진 뒤 입력칸과 버튼을 붙인다. 개인·궁합이 같은 배선을 쓴다 */
-function wire(context) {
-  session = { context, messages: [], busy: false };
+function wire(context, calc = null) {
+  session = { context, calc, messages: [], busy: false };
 
   const log = document.querySelector('#ai-log');
   const box = document.querySelector('#ai-q');
@@ -162,10 +185,11 @@ function wire(context) {
     let acc = '';
 
     try {
+      const focus = focusFor(question, session.calc);
       const res = await fetch(ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ context: session.context, messages: session.messages }),
+        body: JSON.stringify({ context: session.context, focus, messages: session.messages }),
       });
 
       if (!res.ok || !res.body) {

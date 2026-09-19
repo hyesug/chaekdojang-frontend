@@ -27,7 +27,7 @@ export const meta = {
   needsPlace: true,
 };
 
-const RASHI = [
+export const RASHI = [
   { name: '메샤', kr: '양', el: '불', lord: '화성', text: '앞장서고 부딪치며 배웁니다. 에너지가 밖으로 터져 나오는 자리입니다.' },
   { name: '브리샤바', kr: '황소', el: '흙', lord: '금성', text: '모으고 누리는 자리입니다. 느리지만 한번 쌓은 것은 잘 무너지지 않습니다.' },
   { name: '미투나', kr: '쌍둥이', el: '공기', lord: '수성', text: '말과 정보의 자리입니다. 배우고 옮기고 연결하는 데 재능이 있습니다.' },
@@ -42,7 +42,7 @@ const RASHI = [
   { name: '미나', kr: '물고기', el: '물', lord: '목성', text: '풀어지는 자리입니다. 경계가 옅고 직관과 연민이 깊습니다.' },
 ];
 
-const BHAVA = [
+export const BHAVA = [
   null,
   ['탄누', '몸과 성격, 삶 전체의 바탕'],
   ['다나', '재물과 가족, 말'],
@@ -59,13 +59,13 @@ const BHAVA = [
 ];
 
 /** 빔쇼타리 다샤 — 아홉 행성이 120년을 나눠 갖는다 */
-const DASHA_YEARS = {
+export const DASHA_YEARS = {
   케투: 7, 금성: 20, 태양: 6, 달: 10, 화성: 7,
   라후: 18, 목성: 16, 토성: 19, 수성: 17,
 };
-const DASHA_ORDER = ['케투', '금성', '태양', '달', '화성', '라후', '목성', '토성', '수성'];
+export const DASHA_ORDER = ['케투', '금성', '태양', '달', '화성', '라후', '목성', '토성', '수성'];
 
-const DASHA_TEXT = {
+export const DASHA_TEXT = {
   케투: '덜어내는 시기입니다. 세속적인 성취보다 정리와 해방이 주제가 됩니다. 갑작스러운 이탈이나 방향 전환이 일어납니다.',
   금성: '누리는 시기입니다. 관계·예술·풍요와 인연이 깊어지고 삶이 부드러워집니다. 안락함에 젖는 것이 유일한 위험입니다.',
   태양: '드러나는 시기입니다. 책임 있는 자리가 주어지고 이름이 오르내립니다. 아버지·권위와 얽힌 주제가 나옵니다.',
@@ -85,7 +85,7 @@ const EL_TAGS = {
 const NAK_SPAN = 360 / 27;
 
 /** 달의 나크샤트라 진행도에서 다샤 순서를 만든다 */
-function vimshottari(moonSidereal, birthYearFraction) {
+export function vimshottari(moonSidereal, birthYearFraction) {
   const nak = Math.floor(moonSidereal / NAK_SPAN);
   const lord = NAKSHATRA_LORDS[nak];
   const progressed = (moonSidereal % NAK_SPAN) / NAK_SPAN;

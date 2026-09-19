@@ -141,7 +141,7 @@ export function planetPositions(jd) {
 // ─────────────────────────────────────────────────────────────
 
 /** 그리니치 항성시 (도) */
-function gmst(jd) {
+export function gmst(jd) {
   const T = (jd - 2451545.0) / 36525;
   return norm360(
     280.46061837 + 360.98564736629 * (jd - 2451545.0) +
@@ -150,11 +150,11 @@ function gmst(jd) {
 }
 
 /** 황경 → 적경 (황위 0인 황도상의 점) */
-const raFromLon = (lon, eps) => norm360(atan2(sin(lon) * cos(eps), cos(lon)));
+export const raFromLon = (lon, eps) => norm360(atan2(sin(lon) * cos(eps), cos(lon)));
 /** 적경 → 황경 */
 const lonFromRA = (ra, eps) => norm360(atan2(sin(ra), cos(ra) * cos(eps)));
 /** 황도상의 점의 적위 */
-const declFromLon = (lon, eps) => asin(sin(lon) * sin(eps));
+export const declFromLon = (lon, eps) => asin(sin(lon) * sin(eps));
 
 /**
  * 플라시두스 하우스.

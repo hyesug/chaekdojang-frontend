@@ -60,7 +60,7 @@ export const SIGNS = [
     traits: { 감성: 0.9, 외향: -0.2, 안정: -0.4 }, tags: ['감수성', '직관'] },
 ];
 
-const HOUSES = [
+export const HOUSES = [
   null,
   ['1하우스 · 자기', '겉으로 드러나는 모습과 첫인상, 몸을 쓰는 방식'],
   ['2하우스 · 소유', '돈을 버는 방식과 스스로 가치 있다고 여기는 것'],
@@ -91,7 +91,7 @@ const PLANET_MEANING = {
   케투: '이미 익숙한 것 — 놓아야 할 관성',
 };
 
-const ASPECTS = [
+export const ASPECTS = [
   { name: '합', en: 'conjunction', angle: 0, orb: 8, tone: 0,
     text: '두 힘이 한 몸처럼 붙어 있습니다. 구분되지 않아 늘 함께 작동합니다.' },
   { name: '육각', en: 'sextile', angle: 60, orb: 4, tone: 1,
@@ -110,7 +110,7 @@ export const signOf = (lon) => Math.floor(lon / 30);
 export const degInSign = (lon) => lon % 30;
 
 /** 두 천체 사이에 성립하는 각을 찾는다 */
-function findAspect(a, b) {
+export function findAspect(a, b) {
   const sep = Math.abs(((a - b + 540) % 360) - 180);
   for (const asp of ASPECTS) {
     const diff = Math.abs(sep - asp.angle);

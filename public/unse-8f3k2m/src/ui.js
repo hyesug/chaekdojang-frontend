@@ -16,6 +16,7 @@ import {
 import { pickNumbers } from './lotto.js';
 import { readForecast } from './forecast.js';
 import { aiSection, initAI, initCompatAI } from './ai.js';
+import { hiresPanel, initHiResPanel } from './hires/panel.js';
 import { buildView, sensitivity, buildCompatView } from './viewmodel.js';
 import { SYSTEM_META, TIER_LABEL, SOURCE_LABEL, ENGINE_VERSION, CALC_CHANGES } from './meta.js';
 
@@ -171,6 +172,7 @@ $('#form').addEventListener('submit', async (e) => {
       box.innerHTML = render(form, r, f);
       await next();
       initAI(form, r, f);
+      initHiResPanel(r, f);
       await next();
     }
 
@@ -832,6 +834,8 @@ function render(form, r, f) {
         ${block('행운의 색과 숫자', `모자란 기운을 채우는 색은 ${L.color.join('·')}이고 숫자는 ${L.num.join(', ')}, 방향은 ${L.dir}입니다. 이름의 첫 자음이 ${L.consonant.join('·')}인 사람과 결이 맞는다고 보는데, 이 대목은 사주가 아니라 한글 자음을 오행에 배정하는 성명학 쪽 규칙이라 참고로만 보세요.`, [])}
       </div>
       ${lottoSection(r.input, r.chart)}`)}
+
+    ${hiresPanel()}
 
     ${aiSection('solo', v)}
 

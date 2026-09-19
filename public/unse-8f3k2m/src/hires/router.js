@@ -20,7 +20,8 @@ const RULES = [
   { domain: '결혼', words: ['결혼', '혼인', '예식', '상견례', '약혼', '청혼', '웨딩', '신혼'] },
   { domain: '관계', words: ['연애', '애인', '남친', '여친', '썸', '소개팅', '이별', '재회', '인연', '짝'] },
   { domain: '직업', words: ['이직', '직장', '회사', '취업', '퇴사', '승진', '연봉', '커리어', '일자리', '면접', '입사', '직무', '부서', '창업', '사업'] },
-  { domain: '재물', words: ['돈', '재물', '재테크', '수입', '자산', '빚', '대출', '투자', '정산', '계약금'] },
+  { domain: '재물', words: ['돈', '재물', '재테크', '수입', '자산', '빚', '대출', '투자', '정산', '계약금',
+                            '부자', '목돈', '상금', '지원금', '월급', '연봉'] },
   { domain: '건강', words: ['건강', '몸', '병', '수술', '치료', '검진', '체력', '아픈'] },
   { domain: '학업', words: ['공부', '시험', '자격', '학업', '합격', '진학', '유학', '전공'] },
 ];
@@ -32,8 +33,22 @@ const PLACE_WORDS = ['어디', '지역', '도시', '방향', '방위', '남쪽',
 /** 하루짜리 날짜를 묻는가 — 이때만 일진까지 내려간다 */
 const DAY_WORDS = ['며칠', '날짜', '날 잡', '택일', '무슨 요일', '언제가 좋은 날', '길일', '개업일', '수술 날'];
 
+/**
+ * 횡재·비정기 재물을 묻는가.
+ *
+ * 이 낱말이 걸리면 고전 로트·재물 하우스·조디악 릴리징까지 돌린다.
+ * 평소 재물 질문보다 봐야 할 자리가 훨씬 많기 때문이다.
+ */
+const WINDFALL_WORDS = ['횡재', '로또', '복권', '당첨', '대박', '한방', '목돈', '큰돈', '상금',
+                        '지원금', '유산', '상속', '보험금', '한탕', '벼락부자'];
+
+/** 평생 재물 곡선을 묻는가 */
+const LIFETIME_WORDS = ['평생', '인생', '일생', '언제 부자', '언제쯤 부자', '노후', '말년', '전체적으로'];
+
 /** 몇 해를 볼 것인가 */
 function spanFromQuestion(q, thisYear) {
+  // 평생을 물으면 넓게 본다. 십 년 단위 곡선은 이 범위 안에서 만든다
+  if (/평생|인생|일생|노후|말년/.test(q)) return { fromYear: thisYear, years: 6 };
   const years = [...q.matchAll(/(20\d{2})\s*년?/g)].map((m) => Number(m[1]))
     .filter((y) => y >= thisYear - 30 && y <= thisYear + 30);
   if (years.length) {
@@ -86,7 +101,15 @@ export function routeQuestion(question, thisYear) {
   // 질문에 실제 도시 이름이 나오면 그 도시로 릴로케이션 차트를 견준다
   const cities = CITIES.filter((c) => c.kr && q.includes(c.name)).map((c) => c.name).slice(0, 5);
 
+  const windfall = WINDFALL_WORDS.some((w) => q.includes(w));
+  const lifetime = LIFETIME_WORDS.some((w) => q.includes(w));
+  // 횡재를 물으면 재물 분야가 켜져 있어야 한다
+  if (windfall && !domains.includes('재물')) domains.unshift('재물');
+
   return {
+    needsWealth: domains.includes('재물') || windfall,
+    needsWindfall: windfall,
+    needsLifetime: lifetime,
     question: q,
     matched: domains.length > 0,
     primary,
@@ -144,6 +167,7 @@ export function defaultPlan(thisYear) {
     question: '', matched: false, primary: null, fallback: true,
     domains: ['직업', '재물', '관계'],
     needsPlace: false, needsDay: false, cities: [],
+    needsWealth: true, needsWindfall: false, needsLifetime: false,
     fromYear: thisYear, years: 3,
     pipeline: pipelineFor(['직업', '재물', '관계']),
   };

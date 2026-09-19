@@ -20,6 +20,8 @@ import * as VD from './vedic.js';
 import * as VE from './vedicExt.js';
 import * as ZW from './ziwei.js';
 import * as ZE from './ziweiExt.js';
+import * as CL from './classical.js';
+import * as W from './wealth.js';
 import { profileFor, formatProfile, tierOf, describeTier } from './profile.js';
 
 /** 신뢰도 표기 — 답변에서 이 등급을 그대로 쓰게 한다 */
@@ -61,6 +63,7 @@ export function buildHiRes(r, f = null, plan) {
 
   const chain = chainOf(inferences);
   const location = plan.needsPlace ? buildLocation(r, plan) : null;
+  const natal = safe(() => WS.natalPack(input));
 
   // ── 분야별 프로파일 — "누구와·어떤 모양으로" ──
   // 층(원국·대한·유년·유월)을 한 번만 세워 여러 프로파일이 나눠 쓴다
@@ -71,9 +74,20 @@ export function buildHiRes(r, f = null, plan) {
     .filter(Boolean);
 
   // ── 연 단위 타이밍 기법 — 솔라 아크와 프로펙션 ──
-  const arcYears = safe(() => WS.natalPack(input)) ;
-  const solarArc = arcYears ? safe(() => WE.solarArcYears(input, arcYears, grid.fromYear, grid.toYear)) ?? [] : [];
-  const profections = arcYears ? safe(() => WE.profectionYears(input, arcYears, input.year, grid.fromYear, grid.toYear)) ?? [] : [];
+  const solarArc = natal ? safe(() => WE.solarArcYears(input, natal, grid.fromYear, grid.toYear)) ?? [] : [];
+  const profections = natal ? safe(() => WE.profectionYears(input, natal, input.year, grid.fromYear, grid.toYear)) ?? [] : [];
+
+  // ── 재물 — 돈이 어디서 들어오는가 ──
+  // 재물 질문일 때만 돌린다. 고전 로트와 릴로케이션까지 도는 무거운 계산이다.
+  const classical = plan.needsWealth ? safe(() => CL.classicalChart(input)) : null;
+  const wealth = plan.needsWealth ? safe(() => W.wealthPaths(input, chart, stack)) : null;
+  const windfall = (plan.needsWealth && plan.needsWindfall)
+    ? safe(() => W.windfall(input, chart, stack, {
+        fromYear: grid.fromYear, years: Math.max(12, plan.years), natal }))
+    : null;
+  const lifetime = (plan.needsWealth && (plan.needsLifetime || plan.needsWindfall))
+    ? safe(() => W.lifetimeWealth(input, chart, { dashaTree: grid.dashaTree }))
+    : null;
 
   // ── 단언 등급 ──
   // 여기서 중요한 것은 "여러 기법이 있다"가 아니라 **같은 시기를 함께 짚는가**다.
@@ -138,6 +152,16 @@ export function buildHiRes(r, f = null, plan) {
     tiers,
     profiles,
     yearTiming: { solarArc, profections },
+    classical: classical && !classical.unavailable ? {
+      sect: classical.sect,
+      dignities: Object.fromEntries(Object.entries(classical.dignities)
+        .map(([k, v]) => [k, CL.stateLine(v)])),
+      lots: Object.fromEntries(Object.entries(classical.lots).map(([k, v]) => [k, CL.lotLine(v)])),
+      moneyHouses: Object.fromEntries(Object.entries(classical.moneyHouses)
+        .map(([k, v]) => [k, CL.houseLine(v)])),
+      substanceNote: classical.substanceNote,
+    } : (classical?.unavailable ? { unavailable: classical.unavailable } : null),
+    wealth, windfall, lifetime,
     // 자미 — 질문 분야의 궁을 층마다 삼방사정·길성·살성까지 펴 본다
     ziweiPalaces: stack ? domains.map((d) => ({
       domain: d,
@@ -156,6 +180,7 @@ export function buildHiRes(r, f = null, plan) {
   };
 
   return { json, grid, inferences, chain, location, profiles, tiers, stack,
+           classical, wealth, windfall, lifetime,
            text: formatHiRes(json, plan) };
 }
 
@@ -566,6 +591,31 @@ export function formatHiRes(j, plan) {
     if (c.scenarios.contrary) out.push(`  반대 근거: ${c.scenarios.contrary.name} 쪽을 막는 신호가 있다`);
   }
   out.push('');
+
+  // ── 고전 점성술 — 섹트·디그니티·로트·재물 하우스 ──
+  if (j.classical && !j.classical.unavailable) {
+    out.push('### [A] 계산 사실 — 고전 점성술 (섹트·디그니티·로트)');
+    out.push(`${j.classical.sect.label} (태양이 ${j.classical.sect.sunHouse}하우스) · ` +
+      `이 차트의 섹트 길성 ${j.classical.sect.benefic}, 섹트 흉성 ${j.classical.sect.malefic}, ` +
+      `섹트에 어긋난 흉성 ${j.classical.sect.outOfSectMalefic}`);
+    out.push('행성의 힘 (에센셜 점수 / 액시덴털 상태):');
+    for (const line of Object.values(j.classical.dignities)) out.push(`  ${line}`);
+    out.push('로트 (주인의 상태까지 봐야 한다 — 로트만 보고 결론 내리지 말 것):');
+    for (const line of Object.values(j.classical.lots)) out.push(`  ${line}`);
+    out.push(`  ※ substance 는 ${j.classical.substanceNote}`);
+    out.push('재물 하우스 — 고전은 돈을 다섯 자리로 나눠 본다:');
+    for (const line of Object.values(j.classical.moneyHouses)) out.push(`  ${line}`);
+    out.push('');
+  } else if (j.classical?.unavailable) {
+    out.push(`### 고전 점성술 — ${j.classical.unavailable}`);
+    out.push('');
+  }
+
+  // ── 재물 경로 ──
+  if (j.wealth) {
+    out.push(W.formatWealth(j.wealth, j.windfall, j.lifetime));
+    out.push('');
+  }
 
   // ── 분야별 프로파일 — 누구와·어떤 모양으로 ──
   if (j.profiles?.length) {

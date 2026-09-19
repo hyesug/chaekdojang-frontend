@@ -469,6 +469,102 @@ export function dayRange(input, chart, from, span = 120) {
 }
 
 /**
+ * 수술·시술처럼 몸에 손대는 일을 위한 전용 순위.
+ *
+ * 일반 일진 등급은 하루 전체의 흐름일 뿐 수술 전용 점수가 아니다.
+ * 따라서 아래 순서를 사전식(lexicographic)으로 고정한다.
+ *
+ *  1) 일지충·띠충·양인 제외
+ *  2) 천의
+ *  3) 황도
+ *  4) 해당 절기월 건강 흐름
+ *  5) 당일 건강 흐름
+ *  6) 일반 일진 등급
+ *
+ * 대운 전환은 순위를 임의로 바꾸는 점수로 쓰지 않고, 후보 설명에만
+ * 표시한다. 전환기 자체를 좋다/나쁘다로 단정할 근거가 없기 때문이다.
+ */
+const SURGERY_GRADE_RANK = {
+  '아주 좋음': 5, '좋음': 4, '무난': 3, '조심': 2, '나쁨': 1, '특히 조심': 0,
+};
+
+export function rankSurgeryDays(input, chart, days) {
+  const monthHealth = new Map();
+
+  const daeun = computeDaeun(chart, input.isMale, input.jdUT);
+  const transitions = (daeun?.list ?? []).slice(0, -1).map((p, i) => {
+    const next = daeun.list[i + 1];
+    return {
+      atJD: input.jdUT + p.toExact * 365.2425,
+      from: p.hanja,
+      to: next.hanja,
+    };
+  });
+
+  const nearestTransition = (x) => {
+    if (!transitions.length) return null;
+    const jd = toJD(x.y, x.m, x.d, 12);
+    const nearest = transitions
+      .map((t) => ({ ...t, delta: Math.round(jd - t.atJD) }))
+      .sort((a, b) => Math.abs(a.delta) - Math.abs(b.delta))[0];
+    if (!nearest || Math.abs(nearest.delta) > 45) return null;
+    const at = fromJD(nearest.atJD);
+    return {
+      ...nearest,
+      date: { y: at.y, m: at.m, d: at.d },
+      near: true,
+    };
+  };
+
+  const candidates = [];
+  const excluded = [];
+
+  for (const x of days) {
+    const reasons = [];
+    if (x.taekil.clashDay) reasons.push('일지충');
+    if (x.taekil.clashYear) reasons.push('띠충');
+    if (x.sinsal.includes('양인')) reasons.push('양인');
+
+    if (reasons.length) {
+      excluded.push({ ...x, surgeryExclude: reasons });
+      continue;
+    }
+
+    const mp = makePeriod('month', { y: x.y, m: x.m, d: x.d });
+    const key = `${mp.sajuYear}-${mp.gz.month.stem}-${mp.gz.month.branch}`;
+    if (!monthHealth.has(key)) {
+      const mf = forecastPeriod(input, chart, mp);
+      monthHealth.set(key, mf.areas.건강운.score ?? 50);
+    }
+
+    candidates.push({
+      ...x,
+      surgery: {
+        cheonui: x.taekil.cheonui,
+        hwangdo: x.taekil.good,
+        hwangdoName: x.taekil.hwangdo,
+        monthHealth: monthHealth.get(key),
+        dayHealth: x.health ?? 50,
+        gradeRank: SURGERY_GRADE_RANK[x.grade] ?? 0,
+        daeunTransition: nearestTransition(x),
+      },
+    });
+  }
+
+  candidates.sort((a, b) =>
+    Number(b.surgery.cheonui) - Number(a.surgery.cheonui) ||
+    Number(b.surgery.hwangdo) - Number(a.surgery.hwangdo) ||
+    b.surgery.monthHealth - a.surgery.monthHealth ||
+    b.surgery.dayHealth - a.surgery.dayHealth ||
+    b.surgery.gradeRank - a.surgery.gradeRank ||
+    b.score - a.score ||
+    toJD(a.y, a.m, a.d, 12) - toJD(b.y, b.m, b.d, 12)
+  );
+
+  return { candidates, excluded };
+}
+
+/**
  * 날짜 목록 하나를 계산하고, 그 목록 안에서의 순위로 등급을 매긴다.
  *
  * 하루에 열다섯 체계를 다 돌린다. 30일이면 450번인데 재보니 36밀리초라

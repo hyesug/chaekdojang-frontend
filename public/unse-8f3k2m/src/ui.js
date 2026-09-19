@@ -14,6 +14,7 @@ import {
   chartText, compatText, copyText, downloadText,
 } from './share.js';
 import { pickNumbers } from './lotto.js';
+import { LOTTO_MODEL } from './data/lotto-model.js';
 import { readForecast } from './forecast.js';
 import { aiSection, initAI, initCompatAI } from './ai.js';
 import { buildView, sensitivity, buildCompatView } from './viewmodel.js';
@@ -280,6 +281,20 @@ function lottoSection(input, chart) {
         </dl>
       </details>
 
+      ${week.shape.swapped ? `
+      <p class="poolnote">
+        ${esc(String(week.shape.before.hits[0] ?? '흔한 모양이라'))} —
+        그래서 ${week.shape.swapped.from}번을 ${week.shape.swapped.to}번으로 바꿨습니다.
+        당첨 확률과는 무관합니다. 당첨됐을 때 같은 번호를 고른 사람이 많으면
+        나눠 갖게 되어서, 눈에 띄는 모양만 살짝 피한 것입니다.
+      </p>` : ''}
+
+      <details class="pool">
+        <summary>"지난 회차 통계"는 정말 쓸모가 없을까 — 직접 재봤습니다</summary>
+        <p class="poolnote">${esc(week.statsNote)}</p>
+        ${lottoVerdicts()}
+      </details>
+
       <p class="lotto-warn">
         로또는 어떤 방법으로도 예측되지 않습니다. 매 회차가 독립 시행이라
         지난 회차 통계도, 명반도, 그 무엇도 다음 추첨에 대해 아무것도 말해주지 않습니다.
@@ -287,6 +302,34 @@ function lottoSection(input, chart) {
         아무 번호나 찍는 대신 자기 명반에서 나온 번호로 고르는 것, 딱 그만큼의 의미입니다.
       </p>
     </div>`;
+}
+
+/**
+ * 통계 검증 결과.
+ *
+ * 핫넘버니 이월수니 하는 것들을 그대로 만들어 놓고, 과거 회차로 무작위보다
+ * 나은지 실제로 재본 결과다. 거의 언제나 "아니다"가 나오고 그게 정상이다.
+ * 믿어달라고 하는 대신 수치를 보여주려고 넣었다.
+ */
+function lottoVerdicts() {
+  const v = LOTTO_MODEL.verdicts ?? [];
+  if (!v.length) {
+    return `<p class="poolnote">회차 데이터를 넣고 <code>node scripts/lotto-verify.mjs</code> 를
+      돌리면 신호별 검증 결과가 여기 나옵니다.</p>`;
+  }
+  return `
+    <dl class="facts">
+      ${v.map((x) => `
+        <div class="fact">
+          <dt>${x.weight > 0 ? '○' : '×'}</dt>
+          <dd>${esc(x.name)}<small>${esc(x.note)}</small></dd>
+        </div>`).join('')}
+    </dl>
+    <p class="poolnote">
+      ${LOTTO_MODEL.drawCount}개 회차로 확인했습니다. 과거를 맞히는지가 아니라
+      <strong>아직 보지 않은 회차</strong>를 맞히는지를 봤고, 공정한 추첨을 흉내 낸
+      가짜 데이터에 같은 방법을 돌려 나오는 우연 수준과 비교했습니다.
+    </p>`;
 }
 
 // ─────────────────────────────────────────────────────────────

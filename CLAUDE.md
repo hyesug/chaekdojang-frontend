@@ -142,6 +142,26 @@ AI 에는 두 덩이로 보냅니다 — 명반 본문은 사람마다 고정이
 설계 문서: `docs/superpowers/specs/2026-09-19-fortune-high-resolution-design.md`
 (작업 전후 지원 계산 표와 유파 기준표가 여기 있습니다)
 
+### 번들 — 브라우저는 묶은 파일 하나만 받습니다
+
+`index.html` 이 읽는 것은 `src/ui.js` 가 아니라 **`app.js`** 입니다.
+`src/` 의 모듈 마흔아홉 개를 esbuild 로 묶고 주석을 턴 결과물입니다.
+
+```
+원본 49개 876KB → app.js 한 개 483KB (gzip 178KB) · 요청 51번 → 3번
+```
+
+- **원본이 진짜입니다.** `src/` 는 그대로 두고, 테스트도 `src/` 를 import 합니다.
+  `app.js` 는 만들어지는 물건이라 직접 고치지 마세요.
+- `npm run dev` 와 `npm run build` 가 **알아서 다시 묶습니다.** 따로 부를 일은 없습니다.
+- 엔진을 고치는 동안에는 `npm run unse:watch` 를 켜두면 고치는 대로 다시 묶입니다.
+  (켜지 않고 `src/` 만 고치면 화면은 이전 번들을 계속 보여줍니다 — 이게 유일한 함정입니다)
+- 소스맵은 만들지 않습니다. 올리는 순간 주석까지 포함한 원본이 그대로 공개돼
+  묶은 이유 하나가 사라집니다. 오류를 좇아야 하면 `node scripts/bundle-unse.mjs --sourcemap`
+  으로 한 번 만들어 보고 올리지는 마세요.
+- 폴더 이름(=주소)은 `scripts/bundle-unse.mjs` 가 `src/engine.js` 로 찾아냅니다.
+  `npm run unse:url` 로 주소를 바꿔도 따로 고칠 곳이 없습니다.
+
 ### 테스트
 
 ```

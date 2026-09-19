@@ -3,13 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "npm run unse:bundle && next dev",
+    "build": "npm run unse:bundle && next build",
     "start": "next start",
     "lint": "eslint",
     "smoke:prod": "node scripts/smoke-prod.mjs",
     "test:unse": "node --test tests/unse/*.test.mjs",
     "unse:url": "node scripts/rename-unse-path.mjs",
+    "unse:bundle": "node scripts/bundle-unse.mjs",
+    "unse:watch": "node scripts/bundle-unse.mjs --watch",
     "test": "npm run test:unse"
   },
   "dependencies": {
@@ -26,6 +28,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "esbuild": "^0.28.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "tailwindcss": "^4",

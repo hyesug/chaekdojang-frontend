@@ -138,6 +138,9 @@
   </footer>
 
 </div>
-<script type="module" src="src/ui.js"></script>
+<!-- src/ 의 모듈 마흔아홉 개를 한 파일로 묶은 것이다 (npm run unse:bundle).
+     원본은 src/ 에 그대로 있고 테스트도 그쪽을 본다. 엔진을 고치는 동안에는
+     npm run unse:watch 를 켜두면 고치는 대로 다시 묶인다. -->
+<script type="module" src="app.js"></script>
 </body>
 </html>

@@ -281,13 +281,15 @@ function lottoSection(input, chart) {
         </dl>
       </details>
 
-      ${week.shape.swapped ? `
       <p class="poolnote">
-        ${esc(String(week.shape.before.hits[0] ?? '흔한 모양이라'))} —
-        그래서 ${week.shape.swapped.from}번을 ${week.shape.swapped.to}번으로 바꿨습니다.
-        당첨 확률과는 무관합니다. 당첨됐을 때 같은 번호를 고른 사람이 많으면
-        나눠 갖게 되어서, 눈에 띄는 모양만 살짝 피한 것입니다.
-      </p>` : ''}
+        여섯 자리는 체계가 낸 후보로 조합을 ${week.analysis.candidate.poolSize.toLocaleString()}개 만들어 본 뒤
+        그중에서 골랐습니다. 고를 때 생일형·연속수·용지 직선처럼 <strong>사람들이 많이 고르는 모양</strong>은
+        피했습니다. 당첨 확률과는 무관합니다 — 당첨됐을 때 같은 번호를 고른 사람이 많으면
+        나눠 갖게 되어서, 눈에 띄는 모양만 피한 것입니다.
+        ${week.analysis.candidate.penaltyHits.length
+          ? `(이번 조합에 남은 항목: ${esc(week.analysis.candidate.penaltyHits.join(' · '))})`
+          : ''}
+      </p>
 
       <details class="pool">
         <summary>"지난 회차 통계"는 정말 쓸모가 없을까 — 직접 재봤습니다</summary>

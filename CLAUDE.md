@@ -1,5 +1,27 @@
 @AGENTS.md
 
+## 먼저 확인할 것 (매 작업 시작 시)
+
+| 항목 | 값 |
+|------|-----|
+| 저장소 | `hyesug/chaekdojang-web` — 이것 하나뿐입니다 |
+| 작업 브랜치 | **`staging`** (main에 직접 커밋하지 않습니다) |
+| 명반·운세 코드 | `public/unse-8f3k2m/` — **이 저장소 안에 있습니다** |
+| AI 모델 | **Claude만** 씁니다 |
+
+**혼동 주의 — `darktaoist/fortune`(타오운세, `taounse2`)은 이 프로젝트가 아닙니다.**
+이름이 비슷하고 운세 서비스라 헷갈리기 쉽지만, 남의 계정에 있는 별개의 옛 프로젝트이고
+사주 4기둥만 쓰며 자미두수·점성술·베딕 엔진이 없습니다. "명반", "운세", "사주" 지시는
+**전부 이 저장소의 `public/unse-8f3k2m/`** 를 말합니다. 그쪽 저장소는 사용자가
+"타오운세" 또는 "taounse" 라고 직접 이름을 댈 때만 엽니다.
+
+**DeepSeek을 쓰지 않습니다.** AI 호출은 `app/fortune-ai/route.ts` 의 Claude 하나로만 갑니다.
+DeepSeek을 비롯한 다른 모델 제공자를 추가하거나, 폴백으로 끼워 넣거나, 의존성을 설치하지 마세요.
+(참고로 위 `darktaoist/fortune` 에는 DeepSeek 폴백이 들어 있습니다 — 거기 코드를 참고해
+이 저장소로 옮겨 오지 마세요.)
+
+---
+
 # 책도장 프론트엔드
 
 독서 전용 SNS 서비스 **책도장**의 Next.js 프론트엔드입니다.
@@ -89,11 +111,22 @@ Next.js 앱과 별개로 도는 **바닐라 JS 정적 사이트**입니다. 빌�
 ### 테스트
 
 ```
-node --test tests/unse/*.test.mjs
+npm run test:unse
 ```
 
-`npm run test:unse` 는 Node 24에서 깨집니다 — 스크립트의 `--experimental-default-type=module`
-플래그가 Node 24에서 제거됐습니다. 테스트 파일이 전부 `.mjs` 라 이 플래그는 원래 필요 없습니다.
+### 주소 바꾸기
+
+운세 사이트 주소(`/unse-8f3k2m`)는 메뉴에 걸지 않고 **아는 사람만 들어오는 자리**입니다.
+주소를 바꾸려면 한 줄이면 됩니다.
+
+```
+npm run unse:url -- unse-2k9x4p
+```
+
+폴더 이름과 그것을 적어 둔 모든 곳(`next.config.ts`, `index.html` 의 `<base>`,
+테스트 import 경로, GitHub 워크플로, 문서)을 한 번에 바꿉니다. 정적 사이트는
+`public/<폴더>` 가 곧 주소라서, 폴더를 그대로 두고 주소만 바꾸면 옛 주소가 계속 열립니다 —
+그래서 폴더째 옮깁니다. 바꾼 뒤 `npm run test:unse` 와 `npm run build` 로 확인하세요.
 
 ---
 

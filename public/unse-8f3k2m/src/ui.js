@@ -2,11 +2,15 @@
  * ui.js — 화면 그리기
  *
  * 계산은 engine.js가 전부 한다. 여기서는 폼을 읽고 결과를 그린다.
+ *
+ * **이 파일은 첫 화면에 받지 않는다.** boot.js 가 '풀이 보기'를 누를 때
+ * (또는 폼에 처음 손을 댈 때 미리) 받아온다. 여기서 import 하는 것은 전부
+ * 그 덩이에 딸려 온다는 뜻이니, 가벼운 것을 새로 쓸 일이 생기면 boot.js
+ * 쪽에 두는 편이 낫다.
  */
 
 import { readFortune, prepareInput } from './engine.js';
 import { compareFortune } from './compat.js';
-import { CITIES } from './core/place.js';
 import { lunarToSolar } from './core/lunar.js';
 import { j } from './core/josa.js';
 import {
@@ -41,151 +45,59 @@ const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-// ── 도시 목록 채우기 ──
-$('#cities').innerHTML = CITIES.map((c) => `<option value="${c.name}">`).join('');
+// ─────────────────────────────────────────────────────────────
+// boot.js 가 부르는 입구
+// ─────────────────────────────────────────────────────────────
 
-// ── 두 번째 사람 칸 만들기 ──
-// 첫 번째 사람 칸을 그대로 복제하고 id에만 b- 접두사를 붙인다.
-// 칸이 늘어나거나 바뀌어도 한쪽만 고치면 된다.
-{
-  const src = $('#personA');
-  const clone = src.cloneNode(true);
-  clone.querySelectorAll('[id]').forEach((el) => { el.id = 'b-' + el.id; });
-  clone.querySelectorAll('label[for]').forEach((el) => { el.htmlFor = 'b-' + el.htmlFor; });
-  const b = $('#personB');
-  b.innerHTML = clone.innerHTML;
-  b.querySelector('.person-title').textContent = '두 번째 사람';
-}
-
-// ── 모드 전환 ──
-let mode = 'solo';
-document.querySelectorAll('.mode').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    mode = btn.dataset.mode;
-    document.querySelectorAll('.mode').forEach((x) => x.classList.toggle('on', x === btn));
-    $('#personB').hidden = mode !== 'pair';
-    document.querySelectorAll('.person-title').forEach((t) => { t.hidden = mode !== 'pair'; });
-    $('.go').textContent = mode === 'pair' ? '궁합 보기' : '풀이 보기';
-    $('#result').classList.remove('on');
-    last = null;
-    history.replaceState(null, '', location.pathname);
-  });
-});
-
-// ── 시간 미상 토글 ──
-function wireNoTime(prefix) {
-  const box = $(`#${prefix}noTime`);
-  if (!box) return;
-  box.addEventListener('change', (e) => {
-    const off = e.target.checked;
-    for (const f of ['hour', 'minute']) {
-      const el = $(`#${prefix}${f}`);
-      el.disabled = off;
-      el.style.opacity = off ? 0.4 : 1;
-    }
-  });
-}
-wireNoTime('');
-wireNoTime('b-');
-
-// ── 제출 ──
 /**
- * 계산 과정을 보여준다.
+ * 폼을 읽어 계산하고 결과를 그린다.
  *
- * 전부 합쳐 0.3초면 끝나는 계산이라 예전에는 결과가 툭 튀어나왔다. 그러면
- * 무엇을 했는지가 전혀 보이지 않아서, 어딘가에서 글을 받아온 것처럼 보인다.
- * 실제로 하는 일을 순서대로 보여주는 편이 낫다.
+ * 진행 표시(progressShell·stepper)는 boot.js 가 이미 띄워 두었다. 여기서는
+ * 단계가 끝날 때마다 `next()` 를 불러 표시만 넘긴다.
  *
- * 체크 표시는 그 단계가 진짜로 끝났을 때만 켠다. 다만 사람이 읽을 수 있게
- * 단계마다 최소 시간을 준다 — 없는 일을 하는 척하지는 않는다.
+ * @param {'solo'|'pair'} mode
+ * @param {HTMLElement} box   결과를 그릴 자리
+ * @param {() => Promise<void>} next 한 단계 끝났음을 알린다
  */
-const SOLO_STEPS = [
-  '태어난 곳의 경도와 균시차로 진태양시를 맞춥니다',
-  '열다섯 체계의 명반을 세웁니다',
-  '지금의 흐름을 얹습니다',
-  '겹치는 것을 추려 풀이를 씁니다',
-  '앞으로 120일의 일진을 계산합니다',
-];
-const PAIR_STEPS = [
-  '두 사람의 진태양시를 각각 맞춥니다',
-  '열다섯 체계로 두 명반을 견줍니다',
-  '풀이를 씁니다',
-  '두 사람에게 같이 맞는 날을 찾습니다',
-];
+export async function run(mode, box, next) {
+  const form = collect('', mode);
+  const formB = mode === 'pair' ? collect('b-', mode) : null;
 
-const progressShell = (steps) => `
-  <div class="card progress">
-    <ol class="steps">
-      ${steps.map((t) => `<li><span class="mark"></span>${esc(t)}</li>`).join('')}
-    </ol>
-  </div>`;
+  if (mode === 'pair') {
+    prepareInput(form); prepareInput(formB);
+    await next();
+    const c = compareFortune(form, formB);
+    await next();
+    box.innerHTML = renderCompat(form, formB, c);
+    await next();
+    initCompatAI(form, formB, c);
+    await next();
+  } else {
+    prepareInput(form);
+    await next();
+    const r = readFortune(form);
+    await next();
+    const f = readForecast(form);
+    await next();
+    box.innerHTML = render(form, r, f);
+    await next();
+    initAI(form, r, f);
+    initHiResPanel(r, f);
+    await next();
+  }
 
-/** 한 단계가 끝날 때마다 부른다. 최소 시간을 채우고 다음으로 넘어간다 */
-function stepper(minMs = 260) {
-  const items = [...document.querySelectorAll('#result .steps li')];
-  let i = 0, due = performance.now();
-  if (items[0]) items[0].classList.add('doing');
-  return async () => {
-    const wait = due - performance.now();
-    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
-    items[i]?.classList.remove('doing');
-    items[i]?.classList.add('done');
-    i += 1;
-    items[i]?.classList.add('doing');
-    due = performance.now() + minMs;
-    // 켜진 표시가 실제로 그려지도록 한 번 양보한다.
-    // requestAnimationFrame 은 탭이 뒤로 가면 아예 멈춘다. 그러면 사용자가
-    // 잠깐 다른 탭을 봤다 왔을 때 진행 화면에서 영영 끝나지 않는다.
-    await new Promise((r) => setTimeout(r, 0));
-  };
+  // 주소를 지금 보고 있는 결과에 맞춰 둔다.
+  // 새로고침해도 같은 결과가 나오고, 주소창을 그대로 복사해도 된다.
+  history.replaceState(null, '', encodeState(last.mode, last.formA, last.formB));
 }
 
-$('#form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const box = $('#result');
-  try {
-    const form = collect('');
-    const formB = mode === 'pair' ? collect('b-') : null;
+/** 모드를 바꾸면 방금 본 결과를 잊는다. 공유·이미지 버튼이 이걸 본다 */
+export function reset() {
+  last = null;
+  lastView = null;
+}
 
-    box.innerHTML = progressShell(mode === 'pair' ? PAIR_STEPS : SOLO_STEPS);
-    box.classList.add('on');
-    box.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    const next = stepper();
-    await new Promise((r) => setTimeout(r, 0));
-
-    if (mode === 'pair') {
-      prepareInput(form); prepareInput(formB);
-      await next();
-      const c = compareFortune(form, formB);
-      await next();
-      box.innerHTML = renderCompat(form, formB, c);
-      await next();
-      initCompatAI(form, formB, c);
-      await next();
-    } else {
-      prepareInput(form);
-      await next();
-      const r = readFortune(form);
-      await next();
-      const f = readForecast(form);
-      await next();
-      box.innerHTML = render(form, r, f);
-      await next();
-      initAI(form, r, f);
-      initHiResPanel(r, f);
-      await next();
-    }
-
-    // 주소를 지금 보고 있는 결과에 맞춰 둔다.
-    // 새로고침해도 같은 결과가 나오고, 주소창을 그대로 복사해도 된다.
-    history.replaceState(null, '', encodeState(last.mode, last.formA, last.formB));
-  } catch (err) {
-    box.innerHTML = `<div class="error">${esc(err.message)}</div>`;
-    box.classList.add('on');
-  }
-});
-
-function collect(p) {
+function collect(p, mode) {
   const num = (id) => {
     const v = $(`#${p}${id}`).value.trim();
     return v === '' ? null : Number(v);
@@ -996,8 +908,14 @@ $('#result').addEventListener('click', (e) => {
   }
 });
 
-// ── 링크로 들어온 경우 그대로 되살린다 ──
-(function restore() {
+/**
+ * 링크로 들어온 경우 그대로 되살린다.
+ *
+ * 주소를 푸는 decodeState 가 share.js 에 있고 share.js 는 해석문을 끌고
+ * 들어오므로, 이 함수는 첫 화면 쪽(boot.js)에 둘 수 없다. 대신 주소에
+ * 결과가 담겨 있을 때만 boot.js 가 이쪽을 부른다.
+ */
+export function restoreFromHash() {
   const st = decodeState(location.hash);
   if (!st) return;
 
@@ -1020,14 +938,4 @@ $('#result').addEventListener('click', (e) => {
   fill('', st.formA);
   if (st.formB) fill('b-', st.formB);
   $('#form').requestSubmit();
-})();
-
-// 화면 아래에 판 번호를 박아 둔다. "예전과 다른데요"라는 말이 나올 때
-// 어느 판을 보고 있는지부터 맞춰야 이야기가 된다.
-{
-  const el = $('#ver');
-  if (el) {
-    const last = CALC_CHANGES[0];
-    el.textContent = `${ENGINE_VERSION} · 계산이 마지막으로 달라진 날 ${last ? last.at : '—'}`;
-  }
 }

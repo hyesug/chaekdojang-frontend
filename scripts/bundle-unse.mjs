@@ -15,6 +15,16 @@
  *   그 주석이 브라우저까지 갈 이유는 없다. 원본은 그대로 두고 나가는
  *   것만 턴다.
  *
+ * 왜 쪼개는가.
+ *   묶기만 하면 생년월일을 적는 동안에도 계산 엔진과 해석문을 전부 받아놓고
+ *   기다리게 된다. 폼 화면에 필요한 것은 도시 목록과 판 번호뿐이다.
+ *   그래서 진입점을 boot.js 로 두고, 무거운 쪽은 boot.js 안의
+ *   `import('./ui.js')` 한 줄로 떼어 낸다. esbuild 의 splitting 이 그 지점을
+ *   보고 알아서 덩이를 가른다.
+ *
+ *   나오는 파일은 app.js(첫 화면)와 chunk-*.js(엔진)이다. 둘 다 만들어지는
+ *   물건이라 손으로 고치지 않는다.
+ *
  * 무엇을 건드리지 않는가.
  *   src/ 아래 원본은 손대지 않는다. 테스트도 원본을 그대로 import 한다.
  *   번들은 만들어지는 물건이고, 원본이 언제나 진짜다.
@@ -26,8 +36,8 @@
  */
 
 import { build, context } from 'esbuild';
-import { readdirSync, statSync, existsSync, readFileSync } from 'node:fs';
-import { join, dirname, relative } from 'node:path';
+import { readdirSync, statSync, existsSync, readFileSync, unlinkSync } from 'node:fs';
+import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 
@@ -56,30 +66,58 @@ function findSite() {
 }
 
 const slug = findSite();
-const entry = join(ROOT, 'public', slug, 'src', 'ui.js');
-const outfile = join(ROOT, 'public', slug, 'app.js');
+const siteDir = join(ROOT, 'public', slug);
+const entry = join(siteDir, 'src', 'boot.js');
 const watch = process.argv.includes('--watch');
 const sourcemap = process.argv.includes('--sourcemap');
 
+/**
+ * 지난번에 나온 덩이를 먼저 지운다.
+ * 덩이 이름은 무엇이 어디로 갈렸느냐에 따라 달라진다. 지우지 않으면 아무도
+ * 읽지 않는 옛 파일이 폴더에 쌓이고, 그게 저장소에 그대로 올라간다.
+ */
+function sweep() {
+  for (const name of readdirSync(siteDir)) {
+    if (/^app-.*\.js(\.map)?$/.test(name)) unlinkSync(join(siteDir, name));
+  }
+}
+
 /** 원본 몇 개를 얼마나 줄였는지 — 묶은 보람을 눈으로 확인하려고 적는다 */
 function report() {
-  const files = [];
+  const srcFiles = [];
   const walk = (dir) => {
     for (const name of readdirSync(dir)) {
       const p = join(dir, name);
       if (statSync(p).isDirectory()) walk(p);
-      else if (name.endsWith('.js')) files.push(p);
+      else if (name.endsWith('.js')) srcFiles.push(p);
     }
   };
-  walk(join(ROOT, 'public', slug, 'src'));
+  walk(join(siteDir, 'src'));
+  const srcBytes = srcFiles.reduce((t, p) => t + statSync(p).size, 0);
 
-  const srcBytes = files.reduce((t, p) => t + statSync(p).size, 0);
-  const out = readFileSync(outfile);
   const kb = (n) => `${(n / 1024).toFixed(0)}KB`;
+  const outs = readdirSync(siteDir)
+    .filter((n) => n === 'app.js' || /^app-.*\.js$/.test(n))
+    .map((n) => ({ name: n, buf: readFileSync(join(siteDir, n)) }))
+    .sort((a, b) => b.buf.length - a.buf.length);
+
+  // 첫 화면에 받는 것은 진입점과 그것이 곧바로 import 하는 공용 덩이다.
+  // 엔진 덩이(app-ui.js)는 '풀이 보기'를 누를 때 받는다.
+  const lazy = (n) => n === 'app-ui.js';
+  const first = outs.filter((o) => !lazy(o.name));
+  const kbSum = (arr, f = (b) => b.length) =>
+    kb(arr.reduce((t, o) => t + f(o.buf), 0));
+
+  console.log(`public/${slug} — 원본 ${srcFiles.length}개 ${kb(srcBytes)} → ${outs.length}개`);
+  for (const o of outs) {
+    console.log(
+      `  ${o.name.padEnd(16)} ${kb(o.buf.length).padStart(6)} ` +
+      `(gzip ${kb(gzipSync(o.buf).length).padStart(6)})  ` +
+      `${lazy(o.name) ? '풀이 보기를 누를 때' : '첫 화면'}`
+    );
+  }
   console.log(
-    `${relative(ROOT, outfile)} — ` +
-    `원본 ${files.length}개 ${kb(srcBytes)} → 한 개 ${kb(out.length)} ` +
-    `(gzip ${kb(gzipSync(out).length)})`
+    `  첫 화면 합계 ${kbSum(first)} (gzip ${kbSum(first, (b) => gzipSync(b).length)})`
   );
 }
 
@@ -91,8 +129,17 @@ function report() {
  */
 const options = {
   entryPoints: [entry],
-  outfile,
+  outdir: siteDir,
+  // 진입점 파일 이름은 boot 가 아니라 app 으로 둔다. index.html 이 읽는 이름이라
+  // 여기서 바꾸면 index.html 도 같이 고쳐야 한다.
+  entryNames: 'app',
+  // 덩이 이름에 해시를 넣지 않는다. 해시를 넣으면 엔진을 한 줄 고칠 때마다
+  // 파일 이름이 바뀌어 저장소에 새 파일이 쌓인다. app.js 도 이미 고정 이름이라
+  // 캐시 정책이 달라지지도 않는다.
+  // app.js 옆에 app-ui.js, app-chunk.js 로 놓여 한 벌인 것이 눈에 보인다.
+  chunkNames: 'app-[name]',
   bundle: true,
+  splitting: true,        // import('./ui.js') 를 보고 덩이를 가른다
   format: 'esm',          // index.html 이 <script type="module"> 로 읽는다
   target: 'es2022',
   minify: true,
@@ -106,10 +153,12 @@ const options = {
 };
 
 if (watch) {
+  sweep();
   const ctx = await context({ ...options, logLevel: 'info' });
   await ctx.watch();
   console.log(`지켜보는 중 — public/${slug}/src 를 고치면 다시 묶습니다. 멈추려면 Ctrl+C`);
 } else {
+  sweep();
   await build(options);
   report();
 }

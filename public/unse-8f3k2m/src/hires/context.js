@@ -57,7 +57,10 @@ export function buildHiRes(r, f = null, plan) {
       d === domains[0] ? grid : buildGrid(input, chart, {
         fromYear: plan.fromYear, years: plan.years, domain: d, forecast: f,
       }),
-      d
+      d,
+      // 질문이 사건을 집어냈고 그 사건이 이 분야의 것이면 그것에 맞춘다.
+      // 맞추지 않으면 정반대 사건을 골라 답이 뒤집힌다 (실측: 7위 vs 177위)
+      (plan.event && plan.eventDomain === d) ? { event: plan.event } : {}
     )
   );
 
@@ -169,9 +172,14 @@ export function buildHiRes(r, f = null, plan) {
       domain: d,
       palaces: safe(() => ZE.domainPalaces(input, d, stack.layers)) ?? [],
     })).filter((x) => x.palaces.length) : [],
+    askedEvent: plan.event ?? null,
     timingWindows: inferences.flatMap((i) =>
       i.windows.map((w) => ({ domain: i.domain, label: w.label, band: w.band,
-        peak: w.peak.label, systems: w.systems, phases: w.phases }))),
+        peak: w.peak.label, systems: w.systems, phases: w.phases,
+        rankedBy: i.rankedBy }))),
+    // 사건마다 따로 세운 달. 구간만 보면 정반대 사건이 섞인다
+    perEvent: inferences.map((i) => ({ domain: i.domain, focusEvent: i.focusEvent,
+      rankedBy: i.rankedBy, events: i.perEvent })),
     candidateEvents: inferences.map((i) => ({
       domain: i.domain,
       candidates: i.candidates.slice(0, 5),
@@ -569,14 +577,39 @@ export function formatHiRes(j, plan) {
   // ── B~E. 사건 추론 ──
   out.push('### [B~E] 사건 추론 — 위 계산값을 현실 사건으로 옮긴 것 (계산이 아니라 해석)');
   out.push('구간 등급은 이 사람의 이 기간 안에서의 상대 순위다. 확률이 아니며 숫자로 옮기지 말 것.');
+  if (j.askedEvent) {
+    out.push(`질문이 집어낸 사건: **${j.askedEvent}** — 아래 구간은 이 사건에 맞춰 고른 것이다.`);
+  } else {
+    out.push('질문에서 사건을 집어내지 못했다. 아래 구간은 "그 영역이 언제 시끄러운가"일 뿐이고, ' +
+      '**어떤 사건인지는 가리지 않는다.** 사건별로는 그 아래 "사건마다 따로 세운 달"을 볼 것.');
+  }
   for (const w of j.timingWindows) {
-    out.push(`[${w.domain}] ${w.band} 구간 ${w.label} · 정점 ${w.peak} · 지지 체계 ${w.systems.join('·') || '없음'}`);
+    out.push(`[${w.domain}] ${w.band} 구간 ${w.label} · 정점 ${w.peak} · 기준 ${w.rankedBy} · 지지 체계 ${w.systems.join('·') || '없음'}`);
     const ph = w.phases.filter((p) => p.phase).map((p) => `${p.label}${p.phase}`);
     if (ph.length) out.push(`  국면: ${ph.join(' → ')}`);
   }
   if (!j.timingWindows.length) {
     out.push('두드러진 구간 없음 — 이 기간에는 월 단위로 좁힐 근거가 부족하다.');
   }
+  out.push('');
+
+  // ── 사건마다 따로 세운 달 ──
+  // 영역 활성도로만 줄을 세우면 정반대 사건이 같은 달에 겹친다. 실제로
+  // '새 만남'과 '관계 정리'가 둘 다 같은 달을 가리켰고, 활성도 1위 달이
+  // '정리 쪽'이었다. 사건마다 갈라 세워야 "무엇이 언제"가 맞물린다.
+  out.push('### [B~E] 사건마다 따로 세운 달');
+  out.push('같은 영역이라도 정반대 사건이 있다(새 만남 / 관계 정리, 자발적 이직 / 현 직장 유지). ' +
+    '활성도로만 고르면 둘이 섞인다. 아래는 사건마다 "다른 후보보다 얼마나 앞서는가"로 따로 세운 것이다.');
+  for (const g of j.perEvent) {
+    out.push(`[${g.domain}]`);
+    for (const [name, months] of Object.entries(g.events)) {
+      if (!months.length) continue;
+      const top = months.filter((m) => m.fit > 0).slice(0, 3);
+      if (!top.length) { out.push(`  ${name}: 앞서는 달 없음 — 이 사건으로는 좁힐 근거가 부족하다`); continue; }
+      out.push(`  ${name}: ${top.map((m) => `${m.label}(여유 +${m.fit})`).join(' / ')}`);
+    }
+  }
+  out.push('※ 여유가 0 이하인 사건은 그 달이 그 사건처럼 보이지 않는다는 뜻이다. 억지로 고르지 말 것.');
   out.push('');
 
   for (const c of j.candidateEvents) {

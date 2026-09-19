@@ -22,7 +22,7 @@ import * as WS from '../../public/unse-8f3k2m/src/hires/western.js';
 import * as VD from '../../public/unse-8f3k2m/src/hires/vedic.js';
 import * as LOC from '../../public/unse-8f3k2m/src/hires/location.js';
 import { buildGrid } from '../../public/unse-8f3k2m/src/hires/grid.js';
-import { inferEvents, chainOf } from '../../public/unse-8f3k2m/src/hires/events.js';
+import { inferEvents, chainOf, EVENT_CANDIDATES } from '../../public/unse-8f3k2m/src/hires/events.js';
 import { routeQuestion, defaultPlan } from '../../public/unse-8f3k2m/src/hires/router.js';
 import { buildHiRes } from '../../public/unse-8f3k2m/src/hires/context.js';
 import { branchPair, fullCombos } from '../../public/unse-8f3k2m/src/hires/relations.js';
@@ -468,6 +468,50 @@ test('대표 구간은 시간 순서가 아니라 점수로 고른다', () => {
     assert.ok(scoreOf(inf.bestWindow) >= scoreOf(w),
       `${w.label} 이 대표 구간보다 점수가 높은데 뽑히지 않았다`);
   }
+});
+
+test('한 분야에 계산식이 같은 사건 후보를 두지 않는다', () => {
+  // 후보 둘의 점수가 늘 같으면 서로의 여유를 0으로 깎아 신호가 사라진다.
+  // 실제로 관계 분야에 '새 만남'과 '교제 시작'을 함께 뒀다가 같은 사건의
+  // 순위가 180달 중 7위에서 39위로 떨어졌다.
+  const { r } = load(FORM);
+  for (const domain of Object.keys(EVENT_CANDIDATES)) {
+    const grid = buildGrid(r.input, r.chart, { fromYear: 2026, years: 2, domain });
+    const inf = inferEvents(grid, domain);
+    const names = EVENT_CANDIDATES[domain];
+    for (let i = 0; i < names.length; i++) {
+      for (let k = i + 1; k < names.length; k++) {
+        const same = inf.rows.every((row) =>
+          row.candidateScore[names[i]] === row.candidateScore[names[k]]);
+        assert.ok(!same,
+          `${domain} 분야의 '${names[i]}' 와 '${names[k]}' 가 모든 달에서 같은 점수다 — 서로를 상쇄한다`);
+      }
+    }
+  }
+});
+
+test('사건을 지정하면 그 사건 기준으로, 아니면 활성도 기준으로 줄을 세운다', () => {
+  const { r } = load(FORM);
+  const grid = buildGrid(r.input, r.chart, { fromYear: 2026, years: 3, domain: '관계' });
+
+  const withEvent = inferEvents(grid, '관계', { event: '새 만남' });
+  assert.equal(withEvent.focusEvent, '새 만남');
+  assert.match(withEvent.rankedBy, /사건 적합도/);
+  for (const row of withEvent.rows) assert.equal(typeof row.fit, 'number');
+
+  // 지정하지 않으면 **짐작하지 않는다**. 짐작해서 정반대 사건을 고르면
+  // 답이 뒤집힌다 (실측: 같은 사건이 7위 vs 177위)
+  const without = inferEvents(grid, '관계');
+  assert.equal(without.focusEvent, null);
+  assert.equal(without.rankedBy, '영역 활성도');
+  // 대신 사건마다 따로 세운 달을 준다
+  assert.ok(Object.keys(without.perEvent).length >= 3);
+
+  // 그 분야에 없는 사건은 조용히 무시하지 않는다
+  const bogus = inferEvents(grid, '관계', { event: '임신·출산' });
+  assert.equal(bogus.focusEvent, null);
+  assert.equal(bogus.eventNotFound, '임신·출산');
+  assert.match(bogus.rankedBy, /후보가 아니다/);
 });
 
 test('한 해만 점수 항이 더 붙지 않는다', () => {

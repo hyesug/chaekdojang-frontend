@@ -45,6 +45,53 @@ const WINDFALL_WORDS = ['횡재', '로또', '복권', '당첨', '대박', '한�
 /** 평생 재물 곡선을 묻는가 */
 const LIFETIME_WORDS = ['평생', '인생', '일생', '언제 부자', '언제쯤 부자', '노후', '말년', '전체적으로'];
 
+/**
+ * 질문이 **어떤 사건**을 묻는가.
+ *
+ * 이걸 집어내는 것이 생각보다 훨씬 중요하다. 실제 사례로 재 보니
+ *   사건을 지정하면        180달 중 7위
+ *   지정하지 않고 자동 선택 180달 중 177위
+ * 였다. 엔진은 주어진 사건이 언제인지는 제법 고르지만, 어떤 사건이
+ * 일어날지는 고르지 못한다. 정반대 사건('새 만남' vs '관계 정리')을
+ * 골라 버리면 답이 뒤집힌다.
+ *
+ * 그래서 질문에서 사건을 읽어내면 반드시 그것에 맞춰 계산한다.
+ * 읽어내지 못하면 **짐작하지 않고** 사건별 달을 따로 내놓는다.
+ */
+const EVENT_WORDS = [
+  // 교제 시작도 '새 만남'으로 보낸다. 관계 분야에서 이 후보 하나가
+  // 만남·교제 시작을 함께 본다 (계산식이 같은 후보를 둘 두면 서로의
+  // 여유를 0으로 깎아 신호가 사라진다)
+  ['새 만남', '관계', ['만남', '만나', '소개팅', '새 인연', '인연이',
+                      '교제', '사귀', '연애 시작', '썸', '고백']],
+  ['관계 정리', '관계', ['헤어', '이별', '정리', '끝나', '깨질']],
+  ['예식·혼인신고', '결혼', ['예식', '혼인신고', '식을', '결혼식']],
+  ['결혼 논의', '결혼', ['결혼', '혼인', '상견례', '청혼', '프러포즈']],
+  ['자발적 이직', '직업', ['이직', '옮기', '회사를 바꾸', '새 직장']],
+  ['퇴사 후 공백', '직업', ['퇴사', '그만둘', '그만두', '쉬는']],
+  ['승진·보상 조정', '직업', ['승진', '연봉', '인상', '진급']],
+  ['창업·독립', '직업', ['창업', '독립', '사업을 시작', '내 사업']],
+  ['직무·역할 변경', '직업', ['부서', '직무', '역할', '보직']],
+  ['이사', '이사', ['이사', '이삿']],
+  ['타지역 이동', '이사', ['타지역', '지방', '먼 곳', '멀리']],
+  ['매수·매도', '주거', ['매수', '매도', '집을 사', '분양', '청약']],
+  ['전월세 계약', '주거', ['전세', '월세', '계약']],
+  ['임신·출산', '자녀', ['임신', '출산', '아기', '아이를 가']],
+  ['수입 증가', '재물', ['수입', '돈이 들어', '벌이']],
+];
+
+/** 질문에서 사건 하나를 집어낸다. 못 집어내면 null */
+export function eventFromQuestion(q) {
+  const hits = EVENT_WORDS
+    .map(([event, domain, words]) => {
+      const at = words.map((w) => q.indexOf(w)).filter((i) => i >= 0);
+      return at.length ? { event, domain, at: Math.min(...at) } : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.at - b.at);
+  return hits[0] ?? null;
+}
+
 /** 몇 해를 볼 것인가 */
 function spanFromQuestion(q, thisYear) {
   // 평생을 물으면 넓게 본다. 십 년 단위 곡선은 이 범위 안에서 만든다
@@ -106,7 +153,19 @@ export function routeQuestion(question, thisYear) {
   // 횡재를 물으면 재물 분야가 켜져 있어야 한다
   if (windfall && !domains.includes('재물')) domains.unshift('재물');
 
+  // 사건을 집어냈으면 그 사건의 분야를 맨 앞으로 올린다.
+  // '교제 시작'을 결혼 분야에서 재면 180달 중 78위, 관계 분야에서 재면
+  // 7위였다 — 어느 분야에서 재느냐가 답을 가른다.
+  const ev = eventFromQuestion(q);
+  if (ev) {
+    const i = domains.indexOf(ev.domain);
+    if (i > 0) domains.splice(i, 1);
+    if (i !== 0) domains.unshift(ev.domain);
+  }
+
   return {
+    event: ev?.event ?? null,
+    eventDomain: ev?.domain ?? null,
     needsWealth: domains.includes('재물') || windfall,
     needsWindfall: windfall,
     needsLifetime: lifetime,
@@ -166,6 +225,7 @@ export function defaultPlan(thisYear) {
   return {
     question: '', matched: false, primary: null, fallback: true,
     domains: ['직업', '재물', '관계'],
+    event: null, eventDomain: null,
     needsPlace: false, needsDay: false, cities: [],
     needsWealth: true, needsWindfall: false, needsLifetime: false,
     fromYear: thisYear, years: 3,

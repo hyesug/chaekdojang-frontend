@@ -39,6 +39,10 @@ export const EVENT_CANDIDATES = {
   직업: ['현 직장 유지', '자발적 이직', '외부 제안으로 이동', '직무·역할 변경',
         '조직 개편에 따른 이동', '승진·보상 조정', '퇴사 후 공백', '창업·독립', '부업 병행'],
   재물: ['수입 증가', '큰 지출', '묶인 돈이 풀림', '대출·빚 정리', '계약·정산', '투자 손실 정리'],
+  // '새 만남'이 교제 시작까지 함께 본다. 결혼 쪽에도 '교제 시작'이 있지만
+  // **같은 분야에 계산식이 같은 후보를 둘 두면 안 된다** — 서로의 여유를
+  // 0으로 깎아 신호가 사라진다. 실제로 그렇게 해 봤다가 180달 중 7위였던
+  // 것이 39위로 떨어졌다. 교제 시작을 물으면 라우터가 이 '새 만남'으로 보낸다.
   관계: ['새 만남', '관계 정리', '오래된 갈등이 터짐', '거리 조정'],
   결혼: ['교제 시작', '결혼 논의', '상견례·약속', '예식·혼인신고', '동거 시작'],
   주거: ['이사', '독립', '동거', '전월세 계약', '매수·매도', '주거 환경 개선'],
@@ -369,12 +373,37 @@ export function scoreMonth(m, domain) {
   const bar = Math.max(2.5, total * 0.2);
   const strong = Object.entries(bySystem).filter(([, v]) => v.score >= bar).map(([k]) => k);
 
+  // 이 달이 어떤 사건처럼 생겼는가. total 이 "얼마나 시끄러운가"라면
+  // 이쪽은 "무엇처럼 보이는가"다. 둘은 다른 질문이고 답도 다르다.
+  const candidates = candidatesOf(tend, domain);
+  const byName = Object.fromEntries(candidates.map((c) => [c.name, c.score]));
+
   return {
     key: m.key, year: m.year, index: m.index, label: m.label, from: m.from,
     total: Math.round(total * 100) / 100,
     bySystem, active, strong, tend,
+    candidates, candidateScore: byName,
     areaScore: area,
   };
+}
+
+/**
+ * 한 달이 특정 사건처럼 보이는 정도 — **여유(margin)** 로 잰다.
+ *
+ * 그냥 그 사건의 점수만 보면 안 되는 이유가 있다. 합·충·사화·트랜싯이 많이
+ * 걸린 달은 **모든 후보의 점수가 같이 올라간다.** '새 만남'과 '관계 정리'는
+ * 정반대 사건인데 둘 다 오른다. 그래서 "얼마나 높은가"가 아니라
+ * "다른 후보들보다 얼마나 앞서는가"를 봐야 그 사건을 가리킨 것이 된다.
+ *
+ * 실제로 이 자리에서 틀렸다. 관계 종합 점수로 고르면 상위 12달 가운데
+ * 일곱이 '정리 쪽'으로 나왔다 — 시작을 물었는데 끝나는 달을 고르고 있었다.
+ */
+export function fitFor(row, eventName) {
+  const mine = row.candidateScore?.[eventName];
+  if (mine == null) return null;
+  const others = row.candidates.filter((c) => c.name !== eventName).map((c) => c.score);
+  const best = others.length ? Math.max(...others) : 0;
+  return Math.round((mine - best) * 100) / 100;
 }
 
 /** 최강·강함·보조·약함 — 절대 점수가 아니라 이 사람 안에서의 순위다 */
@@ -569,10 +598,55 @@ export function confidenceOf(activeSystems) {
  * @param {object} grid buildGrid 결과
  * @param {string} domain
  */
-export function inferEvents(grid, domain) {
+/**
+ * @param {object} grid buildGrid 결과
+ * @param {string} domain
+ * @param {object} [opts]
+ * @param {string} [opts.event] 특정 사건을 물었을 때 그 이름.
+ *   주면 그 사건에 맞춰 달을 고른다. 없으면 그 기간에 가장 두드러진
+ *   후보를 스스로 골라 그것에 맞춘다.
+ */
+export function inferEvents(grid, domain, opts = {}) {
   const rows = grid.months.map((m) => scoreMonth(m, domain));
-  const ranked = rows.slice().sort((a, b) => b.total - a.total);
+
+  // ── 사건을 지정했는가, 안 했는가 ──
+  //
+  // 이 갈림이 중요하다. 실제 사례로 재 보고 알았다.
+  //   사건을 지정하면        — 180달 중 7위 (상위 4%)
+  //   기간에서 자동으로 고르면 — 180달 중 177위
+  // 자동 선택이 정반대 사건('관계 정리')을 골라 버렸기 때문이다.
+  //
+  // 엔진은 **주어진 사건이 언제인지**는 제법 고르지만 **어떤 사건이
+  // 일어날지**는 고르지 못한다. 그래서 짐작해서 하나를 고르지 않는다.
+  // 지정하지 않으면 "그 영역이 언제 시끄러운가"(total)로만 줄을 세우고,
+  // 사건별 달은 아래 perEvent 에 따로 담아 둔다.
+  // 그 분야에 없는 사건을 받으면 조용히 무시하지 않는다. 무시하면 활성도로
+  // 줄을 세우고도 "사건에 맞춰 골랐다"고 말하게 된다.
+  const known = EVENT_CANDIDATES[domain] ?? [];
+  const eventNotFound = !!opts.event && !known.includes(opts.event);
+  const focusEvent = eventNotFound ? null : (opts.event ?? null);
+
+  for (const r of rows) {
+    r.fit = focusEvent ? (fitFor(r, focusEvent) ?? 0) : null;
+    r.focusEvent = focusEvent;
+  }
+  const ranked = rows.slice().sort((a, b) => focusEvent
+    ? ((b.fit - a.fit) || (b.total - a.total))
+    : (b.total - a.total));
   const rankOf = new Map(ranked.map((r, i) => [r.key, i]));
+
+  // 사건마다 따로 줄을 세운다. "이직을 묻는다면 이 달, 퇴사를 묻는다면 저 달"
+  // 이라고 말할 수 있어야 한다 — 한 줄로 뭉치면 정반대 사건이 섞인다.
+  const perEvent = {};
+  for (const name of EVENT_CANDIDATES[domain] ?? []) {
+    const scored = rows
+      .map((r) => ({ row: r, fit: fitFor(r, name) ?? 0 }))
+      .sort((a, b) => (b.fit - a.fit) || (b.row.total - a.row.total));
+    perEvent[name] = scored.slice(0, 5).map((x) => ({
+      label: x.row.label, year: x.row.year, from: x.row.from,
+      fit: x.fit, total: x.row.total, systems: x.row.strong,
+    }));
+  }
 
   for (const r of rows) {
     r.band = bandOf(rankOf.get(r.key), rows.length);
@@ -591,7 +665,9 @@ export function inferEvents(grid, domain) {
         for (const vote of v.votes.slice(0, 2)) reasons.push({ month: m.label, system: name, why: vote.why, w: vote.w });
       }
     }
-    const best = w.members.slice().sort((a, b) => b.total - a.total)[0];
+    const best = w.members.slice().sort((a, b) => focusEvent
+      ? ((b.fit - a.fit) || (b.total - a.total))
+      : (b.total - a.total))[0];
     return {
       label: `${w.from.y}년 ${w.from.m}/${w.from.d}~${w.to.m}월`,
       fromYear: w.startYear,
@@ -618,10 +694,12 @@ export function inferEvents(grid, domain) {
   // 보니 절기월 위치별 1위 횟수가 16,11,6,6,4,2,… 로 앞쪽에 쏠렸는데
   // 달별 평균 점수는 26.4~27.6 으로 평평했다. 즉 사람이 아니라 고르는 방식이
   // 만든 쏠림이었다. 점수가 가장 높은 달이 든 구간을 집는다.
+  const keyOf = (w) => rows.find((r) => r.key === w.peakKey);
   const bestWindow = windows.slice().sort((a, b) => {
-    const pa = rows.find((r) => r.key === a.peakKey)?.total ?? 0;
-    const pb = rows.find((r) => r.key === b.peakKey)?.total ?? 0;
-    return pb - pa;
+    const pa = keyOf(a), pb = keyOf(b);
+    return focusEvent
+      ? (((pb?.fit ?? 0) - (pa?.fit ?? 0)) || ((pb?.total ?? 0) - (pa?.total ?? 0)))
+      : ((pb?.total ?? 0) - (pa?.total ?? 0));
   })[0] ?? null;
 
   // 전체 성향 — 강한 구간의 신호만 모은다
@@ -646,6 +724,16 @@ export function inferEvents(grid, domain) {
 
   return {
     domain,
+    // 어느 사건에 맞춰 달을 골랐는가. 답변에서 이 사건 이름을 써야
+    // "무엇이 언제"가 맞물린다 — 구간만 말하면 무슨 일인지가 빠진다
+    focusEvent,
+    // 사건마다 따로 세운 상위 다섯 달. 사건을 지정하지 않았을 때는
+    // 구간(windows)이 "그 영역이 시끄러운 때"일 뿐이므로 이쪽을 함께 봐야 한다
+    perEvent,
+    eventNotFound: eventNotFound ? opts.event : null,
+    rankedBy: focusEvent ? `사건 적합도(${focusEvent})`
+      : eventNotFound ? `영역 활성도 (요청한 '${opts.event}' 는 ${domain} 분야의 후보가 아니다)`
+      : '영역 활성도',
     span: { from: grid.fromYear, to: grid.toYear },
     rows,
     windows,

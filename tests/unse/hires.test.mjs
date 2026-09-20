@@ -22,7 +22,7 @@ import * as WS from '../../public/unse-8f3k2m/src/hires/western.js';
 import * as VD from '../../public/unse-8f3k2m/src/hires/vedic.js';
 import * as LOC from '../../public/unse-8f3k2m/src/hires/location.js';
 import { buildGrid } from '../../public/unse-8f3k2m/src/hires/grid.js';
-import { inferEvents, chainOf, EVENT_CANDIDATES } from '../../public/unse-8f3k2m/src/hires/events.js';
+import { inferEvents, chainOf, fitFor, EVENT_CANDIDATES, EVENT_GROUPS } from '../../public/unse-8f3k2m/src/hires/events.js';
 import { routeQuestion, defaultPlan } from '../../public/unse-8f3k2m/src/hires/router.js';
 import { buildHiRes } from '../../public/unse-8f3k2m/src/hires/context.js';
 import { branchPair, fullCombos } from '../../public/unse-8f3k2m/src/hires/relations.js';
@@ -490,14 +490,47 @@ test('한 분야에 계산식이 같은 사건 후보를 두지 않는다', () =
   }
 });
 
+test('한 사건의 여러 모양은 묶어서 본다', () => {
+  // '이직'은 스스로 옮기는 것, 제안을 받아 옮기는 것, 조직이 바꿔 놓는 것으로
+  // 후보가 갈려 있다. 겪는 사람에게는 같은 사건인데 셋이 서로의 몫을 깎는다.
+  // 실제로 '자발적 이직'만 재면 180달 중 153위, 묶어서 재면 66위였다.
+  const { r } = load(FORM);
+  const grid = buildGrid(r.input, r.chart, { fromYear: 2024, years: 2, domain: '직업' });
+  const inf = inferEvents(grid, '직업');
+  const family = EVENT_GROUPS['자발적 이직'];
+  assert.ok(family?.length >= 2, '이직 묶음이 없다');
+
+  for (const row of inf.rows) {
+    const grouped = fitFor(row, '자발적 이직');
+    const alone = fitFor(row, ['자발적 이직']);
+    assert.ok(grouped.share >= alone.share,
+      `${row.label}: 묶어서 잰 몫이 하나만 잰 것보다 작다`);
+    assert.ok(grouped.share <= 1, `${row.label}: 점유율이 1을 넘는다`);
+    // 묶음 안의 다른 후보는 경쟁자가 아니다 — 여유 계산에서 빠져야 한다
+    const sibling = Math.max(...family.slice(1).map((n) => row.candidateScore[n] ?? -Infinity));
+    if (sibling === grouped.score) {
+      const outsider = Math.max(...row.candidates
+        .filter((c) => !family.includes(c.name)).map((c) => c.score));
+      assert.equal(grouped.margin, Math.round((grouped.score - outsider) * 100) / 100,
+        `${row.label}: 같은 묶음 후보를 경쟁자로 셌다`);
+    }
+  }
+});
+
 test('사건을 지정하면 그 사건 기준으로, 아니면 활성도 기준으로 줄을 세운다', () => {
   const { r } = load(FORM);
   const grid = buildGrid(r.input, r.chart, { fromYear: 2026, years: 3, domain: '관계' });
 
   const withEvent = inferEvents(grid, '관계', { event: '새 만남' });
   assert.equal(withEvent.focusEvent, '새 만남');
-  assert.match(withEvent.rankedBy, /사건 적합도/);
-  for (const row of withEvent.rows) assert.equal(typeof row.fit, 'number');
+  assert.match(withEvent.rankedBy, /사건 점유율/);
+  // fit 은 그 달 후보 총량 가운데 이 사건의 몫이다 — 달끼리 비교하려면
+  // 크기가 달마다 다른 '여유'가 아니라 비율이어야 한다
+  for (const row of withEvent.rows) {
+    assert.equal(typeof row.fit, 'number');
+    assert.ok(row.fit <= 1, `점유율이 1을 넘는다: ${row.label} ${row.fit}`);
+    assert.equal(typeof row.fitDetail.margin, 'number');
+  }
 
   // 지정하지 않으면 **짐작하지 않는다**. 짐작해서 정반대 사건을 고르면
   // 답이 뒤집힌다 (실측: 같은 사건이 7위 vs 177위)

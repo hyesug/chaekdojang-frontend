@@ -599,17 +599,20 @@ export function formatHiRes(j, plan) {
   // '정리 쪽'이었다. 사건마다 갈라 세워야 "무엇이 언제"가 맞물린다.
   out.push('### [B~E] 사건마다 따로 세운 달');
   out.push('같은 영역이라도 정반대 사건이 있다(새 만남 / 관계 정리, 자발적 이직 / 현 직장 유지). ' +
-    '활성도로만 고르면 둘이 섞인다. 아래는 사건마다 "다른 후보보다 얼마나 앞서는가"로 따로 세운 것이다.');
+    '활성도로만 고르면 둘이 섞인다. 아래는 사건마다 "그 달 후보 총량 가운데 몇 할을 차지하는가"로 따로 세운 것이다.');
   for (const g of j.perEvent) {
     out.push(`[${g.domain}]`);
     for (const [name, months] of Object.entries(g.events)) {
       if (!months.length) continue;
-      const top = months.filter((m) => m.fit > 0).slice(0, 3);
+      const top = months.filter((m) => m.share > 0).slice(0, 3);
       if (!top.length) { out.push(`  ${name}: 앞서는 달 없음 — 이 사건으로는 좁힐 근거가 부족하다`); continue; }
-      out.push(`  ${name}: ${top.map((m) => `${m.label}(여유 +${m.fit})`).join(' / ')}`);
+      out.push(`  ${name}: ${top.map((m) =>
+        `${m.label}(점유 ${Math.round(m.share * 100)}%${m.margin > 0 ? '·1위' : ''})`).join(' / ')}`);
     }
   }
-  out.push('※ 여유가 0 이하인 사건은 그 달이 그 사건처럼 보이지 않는다는 뜻이다. 억지로 고르지 말 것.');
+  out.push('※ 점유율은 그 달의 사건 후보 총량 가운데 이 사건이 차지하는 몫이다. ' +
+    '조용한 달과 시끄러운 달을 같은 자로 재려고 이렇게 쓴다. ' +
+    "'1위' 표시가 없으면 그 달에 더 그럴듯한 다른 사건이 있다는 뜻이니 억지로 고르지 말 것.");
   out.push('');
 
   for (const c of j.candidateEvents) {

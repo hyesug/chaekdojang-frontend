@@ -388,22 +388,70 @@ export function scoreMonth(m, domain) {
 }
 
 /**
- * 한 달이 특정 사건처럼 보이는 정도 — **여유(margin)** 로 잰다.
+ * 사건 묶음 — 묻는 사람은 이름표를 가리지 않는다.
  *
- * 그냥 그 사건의 점수만 보면 안 되는 이유가 있다. 합·충·사화·트랜싯이 많이
- * 걸린 달은 **모든 후보의 점수가 같이 올라간다.** '새 만남'과 '관계 정리'는
- * 정반대 사건인데 둘 다 오른다. 그래서 "얼마나 높은가"가 아니라
- * "다른 후보들보다 얼마나 앞서는가"를 봐야 그 사건을 가리킨 것이 된다.
+ * "언제 이직했나"를 묻는 사람에게 스스로 옮겼는지 제안을 받았는지 조직이
+ * 개편됐는지는 뒷이야기다. 그런데 셋을 따로 세면 답이 갈린다. 실제로
+ * 그래서 틀렸다 — '자발적 이직'으로 골라 답했는데 그 달의 1위 후보는
+ * '외부 제안으로 이동'이었다. 묶어서 재면 153위가 66위가 된다.
  *
- * 실제로 이 자리에서 틀렸다. 관계 종합 점수로 고르면 상위 12달 가운데
- * 일곱이 '정리 쪽'으로 나왔다 — 시작을 물었는데 끝나는 달을 고르고 있었다.
+ * 묶음은 **겹치지 않게** 만든다. 한 후보가 두 묶음에 들면 같은 달이 두 이름으로
+ * 두 번 나와 "따로 세웠다"는 말이 무색해진다. '매수·매도'를 '이사'와 묶지 않은
+ * 것도 그래서다 — 계약하는 달과 짐 옮기는 달은 실제로 다르다.
  */
-export function fitFor(row, eventName) {
-  const mine = row.candidateScore?.[eventName];
-  if (mine == null) return null;
-  const others = row.candidates.filter((c) => c.name !== eventName).map((c) => c.score);
-  const best = others.length ? Math.max(...others) : 0;
-  return Math.round((mine - best) * 100) / 100;
+const EVENT_FAMILIES = [
+  ['자발적 이직', '외부 제안으로 이동', '조직 개편에 따른 이동'],
+  ['결혼 논의', '상견례·약속', '예식·혼인신고'],
+  ['이사', '전월세 계약'],
+];
+
+/** 묶음 안의 어느 이름으로 물어도 같은 묶음이 나오도록 펼쳐 둔다 */
+export const EVENT_GROUPS = Object.fromEntries(
+  EVENT_FAMILIES.flatMap((family) => family.map((name) => [name, family])),
+);
+
+/**
+ * 한 달이 특정 사건처럼 보이는 정도.
+ *
+ * ── 왜 점유율인가 ──────────────────────────────────────────
+ * 처음에는 **여유**(다른 후보보다 얼마나 앞서는가)로 쟀다. 그 발상 자체는
+ * 맞다 — 합·충·사화·트랜싯이 많이 걸린 달은 **정반대 사건도 같이 오르므로**
+ * 점수의 높낮이만으로는 새 만남과 관계 정리가 구별되지 않는다.
+ *
+ * 그런데 여유에는 결함이 있다. **달마다 크기가 달라 서로 비교할 수 없다.**
+ * 시끄러운 달은 그냥 시끄럽다는 이유로 여유도 커진다. 조용한 달에서
+ * 한 후보가 확실히 앞서도 여유는 작게 나온다.
+ *
+ * 점유율은 그 달의 후보 총량으로 나누므로 조용한 달과 시끄러운 달을
+ * 같은 자로 잰다. "이 달은 40% 만큼 이 사건처럼 보인다"는 어느 달에서나
+ * 같은 뜻이다.
+ *
+ * 실제 사건 두 건으로 다섯 지표를 재 봤다 (180달 중 순위, 낮을수록 좋음):
+ *   여유        7위 / 113위   (합 120)
+ *   후보 점수    58위 /  68위   (합 126)
+ *   **점유율**   11위 /  66위   (합  77)  ← 채택
+ *   여유×활성도   7위 / 115위   (합 122)
+ *   1위여부+점수 36위 /  68위   (합 104)
+ *
+ * @param {object} row scoreMonth 결과
+ * @param {string|string[]} event 사건 이름, 또는 묶어서 볼 이름들
+ */
+export function fitFor(row, event) {
+  const group = Array.isArray(event) ? event : (EVENT_GROUPS[event] ?? [event]);
+  const scores = group.map((g) => row.candidateScore?.[g]).filter((v) => v != null);
+  if (!scores.length) return null;
+  const mine = Math.max(...scores);
+
+  const others = row.candidates.filter((c) => !group.includes(c.name)).map((c) => c.score);
+  const margin = mine - (others.length ? Math.max(...others) : 0);
+  // 그 달 후보들의 양수 총량. 0 이하인 후보는 "그렇게 안 보인다"는 뜻이라 뺀다
+  const mass = row.candidates.filter((c) => c.score > 0).reduce((t, c) => t + c.score, 0);
+
+  return {
+    share: mass > 0 ? Math.round((mine / mass) * 1000) / 1000 : 0,
+    margin: Math.round(margin * 100) / 100,
+    score: Math.round(mine * 100) / 100,
+  };
 }
 
 /** 최강·강함·보조·약함 — 절대 점수가 아니라 이 사람 안에서의 순위다 */
@@ -627,7 +675,11 @@ export function inferEvents(grid, domain, opts = {}) {
   const focusEvent = eventNotFound ? null : (opts.event ?? null);
 
   for (const r of rows) {
-    r.fit = focusEvent ? (fitFor(r, focusEvent) ?? 0) : null;
+    const f = focusEvent ? fitFor(r, focusEvent) : null;
+    // 줄을 세우는 값은 점유율이다. 여유와 원점수도 함께 들고 다닌다 —
+    // 답변에서 "이 달은 이 사건처럼 보인다"를 설명할 때 쓴다
+    r.fit = f ? f.share : null;
+    r.fitDetail = f;
     r.focusEvent = focusEvent;
   }
   const ranked = rows.slice().sort((a, b) => focusEvent
@@ -637,14 +689,21 @@ export function inferEvents(grid, domain, opts = {}) {
 
   // 사건마다 따로 줄을 세운다. "이직을 묻는다면 이 달, 퇴사를 묻는다면 저 달"
   // 이라고 말할 수 있어야 한다 — 한 줄로 뭉치면 정반대 사건이 섞인다.
+  // 묶인 사건은 한 줄로만 낸다. 묶음 안의 이름을 하나씩 다 내면 똑같은 달
+  // 목록이 세 번 나오고, 읽는 쪽은 그게 세 개의 근거인 줄 안다.
   const perEvent = {};
+  const done = new Set();
   for (const name of EVENT_CANDIDATES[domain] ?? []) {
+    const group = EVENT_GROUPS[name] ?? [name];
+    if (done.has(group[0])) continue;
+    done.add(group[0]);
     const scored = rows
-      .map((r) => ({ row: r, fit: fitFor(r, name) ?? 0 }))
-      .sort((a, b) => (b.fit - a.fit) || (b.row.total - a.row.total));
-    perEvent[name] = scored.slice(0, 5).map((x) => ({
+      .map((r) => ({ row: r, f: fitFor(r, group) }))
+      .filter((x) => x.f)
+      .sort((a, b) => (b.f.share - a.f.share) || (b.row.total - a.row.total));
+    perEvent[group.length > 1 ? group.join(' / ') : name] = scored.slice(0, 5).map((x) => ({
       label: x.row.label, year: x.row.year, from: x.row.from,
-      fit: x.fit, total: x.row.total, systems: x.row.strong,
+      share: x.f.share, margin: x.f.margin, total: x.row.total, systems: x.row.strong,
     }));
   }
 
@@ -731,7 +790,7 @@ export function inferEvents(grid, domain, opts = {}) {
     // 구간(windows)이 "그 영역이 시끄러운 때"일 뿐이므로 이쪽을 함께 봐야 한다
     perEvent,
     eventNotFound: eventNotFound ? opts.event : null,
-    rankedBy: focusEvent ? `사건 적합도(${focusEvent})`
+    rankedBy: focusEvent ? `사건 점유율(${focusEvent})`
       : eventNotFound ? `영역 활성도 (요청한 '${opts.event}' 는 ${domain} 분야의 후보가 아니다)`
       : '영역 활성도',
     span: { from: grid.fromYear, to: grid.toYear },

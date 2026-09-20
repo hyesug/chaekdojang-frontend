@@ -728,3 +728,37 @@ test('1위가 혼자 서 있지 않으면 시기를 고르지 않는다', () => 
   // 모든 후보가 tied 를 갖고 있어야 한다
   for (const x of Object.values(inf.perEvent)) assert.ok(x.tied >= 1);
 });
+
+test('환갑과 본명년을 계산 사실로 표시한다', () => {
+  // 육십갑자가 한 바퀴 돌아 세운 간지가 원국 년주와 같아지는 해가 환갑이다.
+  // 명리의 기본 눈금인데 연층이 표시하지 않고 있었다. 실제로 생애 단 한 번의
+  // 해외여행이 환갑 기념이었던 사례에서 드러났다.
+  const r = readFortune({ name: 'G', gender: 'male', year: 1966, month: 3, day: 6,
+    hour: 17, minute: 0, birthPlace: '여주', homePlace: '구미' }, { now: NOW });
+  const track = annualTrack(r.input, r.chart, 1966, 2030);
+
+  const natal = r.chart.pillars.year;
+  const returns = track.filter((y) => y.sexagenaryReturn);
+  assert.equal(returns.length, 1, `60여 년에 환갑이 ${returns.length}번이면 안 된다`);
+  assert.equal(returns[0].year, r.input.year + 60);
+  assert.equal(returns[0].gz.hanja, natal.hanja);
+
+  // 본명년은 열두 해마다 온다
+  const zodiac = track.filter((y) => y.zodiacReturn).map((y) => y.year);
+  assert.ok(zodiac.length >= 5, `본명년이 ${zodiac.length}번뿐이다`);
+  for (let i = 1; i < zodiac.length; i++) assert.equal(zodiac[i] - zodiac[i - 1], 12);
+  // 환갑은 본명년이기도 하다
+  assert.ok(zodiac.includes(returns[0].year));
+
+  // 문맥에 적히는가
+  const f = readForecast({ name: 'G', gender: 'male', year: 1966, month: 3, day: 6,
+    hour: 17, minute: 0, birthPlace: '여주', homePlace: '구미' }, NOW);
+  const h = buildHiRes(r, f, { ...defaultPlan(2026), fromYear: 2026, years: 1 });
+  assert.match(h.text, /환갑/);
+
+  // 점수에는 넣지 않았다 — 계산 사실이지 해석이 아니다
+  const g = buildGrid(r.input, r.chart, { fromYear: 2026, years: 1, domain: '이사' });
+  for (const m of g.months) {
+    assert.equal(m.bazi.sexagenaryReturn, undefined, '월층에 환갑이 새어 들어갔다');
+  }
+});

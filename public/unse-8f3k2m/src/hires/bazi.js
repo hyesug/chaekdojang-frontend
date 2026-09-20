@@ -138,10 +138,21 @@ export function annualTrack(input, chart, fromYear, toYear) {
     const jd = toJD(y, 3, 1, 12) - KST;
     const s = stackAt(input, chart, { jd, sajuYear: y });
     const gz = yearPillar(y);
+    // 육십갑자가 한 바퀴 돌아 세운 간지가 원국 년주와 같아지는 해 = 환갑.
+    // 명리의 기본 눈금인데 연층이 표시하지 않고 있었다. 한국에서는 이 해에
+    // 기념 여행·잔치가 실제로 몰리므로, 사건을 읽을 때 **계산 사실로** 알고
+    // 있어야 한다. 지지만 같은 해(열두 해마다)는 본명년(띠해)이다.
+    //
+    // 점수에는 넣지 않는다. 이것은 [A] 계산 사실이고, 그래서 무슨 일이
+    // 벌어지는가는 해석의 몫이다. 점수에 넣으면 계산과 해석이 섞인다.
+    const natalYear = chart.pillars?.year;
     out.push({
       year: y,
       age: y - input.year,
       gz,
+      // 태어난 해 자체는 '돌아온' 것이 아니라 출발점이므로 세지 않는다
+      sexagenaryReturn: !!natalYear && y > input.year && gz.hanja === natalYear.hanja,
+      zodiacReturn: !!natalYear && y > input.year && gz.branch === natalYear.branch,
       god: tenGod(chart.dayStem, gz.stem),
       godGroup: TEN_GOD_GROUP[tenGod(chart.dayStem, gz.stem)],
       branchGod: tenGod(chart.dayStem, MAIN_HIDDEN[gz.branch]),

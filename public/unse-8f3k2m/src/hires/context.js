@@ -256,6 +256,8 @@ function baziJson(grid, chart) {
       year: y.year, gz: y.bazi.gz.hanja, god: y.bazi.god,
       hits: y.bazi.hits, combos: y.bazi.combos,
       daeunTurn: y.bazi.daeunTurn,
+      sexagenaryReturn: y.bazi.sexagenaryReturn,
+      zodiacReturn: y.bazi.zodiacReturn,
     })),
     monthly: grid.months.map((m) => ({
       year: m.year, label: m.label, from: m.from, gz: m.bazi.gz.hanja, god: m.bazi.god,
@@ -499,7 +501,11 @@ export function formatHiRes(j, plan) {
     out.push(`${y.year} ${y.gz} ${y.god}` +
       (y.hits.length ? ` [${y.hits.join('·')}]` : '') +
       (y.combos.length ? ` [${y.combos.join('·')}]` : '') +
-      (y.daeunTurn ? ' ※대운전환해' : ''));
+      (y.daeunTurn ? ' ※대운전환해' : '') +
+      // 육십갑자가 한 바퀴 돌아온 해. 한국에서는 이 해에 기념 여행·잔치가
+      // 실제로 몰린다 — 명반이 아니라 달력이 만드는 사건이라 따로 적는다
+      (y.sexagenaryReturn ? ' ※환갑(세운 간지가 원국 년주로 돌아옴 — 기념 행사·여행이 몰리는 해)' : '') +
+      (y.zodiacReturn && !y.sexagenaryReturn ? ' ※본명년(띠해)' : ''));
   }
   out.push('월운 (절기 기준, 시작일~):');
   for (const m of j.bazi.monthly) {

@@ -517,6 +517,55 @@ test('한 사건의 여러 모양은 묶어서 본다', () => {
   }
 });
 
+test('달을 가르지 못하는 후보는 순위를 내지 않는다', () => {
+  // 어떤 후보는 어느 달에 넣어도 같은 값이 나온다. 정렬하면 1위가 나오지만
+  // 그 1위는 아무 뜻이 없다 — compareZones 가 도시를 헛되이 줄 세웠던 것과
+  // 같은 함정이다. 실측: '타지역 이동'은 다섯 명반 모두에서 폭이 2.5~5.2%p,
+  // 즉 19년 내내 43~46% 였다.
+  const { r } = load(FORM);
+  const grid = buildGrid(r.input, r.chart, { fromYear: 2021, years: 5, domain: '이사' });
+  const inf = inferEvents(grid, '이사');
+
+  const flat = inf.perEvent['타지역 이동'];
+  assert.ok(flat, '타지역 이동 후보가 없다');
+  assert.equal(flat.flat, true, `타지역 이동이 평평하지 않다고 나왔다 (폭 ${flat.spread}%p)`);
+  assert.deepEqual(flat.months, [], '가르지 못하는 후보인데 달 목록을 만들었다');
+
+  // 가르는 후보는 그대로 달을 내놓는다
+  const live = inf.perEvent['근거리 이사'];
+  assert.equal(live.flat, false, `근거리 이사가 평평하다고 나왔다 (폭 ${live.spread}%p)`);
+  assert.ok(live.months.length > 0);
+
+  // 모든 후보가 걸러지면 그 분야는 시기를 말할 수 없다는 뜻이다 — 그래도
+  // 키는 남아 있어야 문맥에서 "가리지 못한다"고 적을 수 있다
+  for (const e of Object.values(inf.perEvent)) {
+    assert.equal(typeof e.spread, 'number');
+    assert.equal(typeof e.top, 'number');
+  }
+});
+
+test('생활권을 넘는 이사 질문은 직업 분야도 켠다', () => {
+  // 이사는 대개 결과고 원인은 일이다. 실측: 취직하며 옮긴 달을 주거에서
+  // 재면 228달 중 150위, 직업에서 재면 9위였다. '직업 → 이사' 규칙은
+  // 이미 있었는데 그 반대쪽이 빠져 있었다.
+  const withCity = routeQuestion('내가 대전에 언제 이사왔지', 2026);
+  assert.ok(withCity.domains.includes('직업'),
+    `도시 이름이 있는 이사 질문에 직업이 안 켜졌다: ${withCity.domains}`);
+  assert.equal(withCity.domains[0], '이사', '주된 분야가 바뀌면 안 된다');
+
+  const farMove = routeQuestion('언제 지방으로 옮기게 될까', 2026);
+  assert.ok(farMove.domains.includes('직업'), `${farMove.domains}`);
+
+  // 같은 동네 이사는 일과 덜 엮인다 — 쓸데없이 켜지 않는다
+  const nearMove = routeQuestion('언제 이사했을까', 2026);
+  assert.ok(!nearMove.domains.includes('직업'),
+    `생활권 안 이사인데 직업이 켜졌다: ${nearMove.domains}`);
+
+  // 세 개까지만 쓰이므로 뒤에 붙이면 잘려 나간다 — 앞쪽에 꽂혔는지 본다
+  const busy = routeQuestion('대전으로 이사하면서 결혼도 하고 집도 살까', 2026);
+  assert.ok(busy.domains.includes('직업'), `잘려 나갔다: ${busy.domains}`);
+});
+
 test('사건을 지정하면 그 사건 기준으로, 아니면 활성도 기준으로 줄을 세운다', () => {
   const { r } = load(FORM);
   const grid = buildGrid(r.input, r.chart, { fromYear: 2026, years: 3, domain: '관계' });

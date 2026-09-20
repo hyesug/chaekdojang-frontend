@@ -182,6 +182,7 @@ export function buildHiRes(r, f = null, plan) {
       rankedBy: i.rankedBy, events: i.perEvent })),
     candidateEvents: inferences.map((i) => ({
       domain: i.domain,
+      flatEvents: i.flatEvents,
       candidates: i.candidates.slice(0, 5),
       attributes: i.attributes,
       scenarios: i.scenarios,
@@ -602,9 +603,15 @@ export function formatHiRes(j, plan) {
     '활성도로만 고르면 둘이 섞인다. 아래는 사건마다 "그 달 후보 총량 가운데 몇 할을 차지하는가"로 따로 세운 것이다.');
   for (const g of j.perEvent) {
     out.push(`[${g.domain}]`);
-    for (const [name, months] of Object.entries(g.events)) {
-      if (!months.length) continue;
-      const top = months.filter((m) => m.share > 0).slice(0, 3);
+    for (const [name, e] of Object.entries(g.events)) {
+      // 달을 가르지 못하는 후보는 순위 대신 그 사실을 적는다. 뜻 없는
+      // 1위를 내놓으면 그게 답이 된다 (실측: 어느 달이나 43~46%)
+      if (e.flat) {
+        out.push(`  ${name}: 이 후보로는 달을 가리지 못한다 — 가장 높은 달 ${e.top}%, 보통 달 ${e.typical}% ` +
+          `(차이 ${e.spread}%p). **이 사건으로 시기를 말하지 말 것.**`);
+        continue;
+      }
+      const top = e.months.filter((m) => m.share > 0).slice(0, 3);
       if (!top.length) { out.push(`  ${name}: 앞서는 달 없음 — 이 사건으로는 좁힐 근거가 부족하다`); continue; }
       out.push(`  ${name}: ${top.map((m) =>
         `${m.label}(점유 ${Math.round(m.share * 100)}%${m.margin > 0 ? '·1위' : ''})`).join(' / ')}`);
@@ -616,16 +623,25 @@ export function formatHiRes(j, plan) {
   out.push('');
 
   for (const c of j.candidateEvents) {
+    // 달을 가르지 못하는 후보는 여기서도 표시한다. 위에서 "시기를 말하지
+    // 말 것"이라고 해 놓고 여기서 주 시나리오로 올리면 그게 답이 된다
+    const flat = new Set(c.flatEvents ?? []);
+    const mark = (n) => (flat.has(n) ? `${n}(시기 못 가림)` : n);
     out.push(`[${c.domain}] 사건 후보 (앞설수록 근거가 두텁다): ` +
-      c.candidates.map((x) => x.name).join(' > '));
+      c.candidates.map((x) => mark(x.name)).join(' > '));
     const at = c.attributes.filter((a) => a.lean);
     if (at.length) {
       out.push(`  속성: ${at.map((a) => `${a.key}=${a.lean}(${a.strength})`).join(' · ')}`);
     }
     const un = c.attributes.filter((a) => !a.lean);
     if (un.length) out.push(`  좁히지 못한 속성: ${un.map((a) => a.key).join('·')} — 근거 부족이라고 적을 것`);
-    if (c.scenarios.main) out.push(`  주 시나리오: ${c.scenarios.main.name} (${c.scenarios.main.weight})`);
-    if (c.scenarios.alternative) out.push(`  대안: ${c.scenarios.alternative.name}`);
+    if (c.scenarios.main) {
+      out.push(`  주 시나리오: ${mark(c.scenarios.main.name)} (${c.scenarios.main.weight})`);
+      if (flat.has(c.scenarios.main.name)) {
+        out.push('    ↳ 이 후보는 어느 달에나 비슷하게 나온다. **무슨 일인지로는 써도 언제인지로는 쓰지 말 것.**');
+      }
+    }
+    if (c.scenarios.alternative) out.push(`  대안: ${mark(c.scenarios.alternative.name)}`);
     if (c.scenarios.contrary) out.push(`  반대 근거: ${c.scenarios.contrary.name} 쪽을 막는 신호가 있다`);
   }
   out.push('');

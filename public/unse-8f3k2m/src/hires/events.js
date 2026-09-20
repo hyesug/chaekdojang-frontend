@@ -35,6 +35,23 @@ import { j } from '../core/josa.js';
 export const DOMAINS = ['직업', '재물', '관계', '결혼', '주거', '이사', '건강', '학업', '자녀'];
 
 /** LEVEL 3 — 분야별 사건 후보 */
+/**
+ * LEVEL 3 — 사건 후보.
+ *
+ * ── 후보를 늘리기 전에 읽을 것 ─────────────────────────────
+ * 실제로 틀린 사건을 보고 **그 사건에 맞는 후보를 새로 만드는 것**은
+ * 고치는 게 아니라 답을 베끼는 것이다. 그렇게 넣은 후보는 그 한 건에서만
+ * 맞고, 맞았다는 사실이 검증으로 오해된다.
+ *
+ * 지금 비어 있는 것을 알면서 두는 자리:
+ *   · 첫 취업 / 직종 전환 — 법학 → 공무원 준비 → 개발자처럼 직종을 갈아타며
+ *     처음 취직하는 사건에 맞는 후보가 없다. 실측 사례(2021-10)에서
+ *     '직무·역할 변경'은 228달 중 213위로 **오히려 반대**를 짚었고,
+ *     실제로 울린 것은 '외부 제안으로 이동'(4위)이었다.
+ *
+ * 이 자리는 **다음 사례에서 또 어긋날 때** 채운다. 사례 하나에 후보 하나를
+ * 만들면 후보 목록이 곧 정답표가 된다.
+ */
 export const EVENT_CANDIDATES = {
   직업: ['현 직장 유지', '자발적 이직', '외부 제안으로 이동', '직무·역할 변경',
         '조직 개편에 따른 이동', '승진·보상 조정', '퇴사 후 공백', '창업·독립', '부업 병행'],
@@ -454,6 +471,29 @@ export function fitFor(row, event) {
   };
 }
 
+/**
+ * 달을 가르지 못하는 후보를 걸러내는 선 (점유율 %p).
+ *
+ * 어떤 후보는 **어느 달에 넣어도 같은 값**이 나온다. 계산식이 달마다
+ * 변하는 항에 거의 기대지 않기 때문이다. 그런 후보도 정렬하면 1위가
+ * 나오지만 그 1위는 아무 뜻이 없다 — `compareZones` 가 도시를 헛되이
+ * 줄 세웠던 것과 같은 함정이다. 그때처럼 **없으면 없다고 말한다.**
+ *
+ * 선은 한 명반이 아니라 **다섯 명반**에서 쟀다. 후보마다 "가장 높은 달의
+ * 점유율 − 중간 달의 점유율"을 19년(228달) 치 구해 본 값이다.
+ *
+ *   부업 병행        2.6 ~ 3.7 %p  ← 가르지 못함
+ *   타지역 이동       2.5 ~ 5.2 %p  ← 가르지 못함
+ *   ────────────────────────────  틈
+ *   직무·역할 변경     6.3 ~ 7.7 %p
+ *   동거 시작        5.3 ~ 8.1 %p
+ *   (나머지는 모두 그 위, 최대 58 %p)
+ *
+ * 5.2 와 6.3 사이가 비어 있어 6 %p 로 끊었다. 명반마다 다시 재므로
+ * 어떤 사람에게는 가르고 어떤 사람에게는 못 가르는 후보도 제대로 잡힌다.
+ */
+const FLAT_SPREAD = 0.06;
+
 /** 최강·강함·보조·약함 — 절대 점수가 아니라 이 사람 안에서의 순위다 */
 function bandOf(rank, n) {
   const p = rank / Math.max(1, n - 1);
@@ -693,6 +733,9 @@ export function inferEvents(grid, domain, opts = {}) {
   // 목록이 세 번 나오고, 읽는 쪽은 그게 세 개의 근거인 줄 안다.
   const perEvent = {};
   const done = new Set();
+  // 달을 가르지 못하는 후보의 이름. 아래 '사건 후보'·'주 시나리오' 줄에서도
+  // 같은 표시를 달아야 한다 — 한쪽에서만 막으면 다른 쪽이 답이 된다
+  const flatEvents = new Set();
   for (const name of EVENT_CANDIDATES[domain] ?? []) {
     const group = EVENT_GROUPS[name] ?? [name];
     if (done.has(group[0])) continue;
@@ -701,10 +744,28 @@ export function inferEvents(grid, domain, opts = {}) {
       .map((r) => ({ row: r, f: fitFor(r, group) }))
       .filter((x) => x.f)
       .sort((a, b) => (b.f.share - a.f.share) || (b.row.total - a.row.total));
-    perEvent[group.length > 1 ? group.join(' / ') : name] = scored.slice(0, 5).map((x) => ({
-      label: x.row.label, year: x.row.year, from: x.row.from,
-      share: x.f.share, margin: x.f.margin, total: x.row.total, systems: x.row.strong,
-    }));
+    if (!scored.length) continue;
+
+    // 이 후보가 달을 **가르기는 하는가**. 가르지 못하면 순위를 내지 않는다
+    const shares = scored.map((x) => x.f.share);
+    const typical = shares[Math.floor(shares.length / 2)];
+    const spread = shares[0] - typical;
+    const flat = spread < FLAT_SPREAD;
+
+    if (flat) for (const g of group) flatEvents.add(g);
+
+    perEvent[group.length > 1 ? group.join(' / ') : name] = {
+      flat,
+      spread: Math.round(spread * 1000) / 10, // %p
+      top: Math.round(shares[0] * 1000) / 10,
+      typical: Math.round(typical * 1000) / 10,
+      // 가르지 못하는 후보는 달 목록 자체를 만들지 않는다. 만들어 두면
+      // 어딘가에서 반드시 쓰이고, 쓰이면 뜻 없는 순위가 답이 된다.
+      months: flat ? [] : scored.slice(0, 5).map((x) => ({
+        label: x.row.label, year: x.row.year, from: x.row.from,
+        share: x.f.share, margin: x.f.margin, total: x.row.total, systems: x.row.strong,
+      })),
+    };
   }
 
   for (const r of rows) {
@@ -789,6 +850,8 @@ export function inferEvents(grid, domain, opts = {}) {
     // 사건마다 따로 세운 상위 다섯 달. 사건을 지정하지 않았을 때는
     // 구간(windows)이 "그 영역이 시끄러운 때"일 뿐이므로 이쪽을 함께 봐야 한다
     perEvent,
+    // 이 후보들은 어느 달에 넣어도 같은 값이라 시기를 말할 수 없다
+    flatEvents: [...flatEvents],
     eventNotFound: eventNotFound ? opts.event : null,
     rankedBy: focusEvent ? `사건 점유율(${focusEvent})`
       : eventNotFound ? `영역 활성도 (요청한 '${opts.event}' 는 ${domain} 분야의 후보가 아니다)`

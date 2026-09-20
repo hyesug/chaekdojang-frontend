@@ -80,6 +80,9 @@ const EVENT_WORDS = [
   ['수입 증가', '재물', ['수입', '돈이 들어', '벌이']],
 ];
 
+/** 생활권을 넘는 이동의 낌새. 같은 동네 이사는 일과 덜 엮인다 */
+const INTERCITY_MOVE = /타지역|지방|수도권|먼 ?곳|멀리|상경|내려가|올라가|이주|전근|발령/;
+
 /** 질문에서 사건 하나를 집어낸다. 못 집어내면 null */
 export function eventFromQuestion(q) {
   const hits = EVENT_WORDS
@@ -161,6 +164,26 @@ export function routeQuestion(question, thisYear) {
     const i = domains.indexOf(ev.domain);
     if (i > 0) domains.splice(i, 1);
     if (i !== 0) domains.unshift(ev.domain);
+  }
+
+  // 그리고 그 반대쪽 — 위 '직업 → 이사' 규칙의 짝이 빠져 있었다.
+  //
+  // 성인이 생활권을 넘어 옮기는 일은 대개 **일 때문에** 벌어진다. 그때
+  // 신호는 주거가 아니라 직업 분야에 있다. 이사는 결과고 원인이 일이다.
+  // 실측: 취직하며 대전으로 옮긴 달을 주거 분야에서 재면 228달 중
+  // 150위(상위 66% — 동전 던지기)였는데, 같은 달을 직업 분야에서 재면
+  // 9위(상위 4%)였다. 분야를 잘못 골라서 틀린 것이지 계산이 없던 게 아니다.
+  //
+  // 같은 동네 이사는 일과 덜 엮이므로 생활권을 넘는 낌새가 있을 때만 켠다.
+  // 맨 뒤에 붙이지 않고 두 번째 자리에 꽂는다 — domains 는 셋까지만
+  // 쓰이므로 뒤에 붙이면 조용히 잘려 나간다.
+  //
+  // **반드시 위 ev 블록 다음이어야 한다.** 낱말 규칙(RULES)에 안 걸리고
+  // 사건 낱말에만 걸리는 질문이 있어서("언제 지방으로 옮기게 될까"),
+  // 그 앞에 두면 domains 가 아직 비어 있어 조건이 헛돈다.
+  if ((domains.includes('이사') || domains.includes('주거')) && !domains.includes('직업') &&
+      (INTERCITY_MOVE.test(q) || cities.length)) {
+    domains.splice(1, 0, '직업');
   }
 
   return {

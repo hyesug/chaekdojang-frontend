@@ -24,6 +24,8 @@ import * as ZW from '../../public/unse-8f3k2m/src/hires/ziwei.js';
 import * as ZE from '../../public/unse-8f3k2m/src/hires/ziweiExt.js';
 import * as LOC from '../../public/unse-8f3k2m/src/hires/location.js';
 import * as PAIR from '../../public/unse-8f3k2m/src/hires/pair.js';
+import * as BD from '../../public/unse-8f3k2m/src/hires/body.js';
+import { elementDistribution } from '../../public/unse-8f3k2m/src/core/ganzhi.js';
 import { profileFor, tierOf } from '../../public/unse-8f3k2m/src/hires/profile.js';
 import { routeQuestion } from '../../public/unse-8f3k2m/src/hires/router.js';
 import { buildHiRes } from '../../public/unse-8f3k2m/src/hires/context.js';
@@ -395,4 +397,66 @@ test('시각 미상에서도 무너지지 않고 없는 것은 없다고 적는�
   const h = buildHiRes(r, f, routeQuestion('언제 결혼해?', 2026));
   assert.ok(h.text.length > 500);
   assert.match(h.text, /출생 시각을 몰라/);
+});
+
+// ─────────────────────────────────────────────────────────────
+// 부위 — 몸의 어느 자리인가
+// ─────────────────────────────────────────────────────────────
+
+test('6하우스는 커스프 사인만 보지 않고 도수로 가른다', () => {
+  // 플라시두스에서 한 하우스가 30°를 넘는 일이 흔하다. 그때는 커스프 사인보다
+  // 뒤에 오는 사인이 하우스의 절반 이상을 차지하기도 한다 — 실제로 그런
+  // 명반이 있었고(6H 사수 14.9° → 염소 17.8°, 염소가 54%), 커스프만 보면
+  // 그 절반을 통째로 놓친다.
+  const segs = BD.houseSigns(254.9, 287.8);
+  assert.equal(segs.length, 2);
+  assert.equal(segs[0].sign, 9, '가장 많이 차지한 사인이 염소여야 한다');
+  assert.ok(segs[0].share > 0.5, `염소 비중이 ${segs[0].share}`);
+  assert.ok(Math.abs(segs.reduce((t, s) => t + s.share, 0) - 1) < 0.01, '비중 합이 1이 아니다');
+});
+
+test('부위 무게는 표에 낱말을 몇 개 적었는지와 무관해야 한다', () => {
+  // 처음에는 사인의 무게를 부위 개수로 나눴다. 그러면 염소(무릎·뼈·관절·피부)
+  // 네 낱말이 사수(엉덩이·허벅지·좌골) 세 낱말에 밀려, 하우스를 54% 차지한
+  // 사인이 46% 차지한 사인보다 낮게 나왔다. 명반이 가리키는 것은 구역이고
+  // 낱말은 그 구역을 부르는 이름일 뿐이다.
+  const big = BD.MELOTHESIA[9].parts.length;   // 염소 4개
+  const small = BD.MELOTHESIA[8].parts.length; // 사수 3개
+  assert.ok(big > small, '전제가 깨졌다 — 표를 고쳤으면 이 테스트도 다시 보라');
+
+  const N = WS.natalPack(R.input);
+  const parts = BD.westernParts(N);
+  const byName = Object.fromEntries(parts.map((p) => [p.part, p.share]));
+  // 같은 사인 안의 부위들은 서로 같은 무게여야 한다
+  const capr = BD.MELOTHESIA[9].parts.map((p) => byName[p]).filter((v) => v != null);
+  if (capr.length > 1) {
+    for (const v of capr) assert.ok(Math.abs(v - capr[0]) < 1e-6, '같은 사인인데 무게가 다르다');
+  }
+});
+
+test('부위가 갈리지 않는 명반은 갈리지 않는다고 말한다', () => {
+  // 부위는 기저율이 높다. 갈리지도 않는데 1위를 내놓으면 그게 답이 된다 —
+  // 평평한 사건 후보와 같은 함정이다.
+  const read = BD.bodyRead(WS.natalPack(R.input), elementDistribution(R.chart.pillars).pct);
+  assert.equal(typeof read.spread, 'number');
+  assert.equal(typeof read.flat, 'boolean');
+  if (read.flat) assert.match(BD.formatBody(read), /부위가 갈리지 않는다/);
+  // 검증되지 않았다는 말이 항상 붙는다
+  assert.match(BD.formatBody(read), /검증되지 않았다/);
+  assert.match(BD.formatBody(read), /진단으로 말하지 말 것/);
+});
+
+test('시각을 모르면 부위를 보지 않는다', () => {
+  // 하우스를 세울 수 없으면 6하우스가 없고, 6하우스가 없으면 부위도 없다
+  const read = BD.bodyRead(null, [20, 20, 20, 20, 20]);
+  assert.ok(read.unavailable, '시각 미상인데 부위를 만들었다');
+});
+
+test('베딕·자미두수 부위는 미구현으로 명시한다', () => {
+  // 칼라푸루샤는 사이드리얼이라 같은 도수가 다른 사인이 된다(약 24° 차이).
+  // 트로피컬 염소(무릎)가 사이드리얼로는 사수(허벅지)다. 섞으면 어느 쪽
+  // 부위인지 말할 수 없게 되므로 한쪽만 쓴다.
+  const read = BD.bodyRead(WS.natalPack(R.input), elementDistribution(R.chart.pillars).pct);
+  assert.match(read.school, /멜로테시아\(트로피컬\)/);
+  assert.match(read.school, /베딕·자미두수 부위는 미구현/);
 });

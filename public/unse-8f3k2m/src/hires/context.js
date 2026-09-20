@@ -22,6 +22,7 @@ import * as ZW from './ziwei.js';
 import * as ZE from './ziweiExt.js';
 import * as CL from './classical.js';
 import * as W from './wealth.js';
+import * as BD from './body.js';
 import { profileFor, formatProfile, tierOf, describeTier } from './profile.js';
 
 /** 신뢰도 표기 — 답변에서 이 등급을 그대로 쓰게 한다 */
@@ -89,6 +90,12 @@ export function buildHiRes(r, f = null, plan) {
   const chain = chainOf(inferences);
   const location = plan.needsPlace ? buildLocation(r, plan) : null;
   const natal = safe(() => WS.natalPack(input));
+
+  // 건강을 물을 때만 부위를 본다. 다른 질문에 실으면 문맥만 길어진다
+  const body = domains.includes('건강') && natal
+    ? safe(() => BD.bodyRead(natal, elementDistribution(chart.pillars).pct,
+        grid.months.flatMap((m) => m.western?.transits ?? [])))
+    : null;
 
   // ── 분야별 프로파일 — "누구와·어떤 모양으로" ──
   // 층(원국·대한·유년·유월)을 한 번만 세워 여러 프로파일이 나눠 쓴다
@@ -189,6 +196,10 @@ export function buildHiRes(r, f = null, plan) {
       substanceNote: classical.substanceNote,
     } : (classical?.unavailable ? { unavailable: classical.unavailable } : null),
     wealth, windfall, lifetime,
+    body: body && !body.unavailable
+      ? { west: body.west.slice(0, 6), saju: body.saju, agree: body.agree,
+          spread: body.spread, flat: body.flat, school: body.school }
+      : (body?.unavailable ? { unavailable: body.unavailable } : null),
     // 자미 — 질문 분야의 궁을 층마다 삼방사정·길성·살성까지 펴 본다
     ziweiPalaces: stack ? domains.map((d) => ({
       domain: d,
@@ -680,6 +691,12 @@ export function formatHiRes(j, plan) {
     if (c.scenarios.contrary) out.push(`  반대 근거: ${c.scenarios.contrary.name} 쪽을 막는 신호가 있다`);
   }
   out.push('');
+
+  // ── 몸의 어느 자리인가 — 건강 질문에만 ──
+  if (j.body) {
+    out.push(j.body.unavailable ? `### 부위\n${j.body.unavailable}` : BD.formatBody(j.body));
+    out.push('');
+  }
 
   // ── 고전 점성술 — 섹트·디그니티·로트·재물 하우스 ──
   if (j.classical && !j.classical.unavailable) {

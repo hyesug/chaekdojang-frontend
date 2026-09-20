@@ -686,3 +686,20 @@ test('구조화 JSON 이 약속한 모양대로 나온다', () => {
   assert.ok(Array.isArray(json.timingWindows));
   assert.ok(json.crossValidation.byDomain.every((d) => 'ABCDE'.includes(d.confidence.grade)));
 });
+
+test('해외·여행 질문이 직업 분야로 떨어지지 않는다', () => {
+  // '해외·장거리' 후보는 이사 분야에 있는데 낱말 규칙 어디에도 해외·여행이
+  // 없어서 "해외여행 몇 번 가봤을까"가 폴백으로 직업에 떨어졌다.
+  const p = routeQuestion('이 사람은 해외여행 몇 번 가봤을까', 2026);
+  assert.equal(p.fallback, false, '폴백으로 떨어졌다');
+  assert.equal(p.domains[0], '이사', `${p.domains}`);
+  assert.equal(p.event, '해외·장거리');
+  // 횟수 질문인 것도 같이 잡아야 한다
+  assert.equal(p.asksCount, true);
+
+  for (const q of ['이민 갈 수 있을까', '워홀 언제가 좋아', '주재원으로 나갈까']) {
+    assert.equal(routeQuestion(q, 2026).domains[0], '이사', q);
+  }
+  // 국내 이사는 그대로 이사다
+  assert.equal(routeQuestion('언제 이사했을까', 2026).event, '이사');
+});

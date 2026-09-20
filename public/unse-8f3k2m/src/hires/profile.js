@@ -100,8 +100,20 @@ const PLANET_TRADE = {
   케투: '기술 하나로 파고드는 일, 또는 드러나지 않는 자리',
 };
 
-/** 자미 부처궁 주성이 그리는 상대의 결 */
-const SPOUSE_STAR = {
+/**
+ * 자미 주성이 그리는 '일의 결'.
+ *
+ * `trade` 는 **어느 궁에서 읽느냐에 따라 누구의 일인지가 달라질 뿐** 같은 표다.
+ * 부처궁에서 읽으면 상대의 일, 관록궁에서 읽으면 본인의 일이다. 오히려
+ * 관록궁이 이 표의 본래 자리다.
+ *
+ * 원래는 부처궁에만 걸어 두어서, 엔진이 "배우자는 이런 일을 한다"는 말할 수
+ * 있어도 "본인은 이런 일을 한다"는 못 했다. 같은 표를 관록궁에도 댄다.
+ *
+ * `older`·`stable`·`income` 은 **상대를 볼 때만** 뜻이 있다(나이 차·안정성·
+ * 수입). 관록궁에서는 쓰지 않는다.
+ */
+const MAIN_STAR = {
   자미: { trade: '조직에서 자리를 맡는 사람', older: 1, stable: 2, income: 1 },
   천부: { trade: '모으고 지키는 실무·재무 쪽', older: 1, stable: 2, income: 2 },
   무곡: { trade: '돈과 기술을 직접 다루는 실무형', older: 0, stable: 1, income: 2 },
@@ -171,7 +183,7 @@ export function spouseProfile(input, st = null) {
       .find((x) => x.palace === '부처궁')?.rows ?? [];
     spouseStars = [...new Set(rows.flatMap((r) => r.main))];
     for (const s of spouseStars) {
-      const d = SPOUSE_STAR[s];
+      const d = MAIN_STAR[s];
       if (!d) continue;
       trade[d.trade] = (trade[d.trade] ?? 0) + 1.5;
       basis.push(`자미 부처궁 ${s}`);
@@ -189,7 +201,7 @@ export function spouseProfile(input, st = null) {
     if (YOUNGER_P.includes(p)) { younger += 1; ageBasis.push(`${why} — 동년·연하 쪽`); }
   }
   for (const s of spouseStars) {
-    const d = SPOUSE_STAR[s];
+    const d = MAIN_STAR[s];
     if (!d) continue;
     if (d.older > 0) { older += d.older; ageBasis.push(`자미 부처궁 ${s} — 연상 쪽`); }
     if (d.older < 0) { younger += -d.older; ageBasis.push(`자미 부처궁 ${s} — 동년·연하 쪽`); }
@@ -229,7 +241,7 @@ export function spouseProfile(input, st = null) {
   if (mp.d1_7?.lordDignity === '함몰') { stable -= 2; stableBasis.push(`7궁주 ${j(l7, '이')} 함몰`); }
   if (mp.d1_7?.lordCombust) { stable -= 1; stableBasis.push(`7궁주 ${j(l7, '이')} 태양에 묻힘(조합)`); }
   for (const s of spouseStars) {
-    const d = SPOUSE_STAR[s];
+    const d = MAIN_STAR[s];
     if (d) { stable += d.stable; if (d.stable) stableBasis.push(`자미 부처궁 ${s}`); }
   }
 
@@ -342,11 +354,41 @@ export function careerProfile(input, st = null) {
 
   // ── 자미 관록궁 ──
   let careerStars = [];
+  let natalStars = [];
   if (st) {
-    careerStars = [...new Set(
-      (ZE.domainPalaces(input, '직업', st.layers).find((x) => x.palace === '관록궁')?.rows ?? [])
-        .flatMap((r) => r.main))];
+    const rows = ZE.domainPalaces(input, '직업', st.layers)
+      .find((x) => x.palace === '관록궁')?.rows ?? [];
+    careerStars = [...new Set(rows.flatMap((r) => r.main))];
+    // 직업의 '결'은 **원국** 관록궁에서 읽는다. 층을 다 합치면 대한·유년이
+    // 섞여, 평생의 직업 결과 올해의 국면이 한 덩어리가 된다.
+    natalStars = rows.find((r) => /원국/.test(r.layer ?? ''))?.main ?? [];
   }
+
+  // ── 직업의 결 ── 관록궁 주성 + 10궁주 행성의 카라카
+  // 같은 표를 부처궁에서 읽으면 '상대의 일', 관록궁에서 읽으면 '본인의 일'이다.
+  const trade = {};
+  const tradeBasis = [];
+  for (const s of natalStars) {
+    const d = MAIN_STAR[s];
+    if (!d) continue;
+    trade[d.trade] = (trade[d.trade] ?? 0) + 2;
+    tradeBasis.push(`자미 원국 관록궁 ${s}`);
+  }
+  if (l10 && PLANET_TRADE[l10]) {
+    trade[PLANET_TRADE[l10]] = (trade[PLANET_TRADE[l10]] ?? 0) + 2.5;
+    tradeBasis.push(`D1 10궁주 ${l10}`);
+  }
+  for (const p of wp.d1_10?.occupants ?? []) {
+    if (!PLANET_TRADE[p]) continue;
+    trade[PLANET_TRADE[p]] = (trade[PLANET_TRADE[p]] ?? 0) + 1.5;
+    tradeBasis.push(`10하우스에 든 ${p}`);
+  }
+  for (const p of wp.d10_10?.occupants ?? []) {
+    if (!PLANET_TRADE[p]) continue;
+    trade[PLANET_TRADE[p]] = (trade[PLANET_TRADE[p]] ?? 0) + 1.5;
+    tradeBasis.push(`D10 10하우스에 든 ${p}`);
+  }
+  const tradeLean = lean(trade);
 
   const systems = new Set(['베딕']);
   if (careerStars.length) systems.add('자미두수');
@@ -354,6 +396,12 @@ export function careerProfile(input, st = null) {
   return {
     kind: '직업',
     items: [
+      // 직업의 결을 맨 앞에 둔다 — "무슨 일을 하는가"가 직업 질문의 본문이고
+      // 수입 모양·조직 성격은 그 일이 어떤 모양인지를 덧붙이는 것이다
+      item('직업의 결', tradeLean?.name, [...new Set(tradeBasis)].slice(0, 5),
+        { tier: tradeLean?.clear ? null : 'C' }),
+      item('다음 후보', tradeLean?.clear ? null : tradeLean?.runnerUp,
+        tradeLean?.runnerUp ? ['1위와 크게 벌어지지 않아 함께 적는다'] : []),
       item('수입의 모양', incomeLean?.name, [...new Set(basis)].slice(0, 5)),
       item('조직의 성격', org, orgBasis),
       item('규모의 방향', scaleValue, big.map((x) => x.why)),
@@ -364,6 +412,9 @@ export function careerProfile(input, st = null) {
     ].filter(Boolean),
     incomeShape: incomeLean?.name ?? null,
     runnerUpIncome: incomeLean?.runnerUp ?? null,
+    trade: tradeLean?.name ?? null,
+    tradeClear: !!tradeLean?.clear,
+    tradeShare: tradeLean ? Math.round(tradeLean.share * 100) / 100 : null,
     systems: [...systems],
     activators: wp.activators,
   };

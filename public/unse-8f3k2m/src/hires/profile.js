@@ -91,7 +91,12 @@ function lean(scores) {
 const PLANET_TRADE = {
   태양: '공공·행정·관리직, 권위가 있는 자리',
   달: '돌봄·서비스·유통처럼 사람과 흐름을 다루는 일',
-  화성: '기술·공학·의료·군경처럼 손과 판단이 곧 결과가 되는 일',
+  // BPHS 의 화성 카라카에는 **체력·무예·운동**이 함께 들어 있다(파라크라마).
+  // 원래 '기술·공학·의료·군경'만 옮겨 적어서 **몸을 쓰는 일이 표에 아예
+  // 없었다.** 실제로 헬스트레이너를 맞히지 못한 사례에서 드러났다 —
+  // 다만 그 명반은 화성이 직업 지표에 아예 안 걸려서, 이 줄을 채워도
+  // 그 답은 나오지 않는다. 표의 구멍을 메우는 것이지 그 건을 고치는 게 아니다.
+  화성: '기술·공학·의료·군경·체육처럼 몸과 손, 판단이 곧 결과가 되는 일',
   수성: '상업·문서·IT·교육처럼 말과 셈을 다루는 일',
   목성: '교육·법률·금융·상담처럼 가르치고 판단해 주는 일',
   금성: '예술·디자인·미용·접객처럼 감각과 관계를 파는 일',
@@ -378,6 +383,16 @@ export function careerProfile(input, st = null) {
     trade[PLANET_TRADE[l10]] = (trade[PLANET_TRADE[l10]] ?? 0) + 2.5;
     tradeBasis.push(`D1 10궁주 ${l10}`);
   }
+  // D10(다샴샤)은 **직업 전용 분할도**다. 표준 독법에서 라그나와 그 주인이
+  // 직업의 1순위 지표이고, D1 의 10궁주보다 앞에 놓는 문헌도 많다.
+  // 여태 D10 의 10하우스 거주 행성만 쓰고 라그나를 통째로 버리고 있었다.
+  const addTrade = (p, w, why) => {
+    if (!p || !PLANET_TRADE[p]) return;
+    trade[PLANET_TRADE[p]] = (trade[PLANET_TRADE[p]] ?? 0) + w;
+    tradeBasis.push(why);
+  };
+  addTrade(wp.d10_1?.lord, 3, `D10 라그나 ${wp.d10Lagna} 주인 ${wp.d10_1?.lord}`);
+  addTrade(wp.d10_10?.lord, 2.5, `D10 10궁주 ${wp.d10_10?.lord}`);
   for (const p of wp.d1_10?.occupants ?? []) {
     if (!PLANET_TRADE[p]) continue;
     trade[PLANET_TRADE[p]] = (trade[PLANET_TRADE[p]] ?? 0) + 1.5;

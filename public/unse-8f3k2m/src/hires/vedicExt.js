@@ -497,6 +497,9 @@ export function wealthPack(input) {
     d1_10: pick(d1, 10), d1_6: pick(d1, 6),
     d1_5: pick(d1, 5), d1_9: pick(d1, 9),
     d10Lagna: d10?.lagnaSign ?? null,
+    // D10(다샴샤)은 직업 전용 분할도다. 표준 독법에서 **라그나와 그 주인**이
+    // 직업의 1순위 지표인데 여태 10하우스 거주 행성만 꺼내 쓰고 있었다.
+    d10_1: d10 && pick(d10, 1),
     d10_10: d10 && pick(d10, 10),
     d10_7: d10 && pick(d10, 7),    // 사업·거래처를 보는 자리
     d10_6: d10 && pick(d10, 6),    // 고용·일상 노동

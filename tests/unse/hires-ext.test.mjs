@@ -460,3 +460,49 @@ test('베딕·자미두수 부위는 미구현으로 명시한다', () => {
   assert.match(read.school, /멜로테시아\(트로피컬\)/);
   assert.match(read.school, /베딕·자미두수 부위는 미구현/);
 });
+
+test('직업의 결은 D10 라그나까지 쓴다', () => {
+  // D10(다샴샤)은 직업 전용 분할도이고, 표준 독법에서 라그나와 그 주인이
+  // 1순위 지표다. 여태 D10 의 10하우스 거주 행성만 꺼내 쓰고 라그나를
+  // 통째로 버리고 있었다.
+  const wp = VE.wealthPack(RB.input);
+  assert.ok(wp.d10_1, 'D10 라그나 묶음이 없다');
+  assert.ok(wp.d10_1.lord, 'D10 라그나주가 없다');
+
+  const st = ZW.stackAt(RB.input, 2026, null);
+  const p = profileFor(RB.input, '직업', st);
+  const trade = p.items.find((i) => i.axis === '직업의 결');
+  assert.ok(trade, '직업의 결 항목이 없다');
+  assert.ok(trade.basis.some((b) => /D10 라그나/.test(b)),
+    `근거에 D10 라그나가 없다: ${trade.basis.join(' / ')}`);
+});
+
+test('직업의 결이 팽팽하면 2위를 함께 적고 등급을 낮춘다', () => {
+  // 명반 여섯으로 재니 넷이 팽팽했다(비중 0.24~0.55). 팽팽한데 1위만
+  // 내놓으면 그게 답이 된다 — 평평한 사건 후보와 같은 함정이다.
+  const st = ZW.stackAt(RB.input, 2026, null);
+  const p = profileFor(RB.input, '직업', st);
+  const trade = p.items.find((i) => i.axis === '직업의 결');
+  const runnerUp = p.items.find((i) => i.axis === '다음 후보');
+  assert.equal(typeof p.tradeClear, 'boolean');
+  if (!p.tradeClear) {
+    assert.equal(trade.tier, 'C', '팽팽한데 등급을 낮추지 않았다');
+    assert.ok(runnerUp, '팽팽한데 2위를 적지 않았다');
+  } else {
+    assert.ok(!runnerUp, '또렷한데 2위를 적었다');
+  }
+});
+
+test('직업의 결 표에 몸을 쓰는 일이 있다', () => {
+  // BPHS 의 화성 카라카에는 체력·무예·운동이 함께 들어 있다. 원래
+  // '기술·공학·의료·군경'만 옮겨 적어 몸을 쓰는 일이 표에서 통째로 빠져
+  // 있었다 — 어떤 명반에서도 그 답이 나올 수 없었다는 뜻이다.
+  const st = ZW.stackAt(RB.input, 2026, null);
+  const trades = new Set();
+  for (const form of [FORM, FORM_B, FORM_C]) {
+    const r = readFortune(form, { now: NOW });
+    trades.add(profileFor(r.input, '직업', ZW.stackAt(r.input, 2026, null)).trade);
+  }
+  assert.ok(trades.size > 1, `명반이 달라도 직업의 결이 같다: ${[...trades]}`);
+  assert.ok(st, '자미 층이 없다');
+});

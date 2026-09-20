@@ -506,3 +506,25 @@ test('직업의 결 표에 몸을 쓰는 일이 있다', () => {
   assert.ok(trades.size > 1, `명반이 달라도 직업의 결이 같다: ${[...trades]}`);
   assert.ok(st, '자미 층이 없다');
 });
+
+test('수입의 모양에 이길 수 없는 선택지를 두지 않는다', () => {
+  // '사업·자기 판형'은 점수를 받을 길이 D2 호라 하나뿐이고 무게가 1.5 라,
+  // 다른 선택지의 조건 하나짜리 점수(2~2.5)보다도 낮았다. 명반 여덟을
+  // 돌려도 1위는커녕 2위로도 한 번도 나오지 않았다 — 죽은 선택지다.
+  const FORMS = [FORM, FORM_B, FORM_C,
+    { name: 'G', gender: 'male', year: 1966, month: 3, day: 6, hour: 17, minute: 0, birthPlace: '여주', homePlace: '구미' },
+    { name: 'H', gender: 'female', year: 1970, month: 6, day: 11, hour: 7, minute: 20, birthPlace: '대구', homePlace: '대구' },
+    { name: 'I', gender: 'male', year: 1983, month: 9, day: 22, hour: 14, minute: 30, birthPlace: '인천', homePlace: '인천' }];
+
+  const seen = new Set();
+  for (const form of FORMS) {
+    const r = readFortune(form, { now: NOW });
+    const p = profileFor(r.input, '직업', ZW.stackAt(r.input, 2026, null));
+    if (p.incomeShape) seen.add(p.incomeShape.split(' —')[0]);
+    if (p.runnerUpIncome) seen.add(p.runnerUpIncome.split(' —')[0]);
+  }
+  // 한 선택지로 굳지 않는다
+  assert.ok(seen.size >= 3, `수입의 모양이 ${seen.size}가지뿐이다: ${[...seen]}`);
+  assert.ok(seen.has('사업·자기 판형'),
+    '사업·자기 판형이 1·2위 어디에도 못 든다 — 다시 죽은 선택지가 됐다');
+});

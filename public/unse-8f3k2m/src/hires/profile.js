@@ -315,7 +315,32 @@ export function careerProfile(input, st = null) {
   const l10 = wp.d1_10?.lord ?? null;
   const l10In = wp.d1_10?.lordIn ?? null;
 
+  // 자미 관록궁을 먼저 읽는다 — 아래 '수입의 모양'에서도 쓴다
+  let careerStars = [];
+  let natalStars = [];
+  if (st) {
+    const rows = ZE.domainPalaces(input, '직업', st.layers)
+      .find((x) => x.palace === '관록궁')?.rows ?? [];
+    careerStars = [...new Set(rows.flatMap((r) => r.main))];
+    // 직업의 '결'은 **원국** 관록궁에서 읽는다. 층을 다 합치면 대한·유년이
+    // 섞여, 평생의 직업 결과 올해의 국면이 한 덩어리가 된다.
+    natalStars = rows.find((r) => /원국/.test(r.layer ?? ''))?.main ?? [];
+  }
+
   // ── 수입의 모양 ── 어느 자리가 받쳐 주는가
+  //
+  // 여기에 **죽은 선택지**가 있었다. '사업·자기 판형'에 점수를 줄 수 있는
+  // 길이 D2 호라 하나뿐이고 그 무게가 1.5 라, 다른 선택지의 **조건 하나짜리
+  // 점수(2~2.5)보다도 낮았다.** 명반 여덟을 돌려 보니 1위는커녕 2위로도
+  // 한 번도 나오지 않았다. '조직 개편에 따른 이동'과 같은 종류의 함정이다.
+  //
+  // 자미 관록궁 주성을 이 축에도 댄다. MAIN_STAR 표가 이미 파군을 '자기
+  // 사업 쪽', 칠살을 '개척하는 일, 변동이 큰 자리'로, 자미·천부·천상·천량을
+  // 조직 안의 자리로 적어 두었는데 그 말이 '직업의 결'에만 쓰이고 '수입의
+  // 모양'에는 닿지 않았다. **양쪽 방향 모두 댄다** — 한쪽만 보태면 그냥
+  // 반대로 기울 뿐이다.
+  const SELF_STARS = ['파군', '칠살', '탐랑'];
+  const ORG_STARS = ['자미', '천부', '천상', '천량'];
   const income = {};
   const bump = (k, w, why) => { income[k] = (income[k] ?? 0) + w; basis.push(why); };
   const L10 = j(l10 ?? '', '이');
@@ -326,8 +351,12 @@ export function careerProfile(input, st = null) {
   if (wp.d10_7?.occupants?.length) bump('거래처형 — 상대가 있어야 도는 쪽', 1.5, `D10 7하우스에 ${wp.d10_7.occupants.join('·')}`);
   if (wp.d10_6?.occupants?.length) bump('월급형 — 조직에 소속되어 버는 쪽', 1.5, `D10 6하우스에 ${wp.d10_6.occupants.join('·')}`);
   if (wp.dhanaYogas.length) bump('반복 매출형 — 쌓여서 들어오는 쪽', wp.dhanaYogas.length, `다나 요가 ${wp.dhanaYogas.length}개`);
-  if (wp.hora?.sunHora > wp.hora?.moonHora) bump('사업·자기 판형', 1.5, `D2 호라가 태양 쪽 ${wp.hora.sunHora}개`);
+  if (wp.hora?.sunHora > wp.hora?.moonHora) bump('사업·자기 판형', 2, `D2 호라가 태양 쪽 ${wp.hora.sunHora}개`);
   if (wp.hora?.moonHora > wp.hora?.sunHora) bump('월급형 — 조직에 소속되어 버는 쪽', 1.5, `D2 호라가 달 쪽 ${wp.hora.moonHora}개`);
+  for (const s of natalStars) {
+    if (SELF_STARS.includes(s)) bump('사업·자기 판형', 2, `자미 원국 관록궁 ${s} — ${MAIN_STAR[s].trade}`);
+    if (ORG_STARS.includes(s)) bump('월급형 — 조직에 소속되어 버는 쪽', 2, `자미 원국 관록궁 ${s} — ${MAIN_STAR[s].trade}`);
+  }
   const incomeLean = lean(income);
 
   // ── 조직의 성격 ── 아루다 10궁(A10)이 세상에 보이는 직업의 모습
@@ -356,18 +385,6 @@ export function careerProfile(input, st = null) {
       ? '지금보다 판이 커지는 쪽. 다루는 범위가 넓어진다'
       : '지금보다 제도가 잡힌 쪽. 규정과 역할이 분명해진다')
     : null;
-
-  // ── 자미 관록궁 ──
-  let careerStars = [];
-  let natalStars = [];
-  if (st) {
-    const rows = ZE.domainPalaces(input, '직업', st.layers)
-      .find((x) => x.palace === '관록궁')?.rows ?? [];
-    careerStars = [...new Set(rows.flatMap((r) => r.main))];
-    // 직업의 '결'은 **원국** 관록궁에서 읽는다. 층을 다 합치면 대한·유년이
-    // 섞여, 평생의 직업 결과 올해의 국면이 한 덩어리가 된다.
-    natalStars = rows.find((r) => /원국/.test(r.layer ?? ''))?.main ?? [];
-  }
 
   // ── 직업의 결 ── 관록궁 주성 + 10궁주 행성의 카라카
   // 같은 표를 부처궁에서 읽으면 '상대의 일', 관록궁에서 읽으면 '본인의 일'이다.

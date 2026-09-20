@@ -122,9 +122,15 @@ export function marriageWindow(A, B, fromYear, years = 6) {
     const y = fromYear + i;
     const a = personYear(A.input, A.chart, y, ctxA);
     const b = personYear(B.input, B.chart, y, ctxB);
-    // 두 사람 모두 켜진 해만 뜻이 있다. 한쪽만 켜지면 그 해는 아니다
-    const both = a.systems.length > 0 && b.systems.length > 0;
     const shared = a.systems.filter((s) => b.systems.includes(s));
+    // 두 사람이 **같은 체계에서** 켜진 해만 뜻이 있다.
+    //
+    // 원래는 `a.systems.length > 0 && b.systems.length > 0` 이었다. 그런데
+    // 각자 아무 체계나 하나씩만 켜지면 통과라서, 짝 8쌍 × 20년 = 160 해를
+    // 재 보니 **한 번도 걸리지 않았다**. "같이 켜지는 해가 없으면 없다고
+    // 말한다"는 장치가 말만 남고 실제로는 늘 열려 있었다는 뜻이다.
+    // 주석이 말하는 '겹침'은 공통 체계다. 코드를 주석에 맞춘다.
+    const both = shared.length > 0;
     rows.push({
       year: y, a, b, both,
       sharedSystems: shared,
@@ -179,10 +185,16 @@ export function navamsaPair(A, B) {
 
 /** 프롬프트용 — 두 사람이 겹치는 해를 한 덩이로 */
 export function formatPair(mw, rel, nav, nameA, nameB) {
-  const out = ['## 두 사람의 결혼 시기 — 양쪽이 같이 켜지는 해만 센 것'];
-  out.push('한쪽만 켜진 해는 0으로 둔다. 혼인은 두 사람의 시계가 같이 돌아야 일어난다고 보는 모델이다.');
+  const out = ['## 두 사람의 결혼 시기 — 양쪽이 같은 체계에서 켜지는 해만 센 것'];
+  out.push('겹치는 체계가 없는 해는 0으로 둔다. 혼인은 두 사람의 시계가 같이 돌아야 일어난다고 보는 모델이다.');
+  // 이 모델은 아직 검증되지 않았다. 실측 한 건(실제 교제 시작 달)에서
+  // 여자 쪽 명반은 144달 중 11위, 남자 쪽은 97위, 두 사람 합산은 12해 중
+  // 5위였다 — 합산이 한쪽보다 나아지지 않았다. 사례가 하나뿐이라 결론은
+  // 못 내리지만, **합산이 더 믿을 만하다고 말해서는 안 된다.**
+  out.push('※ 이 합산 모델은 실측 사례가 하나뿐이고, 그 한 건에서 **합산이 한쪽 명반보다 낫지 않았다.** ' +
+    '겹친 해를 근거로 삼되 "두 사람이 같이 켜졌으니 더 확실하다"고는 말하지 말 것.');
   for (const r of mw.rows) {
-    if (!r.both) { out.push(`${r.year}: 한쪽만 켜짐 — ${r.a.systems.length ? nameA : nameB} 쪽만`); continue; }
+    if (!r.both) { out.push(`${r.year}: 겹치는 체계 없음 — ${nameA} ${r.a.systems.join('·') || '없음'} / ${nameB} ${r.b.systems.join('·') || '없음'}`); continue; }
     out.push(`${r.year}: 양쪽 켜짐 (겹친 체계 ${r.sharedSystems.join('·') || '없음'})`);
     out.push(`  ${nameA} — ${r.a.hits.map((h) => h.why).join(' / ')}`);
     out.push(`  ${nameB} — ${r.b.hits.map((h) => h.why).join(' / ')}`);

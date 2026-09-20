@@ -566,6 +566,38 @@ test('생활권을 넘는 이사 질문은 직업 분야도 켠다', () => {
   assert.ok(busy.domains.includes('직업'), `잘려 나갔다: ${busy.domains}`);
 });
 
+test('횟수를 묻는 질문에는 셀 수 없다고 먼저 적는다', () => {
+  // 점유율은 상대 순위라 "여기서 일이 벌어졌다"는 절대 기준이 없다. 그런데
+  // 순위를 주면 읽는 쪽이 봉우리를 센다. 실측: 명반 다섯 모두에서 37달마다
+  // 이직 봉우리가 7.8~8.8개 나왔다 — 3년에 여덟 번 옮기는 사람은 없다.
+  const counting = routeQuestion('지금이 몇 번째 회사야?', 2026);
+  assert.equal(counting.asksCount, true);
+  const timing = routeQuestion('언제 이직하게 될까?', 2026);
+  assert.equal(timing.asksCount, false);
+
+  const { r, f } = load(FORM);
+  const h = buildHiRes(r, f, counting);
+  assert.match(h.text, /횟수를 세지 못한다/);
+  assert.match(h.text, /횟수를 숫자로 답하지 말 것/);
+
+  // 순위를 보기 **전에** 나와야 한다. 뒤에 적으면 이미 센 다음이다
+  const warn = h.text.indexOf('이 엔진은 횟수를 세지 못한다');
+  const ranks = h.text.indexOf('사건마다 따로 세운 달');
+  assert.ok(warn >= 0 && warn < ranks, '경고가 순위보다 뒤에 있다');
+
+  // 시기 질문에는 이 구획을 달지 않는다
+  assert.ok(!buildHiRes(r, f, timing).text.includes('이 엔진은 횟수를 세지 못한다'));
+});
+
+test('순위를 탐지기로 읽지 말라고 문맥에 적는다', () => {
+  // '현 직장 유지'는 t('전환')을 통째로 빼는데 이직 쪽 네 후보는 더한다.
+  // 합·충·사화는 조용한 달에도 0이 아니라 "아무 일 없음"이 구조적으로 진다.
+  const { r, f } = load(FORM);
+  const h = buildHiRes(r, f, routeQuestion('언제 이직하게 될까?', 2026));
+  assert.match(h.text, /순위이지 탐지기가 아니다/);
+  assert.match(h.text, /봉우리를 세어 사건의 횟수를 말하지 말 것/);
+});
+
 test('사건을 지정하면 그 사건 기준으로, 아니면 활성도 기준으로 줄을 세운다', () => {
   const { r } = load(FORM);
   const grid = buildGrid(r.input, r.chart, { fromYear: 2026, years: 3, domain: '관계' });

@@ -80,6 +80,15 @@ const EVENT_WORDS = [
   ['수입 증가', '재물', ['수입', '돈이 들어', '벌이']],
 ];
 
+/**
+ * 횟수를 묻는 질문.
+ *
+ * "몇 번째 회사냐"는 시기 질문이 아니라 **개수 질문**이고, 이 엔진은 개수를
+ * 세지 못한다. 그런데 못 센다고 말해 주지 않으면 답변이 달 순위를 받아
+ * 봉우리를 세어 버린다. 그래서 질문이 개수를 묻는지 먼저 가린다.
+ */
+const COUNT_WORDS = /몇 ?번|몇 ?군데|몇 ?개|몇 ?곳|몇 ?차례|횟수|얼마나 자주|여러 ?번/;
+
 /** 생활권을 넘는 이동의 낌새. 같은 동네 이사는 일과 덜 엮인다 */
 const INTERCITY_MOVE = /타지역|지방|수도권|먼 ?곳|멀리|상경|내려가|올라가|이주|전근|발령/;
 
@@ -198,6 +207,8 @@ export function routeQuestion(question, thisYear) {
     domains: domains.length ? domains.slice(0, 3) : ['직업'],
     // 맞히지 못했으면 그 사실을 문맥에 적는다
     fallback: domains.length === 0,
+    // 개수를 묻는 질문이다. 이 엔진은 순위만 내고 개수는 세지 못한다
+    asksCount: COUNT_WORDS.test(q),
     needsPlace: PLACE_WORDS.some((w) => q.includes(w)) || cities.length > 0,
     needsDay: DAY_WORDS.some((w) => q.includes(w)),
     cities,

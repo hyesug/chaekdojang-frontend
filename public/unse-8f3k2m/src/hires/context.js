@@ -652,8 +652,10 @@ export function formatHiRes(j, plan) {
       // 달을 가르지 못하는 후보는 순위 대신 그 사실을 적는다. 뜻 없는
       // 1위를 내놓으면 그게 답이 된다 (실측: 어느 달이나 43~46%)
       if (e.flat) {
-        out.push(`  ${name}: 이 후보로는 달을 가리지 못한다 — 가장 높은 달 ${e.top}%, 보통 달 ${e.typical}% ` +
-          `(차이 ${e.spread}%p). **이 사건으로 시기를 말하지 말 것.**`);
+        const why = e.tied >= 3
+          ? `1위와 같은 값(${e.top}%)인 달이 ${e.tied}개나 되어 하나를 고를 수 없다`
+          : `가장 높은 달 ${e.top}%, 보통 달 ${e.typical}% (차이 ${e.spread}%p)`;
+        out.push(`  ${name}: 이 후보로는 달을 가리지 못한다 — ${why}. **이 사건으로 시기를 말하지 말 것.**`);
         continue;
       }
       const top = e.months.filter((m) => m.share > 0).slice(0, 3);

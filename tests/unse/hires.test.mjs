@@ -703,3 +703,28 @@ test('해외·여행 질문이 직업 분야로 떨어지지 않는다', () => {
   // 국내 이사는 그대로 이사다
   assert.equal(routeQuestion('언제 이사했을까', 2026).event, '이사');
 });
+
+test('1위가 혼자 서 있지 않으면 시기를 고르지 않는다', () => {
+  // 최고 48% / 중간 39% 라 '어디나 똑같은가'(spread)는 통과하는데, 상위
+  // 열두 달이 48~47%로 몰려 1998년부터 2017년까지 걸쳐 있는 후보가 실제로
+  // 있었다. 그 상태로 "1위는 2014년 11월"이라고 하면 20년 폭 동률에서
+  // 하나를 뽑아 단정하는 셈이다.
+  const r = readFortune({ name: 'G', gender: 'male', year: 1966, month: 3, day: 6,
+    hour: 17, minute: 0, birthPlace: '여주', homePlace: '구미' }, { now: NOW });
+  const chunks = [];
+  for (let y = 2008; y < 2027; y += 5) {
+    chunks.push(buildGrid(r.input, r.chart, { fromYear: y, years: Math.min(5, 2027 - y), domain: '이사' }));
+  }
+  const g = { ...chunks[0], months: chunks.flatMap((c) => c.months), fromYear: 2008, toYear: 2026 };
+  const inf = inferEvents(g, '이사');
+
+  const e = inf.perEvent['해외·장거리'];
+  assert.ok(e, '해외·장거리 후보가 없다');
+  assert.equal(typeof e.tied, 'number');
+  assert.ok(e.tied >= 3, `동률 달이 ${e.tied}개뿐이라 이 회귀가 더는 안 잡힌다`);
+  assert.equal(e.flat, true, `동률 ${e.tied}개인데 1위를 내놓았다`);
+  assert.deepEqual(e.months, [], '가리지 못하는데 달 목록을 만들었다');
+
+  // 모든 후보가 tied 를 갖고 있어야 한다
+  for (const x of Object.values(inf.perEvent)) assert.ok(x.tied >= 1);
+});

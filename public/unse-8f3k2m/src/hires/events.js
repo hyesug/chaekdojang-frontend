@@ -494,6 +494,17 @@ export function fitFor(row, event) {
  */
 const FLAT_SPREAD = 0.06;
 
+/**
+ * 1등이 혼자 서 있어야 1등이다 — 같은 값으로 인쇄되는 달이 이만큼 있으면
+ * 하나를 고르지 않는다.
+ *
+ * 셋으로 끊은 이유는 임계값을 고른 게 아니라 **말의 뜻**이다. 하나면 유일하고,
+ * 둘이면 "둘 중 하나"라고 말할 수 있지만, 셋부터는 그냥 평탄면이다.
+ * 기준은 화면에 적히는 정밀도(정수 %)다 — 인쇄해서 구별되지 않는 것을
+ * 순위로 구별하는 척하지 않는다.
+ */
+const TIED_TOP = 3;
+
 /** 최강·강함·보조·약함 — 절대 점수가 아니라 이 사람 안에서의 순위다 */
 function bandOf(rank, n) {
   const p = rank / Math.max(1, n - 1);
@@ -746,17 +757,30 @@ export function inferEvents(grid, domain, opts = {}) {
       .sort((a, b) => (b.f.share - a.f.share) || (b.row.total - a.row.total));
     if (!scored.length) continue;
 
-    // 이 후보가 달을 **가르기는 하는가**. 가르지 못하면 순위를 내지 않는다
+    // 이 후보가 달을 **가르기는 하는가**. 가르지 못하면 순위를 내지 않는다.
+    //
+    // 두 가지를 따로 본다. 하나만 보면 놓친다.
+    //   ① 어디나 똑같은가 — 최고와 중간의 차이(spread)
+    //   ② **1등이 혼자 서 있는가** — 같은 값으로 인쇄되는 달이 몇 개인가
+    //
+    // ②가 필요한 이유: 최고 48% / 중간 39% 라 ①은 통과하는데, 상위 열두 달이
+    // 48~47% 로 몰려 1998년부터 2017년까지 걸쳐 있는 후보가 실제로 있었다.
+    // "1위는 2014년 11월"이라고 내놓으면 20년 폭의 동률에서 하나를 뽑아
+    // 단정하는 셈이다. 화면에 적히는 정밀도(정수 %)로 구별되지 않으면
+    // 구별되지 않는다고 말한다.
     const shares = scored.map((x) => x.f.share);
     const typical = shares[Math.floor(shares.length / 2)];
     const spread = shares[0] - typical;
-    const flat = spread < FLAT_SPREAD;
+    const pc = (v) => Math.round(v * 100);
+    const tied = shares.filter((v) => pc(v) === pc(shares[0])).length;
+    const flat = spread < FLAT_SPREAD || tied >= TIED_TOP;
 
     if (flat) for (const g of group) flatEvents.add(g);
 
     perEvent[group.length > 1 ? group.join(' / ') : name] = {
       flat,
       spread: Math.round(spread * 1000) / 10, // %p
+      tied,
       top: Math.round(shares[0] * 1000) / 10,
       typical: Math.round(typical * 1000) / 10,
       // 가르지 못하는 후보는 달 목록 자체를 만들지 않는다. 만들어 두면

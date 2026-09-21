@@ -43,19 +43,31 @@ export function interpretOneCareer(systemId, read) {
     return { ...base, status: read.status, why: read.why, features: null, evidence: [] };
   }
 
-  const contributions = [];
   const evidence = [];
   const missing = [];
   let bestType = 'weak';
   let stSum = 0, spSum = 0, n = 0;
 
+  // ── 묶음별로 모은다 ──────────────────────────────────────
+  // MC 사인 · MC 주인 · MC 주인의 하우스는 **같은 MC 에서 파생**된다.
+  // 따로 더하면 MC 를 세 번 세는 것이므로, 묶음 안에서는 축마다
+  // 가장 센 것만 쓴다.
+  const groups = new Map();
+
   for (const h of read.hits) {
     const rule = ruleFor(systemId, 'career', h.condition);
     if (!rule) { missing.push(h.condition); continue; }
     const w = h.weight * EVIDENCE_WEIGHT[rule.evidenceType] * rule.traditionalStrength;
-    contributions.push({ features: rule.features, weight: w });
+    const g = h.group ?? rule.where ?? 'default';
+    const acc = groups.get(g) ?? zero('career');
+    for (const [k, v] of Object.entries(rule.features)) {
+      if (!(k in acc)) continue;
+      acc[k] = Math.max(acc[k], v * w);     // 묶음 안에서는 최댓값
+    }
+    groups.set(g, acc);
     evidence.push({
       rule: rule.id, source: rule.where, value: String(rule.symbol), basis: h.basis,
+      group: g,
       evidenceType: rule.evidenceType,
       traditionalStrength: rule.traditionalStrength,
       specificity: rule.specificity,
@@ -69,6 +81,15 @@ export function interpretOneCareer(systemId, read) {
     else if (rule.evidenceType === 'indirect' && bestType !== 'direct') bestType = 'indirect';
     stSum += rule.traditionalStrength; spSum += rule.specificity; n++;
   }
+
+  // ── 정보량 불균형 보정 ───────────────────────────────────
+  // 근거를 여덟 묶음 내는 체계와 한 묶음 내는 체계를 그대로 누적하면,
+  // **깊게 읽은 체계가 무조건 큰 벡터**를 갖는다. 깊이가 좋게 하는 것은
+  // 벡터의 **방향**이지 크기가 아니므로, 묶음 수의 제곱근으로 나눠
+  // 체계마다의 총 증거량을 비슷하게 맞춘다.
+  const G = groups.size;
+  const scale = G ? 1 / Math.sqrt(G) : 1;
+  const contributions = [...groups.values()].map((features) => ({ features, weight: scale }));
 
   if (!contributions.length) {
     return { ...base, status: 'empty',

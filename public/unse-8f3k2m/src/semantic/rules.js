@@ -32,7 +32,8 @@ import * as ZI from './tables/ziwei.js';
 import * as SA from './tables/saju.js';
 import * as WE from './tables/western.js';
 import * as VE from './tables/vedic.js';
-import { AUX_SYSTEMS } from './tables/others.js';
+import * as OT from './tables/others.js';
+const { AUX_SYSTEMS } = OT;
 import { lineageOf } from './lineage.js';
 import { AXES } from './axes.js';
 
@@ -90,6 +91,19 @@ const push = (o) => { rules.push(makeRule({ domain: 'career', ...o })); };
 for (const [star, f] of Object.entries(ZI.CAREER)) {
   push({ system: 'jamidusu', condition: `career:${star}`, symbol: star, features: f,
     where: '원국 관록궁', evidenceType: 'direct', traditionalStrength: 0.9 });
+  // 명궁 — 타고난 결. 관록궁의 삼방이라 두수는 둘을 함께 본다
+  push({ system: 'jamidusu', condition: `myeong:${star}`, symbol: star, features: f,
+    where: '원국 명궁', evidenceType: 'direct', traditionalStrength: 0.8 });
+  // 재백궁 — 돈이 들어오는 방식. 역시 관록궁의 삼방이다
+  push({ system: 'jamidusu', condition: `money:${star}`, symbol: star, features: f,
+    where: '원국 재백궁', evidenceType: 'indirect', traditionalStrength: 0.7 });
+  // 천이궁 — 밖에 나가서 하는 일
+  push({ system: 'jamidusu', condition: `travel:${star}`, symbol: star, features: f,
+    where: '원국 천이궁', evidenceType: 'indirect', traditionalStrength: 0.6 });
+}
+for (const [guk, f] of Object.entries(OT.ZIWEI_GUK)) {
+  push({ system: 'jamidusu', condition: `guk:${guk}`, symbol: guk, features: f,
+    where: '오행국', evidenceType: 'weak', traditionalStrength: 0.45 });
 }
 // 보조성·사화 — 세기를 조절하는 몫
 for (const [star, f] of Object.entries(ZI.AUX_MODIFIER)) {
@@ -107,8 +121,12 @@ for (const [god, f] of Object.entries(SA.CAREER)) {
     where: '십성', evidenceType: 'direct', traditionalStrength: 0.85 });
 }
 SA.DAY_ELEMENT_CAREER.forEach((f, i) => {
-  push({ system: 'saju', condition: `dayElement:${i}`, symbol: ['목', '화', '토', '금', '수'][i],
+  const name = ['목', '화', '토', '금', '수'][i];
+  push({ system: 'saju', condition: `dayElement:${i}`, symbol: name,
     features: f, where: '일간 오행', evidenceType: 'indirect', traditionalStrength: 0.6 });
+  // 원국에서 가장 두터운 기운 — 일간과 다를 수 있다
+  push({ system: 'saju', condition: `elementTop:${i}`, symbol: name,
+    features: f, where: '원국 최강 오행', evidenceType: 'indirect', traditionalStrength: 0.55 });
 });
 
 // ── 서양 — MC 사인 · MC 주인의 하우스 · 10H 거주 행성 · 6H ──
@@ -128,6 +146,21 @@ for (const [house, f] of Object.entries(WE.LORD_HOUSE_CAREER)) {
   push({ system: 'astrology', condition: `mcLordHouse:${house}`, symbol: house, features: f,
     where: 'MC 주인이 앉은 하우스', evidenceType: 'indirect', traditionalStrength: 0.7 });
 }
+// 상승점 — 몸과 기질. 일을 '어떤 방식으로' 하는가
+WE.SIGN_CAREER.forEach((f, i) => {
+  push({ system: 'astrology', condition: `ascSign:${i}`, symbol: i, features: f,
+    where: '상승점 사인', evidenceType: 'indirect', traditionalStrength: 0.7 });
+  push({ system: 'astrology', condition: `sunSign:${i}`, symbol: i, features: f,
+    where: '태양 사인', evidenceType: 'indirect', traditionalStrength: 0.65 });
+});
+for (const [house, f] of Object.entries(WE.LORD_HOUSE_CAREER)) {
+  push({ system: 'astrology', condition: `sunHouse:${house}`, symbol: house, features: f,
+    where: '태양이 앉은 하우스', evidenceType: 'indirect', traditionalStrength: 0.6 });
+}
+for (const [planet, f] of Object.entries(WE.PLANET_CAREER)) {
+  push({ system: 'astrology', condition: `second:${planet}`, symbol: planet, features: f,
+    where: '2하우스 거주 행성 (벌이)', evidenceType: 'indirect', traditionalStrength: 0.55 });
+}
 WE.QUALITY_FORM.forEach((f, i) => {
   push({ system: 'astrology', condition: `mcQuality:${WE.QUALITY_NAME[i]}`, symbol: WE.QUALITY_NAME[i],
     features: f, where: '10하우스 사인의 양태', evidenceType: 'indirect', traditionalStrength: 0.6 });
@@ -145,19 +178,61 @@ for (const [planet, f] of Object.entries(VE.PLANET_CAREER)) {
     where: '아트마카라카', evidenceType: 'indirect', traditionalStrength: 0.6 });
   push({ system: 'vedic', condition: `d1TenthLord:${planet}`, symbol: planet, features: f,
     where: 'D1 10궁주', evidenceType: 'direct', traditionalStrength: 0.75 });
+  push({ system: 'vedic', condition: `d1TenthIn:${planet}`, symbol: planet, features: f,
+    where: 'D1 10궁 거주', evidenceType: 'direct', traditionalStrength: 0.75 });
+  // BPHS 가 경력·생계에 지정한 카라카. 아트마카라카보다 직업에 가깝다
+  push({ system: 'vedic', condition: `amatyakaraka:${planet}`, symbol: planet, features: f,
+    where: '아마탸카라카', evidenceType: 'direct', traditionalStrength: 0.8 });
+  push({ system: 'vedic', condition: `d10Sixth:${planet}`, symbol: planet, features: f,
+    where: 'D10 6궁주 (고용)', evidenceType: 'indirect', traditionalStrength: 0.55 });
+  push({ system: 'vedic', condition: `d10Seventh:${planet}`, symbol: planet, features: f,
+    where: 'D10 7궁주 (거래처)', evidenceType: 'indirect', traditionalStrength: 0.55 });
 }
 VE.RASHI_CAREER.forEach((f, i) => {
   push({ system: 'vedic', condition: `d10Lagna:${i}`, symbol: i, features: f,
     where: 'D10 라그나 라시', evidenceType: 'indirect', traditionalStrength: 0.7 });
 });
 
-// ── 나머지 열한 체계 ──
+// ── 나머지 열한 체계 — 대표 기호 ──
 for (const [system, def] of Object.entries(AUX_SYSTEMS)) {
   for (const [symbol, f] of Object.entries(def.table)) {
     push({ system, condition: `symbol:${symbol}`, symbol, features: f,
       where: def.where, evidenceType: def.evidenceType,
       traditionalStrength: def.traditionalStrength });
   }
+}
+
+// ── 감사로 메운 자리 ──
+// 숙요 — 28수 낱낱. 칠요 일곱은 28을 뭉갠 것이라 넷이 한 칸에 들어갔다
+for (const [m, f] of Object.entries(OT.SUKYO_MANSION)) {
+  push({ system: 'sukyo', condition: `mansion:${m}`, symbol: `${m}宿`, features: f,
+    where: '본명숙 28수', evidenceType: 'indirect', traditionalStrength: 0.55 });
+}
+// 홍국 — 구성(기질)과 팔문(하는 일)은 다른 층이다
+for (const [st, f] of Object.entries(OT.HONGGUK_STAR)) {
+  push({ system: 'hongguk', condition: `star:${st}`, symbol: st, features: f,
+    where: '내 궁의 구성', evidenceType: 'indirect', traditionalStrength: 0.55 });
+}
+for (const [g, f] of Object.entries(OT.EIGHT_GATE)) {
+  push({ system: 'hongguk', condition: `gate:${g}`, symbol: g, features: f,
+    where: '내 궁의 팔문', evidenceType: 'indirect', traditionalStrength: 0.6 });
+  push({ system: 'taeeul', condition: `gate:${g}`, symbol: g, features: f,
+    where: '태을 문', evidenceType: 'weak', traditionalStrength: 0.4 });
+}
+// 태을 — 주산과 객산을 견주는 것이 이 산법의 알맹이다
+for (const [k, f] of Object.entries(OT.TAEEUL_HOST)) {
+  push({ system: 'taeeul', condition: `host:${k}`, symbol: k, features: f,
+    where: '주산 · 객산', evidenceType: 'indirect', traditionalStrength: 0.6 });
+}
+// 카발라 — 생일수가 라이프 패스보다 직업(재능)에 가깝다
+for (const [n, f] of Object.entries(OT.KABBALAH_BIRTHDAY)) {
+  push({ system: 'kabbalah', condition: `birthday:${n}`, symbol: n, features: f,
+    where: '생일수', evidenceType: 'weak', traditionalStrength: 0.45 });
+}
+// 마하보테 — 요일 행성 (태국과 같은 재료라 계보가 묶인다)
+for (const [p, f] of Object.entries(OT.MAHABOTE_PLANET)) {
+  push({ system: 'mahabote', condition: `planet:${p}`, symbol: p, features: f,
+    where: '요일 행성', evidenceType: 'weak', traditionalStrength: 0.35 });
 }
 
 export const RULES = rules;

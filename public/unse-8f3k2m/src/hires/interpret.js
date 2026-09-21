@@ -724,6 +724,26 @@ const TAROT_TRADE = {
   세계: '아우르는 일 — 국제·기획', 바보: '새로 뛰어드는 일 — 창업·여행',
 };
 
+/**
+ * 팔괘 물상 — 주역·태을신수·토정비결이 함께 쓴다.
+ *
+ * 세 체계가 같은 표를 쓰는 것은 게을러서가 아니라 **셋 다 팔괘로 말하기
+ * 때문**이다. 다만 그래서 셋의 답이 겹쳐도 그것은 **서로 다른 세 체계의
+ * 교차검증이 아니다** — 같은 표를 세 번 읽은 것이다. 세지 말 것.
+ */
+const TRIGRAM_TRADE = {
+  乾: '관을 쓰는 일 — 관공·금융·기계·귀금속',
+  兌: '입으로 하는 일 — 말·금융·유흥·치과',
+  離: '드러나는 일 — 문화·미용·예술·전기·언론',
+  震: '움직이고 울리는 일 — 방송·전기·운송·영업',
+  巽: '드나드는 일 — 유통·무역·중개',
+  坎: '물에 딸린 일 — 수산·주류·의료·야간',
+  艮: '멈춰 쌓는 일 — 부동산·숙박·창고',
+  坤: '땅에 딸린 일 — 농업·부동산·대중을 상대하는 일',
+};
+/** 토정비결 상괘 숫자 → 팔괘 (선천 차례) */
+const TOJEONG_TRIGRAM = { 1: '乾', 2: '兌', 3: '離', 4: '震', 5: '巽', 6: '坎', 7: '艮', 8: '坤' };
+
 /** headline·keywords 에서 낱말 하나를 집어낸다 */
 const pick = (a, table) => {
   const hay = `${a?.headline ?? ''} ${(a?.signals?.keywords ?? []).join(' ')} ${(a?.signals?.tags ?? []).join(' ')}`;
@@ -752,6 +772,28 @@ export function auxReads(results = []) {
   add('마하보테', 'mahabote', MAHABOTE_TRADE, '출생별');
   add('태국 점성술', 'thai', THAI_TRADE, '출생 요일');
   add('타로', 'tarot', TAROT_TRADE, '생일 카드');
+
+  // 주역·태을신수·토정비결 — 셋 다 팔괘로 말한다. 기호를 꺼내는 길만 다르다
+  const factOf = (key, name, label) => {
+    const a = by[key] ?? by[name];
+    return (a?.facts ?? []).find((f) => f.label === label)?.value ?? null;
+  };
+  const addTrigram = (name, gua, where) => {
+    if (!gua) return;
+    out.push(TRIGRAM_TRADE[gua]
+      ? { system: name, 직업: item(TRIGRAM_TRADE[gua], `${where} ${gua}`) }
+      : { system: name, unavailable: `${where} 를 팔괘로 옮기지 못했다` });
+  };
+  if (by['juyeok'] ?? by['주역']) {
+    addTrigram('주역', factOf('juyeok', '주역', '상괘'), '본괘 상괘');
+  }
+  if (by['taeeul'] ?? by['태을신수']) {
+    const g = String(factOf('taeeul', '태을신수', '태을궁') ?? '').replace(/[^離坎坤震巽乾兌艮中]/g, '');
+    addTrigram('태을신수', g === '中' ? '坤' : g, '태을궁');
+  }
+  if (by['tojeong'] ?? by['토정비결']) {
+    addTrigram('토정비결', TOJEONG_TRIGRAM[Number(factOf('tojeong', '토정비결', '상괘'))], '상괘');
+  }
 
   // 카발라 — 라이프 패스는 숫자라 따로 집는다
   const kb = by['kabbalah'] ?? by['카발라'];

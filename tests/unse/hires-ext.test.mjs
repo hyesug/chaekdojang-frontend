@@ -25,6 +25,8 @@ import * as ZE from '../../public/unse-8f3k2m/src/hires/ziweiExt.js';
 import * as LOC from '../../public/unse-8f3k2m/src/hires/location.js';
 import * as PAIR from '../../public/unse-8f3k2m/src/hires/pair.js';
 import * as BD from '../../public/unse-8f3k2m/src/hires/body.js';
+import * as BR from '../../public/unse-8f3k2m/src/hires/baserate.js';
+import { buildGrid } from '../../public/unse-8f3k2m/src/hires/grid.js';
 import { elementDistribution } from '../../public/unse-8f3k2m/src/core/ganzhi.js';
 import { profileFor, tierOf } from '../../public/unse-8f3k2m/src/hires/profile.js';
 import { routeQuestion } from '../../public/unse-8f3k2m/src/hires/router.js';
@@ -527,4 +529,60 @@ test('수입의 모양에 이길 수 없는 선택지를 두지 않는다', () =
   assert.ok(seen.size >= 3, `수입의 모양이 ${seen.size}가지뿐이다: ${[...seen]}`);
   assert.ok(seen.has('사업·자기 판형'),
     '사업·자기 판형이 1·2위 어디에도 못 든다 — 다시 죽은 선택지가 됐다');
+});
+
+// ─────────────────────────────────────────────────────────────
+// 기저율 — 명반을 보기 전에 이미 알고 있는 것
+// ─────────────────────────────────────────────────────────────
+
+test('기저율은 출처가 있는 값만 내고 없으면 없다고 한다', () => {
+  // 이 층의 존재 이유가 "숫자를 지어내지 않는다"이다. 공표 자료에 없는
+  // 칸을 눈대중으로 채우면 통계를 자처하는 창작이 된다.
+  const have = BR.baseRateFor('결혼', { age: 32, gender: 'female' });
+  assert.ok(have.annualPct > 0, '30대 초반 여성 혼인율이 없다');
+  assert.ok(have.source && have.source.includes('2024'), `출처가 없다: ${have.source}`);
+  // 연 → 월 환산이 맞는다
+  assert.ok(Math.abs(have.monthlyPct - have.annualPct / 12) < 0.01);
+
+  // 공표 자료에 없는 칸은 숫자를 만들지 않는다
+  for (const [d, who] of [
+    ['결혼', { age: 47, gender: 'female' }],   // 40대는 공표값 없음
+    ['결혼', { age: 22, gender: 'male' }],     // 20대 초반 없음
+    ['자녀', { age: 32, gender: 'male' }],     // 출산율은 모 기준만
+    ['이사', { age: 63, gender: 'male' }],     // 60대 없음
+    ['직업', { age: 32, gender: 'female' }],   // 분야 자체가 비어 있음
+    ['재물', { age: 32, gender: 'female' }],
+  ]) {
+    const r = BR.baseRateFor(d, who);
+    assert.ok(r.unknown, `${d} ${who.age}세 — 없는 값을 만들어 냈다: ${JSON.stringify(r)}`);
+    assert.equal(r.annualPct, undefined);
+  }
+
+  // 성별로 갈리는 값은 성별 없이 내지 않는다
+  assert.ok(BR.baseRateFor('결혼', { age: 32 }).unknown);
+  // 나이를 모르면 아무것도 내지 않는다
+  assert.ok(BR.baseRateFor('결혼', { gender: 'female' }).unknown);
+});
+
+test('기저율이 점수에 섞이지 않고 순위보다 먼저 실린다', () => {
+  // 순위만 실으면 읽는 쪽이 그것을 확률로 받는다. 기저율은 나란히 놓으라고
+  // 싣는 것이고, 점수에 더하면 무엇이 통계이고 무엇이 점술인지 가릴 수 없다.
+  const r = readFortune(FORM, { now: NOW });
+  const f = readForecast(FORM, NOW);
+  const h = buildHiRes(r, f, routeQuestion('언제 결혼할까', 2026));
+
+  assert.match(h.text, /\[F\] 기저율/);
+  assert.match(h.text, /점수에 섞여 있지 않다/);
+  assert.ok(h.json.baseRates.length > 0);
+
+  // 순위보다 앞에 나와야 한다
+  const base = h.text.indexOf('[F] 기저율');
+  const ranks = h.text.indexOf('사건마다 따로 세운 달');
+  assert.ok(base >= 0 && base < ranks, '기저율이 순위보다 뒤에 있다');
+
+  // 명반 점수는 기저율과 무관하게 그대로다
+  const grid = buildGrid(r.input, r.chart, { fromYear: 2026, years: 2, domain: '결혼' });
+  for (const m of grid.months) {
+    assert.equal(m.baseRate, undefined, '기저율이 월 층 점수에 새어 들어갔다');
+  }
 });

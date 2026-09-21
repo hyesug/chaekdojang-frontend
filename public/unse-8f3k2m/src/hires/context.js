@@ -23,6 +23,7 @@ import * as ZE from './ziweiExt.js';
 import * as CL from './classical.js';
 import * as W from './wealth.js';
 import * as BD from './body.js';
+import * as BR from './baserate.js';
 import { profileFor, formatProfile, tierOf, describeTier } from './profile.js';
 
 /** 신뢰도 표기 — 답변에서 이 등급을 그대로 쓰게 한다 */
@@ -90,6 +91,16 @@ export function buildHiRes(r, f = null, plan) {
   const chain = chainOf(inferences);
   const location = plan.needsPlace ? buildLocation(r, plan) : null;
   const natal = safe(() => WS.natalPack(input));
+
+  // 기저율 — 명반을 보기 전에 이미 알고 있는 것.
+  //
+  // 순위만 실으면 "상위 5%인 달"이 무슨 뜻인지 가늠할 자가 없다. 그 나이에
+  // 그 사건이 한 해 5% 확률이면 한 달은 0.4% 다. 순위와 나란히 읽어야
+  // 뜻이 선다. 점수에는 섞지 않는다 — 통계와 점술을 한 숫자로 만들면
+  // 무엇이 무엇인지 가릴 수 없게 된다.
+  const baseRates = domains
+    .map((d) => ({ domain: d, rate: BR.baseRateFor(d, { age: input.age, gender: input.gender }) }))
+    .filter((x) => !x.rate.unknown || domains[0] === x.domain);
 
   // 건강을 물을 때만 부위를 본다. 다른 질문에 실으면 문맥만 길어진다
   const body = domains.includes('건강') && natal
@@ -196,6 +207,9 @@ export function buildHiRes(r, f = null, plan) {
       substanceNote: classical.substanceNote,
     } : (classical?.unavailable ? { unavailable: classical.unavailable } : null),
     wealth, windfall, lifetime,
+    // 통계청 공표값. 명반 점수와 섞이지 않은 채 나란히 실린다
+    baseRates: baseRates.map((x) => ({ domain: x.domain, ...x.rate })),
+    who: { age: input.age, gender: input.gender },
     body: body && !body.unavailable
       ? { west: body.west.slice(0, 6), saju: body.saju, agree: body.agree,
           spread: body.spread, flat: body.flat, school: body.school }
@@ -638,6 +652,13 @@ export function formatHiRes(j, plan) {
     out.push(...NOT_A_DETECTOR);
     out.push('**횟수를 숫자로 답하지 말 것.** 대신 이렇게 답한다 — ' +
       '"횟수는 이 계산으로 셀 수 없다. 다만 그 기간 안에서 가장 그럴듯한 시기는 ~ 이다."');
+    out.push('');
+  }
+
+  // ── F. 기저율 — 순위를 보기 전에 ──
+  // 뒤에 적으면 이미 순위를 확률로 읽은 다음이다
+  for (const b of j.baseRates ?? []) {
+    out.push(BR.formatBaseRate(b.domain, j.who));
     out.push('');
   }
 

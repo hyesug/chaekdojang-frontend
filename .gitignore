@@ -54,3 +54,5 @@ validation-data/profile-cases.json
 validation-data/
 bench.json
 people-bench.json
+casebook-benchmark.json
+evidence-report.json

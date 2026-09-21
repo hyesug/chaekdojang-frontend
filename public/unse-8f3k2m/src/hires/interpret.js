@@ -35,7 +35,7 @@ import { tenGod, TEN_GOD_GROUP } from '../core/ganzhi.js';
 // ─────────────────────────────────────────────────────────────
 
 /** 자미두수 — 관록궁 주성이 그리는 직업. 이 표는 profile.js 의 MAIN_STAR 와 같다 */
-const ZIWEI_TRADE = {
+export const ZIWEI_TRADE = {
   자미: '조직에서 자리를 맡는 일', 천부: '모으고 지키는 실무·재무',
   무곡: '돈과 기술을 직접 다루는 실무', 천상: '조율하고 보좌하는 자리',
   천량: '원칙을 세우고 돌보는 일', 태양: '드러나는 자리 — 공공·교육·영업',
@@ -46,8 +46,8 @@ const ZIWEI_TRADE = {
 };
 
 /** 자미두수 — 관록궁 주성이 조직 소속인가 자기 판인가 */
-const ZIWEI_SELF = ['파군', '칠살', '탐랑'];
-const ZIWEI_ORG = ['자미', '천부', '천상', '천량', '천동'];
+export const ZIWEI_SELF = ['파군', '칠살', '탐랑'];
+export const ZIWEI_ORG = ['자미', '천부', '천상', '천량', '천동'];
 
 /**
  * 사주 — 십성 무리가 그리는 직업.
@@ -56,7 +56,7 @@ const ZIWEI_ORG = ['자미', '천부', '천상', '천량', '천동'];
  * 천간에서 가장 많은 무리를 본다. 유파가 갈리는 대목이라 **월지 우선**
  * 하나로 고정한다.
  */
-const SAJU_TRADE = {
+export const SAJU_TRADE = {
   관성: '조직·직책을 맡는 일 — 공직·관리·제도권',
   재성: '돈을 직접 다루는 일 — 사업·영업·재무',
   식상: '만들고 표현하는 일 — 기술·창작·교육·서비스',
@@ -64,14 +64,14 @@ const SAJU_TRADE = {
   인성: '배우고 문서를 다루는 일 — 연구·학술·자격',
 };
 /** 사주 — 조직형인가 독립형인가 */
-const SAJU_SELF = ['비겁', '식상'];
-const SAJU_ORG = ['관성', '인성'];
+export const SAJU_SELF = ['비겁', '식상'];
+export const SAJU_ORG = ['관성', '인성'];
 
 /**
  * 서양 — 10하우스 별자리가 그리는 직업.
  * 사인-직업 대응은 전통 점성술의 표준 배당을 따른다.
  */
-const WEST_TRADE = [
+export const WEST_TRADE = [
   '앞장서고 개척하는 일 — 경쟁·체육·군경',      // 양자리
   '값을 다루고 쌓는 일 — 금융·농식품·미용',      // 황소
   '말과 정보를 옮기는 일 — 상업·글·교육·IT',     // 쌍둥이
@@ -87,7 +87,7 @@ const WEST_TRADE = [
 ];
 
 /** 베딕 — 행성 카라카가 그리는 직업 (profile.js 의 PLANET_TRADE 와 같다) */
-const VEDIC_TRADE = {
+export const VEDIC_TRADE = {
   태양: '공공·행정·관리직', 달: '돌봄·서비스·유통',
   화성: '기술·공학·의료·군경·체육', 수성: '상업·문서·IT·교육',
   목성: '교육·법률·금융·상담', 금성: '예술·디자인·미용·접객',
@@ -100,12 +100,12 @@ const VEDIC_TRADE = {
  * 안정 쪽(자미·천부·천상·천량·태음)과 변동 쪽(파군·칠살·탐랑·염정)으로 가른다.
  * 이 갈림은 MAIN_STAR 의 `stable` 값과 같은 전통 배당이다.
  */
-const ZIWEI_MARRY_STABLE = ['자미', '천부', '천상', '천량', '태음', '천동', '무곡'];
-const ZIWEI_MARRY_SHAKY = ['파군', '칠살', '탐랑', '염정'];
+export const ZIWEI_MARRY_STABLE = ['자미', '천부', '천상', '천량', '태음', '천동', '무곡'];
+export const ZIWEI_MARRY_SHAKY = ['파군', '칠살', '탐랑', '염정'];
 
 /** 자미두수 — 자녀궁이 두터운가 얇은가. 주성이 있고 길성이면 두텁게 본다 */
-const ZIWEI_CHILD_MANY = ['천부', '태음', '천동', '천량', '자미', '거문'];
-const ZIWEI_CHILD_FEW = ['칠살', '파군', '염정', '천기'];
+export const ZIWEI_CHILD_MANY = ['천부', '태음', '천동', '천량', '자미', '거문'];
+export const ZIWEI_CHILD_FEW = ['칠살', '파군', '염정', '천기'];
 
 /**
  * 자미두수 — 전택궁 주성이 그리는 거주의 모양.
@@ -120,17 +120,17 @@ const ZIWEI_CHILD_FEW = ['칠살', '파군', '염정', '천기'];
  * 나머지(천상·천량·태양·거문·탐랑·천동·염정)는 어느 쪽도 아니다. **가르지
  * 못하면 가르지 않는다** — 억지로 배정하면 표 만드는 사람이 답을 정하게 된다.
  */
-const ZIWEI_HOME_OWN = ['태음', '천부', '자미', '무곡'];
-const ZIWEI_HOME_MOVE = ['천기', '파군', '칠살'];
+export const ZIWEI_HOME_OWN = ['태음', '천부', '자미', '무곡'];
+export const ZIWEI_HOME_MOVE = ['천기', '파군', '칠살'];
 
 /**
  * 사주 — 배우자 자리의 십성.
  * 여자는 관성, 남자는 재성을 배우자로 본다(명리 표준). 그 십성이
  * 원국에 있고 여럿이면 인연이 잦고, 없으면 늦거나 약하다고 본다.
  */
-const SAJU_SPOUSE_GOD = { female: '관성', male: '재성' };
+export const SAJU_SPOUSE_GOD = { female: '관성', male: '재성' };
 /** 사주 — 자녀는 식상으로 본다 */
-const SAJU_CHILD_GOD = '식상';
+export const SAJU_CHILD_GOD = '식상';
 
 /**
  * 사주 — 학업은 인성(정인·편인)으로 본다.
@@ -143,9 +143,9 @@ const SAJU_CHILD_GOD = '식상';
  * 시험의 별이니 자리가 맞는데, 말한 다섯 중 둘만 맞아 영점보다 나빴다.
  * 그래서 이 축은 사주에 맡긴다 — **자리가 그럴듯하다고 맞는 것은 아니다.**
  */
-const SAJU_SCHOOL_GOD = '인성';
+export const SAJU_SCHOOL_GOD = '인성';
 
-const SIGN_NAME = ['양자리', '황소', '쌍둥이', '게', '사자', '처녀',
+export const SIGN_NAME = ['양자리', '황소', '쌍둥이', '게', '사자', '처녀',
                    '천칭', '전갈', '사수', '염소', '물병', '물고기'];
 
 const item = (value, basis) => (value && basis ? { value, basis } : null);
@@ -629,7 +629,7 @@ export function formatReads(reads) {
 // ─────────────────────────────────────────────────────────────
 
 /** 구성학 — 구성 아홉이 맡는 일 (기학 표준 배당) */
-const GUJEONG_TRADE = {
+export const GUJEONG_TRADE = {
   일백: '물과 사람이 흐르는 일 — 유흥·수산·유통',
   이흑: '땅과 살림을 다루는 일 — 농업·부동산·보조',
   삼벽: '소리와 새것을 다루는 일 — 음악·방송·신규사업',
@@ -642,7 +642,7 @@ const GUJEONG_TRADE = {
 };
 
 /** 육임 — 십이천장이 맡는 일 (대육임 표준 배당) */
-const YUKIM_TRADE = {
+export const YUKIM_TRADE = {
   귀인: '윗사람·제도와 이어지는 일 — 관공서·인사',
   등사: '얽히고 놀라는 일 — 변동·비정규',
   주작: '말과 문서로 먹고사는 일 — 언론·교육·소송',
@@ -658,7 +658,7 @@ const YUKIM_TRADE = {
 };
 
 /** 홍국기문 — 팔문이 맡는 일 (기문둔갑 표준 배당) */
-const HONGGUK_TRADE = {
+export const HONGGUK_TRADE = {
   개문: '열고 통하는 일 — 관공서·영업·개업',
   휴문: '쉬고 기르는 일 — 휴양·의료·교육',
   생문: '낳고 불리는 일 — 사업·재물·부동산',
@@ -670,7 +670,7 @@ const HONGGUK_TRADE = {
 };
 
 /** 카발라 — 라이프 패스가 맡는 일 (숫자점 표준) */
-const KABBALAH_TRADE = {
+export const KABBALAH_TRADE = {
   1: '앞장서는 일 — 창업·개척', 2: '맞추는 일 — 중재·보조·상담',
   3: '표현하는 일 — 예술·글·방송', 4: '쌓는 일 — 건설·관리·실무',
   5: '움직이는 일 — 영업·여행·변화', 6: '돌보는 일 — 교육·의료·가정',
@@ -679,7 +679,7 @@ const KABBALAH_TRADE = {
 };
 
 /** 마하보테 — 칠요 출생별이 맡는 일 (버마 점성 표준) */
-const MAHABOTE_TRADE = {
+export const MAHABOTE_TRADE = {
   빈가: '앞서는 일 — 경쟁·지도', 아하: '맺는 일 — 중개·관계',
   야자: '기르는 일 — 교육·돌봄', 아디: '여는 일 — 창업·개척',
   마라나: '끊고 고치는 일 — 의료·정리', 푸티: '거두는 일 — 재물·결실',
@@ -687,7 +687,7 @@ const MAHABOTE_TRADE = {
 };
 
 /** 태국 점성술 — 요일 수호행성이 맡는 일 (태국 전통) */
-const THAI_TRADE = {
+export const THAI_TRADE = {
   일요일: '드러나는 일 — 공공·지도', 월요일: '돌보는 일 — 서비스·유통',
   화요일: '몸 쓰는 일 — 체육·군경·기술', 수요일: '말과 셈 — 상업·문서',
   목요일: '가르치는 일 — 교육·법률·금융', 금요일: '꾸미는 일 — 예술·미용·접객',
@@ -695,14 +695,14 @@ const THAI_TRADE = {
 };
 
 /** 숙요 — 본명숙의 칠요 속성이 맡는 일 (숙요경 표준) */
-const SUKYO_TRADE = {
+export const SUKYO_TRADE = {
   일: '드러나는 일 — 공공·지도', 월: '돌보는 일 — 서비스·돌봄',
   화: '몸 쓰는 일 — 체육·기술·군경', 수: '말과 셈 — 상업·문서·교육',
   목: '가르치는 일 — 교육·법률·금융', 금: '꾸미는 일 — 예술·미용·접객',
   토: '견디는 일 — 제조·건설·행정',
 };
 /** 28수 → 칠요 (숙요경 배당, 각수부터 순환) */
-const SUKYO_YO = {
+export const SUKYO_YO = {
   角: '목', 亢: '금', 氐: '토', 房: '일', 心: '월', 尾: '화', 箕: '수',
   斗: '목', 牛: '금', 女: '토', 虛: '일', 危: '월', 室: '화', 壁: '수',
   奎: '목', 婁: '금', 胃: '토', 昴: '일', 畢: '월', 觜: '화', 參: '수',
@@ -710,7 +710,7 @@ const SUKYO_YO = {
 };
 
 /** 타로 — 생일 카드가 맡는 일 (메이저 아르카나 표준 의미) */
-const TAROT_TRADE = {
+export const TAROT_TRADE = {
   마법사: '다루는 일 — 기술·상업', 여사제: '파고드는 일 — 연구·상담',
   여황제: '기르는 일 — 예술·미용·가정', 황제: '세우는 일 — 경영·관리',
   교황: '가르치는 일 — 교육·종교', 연인: '맺는 일 — 중개·상담',
@@ -731,7 +731,7 @@ const TAROT_TRADE = {
  * 때문**이다. 다만 그래서 셋의 답이 겹쳐도 그것은 **서로 다른 세 체계의
  * 교차검증이 아니다** — 같은 표를 세 번 읽은 것이다. 세지 말 것.
  */
-const TRIGRAM_TRADE = {
+export const TRIGRAM_TRADE = {
   乾: '관을 쓰는 일 — 관공·금융·기계·귀금속',
   兌: '입으로 하는 일 — 말·금융·유흥·치과',
   離: '드러나는 일 — 문화·미용·예술·전기·언론',
@@ -742,29 +742,35 @@ const TRIGRAM_TRADE = {
   坤: '땅에 딸린 일 — 농업·부동산·대중을 상대하는 일',
 };
 /** 토정비결 상괘 숫자 → 팔괘 (선천 차례) */
-const TOJEONG_TRIGRAM = { 1: '乾', 2: '兌', 3: '離', 4: '震', 5: '巽', 6: '坎', 7: '艮', 8: '坤' };
+export const TOJEONG_TRIGRAM = { 1: '乾', 2: '兌', 3: '離', 4: '震', 5: '巽', 6: '坎', 7: '艮', 8: '坤' };
 
 /** headline·keywords 에서 낱말 하나를 집어낸다 */
-const pick = (a, table) => {
+export const pick = (a, table) => {
   const hay = `${a?.headline ?? ''} ${(a?.signals?.keywords ?? []).join(' ')} ${(a?.signals?.tags ?? []).join(' ')}`;
   for (const k of Object.keys(table)) if (hay.includes(k)) return k;
   return null;
 };
 
 /**
- * 나머지 열한 체계를 각자의 표로 읽는다.
+ * 나머지 열한 체계에서 **기호 하나씩**을 집어낸다. 표는 읽지 않는다.
  *
- * @param {object[]} results `readFortune` 이 낸 체계별 analyze 결과
+ * ── 왜 갈랐나 ─────────────────────────────────────────────
+ * '기호를 집는 일'과 '표를 읽는 일'은 다른 일이다. 의미축 레이어
+ * (`src/semantic/`)가 **같은 기호를 다른 표로** 읽어야 하는데, 둘이 붙어
+ * 있으면 같은 자리를 두 번 구현하게 되고 곧 어긋난다. 그래서 기호만
+ * 내주는 자리를 따로 둔다. `auxReads` 는 이제 이것을 표로 옮기기만 한다.
+ *
+ * @returns {Array<{system, id, symbol, where, basis, table} | {system, id, unavailable}>}
  */
-export function auxReads(results = []) {
+export function auxSymbols(results = []) {
   const by = Object.fromEntries((results ?? []).map((r) => [r.id ?? r.name, r]));
   const out = [];
   const add = (name, key, table, where) => {
     const a = by[key] ?? by[name];
     if (!a) return;
     const k = pick(a, table);
-    if (!k) { out.push({ system: name, unavailable: `${where} 를 집어내지 못했다` }); return; }
-    out.push({ system: name, 직업: item(table[k], `${where} ${k}`) });
+    if (!k) { out.push({ system: name, id: key, unavailable: `${where} 를 집어내지 못했다` }); return; }
+    out.push({ system: name, id: key, symbol: k, where, basis: `${where} ${k}`, table });
   };
   add('구성학', 'gujeong', GUJEONG_TRADE, '본명성');
   add('육임', 'yukim', YUKIM_TRADE, '초전 천장');
@@ -778,21 +784,21 @@ export function auxReads(results = []) {
     const a = by[key] ?? by[name];
     return (a?.facts ?? []).find((f) => f.label === label)?.value ?? null;
   };
-  const addTrigram = (name, gua, where) => {
+  const addTrigram = (name, id, gua, where) => {
     if (!gua) return;
     out.push(TRIGRAM_TRADE[gua]
-      ? { system: name, 직업: item(TRIGRAM_TRADE[gua], `${where} ${gua}`) }
-      : { system: name, unavailable: `${where} 를 팔괘로 옮기지 못했다` });
+      ? { system: name, id, symbol: gua, where, basis: `${where} ${gua}`, table: TRIGRAM_TRADE }
+      : { system: name, id, unavailable: `${where} 를 팔괘로 옮기지 못했다` });
   };
   if (by['juyeok'] ?? by['주역']) {
-    addTrigram('주역', factOf('juyeok', '주역', '상괘'), '본괘 상괘');
+    addTrigram('주역', 'juyeok', factOf('juyeok', '주역', '상괘'), '본괘 상괘');
   }
   if (by['taeeul'] ?? by['태을신수']) {
     const g = String(factOf('taeeul', '태을신수', '태을궁') ?? '').replace(/[^離坎坤震巽乾兌艮中]/g, '');
-    addTrigram('태을신수', g === '中' ? '坤' : g, '태을궁');
+    addTrigram('태을신수', 'taeeul', g === '中' ? '坤' : g, '태을궁');
   }
   if (by['tojeong'] ?? by['토정비결']) {
-    addTrigram('토정비결', TOJEONG_TRIGRAM[Number(factOf('tojeong', '토정비결', '상괘'))], '상괘');
+    addTrigram('토정비결', 'tojeong', TOJEONG_TRIGRAM[Number(factOf('tojeong', '토정비결', '상괘'))], '상괘');
   }
 
   // 카발라 — 라이프 패스는 숫자라 따로 집는다
@@ -801,8 +807,9 @@ export function auxReads(results = []) {
     const m = String(kb.headline ?? '').match(/라이프 패스\s*(\d+)/);
     const n = m ? Number(m[1]) : null;
     out.push(n && KABBALAH_TRADE[n]
-      ? { system: '카발라', 직업: item(KABBALAH_TRADE[n], `라이프 패스 ${n}`) }
-      : { system: '카발라', unavailable: '라이프 패스를 집어내지 못했다' });
+      ? { system: '카발라', id: 'kabbalah', symbol: n, where: '라이프 패스',
+          basis: `라이프 패스 ${n}`, table: KABBALAH_TRADE }
+      : { system: '카발라', id: 'kabbalah', unavailable: '라이프 패스를 집어내지 못했다' });
   }
   // 숙요 — 28수를 칠요로 옮긴다
   const sk = by['sukyo'] ?? by['숙요'];
@@ -810,8 +817,20 @@ export function auxReads(results = []) {
     const m = String(sk.headline ?? '').match(/([角亢氐房心尾箕斗牛女虛危室壁奎婁胃昴畢觜參井鬼柳星張翼軫])宿/);
     const yo = m ? SUKYO_YO[m[1]] : null;
     out.push(yo && SUKYO_TRADE[yo]
-      ? { system: '숙요', 직업: item(SUKYO_TRADE[yo], `본명숙 ${m[1]}宿 · ${yo}요`) }
-      : { system: '숙요', unavailable: '본명숙을 집어내지 못했다' });
+      ? { system: '숙요', id: 'sukyo', symbol: yo, where: '본명숙',
+          basis: `본명숙 ${m[1]}宿 · ${yo}요`, table: SUKYO_TRADE }
+      : { system: '숙요', id: 'sukyo', unavailable: '본명숙을 집어내지 못했다' });
   }
   return out;
+}
+
+/**
+ * 나머지 열한 체계를 각자의 표로 읽는다.
+ *
+ * @param {object[]} results `readFortune` 이 낸 체계별 analyze 결과
+ */
+export function auxReads(results = []) {
+  return auxSymbols(results).map((s) => (s.unavailable
+    ? { system: s.system, unavailable: s.unavailable }
+    : { system: s.system, 직업: item(s.table[s.symbol], s.basis) }));
 }

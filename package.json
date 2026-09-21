@@ -16,7 +16,8 @@
     "unse:benchmark": "node scripts/fortune-benchmark.mjs",
     "unse:evidence": "node scripts/fortune-evidence-report.mjs",
     "unse:casebook-benchmark": "node scripts/fortune-casebook-benchmark.mjs",
-    "test": "npm run test:unse"
+    "test": "npm run test:unse",
+    "unse:semantic": "node scripts/validate-semantic.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

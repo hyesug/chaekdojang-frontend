@@ -23,6 +23,7 @@ import * as ZE from './ziweiExt.js';
 import * as CL from './classical.js';
 import * as W from './wealth.js';
 import * as BD from './body.js';
+import * as IN from './interpret.js';
 import * as BR from './baserate.js';
 import { profileFor, formatProfile, tierOf, describeTier } from './profile.js';
 
@@ -107,6 +108,17 @@ export function buildHiRes(r, f = null, plan) {
     ? safe(() => BD.bodyRead(natal, elementDistribution(chart.pillars).pct,
         grid.months.flatMap((m) => m.western?.transits ?? [])))
     : null;
+
+  // ── 속성별 담당 체계 읽기 ──
+  //
+  // 융합하지 않는다. 속성마다 성적이 제일 나은 체계 하나에 맡기고,
+  // 그 체계가 침묵하면 같이 침묵한다. 융합을 세 번 만들어 세 번 다
+  // 무너진 뒤에 얻은 구조다 (interpret.js 의 AXIS_OWNER 주석 참조).
+  const interpreted = safe(() => {
+    const st = input.timeKnown ? ZW.stackAt(input, grid.fromYear, null) : null;
+    const reads = [...IN.readAll(input, chart, st), ...IN.auxReads(r.results ?? r.systems ?? [])];
+    return { reads, best: IN.bestRead(reads) };
+  });
 
   // ── 분야별 프로파일 — "누구와·어떤 모양으로" ──
   // 층(원국·대한·유년·유월)을 한 번만 세워 여러 프로파일이 나눠 쓴다
@@ -207,6 +219,15 @@ export function buildHiRes(r, f = null, plan) {
       substanceNote: classical.substanceNote,
     } : (classical?.unavailable ? { unavailable: classical.unavailable } : null),
     wealth, windfall, lifetime,
+    // 속성마다 담당 체계 하나가 읽은 것. 섞지 않았다
+    interpreted: interpreted && {
+      best: interpreted.best,
+      // 담당으로 이미 실린 넷은 빼고, 나머지 열한 체계가 한 말만 참고로 남긴다
+      reads: interpreted.reads
+        .filter((x) => !x.unavailable && x.직업
+          && !(interpreted.best?.직업?.owners ?? IN.axisPolicy().직업.owners).includes(x.system))
+        .map((x) => ({ system: x.system, 직업: x.직업 })),
+    },
     // 통계청 공표값. 명반 점수와 섞이지 않은 채 나란히 실린다
     baseRates: baseRates.map((x) => ({ domain: x.domain, ...x.rate })),
     who: { age: input.age, gender: input.gender },
@@ -652,6 +673,34 @@ export function formatHiRes(j, plan) {
     out.push(...NOT_A_DETECTOR);
     out.push('**횟수를 숫자로 답하지 말 것.** 대신 이렇게 답한다 — ' +
       '"횟수는 이 계산으로 셀 수 없다. 다만 그 기간 안에서 가장 그럴듯한 시기는 ~ 이다."');
+    out.push('');
+  }
+
+  // ── 속성별 담당 체계 ──
+  if (j.interpreted) {
+    out.push('### [B~D] 속성마다 담당 체계 하나가 읽은 것 — **섞지 않았다**');
+    out.push('열다섯을 버무리면 언제나 가장 흔한 답으로 무너진다(세 번 만들어 세 번 다 영점보다 나빴다). ' +
+      '그래서 속성마다 담당을 하나씩 두고, **담당이 침묵하면 같이 침묵한다.** ' +
+      '다른 체계로 빈칸을 메우지 말 것 — 메우면 정확도가 내려간다는 것을 실제로 쟀다.');
+    out.push('등급: 측정됨=영점을 넘었다 · 잠정=표본이 모자라 영점과 구별되지 않는다 · 비움=영점보다 나빠 답하지 않는다');
+    for (const [axis, box] of Object.entries(j.interpreted.best)) {
+      if (box.grade === '비움') {
+        out.push(`  ${axis}: **말하지 말 것** — ${box.note}. ${box.say}`);
+        continue;
+      }
+      if (!box.said) { out.push(`  ${axis}: 담당이 침묵한다 — **말하지 말 것** (${box.note})`); continue; }
+      out.push(`  ${axis} [${box.grade}] — ${box.note} · ${box.say}`);
+      for (const x of box.said) out.push(`    [${x.system}] ${x.value}   (${x.basis})`);
+    }
+    if (j.interpreted.reads.length) {
+      out.push('  참고 — 담당이 **아닌** 나머지 체계가 직업에 대해 한 말. ' +
+        '이 열한 체계는 달 단위로 재면 거의 같은 값만 내놓아 채점이 불가능했다. **근거로 쓰지 말 것**:');
+      for (const x of j.interpreted.reads.slice(0, 8)) out.push(`    ${x.system}: ${x.직업.value}`);
+    }
+    out.push('※ 위 성적은 지인 11명(속성마다 3~6명이 답을 받았다)에서 잰 것이다. ' +
+      '**구조는 믿되 숫자는 아직 못 믿는다.** 답변에서 성적을 인용하지 말 것.');
+    out.push('※ 이것은 **지금 어떤 사람인가**를 읽은 것이다. 성향은 잘 변하지 않으므로 "앞으로도 그 쪽"까지는 ' +
+      '말할 수 있지만, **언제 무슨 일이 일어난다고는 말하지 말 것** — 시기 예측은 따로 쟀고 신호가 없었다(p=0.886).');
     out.push('');
   }
 

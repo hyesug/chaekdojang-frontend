@@ -622,12 +622,11 @@ test('담당 체계가 침묵하면 같이 침묵한다', async () => {
   const best = IN.bestRead(IN.readAll(R.input, R.chart, st));
 
   // 혼인 안정은 영점보다 나빠 아예 담당을 두지 않았다
-  assert.equal(best.혼인안정, null, '혼인 안정은 답하지 않기로 했다');
+  assert.equal(best.혼인안정.said, null, '혼인 안정은 답하지 않기로 했다');
 
   // 답이 있으면 어느 체계가 말했는지 반드시 붙는다
-  for (const [axis, said] of Object.entries(best)) {
-    if (!said) continue;
-    for (const s of said) {
+  for (const [axis, box] of Object.entries(best)) {
+    for (const s of box.said ?? []) {
       assert.ok(s.system && s.value && s.basis, `${axis} 에 체계·근거가 없다`);
     }
   }
@@ -635,5 +634,5 @@ test('담당 체계가 침묵하면 같이 침묵한다', async () => {
   // 시각을 모르면 자미가 못 서므로 수입형태도 침묵한다
   const noTime = readFortune({ ...FORM, hour: null, minute: 0 }, { now: NOW });
   const b2 = IN.bestRead(IN.readAll(noTime.input, noTime.chart, null));
-  assert.equal(b2.수입형태, null, '시각 미상인데 수입형태를 말했다');
+  assert.equal(b2.수입형태.said, null, '시각 미상인데 수입형태를 말했다');
 });

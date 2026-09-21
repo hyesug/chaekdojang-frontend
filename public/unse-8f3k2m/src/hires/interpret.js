@@ -26,6 +26,7 @@
 import * as VE from './vedicExt.js';
 import * as ZE from './ziweiExt.js';
 import * as WS from './western.js';
+import { DOMICILE } from './classical.js';
 import { houseOf } from '../core/planets.js';
 import { tenGod, TEN_GOD_GROUP } from '../core/ganzhi.js';
 
@@ -107,6 +108,22 @@ const ZIWEI_CHILD_MANY = ['천부', '태음', '천동', '천량', '자미', '거
 const ZIWEI_CHILD_FEW = ['칠살', '파군', '염정', '천기'];
 
 /**
+ * 자미두수 — 전택궁 주성이 그리는 거주의 모양.
+ *
+ * **태음이 전택주(田宅主)다.** 이건 내가 고른 것이 아니라 두수에서 태음에
+ * 붙어 있는 이름이다. 천부는 고(庫), 자미는 제좌(帝座), 무곡은 재성이라
+ * 넷이 "쌓아 두고 소유하는" 쪽에 선다.
+ *
+ * 반대쪽은 동성(動星)이다. 천기는 그 이름부터 움직이는 별이고, 파군·칠살은
+ * 판을 바꾸는 별이라 한자리에 오래 머무르지 않는다고 본다.
+ *
+ * 나머지(천상·천량·태양·거문·탐랑·천동·염정)는 어느 쪽도 아니다. **가르지
+ * 못하면 가르지 않는다** — 억지로 배정하면 표 만드는 사람이 답을 정하게 된다.
+ */
+const ZIWEI_HOME_OWN = ['태음', '천부', '자미', '무곡'];
+const ZIWEI_HOME_MOVE = ['천기', '파군', '칠살'];
+
+/**
  * 사주 — 배우자 자리의 십성.
  * 여자는 관성, 남자는 재성을 배우자로 본다(명리 표준). 그 십성이
  * 원국에 있고 여럿이면 인연이 잦고, 없으면 늦거나 약하다고 본다.
@@ -147,13 +164,14 @@ function palaceOfBranchOpposite(input, stack, domain, name) {
 /** 자미두수 — 관록궁·부처궁·자녀궁 주성을 그대로 읽는다 */
 export function ziweiRead(input, stack) {
   if (!stack) return { system: '자미두수', unavailable: '출생 시각을 알아야 판을 세운다' };
-  const palaceOf = (domain, name) => {
-    const rows = ZE.domainPalaces(input, domain, stack.layers).find((x) => x.palace === name)?.rows ?? [];
-    return rows.find((r) => /원국/.test(r.layer ?? ''))?.main ?? [];
-  };
+  const rowOf = (domain, name) => ZE.domainPalaces(input, domain, stack.layers)
+    .find((x) => x.palace === name)?.rows?.find((r) => /원국/.test(r.layer ?? '')) ?? null;
+  const palaceOf = (domain, name) => rowOf(domain, name)?.main ?? [];
   const career0 = palaceOf('직업', '관록궁');
   const spouse = palaceOf('결혼', '부처궁');
   const child = palaceOf('자녀', '자녀궁');
+  const homeRow = rowOf('주거', '전택궁');
+  const home = homeRow?.main ?? [];
 
   // 공궁이면 대궁(마주 보는 궁)의 주성을 빌려 본다.
   //
@@ -186,6 +204,25 @@ export function ziweiRead(input, stack) {
       child.some((s) => ZIWEI_CHILD_MANY.includes(s)) ? '자녀 자리가 두터운 쪽'
         : child.some((s) => ZIWEI_CHILD_FEW.includes(s)) ? '자녀 자리가 얇은 쪽' : null,
       `자녀궁 ${child.join('·') || '공궁'}`),
+    // 전택궁도 공궁이면 대궁을 빌린다. 관록궁과 같은 이유다 —
+    // 안 빌리면 지인 일곱 중 넷이 침묵했다(전택 공궁이 흔하다).
+    // 빌리면 침묵 넷이 답으로 바뀌고, 그중 몇이 맞는지는 채점이 말한다.
+    거주형태: (() => {
+      const stars = home.length ? home
+        : palaceOfBranchOpposite(input, stack, '주거', '전택궁');
+      const own = stars.filter((s) => ZIWEI_HOME_OWN.includes(s));
+      const move = stars.filter((s) => ZIWEI_HOME_MOVE.includes(s));
+      // 화록·녹존이 전택에 들면 부동산을 쥔다고 본다(전통의 재성 배당)
+      const money = [...(homeRow?.sihwa ?? []), ...(homeRow?.lucky ?? [])]
+        .filter((s) => /화록|녹존/.test(s));
+      const ownScore = own.length + money.length;
+      const basis = (home.length ? `원국 전택궁 ${home.join('·')}`
+        : `원국 전택궁 공궁 → 대궁 ${stars.join('·') || '역시 비었다'}`)
+        + (money.length ? ` · ${money.join('·')}` : '');
+      if (ownScore && !move.length) return item('자기 집 쪽 — 사서 쌓아 두는 모양', basis);
+      if (move.length && !ownScore) return item('옮겨 사는 쪽 — 빌려 살거나 자주 바꾸는 모양', basis);
+      return null;   // 섞였거나 중립이면 말하지 않는다
+    })(),
   };
 }
 
@@ -231,6 +268,52 @@ export function sajuRead(input, chart) {
   };
 }
 
+/**
+ * 서양 — 7하우스와 그 주인이 혼인을 어떻게 잡는가.
+ *
+ * **전통 규칙 그대로다.** 흉성(토성·화성)이 7하우스에 들거나 7하우스 주인이
+ * 쇠약한 자리(6·8·12하우스)에 있으면 혼인이 늦거나 어렵다고 본다. 길성
+ * (금성·목성·달)이 7하우스에 들거나 주인이 앵글(1·4·7·10)에 있으면 이르다고
+ * 본다. 둘 다면 갈리므로 말하지 않는다.
+ *
+ * **이 축은 나이가 섞여 있다는 것을 알고 낸다.** 서른 안쪽이면 아직 안 한
+ * 것뿐일 수 있다. 그래서 "했다/안 했다"가 아니라 **"이른 쪽/늦는 쪽"**으로
+ * 적는다. 명반이 가릴 수 있는 것은 순서지 시점이 아니다.
+ */
+function marriageRead(N, gender) {
+  const sign7 = Math.floor((((N.cusps[7] % 360) + 360) % 360) / 30);
+  const lord = DOMICILE[sign7];
+  const lordLon = N.pos?.[lord]?.lon;
+  const lordHouse = lordLon == null ? null : houseOf(lordLon, N.cusps);
+  const inSeventh = Object.entries(N.pos)
+    .filter(([, v]) => houseOf(v.lon, N.cusps) === 7)
+    .map(([k]) => k);
+
+  let late = 0, early = 0;
+  const why = [];
+  for (const p of inSeventh) {
+    if (p === '토성' || p === '화성') { late++; why.push(`7하우스 ${p}`); }
+    if (p === '금성' || p === '목성' || p === '달') { early++; why.push(`7하우스 ${p}`); }
+  }
+  if (lordHouse != null) {
+    if ([6, 8, 12].includes(lordHouse)) { late++; why.push(`7주인 ${lord} ${lordHouse}하우스`); }
+    if ([1, 4, 7, 10].includes(lordHouse)) { early++; why.push(`7주인 ${lord} ${lordHouse}하우스(앵글)`); }
+  }
+  // 역행은 지연이다 — 릴리 이래의 표준 배당
+  if (N.pos?.[lord]?.retrograde) { late++; why.push(`7주인 ${lord} 역행`); }
+  // 혼인의 자연 지표. 남자는 금성, 여자는 화성(고전의 표준 배당)
+  const kara = gender === 'male' ? '금성' : '화성';
+  const karaHouse = N.pos?.[kara] ? houseOf(N.pos[kara].lon, N.cusps) : null;
+  if (karaHouse != null) {
+    if ([6, 8, 12].includes(karaHouse)) { late++; why.push(`${kara} ${karaHouse}하우스`); }
+    if ([1, 4, 7, 10].includes(karaHouse)) { early++; why.push(`${kara} ${karaHouse}하우스(앵글)`); }
+  }
+  const basis = `7하우스 ${SIGN_NAME[sign7]} · 주인 ${lord}` + (why.length ? ` · ${why.join(', ')}` : '');
+  if (early > late) return item('혼인이 이른 쪽 — 짝 자리가 일찍 채워진다', basis);
+  if (late > early) return item('혼인이 늦는 쪽 — 짝 자리가 더디게 채워진다', basis);
+  return null;    // 팽팽하거나 아무 표시도 없으면 말하지 않는다
+}
+
 /** 서양 — 10하우스 별자리와 그 주인 */
 export function westernRead(input) {
   if (!input?.timeKnown) return { system: '점성술', unavailable: '출생 시각을 알아야 하우스를 세운다' };
@@ -248,6 +331,7 @@ export function westernRead(input) {
     십하우스거주: item(occupants.join('·') || null, '10하우스에 든 행성'),
     배우자: item(WEST_TRADE[Math.floor((((N.cusps[7] % 360) + 360) % 360) / 30)],
       `7하우스 ${SIGN_NAME[Math.floor((((N.cusps[7] % 360) + 360) % 360) / 30)]}`),
+    결혼경험: marriageRead(N, input.gender),
     자녀자리: item(SIGN_NAME[Math.floor((((N.cusps[5] % 360) + 360) % 360) / 30)],
       `5하우스 ${SIGN_NAME[Math.floor((((N.cusps[5] % 360) + 360) % 360) / 30)]}`),
   };
@@ -317,7 +401,7 @@ export function readAll(input, chart, stack) {
  * 새 사람 10명 정도에서 다시 나오면 그때 넣는다.
  */
 /**
- * 속성마다 **어느 체계에 맡길지**.
+ * 속성마다 **어느 체계에 맡길지**, 그리고 **어느 속성은 입을 다물지**.
  *
  * ── 왜 배정인가 (융합을 세 번 실패하고 얻은 결론) ──────────────
  * 열다섯 체계를 하나로 버무리면 **언제나 무너진다.** 세 번 확인했다.
@@ -330,29 +414,80 @@ export function readAll(input, chart, stack) {
  * 그런데 **체계 하나하나는 영점보다 낫다.** 섞지 말고 **속성마다 담당을
  * 정하는 것**이 답이었다.
  *
- * ── 배정 근거 (지인 12명, 외부 분류로 채점) ──────────────────
- *   속성        담당        성적       영점    보는 자리
- *   자영/월급    자미두수    4/4 100%    55%    관록궁 주성
- *   결혼 경험    점성술      5/7  71%    67%    7하우스 삼방
- *   자녀 유무    사주        5/6  83%    60%    식상 개수
- *   거주 형태    자미두수    3/4  75%    71%    전택궁 주성
- *   직업        —          55~80%      45%    한 체계로 못 좁혔다. 나란히 낸다
- *   혼인 안정    —          영점보다 나쁨        답하지 않는다
+ * ── 채점 (지인 11명, 같은 정답표로 한 번에 다시 쟀다) ─────────────
+ * 영점은 "그 속성에서 가장 흔한 답만 찍기"다. '말한 수'는 담당이 침묵하지
+ * 않은 사람 수 — 침묵은 오답이 아니라 **답 없음**으로 센다.
+ *
+ *   속성        담당        말한 수  맞은 수   영점    판정
+ *   수입형태     자미 관록궁     4      4 100%   55%    남긴다
+ *   자녀 유무    사주 식상       6      5  83%   60%    남긴다(약하게)
+ *   혼인 시기    점성 7하우스    3      2  67%   63%    **잠정** — 차이 없음
+ *   거주 형태    자미 전택궁     4      2  50%   71%    **비운다** — 영점보다 나쁨
+ *   직업        넷 나란히      —      55~80%   45%    좁히지 못했다
+ *   혼인 안정    —             —      영점보다 나쁨     비운다
+ *
+ * ── 전에 적었던 숫자를 고친다 ───────────────────────────────
+ * 여기 있던 "결혼 경험 5/7 · 거주 형태 3/4" 는 **재현되지 않았다.** 그때는
+ * 두 축을 읽는 코드가 아예 없었고(담당표만 있고 reader 가 없었다) 손으로
+ * 센 값이었다. 규칙을 전통에서 먼저 정하고 코드로 옮겨 다시 재니 위와 같다.
+ * **못 맞힌 쪽을 지우는 대신 숫자를 고친다.**
+ *
+ * ── 빈칸을 채우지 않는 것이 정확도를 올린다 ──────────────────
+ * 수입형태를 사주로 채우면 4/10 40% 라 영점(55%)보다 나빠진다. 거주형태는
+ * 담당 자신이 영점보다 나쁘다. 그래서 **둘 다 채우지 않는다.** 답이 비면
+ * 기저율(baserate.js)이 대신 말한다 — 그건 점이 아니라 통계라고 밝히고.
+ *
+ * ── 넣지 않은 것 ───────────────────────────────────────────
+ * 수입형태를 **오행국**으로 가르면 이 사람들에서 9/9 완벽 분리였다
+ * (화육국 전원 자영 · 주장 120개를 감안한 순열검정 p=0.037).
+ * 넣지 않았다. 두 가지 이유다.
+ *   1) 여러 축을 쟀으므로 보정하면 못 넘는다.
+ *   2) **오행국이 자영업을 가린다는 전통 근거를 찾지 못했다.** 통계로만
+ *      나온 대응은 표본이 바뀌면 사라진다. 관록궁 주성은 적어도 전통이
+ *      직업을 보라고 지정한 자리다.
+ * 새 사람 10명 정도에서 다시 나오면 그때 넣는다.
  *
  * ── 이 표를 고칠 때 ────────────────────────────────────────
- * n이 4~12다. 성적 자체는 아직 못 믿는다. 다만 **속성마다 담당을 두는
- * 구조**가 융합보다 낫다는 것은 세 번의 실패로 분명하다.
- * 새 사람이 생기면 성적을 다시 재고 담당을 바꾸되, **한 사람 때문에
- * 바꾸지 않는다.**
+ * n이 3~11이다. **성적 자체는 아직 못 믿는다.** 다만 속성마다 담당을 두는
+ * 구조가 융합보다 낫다는 것은 세 번의 실패로 분명하다. 새 사람이 생기면
+ * 같은 정답표로 다시 재고 담당을 바꾸되, **한 사람 때문에 바꾸지 않는다.**
  */
 const AXIS_OWNER = {
-  수입형태: ['자미두수'],
-  결혼경험: ['점성술'],
-  자녀자리: ['사주'],
-  거주형태: ['자미두수'],
-  혼인안정: [],                        // 영점보다 나빠 비워 둔다
-  직업: ['자미두수', '점성술', '사주', '베딕'],  // 좁히지 못해 나란히 낸다
+  수입형태: {
+    owners: ['자미두수'], grade: '측정됨',
+    note: '자미 관록궁 주성 · 말한 4명 중 4 (영점 55%)',
+    say: '담당이 말하면 그대로 낸다',
+  },
+  자녀자리: {
+    owners: ['사주'], grade: '측정됨',
+    note: '사주 천간 식상 개수 · 말한 6명 중 5 (영점 60%)',
+    say: '영점과의 여유가 얇다. 낼 때 약하게 낸다',
+  },
+  결혼경험: {
+    owners: ['점성술'], grade: '잠정',
+    note: '점성 7하우스와 그 주인 · 말한 3명 중 2 (영점 63%)',
+    say: '표본이 셋뿐이라 **영점과 구별되지 않는다.** 참고로만 붙이고 단정하지 말 것',
+  },
+  거주형태: {
+    owners: [], grade: '비움',
+    note: '자미 전택궁으로 읽으면 말한 4명 중 2 — 영점(71%)보다 나쁘다',
+    say: '명반으로 답하지 않는다. 기저율이 있으면 그것만 말할 것',
+  },
+  혼인안정: {
+    owners: [], grade: '비움',
+    note: '자미 부처궁으로 읽으면 5명 중 3 — 영점(75%)보다 나쁘다',
+    say: '답하지 않는다',
+  },
+  직업: {
+    owners: ['자미두수', '점성술', '사주', '베딕'], grade: '나란히',
+    note: '한 체계로 좁히지 못했다 (각 55~80%, 영점 45%)',
+    say: '넷을 나란히 두고 **고르지 말 것.** 서로 다른 사람을 맞혔다',
+  },
 };
+
+/** 담당표를 읽기 전용으로 꺼낸다 — 프롬프트와 테스트가 같은 값을 본다 */
+export const axisPolicy = () => Object.fromEntries(
+  Object.entries(AXIS_OWNER).map(([k, v]) => [k, { ...v, owners: [...v.owners] }]));
 
 /**
  * 속성마다 담당 체계의 답만 추린다. 담당이 침묵하면 **같이 침묵한다.**
@@ -363,14 +498,17 @@ const AXIS_OWNER = {
 export function bestRead(reads) {
   const by = Object.fromEntries(reads.map((r) => [r.system, r]));
   const out = {};
-  for (const [axis, owners] of Object.entries(AXIS_OWNER)) {
-    const said = owners
+  for (const [axis, pol] of Object.entries(AXIS_OWNER)) {
+    const said = pol.owners
       .map((s) => {
         const v = by[s]?.unavailable ? null : by[s]?.[axis];
         return v ? { system: s, ...v } : null;
       })
       .filter(Boolean);
-    out[axis] = said.length ? said : null;
+    out[axis] = {
+      grade: pol.grade, note: pol.note, say: pol.say,
+      said: said.length ? said : null,
+    };
   }
   return out;
 }

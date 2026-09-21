@@ -586,3 +586,54 @@ test('기저율이 점수에 섞이지 않고 순위보다 먼저 실린다', ()
     assert.equal(m.baseRate, undefined, '기저율이 월 층 점수에 새어 들어갔다');
   }
 });
+
+// ─────────────────────────────────────────────────────────────
+// 체계마다 따로 읽기 (interpret.js)
+// ─────────────────────────────────────────────────────────────
+
+test('체계마다 자기 어휘로 읽고, 섞지 않는다', async () => {
+  // profile.js 의 융합이 신호를 뭉갰다. 지인 여덟의 자미 원국 관록궁은
+  // 천동·염정파군·탐랑·무곡·파군으로 전부 달랐는데 융합 결과는 다섯 명
+  // 모두 "교육·법률·금융"이었다 — 베딕 목성 쪽 지표가 표를 덮었다.
+  const IN = await import('../../public/unse-8f3k2m/src/hires/interpret.js');
+  const st = ZW.stackAt(R.input, 2026, null);
+  const reads = IN.readAll(R.input, R.chart, st);
+
+  assert.deepEqual(reads.map((r) => r.system), ['사주', '자미두수', '점성술', '베딕']);
+  // 근거 없는 항목은 만들지 않는다
+  for (const r of reads) {
+    if (r.unavailable) continue;
+    for (const [k, v] of Object.entries(r)) {
+      if (k === 'system' || v == null) continue;
+      assert.ok(v.value && v.basis, `${r.system}.${k} 에 근거가 없다`);
+    }
+  }
+  // 체계마다 다른 말을 해야 한다 — 같으면 융합과 다를 바 없다
+  const trades = reads.map((r) => r.직업?.value).filter(Boolean);
+  assert.ok(new Set(trades).size > 1, `네 체계가 같은 직업을 말한다: ${trades}`);
+});
+
+test('담당 체계가 침묵하면 같이 침묵한다', async () => {
+  // 자영/월급에서 자미는 넷에게만 답하고 그 넷을 다 맞혔다(4/4).
+  // 사주로 빈칸을 채우면 40%가 되어 영점(55%)보다 나빠진다.
+  // **채우지 않는 것이 정확도를 올린다.**
+  const IN = await import('../../public/unse-8f3k2m/src/hires/interpret.js');
+  const st = ZW.stackAt(R.input, 2026, null);
+  const best = IN.bestRead(IN.readAll(R.input, R.chart, st));
+
+  // 혼인 안정은 영점보다 나빠 아예 담당을 두지 않았다
+  assert.equal(best.혼인안정, null, '혼인 안정은 답하지 않기로 했다');
+
+  // 답이 있으면 어느 체계가 말했는지 반드시 붙는다
+  for (const [axis, said] of Object.entries(best)) {
+    if (!said) continue;
+    for (const s of said) {
+      assert.ok(s.system && s.value && s.basis, `${axis} 에 체계·근거가 없다`);
+    }
+  }
+
+  // 시각을 모르면 자미가 못 서므로 수입형태도 침묵한다
+  const noTime = readFortune({ ...FORM, hour: null, minute: 0 }, { now: NOW });
+  const b2 = IN.bestRead(IN.readAll(noTime.input, noTime.chart, null));
+  assert.equal(b2.수입형태, null, '시각 미상인데 수입형태를 말했다');
+});

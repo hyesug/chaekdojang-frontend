@@ -13,6 +13,9 @@
     "unse:bundle": "node scripts/bundle-unse.mjs",
     "unse:watch": "node scripts/bundle-unse.mjs --watch",
     "unse:validate": "node scripts/blind-validate.mjs",
+    "unse:benchmark": "node scripts/fortune-benchmark.mjs",
+    "unse:evidence": "node scripts/fortune-evidence-report.mjs",
+    "unse:casebook-benchmark": "node scripts/fortune-casebook-benchmark.mjs",
     "test": "npm run test:unse"
   },
   "dependencies": {

@@ -457,6 +457,19 @@ export function scoreMonth(m, domain) {
   };
 }
 
+/** 백테스트용: 합의도·가중 합산 없이 각 체계가 직접 낸 월 점수만 읽는다. */
+export function scoreSystemsForBenchmark(m, domain) {
+  const parts = {
+    saju: readBazi(m, domain),
+    jamidusu: readZiwei(m, domain),
+    astrology: readWestern(m, domain),
+    vedic: readVedic(m, domain),
+  };
+  return Object.fromEntries(Object.entries(parts).map(([id, part]) => [id,
+    Math.round(part.votes.reduce((total, vote) => total + vote.w, 0) * 100) / 100,
+  ]));
+}
+
 /**
  * 사건 묶음 — 묻는 사람은 이름표를 가리지 않는다.
  *

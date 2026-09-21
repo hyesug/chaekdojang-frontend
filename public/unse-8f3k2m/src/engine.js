@@ -15,6 +15,7 @@ import { findCity, bearing8, suggestCity } from './core/place.js';
 import { solarToLunar } from './core/lunar.js';
 import { computeFourPillars } from './core/ganzhi.js';
 import { synthesize } from './synth.js';
+import { interpretProfile } from './interpretation/profile.js';
 
 import saju from './systems/saju.js';
 import jamidusu from './systems/jamidusu.js';
@@ -214,4 +215,10 @@ export function readFortune(form, opts = {}) {
   const synthesis = synthesize(results);
 
   return { input, birth, lunar, chart, results, synthesis, skipped, errors, planned: PLANNED };
+}
+
+/** 15체계의 원국 신호만으로 만드는 구조화 프로필 해석. */
+export function readProfileInterpretation(form, opts = {}) {
+  const fortune = readFortune(form, opts);
+  return { ...interpretProfile(fortune.results), errors: fortune.errors, skipped: fortune.skipped };
 }

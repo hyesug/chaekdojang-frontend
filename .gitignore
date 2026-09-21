@@ -48,3 +48,9 @@ next-env.d.ts
 validation/cases.json
 validation/last-run.json
 validation/prereg-predictions.json
+validation-data/profile-cases.json
+
+# 검증용 개인정보 — 올리지 않는다
+validation-data/
+bench.json
+people-bench.json

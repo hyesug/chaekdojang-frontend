@@ -1,0 +1,1486 @@
+{
+  "people": [
+    {
+      "id": "P001",
+      "status": "ok",
+      "interpretation": {
+        "method": "15체계의 공통 태그와 체계가 직접 제공한 영역 점수를 분리해 집계한다. 사례 사실은 입력하지 않는다.",
+        "limits": [
+          "결혼·이혼·자녀·수술처럼 구체적 사건은 원국만으로 확정하지 않는다.",
+          "영역 점수는 체계 사이의 확률 비교가 아니라 각 체계의 해석 범위 표시다."
+        ],
+        "domainEvidence": {
+          "직업": {
+            "supporting": [
+              {
+                "id": "saju",
+                "name": "사주",
+                "score": 77
+              },
+              {
+                "id": "jamidusu",
+                "name": "자미두수",
+                "score": 50
+              },
+              {
+                "id": "astrology",
+                "name": "점성술",
+                "score": 50
+              },
+              {
+                "id": "juyeok",
+                "name": "주역",
+                "score": 38
+              },
+              {
+                "id": "hongguk",
+                "name": "홍국기문",
+                "score": 50
+              },
+              {
+                "id": "gujeong",
+                "name": "구성학",
+                "score": 60
+              },
+              {
+                "id": "tojeong",
+                "name": "토정비결",
+                "score": 70
+              }
+            ],
+            "average": 56.4,
+            "status": "measurable"
+          },
+          "관계": {
+            "supporting": [
+              {
+                "id": "saju",
+                "name": "사주",
+                "score": 53
+              },
+              {
+                "id": "jamidusu",
+                "name": "자미두수",
+                "score": 58
+              },
+              {
+                "id": "astrology",
+                "name": "점성술",
+                "score": 78
+              },
+              {
+                "id": "juyeok",
+                "name": "주역",
+                "score": 38
+              },
+              {
+                "id": "gujeong",
+                "name": "구성학",
+                "score": 66
+              },
+              {
+                "id": "tojeong",
+                "name": "토정비결",
+                "score": 62
+              },
+              {
+                "id": "mahabote",
+                "name": "마하보테",
+                "score": 66
+              }
+            ],
+            "average": 60.1,
+            "status": "measurable"
+          },
+          "재물": {
+            "supporting": [
+              {
+                "id": "saju",
+                "name": "사주",
+                "score": 58
+              },
+              {
+                "id": "jamidusu",
+                "name": "자미두수",
+                "score": 50
+              },
+              {
+                "id": "astrology",
+                "name": "점성술",
+                "score": 50
+              },
+              {
+                "id": "juyeok",
+                "name": "주역",
+                "score": 38
+              },
+              {
+                "id": "hongguk",
+                "name": "홍국기문",
+                "score": 50
+              },
+              {
+                "id": "gujeong",
+                "name": "구성학",
+                "score": 50
+              },
+              {
+                "id": "tojeong",
+                "name": "토정비결",
+                "score": 78
+              }
+            ],
+            "average": 53.4,
+            "status": "measurable"
+          },
+          "건강": {
+            "supporting": [
+              {
+                "id": "saju",
+                "name": "사주",
+                "score": 33
+              },
+              {
+                "id": "jamidusu",
+                "name": "자미두수",
+                "score": 44
+              },
+              {
+                "id": "astrology",
+                "name": "점성술",
+                "score": 64
+              },
+              {
+                "id": "hongguk",
+                "name": "홍국기문",
+                "score": 50
+              },
+              {
+                "id": "tojeong",
+                "name": "토정비결",
+                "score": 50
+              }
+            ],
+            "average": 48.2,
+            "status": "measurable"
+          },
+          "학업": {
+            "supporting": [
+              {
+                "id": "saju",
+                "name": "사주",
+                "score": 59
+              },
+              {
+                "id": "jamidusu",
+                "name": "자미두수",
+                "score": 64
+              },
+              {
+                "id": "astrology",
+                "name": "점성술",
+                "score": 57
+              },
+              {
+                "id": "hongguk",
+                "name": "홍국기문",
+                "score": 50
+              },
+              {
+                "id": "gujeong",
+                "name": "구성학",
+                "score": 50
+              },
+              {
+                "id": "mahabote",
+                "name": "마하보테",
+                "score": 64
+              }
+            ],
+            "average": 57.3,
+            "status": "measurable"
+          }
+        },
+        "areas": {
+          "직업": {
+            "candidates": [],
+            "conflicted": false,
+            "status": "insufficient-evidence"
+          },
+          "관계": {
+            "candidates": [],
+            "conflicted": false,
+            "status": "insufficient-evidence"
+          },
+          "학업": {
+            "candidates": [
+              {
+                "key": "credential-path",
+                "label": "학습·자격·재교육으로 경로를 다시 만드는 경향",
+                "systems": [
+                  {
+                    "id": "mahabote",
+                    "name": "마하보테",
+                    "tags": [
+                      "학습"
+                    ]
+                  },
+                  {
+                    "id": "jamidusu",
+                    "name": "자미두수",
+                    "tags": [
+                      "분석"
+                    ]
+                  }
+                ]
+              }
+            ],
+            "conflicted": false,
+            "status": "supported"
+          },
+          "재물": {
+            "candidates": [],
+            "conflicted": false,
+            "status": "insufficient-evidence"
+          },
+          "건강": {
+            "candidates": [],
+            "conflicted": false,
+            "status": "insufficient-evidence"
+          }
+        },
+        "errors": [],
+        "skipped": []
+      }
+    },
+    {
+      "id": "P002",
+      "status": "ok",
+      "interpretation": {
+        "method": "15체계의 공통 태그와 체계가 직접 제공한 영역 점수를 분리해 집계한다. 사례 사실은 입력하지 않는다.",
+        "limits": [
+          "결혼·이혼·자녀·수술처럼 구체적 사건은 원국만으로 확정하지 않는다.",
+          "영역 점수는 체계 사이의 확률 비교가 아니라 각 체계의 해석 범위 표시다."
+        ],
+        "domainEvidence": {
+          "직업": {
+            "supporting": [
+              {
+                "id": "saju",
+                "name": "사주",
+                "score": 60
+              },
+              {
+                "id": "jamidusu",
+                "name": "자미두수",
+                "score": 50
+              },
+              {
+                "id": "astrology",
+                "name": "점성술",
+                "score": 78
+              },
+              {
+                "id": "juyeok",
+                "name": "주역",
+                "score": 38
+              },
+              {
+                "id": "hongguk",
+                "name": "홍국기문",
+                "score": 50
+              },
+              {
+                "id": "gujeong",
+                "name": "구성학",
+                "score": 46
+              },
+              {
+                "id": "tojeong",
+                "name": "토정비결",
+                "score": 50
+              }
+            ],
+            "average": 53.1,
+            "status": "measurable"
+          },
+          "관계": {
+            "supporting": [
+              {
+                "id": "saju",
+                "name": "사주",
+                "score": 52
+              },
+              {
+                "id": "jamidusu",
+                "name": "자미두수",
+                "score": 58
+              },
+              {
+                "id": "astrology",
+                "name": "점성술",
+                "score": 50
+              },
+              {
+                "id": "juyeok",
+                "name": "주역",
+                "score": 38
+              },
+              {
+                "id": "gujeong",
+                "name": "구성학",
+                "score": 42
+              },
+              {
+                "id": "tojeong",
+                "name": "토정비결",
+                "score": 50
+              },
+              {
+                "id": "kabbalah",
+                "name": "카발라",
+                "score": 68
+              },
+              {
+                "id": "mahabote",
+                "name": "마하보테",
+                "score": 66
+              }
+            ],
+            "average": 53,
+            "status": "measurable"
+          },
+          "재물": {
+            "supporting": [
+              {
+                "id": "saju",
+                "name": "사주",
+                "score": 45
+              },
+              {
+                "id": "jamidusu",
+                "name": "자미두수",
+                "score": 68
+              },
+              {
+                "id": "astrology",
+                "name": "점성술",
+                "score": 50
+              },
+              {
+                "id": "juyeok",
+                "name": "주역",
+                "score": 38
+              },
+              {
+                "id": "hongguk",
+                "name": "홍국기문",
+                "score": 50
+              },
+              {
+                "id": "gujeong",
+                "name": "구성학",
+                "score": 50
+              },
+              {
+                "id": "tojeong",
+                "name": "토정비결",
+                "score": 50
+              }
+            ],
+            "average": 50.1,
+            "status": "measurable"
+          },
+          "건강": {
+            "supporting": [
+              {
+                "id": "saju",
+                "name": "사주",
+                "score": 47
+              },
+              {
+                "id": "jamidusu",
+                "name": "자미두수",
+                "score": 60
+              },
+              {
+                "id": "astrology",
+                "name": "점성술",
+                "score": 50
+              },
+              {
+                "id": "hongguk",
+                "name": "홍국기문",
+                "score": 50
+              },
+              {
+                "id": "tojeong",
+                "name": "토정비결",
+                "score": 50
+              }
+            ],
+            "average": 51.4,
+            "status": "measurable"
+          },
+          "학업": {
+            "supporting": [
+              {
+                "id": "saju",
+                "name": "사주",
+                "score": 73
+              },
+              {
+                "id": "jamidusu",
+                "name": "자미두수",
+                "score": 50
+              },
+              {
+                "id": "astrology",
+                "name": "점성술",
+                "score": 50
+              },
+              {
+                "id": "hongguk",
+                "name": "홍국기문",
+                "score": 62
+              },
+              {
+                "id": "gujeong",
+                "name": "구성학",
+                "score": 62
+              },
+              {
+                "id": "mahabote",
+                "name": "마하보테",
+                "score": 64
+              }
+            ],
+            "average": 60.2,
+            "status": "measurable"
+          }
+        },
+        "areas": {
+          "직업": {
+            "candidates": [],
+            "conflicted": false,
+            "status": "insufficient-evidence"
+          },
+          "관계": {
+            "candidates": [],
+            "conflicted": false,
+            "status": "insufficient-evidence"
+          },
+          "학업": {
+            "candidates": [
+              {
+                "key": "credential-path",
+                "label": "학습·자격·재교육으로 경로를 다시 만드는 경향",
+                "systems": [
+                  {
+                    "id": "saju",
+                    "name": "사주",
+                    "tags": [
+                      "학습",
+                      "분석"
+                    ]
+                  },
+                  {
+                    "id": "mahabote",
+                    "name": "마하보테",
+                    "tags": [
+                      "학습"
+                    ]
+                  }
+                ]
+              }
+            ],
+            "conflicted": false,
+            "status": "supported"
+          },
+          "재물": {
+            "candidates": [],
+            "conflicted": false,
+            "status": "insufficient-evidence"
+          },
+          "건강": {
+            "candidates": [],
+            "conflicted": false,
+            "status": "insufficient-evidence"
+          }
+        },
+        "errors": [],
+        "skipped": []
+      }
+    },
+    {
+      "id": "P003",
+      "status": "ok",
+      "interpretation": {
+        "method": "15체계의 공통 태그와 체계가 직접 제공한 영역 점수를 분리해 집계한다. 사례 사실은 입력하지 않는다.",
+        "limits": [
+          "결혼·이혼·자녀·수술처럼 구체적 사건은 원국만으로 확정하지 않는다.",
+          "영역 점수는 체계 사이의 확률 비교가 아니라 각 체계의 해석 범위 표시다."
+        ],
+        "domainEvidence": {
+          "직업": {
+            "supporting": [
+              {
+                "id": "saju",
+                "name": "사주",
+                "score": 72
+              },
+              {
+                "id": "jamidusu",
+                "name": "자미두수",
+                "score": 50
+              },
+              {
+                "id": "astrology",
+                "name": "점성술",
+                "score": 57
+              },
+              {
+                "id": "juyeok",
+                "name": "주역",
+                "score": 38
+              },
+              {
+                "id": "hongguk",
+                "name": "홍국기문",
+                "score": 38
+              },
+              {
+                "id": "gujeong",
+                "name": "구성학",
+                "score": 60
+              },
+              {
+                "id": "tojeong",
+                "name": "토정비결",
+                "score": 70
+              },
+              {
+                "id": "mahabote",
+                "name": "마하보테",
+                "score": 66
+              }
+            ],
+            "average": 56.4,
+            "status": "measurable"
+          },
+          "관계": {
+            "supporting": [
+              {
+                "id": "saju",
+                "name": "사주",
+                "score": 59
+              },
+              {
+                "id": "jamidusu",
+                "name": "자미두수",
+                "score": 58
+              },
+              {
+                "id": "astrology",
+                "name": "점성술",
+                "score": 57
+              },
+              {
+                "id": "juyeok",
+                "name": "주역",
+                "score": 38
+              },
+              {
+                "id": "gujeong",
+                "name": "구성학",
+                "score": 66
+              },
+              {
+                "id": "tojeong",
+                "name": "토정비결",
+                "score": 62
+              },
+              {
+                "id": "kabbalah",
+                "name": "카발라",
+                "score": 68
+              }
+            ],
+            "average": 58.3,
+            "status": "measurable"
+          },
+          "재물": {
+            "supporting": [
+              {
+                "id": "saju",
+                "name": "사주",
+                "score": 47
+              },
+              {
+                "id": "jamidusu",
+                "name": "자미두수",
+                "score": 50
+              },
+              {
+                "id": "astrology",
+                "name": "점성술",
+                "score": 50
+              },
+              {
+                "id": "juyeok",
+                "name": "주역",
+                "score": 38
+              },
+              {
+                "id": "hongguk",
+                "name": "홍국기문",
+                "score": 34
+              },
+              {
+                "id": "gujeong",
+                "name": "구성학",
+                "score": 50
+              },
+              {
+                "id": "tojeong",
+                "name": "토정비결",
+                "score": 70
+              }
+            ],
+            "average": 48.4,
+            "status": "measurable"
+          },
+          "건강": {
+            "supporting": [
+              {
+                "id": "saju",
+                "name": "사주",
+                "score": 37
+              },
+              {
+                "id": "jamidusu",
+                "name": "자미두수",
+                "score": 58
+              },
+              {
+                "id": "astrology",
+                "name": "점성술",
+                "score": 50
+              },
+              {
+                "id": "hongguk",
+                "name": "홍국기문",
+                "score": 40
+              },
+              {
+                "id": "tojeong",
+                "name": "토정비결",
+                "score": 36
+              }
+            ],
+            "average": 44.2,
+            "status": "measurable"
+          },
+          "학업": {
+            "supporting": [
+              {
+                "id": "saju",
+                "name": "사주",
+                "score": 57
+              },
+              {
+                "id": "jamidusu",
+                "name": "자미두수",
+                "score": 50
+              },
+              {
+                "id": "astrology",
+                "name": "점성술",
+                "score": 50
+              },
+              {
+                "id": "hongguk",
+                "name": "홍국기문",
+                "score": 50
+              },
+              {
+                "id": "gujeong",
+                "name": "구성학",
+                "score": 50
+              },
+              {
+                "id": "mahabote",
+                "name": "마하보테",
+                "score": 60
+              }
+            ],
+            "average": 52.8,
+            "status": "measurable"
+          }
+        },
+        "areas": {
+          "직업": {
+            "candidates": [
+              {
+                "key": "creative-project",
+                "label": "표현·기획·프로젝트형 일",
+                "systems": [
+                  {
+                    "id": "mahabote",
+                    "name": "마하보테",
+                    "tags": [
+                      "표현",
+                      "실행"
+                    ]
+                  },
+                  {
+                    "id": "saju",
+                    "name": "사주",
+                    "tags": [
+                      "실행"
+                    ]
+                  }
+                ]
+              }
+            ],
+            "conflicted": false,
+            "status": "supported"
+          },
+          "관계": {
+            "candidates": [],
+            "conflicted": false,
+            "status": "insufficient-evidence"
+          },
+          "학업": {
+            "candidates": [],
+            "conflicted": false,
+            "status": "insufficient-evidence"
+          },
+          "재물": {
+            "candidates": [],
+            "conflicted": false,
+            "status": "insufficient-evidence"
+          },
+          "건강": {
+            "candidates": [],
+            "conflicted": false,
+            "status": "insufficient-evidence"
+          }
+        },
+        "errors": [],
+        "skipped": []
+      }
+    },
+    {
+      "id": "P004",
+      "status": "ok",
+      "interpretation": {
+        "method": "15체계의 공통 태그와 체계가 직접 제공한 영역 점수를 분리해 집계한다. 사례 사실은 입력하지 않는다.",
+        "limits": [
+          "결혼·이혼·자녀·수술처럼 구체적 사건은 원국만으로 확정하지 않는다.",
+          "영역 점수는 체계 사이의 확률 비교가 아니라 각 체계의 해석 범위 표시다."
+        ],
+        "domainEvidence": {
+          "직업": {
+            "supporting": [
+              {
+                "id": "saju",
+                "name": "사주",
+                "score": 77
+              },
+              {
+                "id": "jamidusu",
+                "name": "자미두수",
+                "score": 50
+              },
+              {
+                "id": "astrology",
+                "name": "점성술",
+                "score": 50
+              },
+              {
+                "id": "juyeok",
+                "name": "주역",
+                "score": 38
+              },
+              {
+                "id": "hongguk",
+                "name": "홍국기문",
+                "score": 50
+              },
+              {
+                "id": "gujeong",
+                "name": "구성학",
+                "score": 60
+              },
+              {
+                "id": "tojeong",
+                "name": "토정비결",
+                "score": 50
+              },
+              {
+                "id": "mahabote",
+                "name": "마하보테",
+                "score": 56
+              }
+            ],
+            "average": 53.9,
+            "status": "measurable"
+          },
+          "관계": {
+            "supporting": [
+              {
+                "id": "saju",
+                "name": "사주",
+                "score": 53
+              },
+              {
+                "id": "jamidusu",
+                "name": "자미두수",
+                "score": 58
+              },
+              {
+                "id": "astrology",
+                "name": "점성술",
+                "score": 50
+              },
+              {
+                "id": "juyeok",
+                "name": "주역",
+                "score": 38
+              },
+              {
+                "id": "gujeong",
+                "name": "구성학",
+                "score": 66
+              },
+              {
+                "id": "tojeong",
+                "name": "토정비결",
+                "score": 50
+              }
+            ],
+            "average": 52.5,
+            "status": "measurable"
+          },
+          "재물": {
+            "supporting": [
+              {
+                "id": "saju",
+                "name": "사주",
+                "score": 58
+              },
+              {
+                "id": "jamidusu",
+                "name": "자미두수",
+                "score": 68
+              },
+              {
+                "id": "astrology",
+                "name": "점성술",
+                "score": 78
+              },
+              {
+                "id": "juyeok",
+                "name": "주역",
+                "score": 38
+              },
+              {
+                "id": "hongguk",
+                "name": "홍국기문",
+                "score": 50
+              },
+              {
+                "id": "gujeong",
+                "name": "구성학",
+                "score": 50
+              },
+              {
+                "id": "tojeong",
+                "name": "토정비결",
+                "score": 50
+              },
+              {
+                "id": "mahabote",
+                "name": "마하보테",
+                "score": 52
+              }
+            ],
+            "average": 55.5,
+            "status": "measurable"
+          },
+          "건강": {
+            "supporting": [
+              {
+                "id": "saju",
+                "name": "사주",
+                "score": 36
+              },
+              {
+                "id": "jamidusu",
+                "name": "자미두수",
+                "score": 50
+              },
+              {
+                "id": "astrology",
+                "name": "점성술",
+                "score": 50
+              },
+              {
+                "id": "hongguk",
+                "name": "홍국기문",
+                "score": 50
+              },
+              {
+                "id": "tojeong",
+                "name": "토정비결",
+                "score": 50
+              }
+            ],
+            "average": 47.2,
+            "status": "measurable"
+          },
+          "학업": {
+            "supporting": [
+              {
+                "id": "saju",
+                "name": "사주",
+                "score": 59
+              },
+              {
+                "id": "jamidusu",
+                "name": "자미두수",
+                "score": 50
+              },
+              {
+                "id": "astrology",
+                "name": "점성술",
+                "score": 57
+              },
+              {
+                "id": "hongguk",
+                "name": "홍국기문",
+                "score": 62
+              },
+              {
+                "id": "gujeong",
+                "name": "구성학",
+                "score": 50
+              }
+            ],
+            "average": 55.6,
+            "status": "measurable"
+          }
+        },
+        "areas": {
+          "직업": {
+            "candidates": [],
+            "conflicted": false,
+            "status": "insufficient-evidence"
+          },
+          "관계": {
+            "candidates": [],
+            "conflicted": false,
+            "status": "insufficient-evidence"
+          },
+          "학업": {
+            "candidates": [],
+            "conflicted": false,
+            "status": "insufficient-evidence"
+          },
+          "재물": {
+            "candidates": [],
+            "conflicted": false,
+            "status": "insufficient-evidence"
+          },
+          "건강": {
+            "candidates": [],
+            "conflicted": false,
+            "status": "insufficient-evidence"
+          }
+        },
+        "errors": [],
+        "skipped": []
+      }
+    },
+    {
+      "id": "P005",
+      "status": "ok",
+      "interpretation": {
+        "method": "15체계의 공통 태그와 체계가 직접 제공한 영역 점수를 분리해 집계한다. 사례 사실은 입력하지 않는다.",
+        "limits": [
+          "결혼·이혼·자녀·수술처럼 구체적 사건은 원국만으로 확정하지 않는다.",
+          "영역 점수는 체계 사이의 확률 비교가 아니라 각 체계의 해석 범위 표시다."
+        ],
+        "domainEvidence": {
+          "직업": {
+            "supporting": [
+              {
+                "id": "saju",
+                "name": "사주",
+                "score": 61
+              },
+              {
+                "id": "juyeok",
+                "name": "주역",
+                "score": 50
+              },
+              {
+                "id": "gujeong",
+                "name": "구성학",
+                "score": 66
+              },
+              {
+                "id": "tojeong",
+                "name": "토정비결",
+                "score": 60
+              },
+              {
+                "id": "mahabote",
+                "name": "마하보테",
+                "score": 56
+              }
+            ],
+            "average": 58.6,
+            "status": "measurable"
+          },
+          "관계": {
+            "supporting": [
+              {
+                "id": "saju",
+                "name": "사주",
+                "score": 53
+              },
+              {
+                "id": "juyeok",
+                "name": "주역",
+                "score": 50
+              },
+              {
+                "id": "gujeong",
+                "name": "구성학",
+                "score": 52
+              },
+              {
+                "id": "tojeong",
+                "name": "토정비결",
+                "score": 56
+              },
+              {
+                "id": "kabbalah",
+                "name": "카발라",
+                "score": 68
+              }
+            ],
+            "average": 55.8,
+            "status": "measurable"
+          },
+          "재물": {
+            "supporting": [
+              {
+                "id": "saju",
+                "name": "사주",
+                "score": 43
+              },
+              {
+                "id": "juyeok",
+                "name": "주역",
+                "score": 50
+              },
+              {
+                "id": "gujeong",
+                "name": "구성학",
+                "score": 50
+              },
+              {
+                "id": "tojeong",
+                "name": "토정비결",
+                "score": 68
+              },
+              {
+                "id": "mahabote",
+                "name": "마하보테",
+                "score": 52
+              }
+            ],
+            "average": 52.6,
+            "status": "measurable"
+          },
+          "건강": {
+            "supporting": [
+              {
+                "id": "saju",
+                "name": "사주",
+                "score": 44
+              },
+              {
+                "id": "tojeong",
+                "name": "토정비결",
+                "score": 50
+              }
+            ],
+            "average": 47,
+            "status": "measurable"
+          },
+          "학업": {
+            "supporting": [
+              {
+                "id": "saju",
+                "name": "사주",
+                "score": 65
+              },
+              {
+                "id": "gujeong",
+                "name": "구성학",
+                "score": 50
+              }
+            ],
+            "average": 57.5,
+            "status": "measurable"
+          }
+        },
+        "areas": {
+          "직업": {
+            "candidates": [
+              {
+                "key": "structured-career",
+                "label": "자격·직책·조직 안에서 전문성을 쌓는 일",
+                "systems": [
+                  {
+                    "id": "gujeong",
+                    "name": "구성학",
+                    "tags": [
+                      "책임"
+                    ]
+                  },
+                  {
+                    "id": "saju",
+                    "name": "사주",
+                    "tags": [
+                      "학습"
+                    ]
+                  }
+                ]
+              }
+            ],
+            "conflicted": false,
+            "status": "supported"
+          },
+          "관계": {
+            "candidates": [],
+            "conflicted": false,
+            "status": "insufficient-evidence"
+          },
+          "학업": {
+            "candidates": [],
+            "conflicted": false,
+            "status": "insufficient-evidence"
+          },
+          "재물": {
+            "candidates": [],
+            "conflicted": false,
+            "status": "insufficient-evidence"
+          },
+          "건강": {
+            "candidates": [],
+            "conflicted": false,
+            "status": "insufficient-evidence"
+          }
+        },
+        "errors": [],
+        "skipped": [
+          {
+            "system": "자미두수",
+            "reason": "태어난 시각을 알아야 계산할 수 있습니다"
+          },
+          {
+            "system": "육임",
+            "reason": "태어난 시각을 알아야 계산할 수 있습니다"
+          },
+          {
+            "system": "홍국기문",
+            "reason": "태어난 시각을 알아야 계산할 수 있습니다"
+          }
+        ]
+      }
+    },
+    {
+      "id": "P006",
+      "status": "needs-lunar-conversion"
+    },
+    {
+      "id": "P007",
+      "status": "needs-lunar-conversion"
+    },
+    {
+      "id": "P008",
+      "status": "ok",
+      "interpretation": {
+        "method": "15체계의 공통 태그와 체계가 직접 제공한 영역 점수를 분리해 집계한다. 사례 사실은 입력하지 않는다.",
+        "limits": [
+          "결혼·이혼·자녀·수술처럼 구체적 사건은 원국만으로 확정하지 않는다.",
+          "영역 점수는 체계 사이의 확률 비교가 아니라 각 체계의 해석 범위 표시다."
+        ],
+        "domainEvidence": {
+          "직업": {
+            "supporting": [
+              {
+                "id": "saju",
+                "name": "사주",
+                "score": 77
+              },
+              {
+                "id": "jamidusu",
+                "name": "자미두수",
+                "score": 50
+              },
+              {
+                "id": "astrology",
+                "name": "점성술",
+                "score": 50
+              },
+              {
+                "id": "juyeok",
+                "name": "주역",
+                "score": 62
+              },
+              {
+                "id": "hongguk",
+                "name": "홍국기문",
+                "score": 50
+              },
+              {
+                "id": "gujeong",
+                "name": "구성학",
+                "score": 46
+              },
+              {
+                "id": "tojeong",
+                "name": "토정비결",
+                "score": 70
+              },
+              {
+                "id": "kabbalah",
+                "name": "카발라",
+                "score": 70
+              },
+              {
+                "id": "mahabote",
+                "name": "마하보테",
+                "score": 56
+              }
+            ],
+            "average": 59,
+            "status": "measurable"
+          },
+          "관계": {
+            "supporting": [
+              {
+                "id": "saju",
+                "name": "사주",
+                "score": 53
+              },
+              {
+                "id": "jamidusu",
+                "name": "자미두수",
+                "score": 58
+              },
+              {
+                "id": "astrology",
+                "name": "점성술",
+                "score": 64
+              },
+              {
+                "id": "juyeok",
+                "name": "주역",
+                "score": 62
+              },
+              {
+                "id": "gujeong",
+                "name": "구성학",
+                "score": 42
+              },
+              {
+                "id": "tojeong",
+                "name": "토정비결",
+                "score": 62
+              }
+            ],
+            "average": 56.8,
+            "status": "measurable"
+          },
+          "재물": {
+            "supporting": [
+              {
+                "id": "saju",
+                "name": "사주",
+                "score": 58
+              },
+              {
+                "id": "jamidusu",
+                "name": "자미두수",
+                "score": 68
+              },
+              {
+                "id": "astrology",
+                "name": "점성술",
+                "score": 71
+              },
+              {
+                "id": "juyeok",
+                "name": "주역",
+                "score": 62
+              },
+              {
+                "id": "hongguk",
+                "name": "홍국기문",
+                "score": 50
+              },
+              {
+                "id": "gujeong",
+                "name": "구성학",
+                "score": 50
+              },
+              {
+                "id": "tojeong",
+                "name": "토정비결",
+                "score": 70
+              },
+              {
+                "id": "kabbalah",
+                "name": "카발라",
+                "score": 72
+              },
+              {
+                "id": "mahabote",
+                "name": "마하보테",
+                "score": 52
+              }
+            ],
+            "average": 61.4,
+            "status": "measurable"
+          },
+          "건강": {
+            "supporting": [
+              {
+                "id": "saju",
+                "name": "사주",
+                "score": 32
+              },
+              {
+                "id": "jamidusu",
+                "name": "자미두수",
+                "score": 54
+              },
+              {
+                "id": "astrology",
+                "name": "점성술",
+                "score": 50
+              },
+              {
+                "id": "hongguk",
+                "name": "홍국기문",
+                "score": 50
+              },
+              {
+                "id": "tojeong",
+                "name": "토정비결",
+                "score": 50
+              }
+            ],
+            "average": 47.2,
+            "status": "measurable"
+          },
+          "학업": {
+            "supporting": [
+              {
+                "id": "saju",
+                "name": "사주",
+                "score": 59
+              },
+              {
+                "id": "jamidusu",
+                "name": "자미두수",
+                "score": 50
+              },
+              {
+                "id": "astrology",
+                "name": "점성술",
+                "score": 57
+              },
+              {
+                "id": "hongguk",
+                "name": "홍국기문",
+                "score": 50
+              },
+              {
+                "id": "gujeong",
+                "name": "구성학",
+                "score": 62
+              }
+            ],
+            "average": 55.6,
+            "status": "measurable"
+          }
+        },
+        "areas": {
+          "직업": {
+            "candidates": [],
+            "conflicted": false,
+            "status": "insufficient-evidence"
+          },
+          "관계": {
+            "candidates": [],
+            "conflicted": false,
+            "status": "insufficient-evidence"
+          },
+          "학업": {
+            "candidates": [],
+            "conflicted": false,
+            "status": "insufficient-evidence"
+          },
+          "재물": {
+            "candidates": [
+              {
+                "key": "asset-builder",
+                "label": "수입·자산을 구조적으로 쌓는 경향",
+                "systems": [
+                  {
+                    "id": "tojeong",
+                    "name": "토정비결",
+                    "tags": [
+                      "재물"
+                    ]
+                  },
+                  {
+                    "id": "kabbalah",
+                    "name": "카발라",
+                    "tags": [
+                      "재물"
+                    ]
+                  },
+                  {
+                    "id": "astrology",
+                    "name": "점성술",
+                    "tags": [
+                      "인내"
+                    ]
+                  }
+                ]
+              }
+            ],
+            "conflicted": false,
+            "status": "supported"
+          },
+          "건강": {
+            "candidates": [],
+            "conflicted": false,
+            "status": "insufficient-evidence"
+          }
+        },
+        "errors": [],
+        "skipped": []
+      }
+    }
+  ]
+}

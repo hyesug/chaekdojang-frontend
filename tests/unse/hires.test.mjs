@@ -820,3 +820,37 @@ test('판정 질문에는 판정할 수 없다고 먼저 적는다', () => {
   // 시기 질문에는 이 구획을 달지 않는다
   assert.ok(!buildHiRes(r, f, timing).text.includes('이 엔진은 판정하지 못한다'));
 });
+
+test('체계 자신의 평소와 견주어 지지를 센다', () => {
+  // 절대 점수로 재면 말이 안 된다. 360달을 재 보니 점성술은 360/360(100%)
+  // 에서 '지지했다'로 세어지고 베딕은 0/360 이었다 — 체계마다 점수의
+  // 자릿수가 달라서다. 그 결과 "핵심 넷 중 셋이 지지했다"가 거의 자동으로
+  // 참이 됐고, 그 위에 세운 단언 등급도 같이 부풀었다.
+  const { r } = load(FORM);
+  const chunks = [];
+  for (let y = 2010; y <= 2026; y += 5) {
+    chunks.push(buildGrid(r.input, r.chart, { fromYear: y, years: Math.min(5, 2027 - y), domain: '관계' }));
+  }
+  const g = { ...chunks[0], months: chunks.flatMap((c) => c.months), fromYear: 2010, toYear: 2026 };
+  const rows = inferEvents(g, '관계').rows;
+
+  for (const sys of ['사주', '자미두수', '점성술', '베딕']) {
+    const n = rows.filter((x) => x.strong.includes(sys)).length;
+    const pct = n / rows.length;
+    assert.ok(pct > 0 && pct < 0.6,
+      `${sys} 가 ${Math.round(pct * 100)}% 의 달을 지지한다 — 언제나 또는 한 번도는 아무 뜻이 없다`);
+  }
+
+  // 결을 내지 않은 달은 지지로 세지 않는다. 베딕은 달의 40% 남짓에서
+  // 결이 비어 있는데, 그런 달을 세면 수십 달이 통째로 같은 말을 한다
+  for (const x of rows) {
+    for (const sys of x.strong) {
+      const t = x.bySystem[sys].tend;
+      assert.ok(t && Object.keys(t).length > 0, `${x.label}: ${sys} 가 빈 결로 지지에 들었다`);
+    }
+  }
+
+  // '넷이 합의'가 기본값이면 안 된다
+  const three = rows.filter((x) => x.strong.length >= 3).length / rows.length;
+  assert.ok(three < 0.2, `셋 이상 지지가 ${Math.round(three * 100)}% 면 합의가 기본값이다`);
+});

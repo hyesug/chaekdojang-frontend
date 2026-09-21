@@ -366,7 +366,10 @@ export function scoreMonth(m, domain) {
   let total = 0;
   for (const [name, p] of Object.entries(parts)) {
     const s = p.votes.reduce((t, v) => t + v.w, 0);
-    bySystem[name] = { score: Math.round(s * 100) / 100, votes: p.votes };
+    // 체계별 tend 를 남긴다. 합치고 나면 **어느 체계가 그 결을 냈는지**
+    // 알 수 없게 되는데, 그걸 모르면 "넷 중 하나가 실제로 맞히고 있는가"를
+    // 영영 잴 수 없다. 점수 계산에는 쓰지 않고 계측에만 쓴다.
+    bySystem[name] = { score: Math.round(s * 100) / 100, votes: p.votes, tend: p.tend };
     total += s;
     bump(tend, p.tend);
   }
@@ -385,8 +388,9 @@ export function scoreMonth(m, domain) {
   const area = m.areas?.[AREA_OF[domain]]?.score ?? null;
 
   const active = Object.entries(bySystem).filter(([, v]) => v.score >= 1.5).map(([k]) => k);
-  // 단언 등급에 쓰는 더 엄한 기준. 한마디 거든 것과 실제로 그 달을 끌고 간
-  // 것은 다르다. 그 달 전체 무게의 20% 이상을 낸 체계만 '지지했다'로 센다.
+  // 여기서는 그 달 안의 몫으로만 잰다. **체계 자신의 평소와 견주는 일은
+  // inferEvents 가** 창 전체를 본 다음에 한다 (markSupport 참조) — 한 달만
+  // 보고서는 그 체계가 평소보다 높은지 알 수 없기 때문이다.
   const bar = Math.max(2.5, total * 0.2);
   const strong = Object.entries(bySystem).filter(([, v]) => v.score >= bar).map(([k]) => k);
 
@@ -469,6 +473,47 @@ export function fitFor(row, event) {
     margin: Math.round(margin * 100) / 100,
     score: Math.round(mine * 100) / 100,
   };
+}
+
+/**
+ * "이 체계가 이 달을 지지했다"를 체계 **자신의 평소와 견주어** 다시 매긴다.
+ *
+ * 절대 점수로 재면 말이 안 된다. 같은 명반 360달을 재 보니 이랬다.
+ *
+ *   체계       '지지했다'로 센 달   평균 점수
+ *   점성술        360/360 (100%)     10.37   ← 언제나 지지한다 = 아무 뜻 없음
+ *   자미두수       327/360  (91%)      8.76
+ *   사주          236/360  (66%)      5.93
+ *   베딕            0/360   (0%)      1.56   ← 한 번도 지지하지 않는다
+ *
+ * 그래서 "핵심 넷 중 셋이 지지했다"가 **거의 자동으로 참**이 됐다. 점성술은
+ * 언제나, 자미두수는 열에 아홉, 사주는 셋에 둘이니 셋은 기본값이지 근거가
+ * 아니다. 그 위에 세운 단언 등급도 같이 부풀었다.
+ *
+ * 체계마다 점수의 자릿수가 다른 것이 원인이다. 평균 10인 체계에게 2.5는
+ * 낮고 평균 1.5인 체계에게는 닿을 수 없다. 그러니 **그 체계가 이 창에서
+ * 평소보다 높은 달인가**로 묻는다 — 자기 분포의 위 4분의 1.
+ *
+ * 결(tend)을 내지 않은 달은 세지 않는다. 베딕은 달의 41~45%에서 결이
+ * 비어 있는데(360달에 서로 다른 결이 대여섯 가지뿐이다), 그런 달을
+ * '지지'로 세면 60달이 통째로 같은 말을 하는 셈이 된다.
+ */
+function markSupport(rows) {
+  const names = Object.keys(rows[0]?.bySystem ?? {});
+  for (const name of names) {
+    const scores = rows.map((r) => r.bySystem[name].score).sort((a, b) => a - b);
+    // 위 4분의 1 — 그 체계 자신의 분포에서
+    const cut = scores[Math.floor(scores.length * 0.75)];
+    for (const r of rows) {
+      const v = r.bySystem[name];
+      const hollow = !v.tend || Object.keys(v.tend).length === 0;
+      v.supports = !hollow && v.score >= cut && v.score > 0;
+    }
+  }
+  for (const r of rows) {
+    r.strong = names.filter((n) => r.bySystem[n].supports);
+  }
+  return rows;
 }
 
 /**
@@ -706,7 +751,8 @@ export function confidenceOf(activeSystems) {
  *   후보를 스스로 골라 그것에 맞춘다.
  */
 export function inferEvents(grid, domain, opts = {}) {
-  const rows = grid.months.map((m) => scoreMonth(m, domain));
+  // 창 전체를 본 뒤에야 "이 체계가 평소보다 높은 달인가"를 물을 수 있다
+  const rows = markSupport(grid.months.map((m) => scoreMonth(m, domain)));
 
   // ── 사건을 지정했는가, 안 했는가 ──
   //

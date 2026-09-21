@@ -787,3 +787,36 @@ test('일진 층은 하루 단위로 서고 원국·세운·월운과의 관계�
 function daySafe(r, on) {
   return dayLayer(r.input, r.chart, on);
 }
+
+test('판정 질문에는 판정할 수 없다고 먼저 적는다', () => {
+  // 달 순위는 그 사람의 여러 시기를 서로 견준 값이지, 바깥 상대가 예라고
+  // 할지를 재는 자가 아니다. 게다가 아홉 분야 중 여섯에는 '안 된 쪽'
+  // 후보가 없어서, 그 분야 점수는 아무리 높아도 "된다"를 뜻할 수 없다.
+  // 실측: '합격·수료 상위 17%'로 서류합격을 단언했고 결과는 불합격이었다.
+  const ask = routeQuestion('9월에 낸 이력서 서류 합격할까?', 2026);
+  assert.equal(ask.asksOutcome, true);
+  const timing = routeQuestion('언제 이직하게 될까?', 2026);
+  assert.equal(timing.asksOutcome, false, '시기 질문을 판정 질문으로 잡았다');
+
+  const { r, f } = load(FORM);
+  const h = buildHiRes(r, f, ask);
+  assert.match(h.text, /이 엔진은 판정하지 못한다/);
+  assert.match(h.text, /단정하지 말 것/);
+
+  // 순위를 보기 전에 나와야 한다
+  const warn = h.text.indexOf('이 엔진은 판정하지 못한다');
+  const ranks = h.text.indexOf('사건마다 따로 세운 달');
+  assert.ok(warn >= 0 && warn < ranks, '경고가 순위보다 뒤에 있다');
+
+  // '안 된 쪽' 후보가 없는 분야면 그 사실까지 적는다
+  const study = routeQuestion('시험 합격할 수 있을까', 2026);
+  assert.equal(study.hasNegativeCandidate, false, `${study.primary} 에 부정 후보가 있다고 나왔다`);
+  assert.match(buildHiRes(r, f, study).text, /'안 된 쪽'이 아예 없다/);
+
+  // 후보 목록에 부정 쪽이 있는 분야는 그렇게 적지 않는다
+  const job = routeQuestion('이직 잘 될까', 2026);
+  assert.equal(job.hasNegativeCandidate, true);
+
+  // 시기 질문에는 이 구획을 달지 않는다
+  assert.ok(!buildHiRes(r, f, timing).text.includes('이 엔진은 판정하지 못한다'));
+});

@@ -94,6 +94,47 @@ const EVENT_WORDS = [
  */
 const COUNT_WORDS = /몇 ?번|몇 ?군데|몇 ?개|몇 ?곳|몇 ?차례|횟수|얼마나 자주|여러 ?번/;
 
+/**
+ * 되는가 안 되는가를 묻는 질문.
+ *
+ * "서류 붙었을까"는 시기 질문이 아니라 **판정 질문**이고, 이 엔진은 판정을
+ * 하지 못한다. 달 순위는 그 사람의 여러 시기를 서로 견준 값이지, 바깥
+ * 상대(회사·학교·심사위원)가 예라고 할지를 재는 자가 아니다.
+ *
+ * 게다가 후보 목록이 한쪽으로만 서 있다. 아홉 분야 가운데 **여섯에는
+ * '안 된 쪽' 후보가 없다** — 학업에는 '합격·수료'만 있고 '불합격'이 없고,
+ * 결혼에는 '예식·혼인신고'만 있고 '무산'이 없다. 그러니 그 분야에서 나오는
+ * 점수는 아무리 높아도 "된다"를 뜻할 수 없다. 질 상대가 없기 때문이다.
+ *
+ * 실제로 이것 때문에 틀렸다. '합격·수료 상위 17%'를 근거로 서류합격을
+ * 단언했고, 결과는 불합격이었다.
+ */
+const OUTCOME_STRONG = /합격|불합격|붙[을었]|떨어[질졌]|탈락|당첨|통과/;
+
+/**
+ * 약한 판정 낱말 — 시기 낱말과 같이 오면 판정이 아니라 시기 질문이다.
+ * "언제 이직하게 **될까**"는 되는지를 묻는 게 아니라 언제인지를 묻는다.
+ */
+const OUTCOME_WEAK = /될까|되나|되려나|가능할까|성공|잘 ?되/;
+const WHEN_WORDS = /언제|시기|몇 ?월|몇 ?년|어느 ?달|어느 ?해|타이밍/;
+
+const asksOutcomeOf = (q) =>
+  OUTCOME_STRONG.test(q) || (OUTCOME_WEAK.test(q) && !WHEN_WORDS.test(q));
+
+/**
+ * 그 분야의 후보 목록에 **'안 된 쪽'** 이 있는가.
+ *
+ * 있으면 점수 싸움이 성립한다(새 만남 vs 관계 정리). 없으면 점수가 아무리
+ * 높아도 "된다"를 뜻하지 못한다 — 질 상대가 없기 때문이다.
+ * EVENT_CANDIDATES 를 고치면 여기도 같이 고쳐야 한다.
+ */
+const NEGATIVE_CANDIDATES = {
+  직업: true,   // 현 직장 유지 · 퇴사 후 공백
+  재물: true,   // 큰 지출 · 투자 손실 정리
+  관계: true,   // 관계 정리 · 거리 조정
+  결혼: false, 주거: false, 이사: false, 건강: false, 학업: false, 자녀: false,
+};
+
 /** 생활권을 넘는 이동의 낌새. 같은 동네 이사는 일과 덜 엮인다 */
 const INTERCITY_MOVE = /타지역|지방|수도권|먼 ?곳|멀리|상경|내려가|올라가|이주|전근|발령/;
 
@@ -214,6 +255,10 @@ export function routeQuestion(question, thisYear) {
     fallback: domains.length === 0,
     // 개수를 묻는 질문이다. 이 엔진은 순위만 내고 개수는 세지 못한다
     asksCount: COUNT_WORDS.test(q),
+    // 되는가 안 되는가를 묻는 질문이다. 이 엔진은 시기를 줄 세울 뿐 판정하지 못한다
+    asksOutcome: asksOutcomeOf(q),
+    // 그 분야에 '안 된 쪽' 후보가 있는가. 없으면 점수가 높아도 "된다"가 아니다
+    hasNegativeCandidate: NEGATIVE_CANDIDATES[domains[0]] ?? false,
     needsPlace: PLACE_WORDS.some((w) => q.includes(w)) || cities.length > 0,
     needsDay: DAY_WORDS.some((w) => q.includes(w)),
     cities,

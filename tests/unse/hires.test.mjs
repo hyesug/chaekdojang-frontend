@@ -16,7 +16,7 @@ import { readForecast, monthsOfYear } from '../../public/unse-8f3k2m/src/forecas
 import { planetPositions, houses } from '../../public/unse-8f3k2m/src/core/planets.js';
 import { toJD } from '../../public/unse-8f3k2m/src/core/astro.js';
 
-import { monthlyTrack, annualTrack, daeunAt } from '../../public/unse-8f3k2m/src/hires/bazi.js';
+import { monthlyTrack, annualTrack, daeunAt, dayLayer } from '../../public/unse-8f3k2m/src/hires/bazi.js';
 import * as ZW from '../../public/unse-8f3k2m/src/hires/ziwei.js';
 import * as WS from '../../public/unse-8f3k2m/src/hires/western.js';
 import * as VD from '../../public/unse-8f3k2m/src/hires/vedic.js';
@@ -762,3 +762,28 @@ test('환갑과 본명년을 계산 사실로 표시한다', () => {
     assert.equal(m.bazi.sexagenaryReturn, undefined, '월층에 환갑이 새어 들어갔다');
   }
 });
+
+test('일진 층은 하루 단위로 서고 원국·세운·월운과의 관계를 돌려준다', () => {
+  // bazi.dayLayer 는 export 만 되어 있고 부르는 곳도 테스트도 없었다.
+  // makePeriod 가 Date 가 아니라 {y,m,d} 를 받는다는 것도 여기서 고정한다.
+  const { r } = load(FORM);
+  const a = daySafe(r, { y: 2026, m: 9, d: 15 });
+  const b = daySafe(r, { y: 2026, m: 9, d: 16 });
+
+  assert.equal(a.gz.hanja.length, 2);
+  assert.notEqual(a.gz.hanja, b.gz.hanja, '이틀이 같은 일진이면 안 된다');
+  assert.ok(typeof a.god === 'string' && a.god.length >= 2);
+  assert.ok(Array.isArray(a.hits));
+  assert.equal(typeof a.net, 'number');
+
+  // 같은 날은 몇 번을 돌려도 같다
+  assert.deepEqual(daySafe(r, { y: 2026, m: 9, d: 15 }).gz, a.gz);
+
+  // 육십갑자는 60일마다 돌아온다
+  const c = daySafe(r, { y: 2026, m: 11, d: 14 });
+  assert.equal(c.gz.hanja, a.gz.hanja, '60일 뒤 일진이 원래대로 돌아오지 않는다');
+});
+
+function daySafe(r, on) {
+  return dayLayer(r.input, r.chart, on);
+}

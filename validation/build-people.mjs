@@ -20,7 +20,7 @@
  * '결혼 안 함'이 아니라 `censored`(그 나이까지 관측 없음)다.
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
-import { labelFor } from '../public/unse-8f3k2m/src/validation/occupations.js';
+import { labelFor } from '../public/unse-8f3k2m/src/semantic/tables/occupations.js';
 import { childrenBand } from '../public/unse-8f3k2m/src/validation/labels.js';
 import { solarToLunar } from '../public/unse-8f3k2m/src/core/lunar.js';
 import { FIRST_MARRIAGE_AGE } from '../public/unse-8f3k2m/src/hires/baserate.js';
@@ -71,7 +71,11 @@ const people = attribution.map((row) => {
   // ── 직업 ──
   const occ = labelFor(row.job);
   const career = occ
-    ? { status: 'known', category: occ.category, attributes: occ.attributes,
+    ? { status: 'known', category: occ.category,
+        // 정답은 직업명 하나가 아니라 **속성 벡터**다. 키만 적고 값은
+        // occupations.js 에서 읽는다 — 정답 정의를 한 군데에만 둔다
+        occupationKey: occ.key,
+        features: occ.features,
         employmentForm: PAY_TO_FORM[a.pay] ?? occ.employmentForm ?? null,
         // 직업전환 축은 지금 막혀 있다. 라벨만 남겨 둔다
         switching: a.sw ?? null }

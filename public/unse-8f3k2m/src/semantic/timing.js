@@ -24,7 +24,13 @@
  */
 
 import { baseRateFor, FIRST_MARRIAGE_AGE, SOURCES } from '../hires/baserate.js';
-import { TIMING_EVIDENCE } from './reliability.js';
+
+/** 시기 예측을 실제로 쟀을 때 나온 것. 두 자료에서 다 졌다 */
+export const TIMING_EVIDENCE = {
+  month: { p: 0.868, note: '달 단위 시기 예측은 섞은 것보다 나빴다 (두 자료)' },
+  year: { p: 0.196, note: '해 단위 사주의 p=0.004 는 독립 자료에서 재현되지 않았다' },
+  profile: { note: '성향은 시기와 다른 능력이다. 프로파일 성적이 시기로 넘어가지 않는다' },
+};
 
 /** 원국 경향이 곡선을 밀 수 있는 최대 폭 (해). 검증되지 않은 신호이므로 작다 */
 export const MAX_SHIFT_YEARS = 2;

@@ -1,206 +1,176 @@
 /**
  * categories.js — LEVEL 4. 축을 **현실 질문의 답**으로 옮긴다
  *
- * 축 벡터는 "무엇을 다루는 사람인가"까지다. 사람이 실제로 묻는 것은
- * "무슨 일을 하게 되나", "결혼은 이른 편인가" 같은 것이다. 그 사이를
- * 잇는 자리가 여기다.
+ * ── 계층으로 나눈 이유 ─────────────────────────────────────
+ * 업종 열여섯 칸을 바로 맞히려 들면 정보가 너무 얇게 퍼진다. 그리고
+ * 사람이 실제로 궁금해하는 것은 대개 업종보다 앞의 것이다 — "이 사람은
+ * 무엇을 다루는 사람인가", "어디에 속해서 일하는 사람인가".
  *
- * ── 하나를 고르지 않는다 ───────────────────────────────────
- * 답은 **분포**다. 1위만 내면 2위가 정답이었던 경우를 영영 모른다
- * (실제로 그런 사례가 있었다 — 미용업 운영자에게 2위가 정답이었다).
+ *   LEVEL A  일의 본질      기술·분석·창작·대인·신체·관리·상업·돌봄·언어
+ *   LEVEL B  작업 환경      조직·독립·프리랜서·사업·현장·사무·전문직
+ *   LEVEL C  산업군         A/B 조합에서 도출
+ *   LEVEL D  구체 직업      예시로만 보여 준다
  *
- * ── 범주는 원형(prototype)으로 정의한다 ────────────────────
- * 범주마다 "그 일이 원래 어떤 축을 쓰는가"를 적어 두고, 사람의 축
- * 벡터와의 **코사인 닮음**으로 점수를 낸다. 범주를 사례에 맞춰 만들지
- * 않는다 — 개발자가 실제로 있어서 IT 범주를 만든 것이 아니라, IT 라는
- * 일이 원래 기술·분석을 쓰기 때문에 그렇게 적는다.
+ * A·B 가 엔진이 실제로 읽는 것이고, C 는 그 조합이며, D 는 **범주를
+ * 설명하는 보기**이지 짚는 답이 아니다.
  *
- * ── 날카로움은 고정값이다 ──────────────────────────────────
- * `SHARPNESS` 는 자유 모수다. **열한 명을 보고 고르지 않았다.** 이 값을
- * 바꾸면 반드시 `scripts/validate-semantic.mjs` 의 LOO 를 다시 돌린다.
+ * ── 산업군 원형을 손으로 쓰지 않는다 ────────────────────────
+ * 처음엔 업종마다 원형 벡터를 손으로 적었다. 그랬더니 **정답 속성을
+ * 그대로 넣어도 정답 업종이 1위로 안 나왔다(6/11).** 금융·보험 원형에
+ * `verbal` 이 없어 보험교육이 영업으로, 영업 원형에 `physical` 이 없어
+ * 대리점이 요식으로 갔다. 명반과 무관한 **변환층 자체의 버그**였다.
+ *
+ * 그래서 업종 원형은 **그 업종에 속한 직업들의 평균**으로 만든다.
+ * 업종이란 곧 그 안의 직업들이므로, 손으로 따로 적을 이유가 없고
+ * 적는 순간 어긋난다.
  */
 
-import { cosine, restrictTo } from './axes.js';
+import { cosine, restrictTo, AXES } from './axes.js';
+import { OCCUPATIONS, OCCUPATION_MEAN, centered } from './tables/occupations.js';
 
 /** 닮음을 분포로 바꿀 때의 날카로움. 사례를 보고 고른 값이 아니다 */
 export const SHARPNESS = 3;
-
-/** '기타'에 늘 남겨 두는 몫. 목록에 없는 직업이 실제로 있다 */
-export const OTHER_FLOOR = 0.06;
-
-/**
- * 어떤 범주도 0 으로 두지 않는다.
- *
- * 0 이면 그 범주가 정답이었을 때 로그 손실이 무한대가 되어 채점이
- * 깨진다. 무엇보다 **"이 사람은 절대 이 일을 하지 않는다"는 말을 명반이
- * 할 수 있다고 인정하는 셈**이라 그 자체로 틀렸다.
- */
+/** 어떤 범주도 0 으로 두지 않는다 — 명반은 '절대 아니다'를 말할 수 없다 */
 export const MIN_P = 0.02;
 
 // ─────────────────────────────────────────────────────────────
-// 직업 — 세 갈래로 따로 낸다
-//
-// 업종(무슨 일), 고용형태(어디에 속해서), 일하는 결(어떤 역할로)은
-// **서로 다른 질문**이다. 한 목록에 섞으면 'IT 개발자인 프리랜서'가
-// 두 칸으로 갈려 서로의 몫을 깎는다.
+// LEVEL A — 일의 본질
 // ─────────────────────────────────────────────────────────────
 
-/** 업종 — 한국표준산업·직업분류의 큰 갈래를 따랐다 */
-export const CAREER_CATEGORIES = {
-  it_software: { label: 'IT·개발', proto: { technical: 1, analytical: 0.8, research: 0.4, organization: 0.5, change: 0.3 },
-    examples: ['개발자', '데이터 분석', '기술기획'] },
-  engineering: { label: '공학·기술', proto: { technical: 1, analytical: 0.6, physical: 0.5, organization: 0.5, stability: 0.4 },
-    examples: ['엔지니어', '설비·품질', '기술직'] },
-  research_analysis: { label: '연구·분석', proto: { research: 1, analytical: 0.9, technical: 0.5, organization: 0.4, stability: 0.4 },
-    examples: ['연구원', '분석가', '학술'] },
-  planning_management: { label: '기획·관리', proto: { management: 1, organization: 0.8, analytical: 0.6, verbal: 0.5, commercial: 0.3 },
-    examples: ['기획', '관리자', '운영'] },
-  finance_insurance: { label: '금융·보험', proto: { commercial: 0.8, analytical: 0.7, organization: 0.6, interpersonal: 0.5, management: 0.4 },
-    examples: ['금융', '보험', '회계·경리'] },
-  sales_commerce: { label: '영업·상업', proto: { commercial: 1, interpersonal: 0.8, verbal: 0.6, independence: 0.4, change: 0.4 },
-    examples: ['영업', '유통·대리점', '무역'] },
-  education_counsel: { label: '교육·상담', proto: { verbal: 1, interpersonal: 0.8, care: 0.6, public: 0.4, research: 0.3 },
-    examples: ['교사·강사', '상담', '교육 기획'] },
-  medical_health: { label: '의료·건강', proto: { care: 1, technical: 0.5, research: 0.4, physical: 0.4, public: 0.4 },
-    examples: ['의료인', '보건', '요양·돌봄'] },
-  sports: { label: '체육', proto: { physical: 1, interpersonal: 0.4, independence: 0.4, change: 0.3 },
-    examples: ['지도자', '트레이너', '선수'] },
-  beauty_design: { label: '미용·디자인', proto: { aesthetic: 1, creative: 0.7, interpersonal: 0.6, independence: 0.5, commercial: 0.4 },
-    examples: ['미용', '디자이너', '스타일링'] },
-  arts_content: { label: '예술·콘텐츠', proto: { creative: 1, aesthetic: 0.7, verbal: 0.5, independence: 0.6, change: 0.4 },
-    examples: ['작가', '콘텐츠', '공연·예술'] },
-  food_service: { label: '요식·서비스', proto: { interpersonal: 0.8, commercial: 0.6, physical: 0.5, care: 0.4, independence: 0.5 },
-    examples: ['요식업', '접객', '서비스 운영'] },
-  public_admin: { label: '행정·공공', proto: { public: 1, organization: 0.9, stability: 0.7, management: 0.4 },
-    examples: ['공무원', '공공기관', '행정'] },
-  manufacturing_construction: { label: '제조·건설', proto: { physical: 0.8, technical: 0.6, organization: 0.6, stability: 0.6 },
-    examples: ['제조', '건설', '현장 관리'] },
-  transport_machine: { label: '운송·기계', proto: { physical: 0.7, technical: 0.7, organization: 0.5, stability: 0.5 },
-    examples: ['운전·운송', '기계 조작', '정비'] },
-};
-
-/** 고용형태 — 업종과 **따로** 낸다 */
-export const EMPLOYMENT_FORMS = {
-  organization: { label: '조직형', proto: { organization: 1, stability: 0.7, public: 0.4 } },
-  self_employed: { label: '자영업형', proto: { independence: 1, commercial: 0.8, change: 0.5 } },
-  freelance: { label: '프리랜서형', proto: { independence: 0.9, creative: 0.5, change: 0.6, verbal: 0.4 } },
-};
-
-/** 일하는 결 */
-export const WORK_STYLES = {
-  specialist: { label: '전문직형', proto: { research: 0.8, technical: 0.8, analytical: 0.7 } },
-  manager: { label: '관리형', proto: { management: 1, organization: 0.8 } },
-  sales: { label: '영업형', proto: { commercial: 1, interpersonal: 0.8 } },
-  creator: { label: '창작형', proto: { creative: 1, aesthetic: 0.7 } },
-};
-
-/** 안정형 / 변동형 */
-export const CAREER_TEMPO = {
-  steady: { label: '안정형', proto: { stability: 1, organization: 0.6 } },
-  shifting: { label: '변동형', proto: { change: 1, independence: 0.5 } },
-};
-
-// ─────────────────────────────────────────────────────────────
-// 직업 밖
-// ─────────────────────────────────────────────────────────────
-
-export const UNION_TIMING = {
-  early: { label: '조혼 경향', proto: { earlyUnion: 1, bonding: 0.5, commitment: 0.4 } },
-  mid: { label: '중간', proto: { bonding: 0.6, commitment: 0.6, earlyUnion: 0.35, lateUnion: 0.35 } },
-  late: { label: '만혼 경향', proto: { lateUnion: 1, autonomy: 0.4 } },
-};
-
-export const CHILDREN_COUNT = {
-  few: { label: '적음', proto: { childThin: 1 } },
-  average: { label: '보통', proto: { childThin: 0.5, childThick: 0.5, caregiving: 0.4 } },
-  many: { label: '많음', proto: { childThick: 1, caregiving: 0.6 } },
-};
-
-export const EDUCATION_PATH = {
-  formal_continuous: { label: '정규 과정 지속', proto: { formalContinuity: 1, credential: 0.6 } },
-  interrupted_detour: { label: '중단·우회', proto: { detour: 1, repeatChallenge: 0.5 } },
-  credential_repeat: { label: '자격·반복 도전', proto: { credential: 1, repeatChallenge: 0.8, detour: 0.4 } },
-};
-
-export const RESIDENCE_MODE = {
-  settled: { label: '정착 쪽', proto: { settled: 1 } },
-  mobile: { label: '이동 쪽', proto: { mobile: 1 } },
-};
-
-export const WEALTH_SHAPE = {
-  salary_stable: { label: '고정 수입형', proto: { incomeStability: 1, accumulation: 0.4 } },
-  accumulating: { label: '축적형', proto: { accumulation: 1, incomeStability: 0.5 } },
-  enterprise: { label: '사업형', proto: { enterprise: 1, speculation: 0.4, volatility: 0.3 } },
-  speculative: { label: '변동·투기형', proto: { speculation: 1, volatility: 0.8 } },
-};
-
-/** 분야 → 그 분야가 내는 분포들 */
-export const CATEGORY_SETS = {
-  career: { industry: CAREER_CATEGORIES, employmentForm: EMPLOYMENT_FORMS, workStyle: WORK_STYLES, tempo: CAREER_TEMPO },
-  relationship: { unionTiming: UNION_TIMING },
-  children: { count: CHILDREN_COUNT },
-  education: { path: EDUCATION_PATH },
-  residence: { mode: RESIDENCE_MODE },
-  wealth: { shape: WEALTH_SHAPE },
-  // 건강은 범주를 만들지 않는다. 질환명·수술 여부를 뜻하는 칸이 생기는 순간
-  // 엔진이 의료 판단처럼 읽힌다. 축 값만 그대로 내보낸다.
-  health: {},
+export const LEVEL_A = {
+  technical: '기술', analytical: '분석', creative: '창작', interpersonal: '대인',
+  physical: '신체', management: '관리', commercial: '상업', care: '돌봄', verbal: '언어',
 };
 
 /**
- * 축 벡터를 범주 분포로.
- *
- * @param {object} features 축 벡터 (0~1)
- * @param {object} set      범주표
- * @param {object} opts     { other: true 면 '기타' 몫을 남긴다 }
- * @returns {{dist: Record<string, number>, ranked: Array, flat: boolean}|null}
+ * A 는 원형이 필요 없다. 축 자체가 답이라 **그대로 정규화**한다.
+ * 다만 `research·information·problemSolving·specialist` 는 분석 계열의
+ * 결을 나누는 축이라 A 에서는 `analytical` 에 합쳐 읽는다.
  */
-export function distribute(features, set, opts = {}) {
-  if (!features) return null;
+const A_MERGE = {
+  analytical: ['analytical', 'information', 'problemSolving'],
+  technical: ['technical'], creative: ['creative', 'aesthetic'],
+  interpersonal: ['interpersonal'], physical: ['physical'],
+  management: ['management'], commercial: ['commercial'],
+  care: ['care'], verbal: ['verbal'],
+};
 
-  // 이 범주표가 실제로 쓰는 축만 남긴다.
-  //
-  // 안 자르면 '독립·조직' 같은 고용형태 축이 업종 분포의 분모에 끼어든다.
-  // 어느 업종 원형에도 없는 축이라 모든 닮음을 똑같이 깎아, 순위는 그대로인데
-  // **분포만 평평해진다.** 실제로 1위가 0.13 까지 눌렸다.
+export function levelA(features) {
+  if (!features) return null;
+  const raw = Object.fromEntries(Object.entries(A_MERGE)
+    .map(([k, axes]) => [k, Math.max(...axes.map((a) => features[a] ?? 0))]));
+  return toDist(raw, LEVEL_A);
+}
+
+// ─────────────────────────────────────────────────────────────
+// LEVEL B — 작업 환경
+// ─────────────────────────────────────────────────────────────
+
+export const LEVEL_B = {
+  organization: { label: '조직', proto: { organization: 0.9, stability: 0.6, public: 0.4 } },
+  independent: { label: '독립', proto: { independence: 0.9, commercial: 0.5, change: 0.4 } },
+  freelance: { label: '프리랜서', proto: { independence: 0.8, change: 0.6, creative: 0.5, specialist: 0.5 } },
+  business: { label: '사업', proto: { commercial: 0.9, independence: 0.8, management: 0.6 } },
+  field: { label: '현장', proto: { physical: 0.9, technical: 0.5, competitive: 0.4 } },
+  office: { label: '사무', proto: { organization: 0.8, information: 0.6, analytical: 0.5, stability: 0.5 } },
+  professional: { label: '전문직', proto: { specialist: 0.9, research: 0.6, technical: 0.6, analytical: 0.5 } },
+};
+
+// ─────────────────────────────────────────────────────────────
+// LEVEL C — 산업군. 그 업종에 속한 직업들의 평균이다
+// ─────────────────────────────────────────────────────────────
+
+const CATEGORY_LABEL = {
+  it_software: 'IT·개발', engineering: '공학·기술', research_analysis: '연구·분석',
+  planning_management: '기획·관리', finance_insurance: '금융·보험', sales_commerce: '영업·상업',
+  education_counsel: '교육·상담', medical_health: '의료·건강', sports: '체육',
+  beauty_design: '미용·디자인', arts_content: '예술·콘텐츠', food_service: '요식·서비스',
+  public_admin: '행정·공공', manufacturing_construction: '제조·건설', transport_machine: '운송·기계',
+};
+
+export const CAREER_CATEGORIES = (() => {
+  const groups = {};
+  for (const [name, o] of Object.entries(OCCUPATIONS)) {
+    (groups[o.category] ??= []).push({ name, features: o.features });
+  }
+  const out = {};
+  for (const [key, members] of Object.entries(groups)) {
+    const proto = {};
+    for (const ax of AXES.career) {
+      proto[ax] = members.reduce((a, m) => a + (m.features[ax] ?? 0), 0) / members.length;
+    }
+    out[key] = {
+      label: CATEGORY_LABEL[key] ?? key,
+      proto: Object.fromEntries(Object.entries(proto).filter(([, v]) => v > 0.05)),
+      examples: members.map((m) => m.name),
+      memberCount: members.length,
+    };
+  }
+  return out;
+})();
+
+// ─────────────────────────────────────────────────────────────
+
+function toDist(raw, labels) {
+  const keys = Object.keys(raw);
+  const pow = keys.map((k) => [k, Math.max(0, raw[k]) ** SHARPNESS]);
+  const sum = pow.reduce((a, [, v]) => a + v, 0);
+  if (sum <= 0) return null;
+  const lifted = Object.fromEntries(pow.map(([k, v]) => [k, v / sum + MIN_P]));
+  const lsum = Object.values(lifted).reduce((a, b) => a + b, 0);
+  const dist = Object.fromEntries(keys.map((k) => [k, lifted[k] / lsum]));
+  const ranked = Object.entries(dist).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([key, p]) => ({
+      key, p: Math.round(p * 1000) / 1000,
+      label: typeof labels[key] === 'string' ? labels[key] : labels[key]?.label ?? key,
+      examples: labels[key]?.examples ?? [],
+    }));
+  const spread = ranked.length >= 2 ? ranked[0].p - ranked[1].p : 1;
+  return { dist, ranked, spread: Math.round(spread * 1000) / 1000, flat: spread < 0.05 };
+}
+
+/** 원형표에 대고 분포를 만든다 */
+export function distribute(features, set) {
+  if (!features) return null;
   const used = [...new Set(Object.values(set).flatMap((d) => Object.keys(d.proto)))];
   const v = restrictTo(features, used);
+  const raw = Object.fromEntries(Object.entries(set)
+    .map(([k, d]) => [k, Math.max(0, cosine(v, d.proto))]));
+  return toDist(raw, set);
+}
 
-  const raw = Object.entries(set).map(([key, def]) => [key, Math.max(0, cosine(v, def.proto)) ** SHARPNESS]);
-  const sum = raw.reduce((a, [, x]) => a + x, 0);
-  if (sum <= 0) return null;
+/**
+ * 산업군은 **평균을 뺀 자리에서** 견준다.
+ *
+ * 그냥 견주면 "보통 직업"에 가까운 업종(대인·조직이 중간쯤인 것들)이
+ * 언제나 이긴다. 직업들이 서로 닮았기 때문이다. 양쪽에서 평균을 빼면
+ * "이 사람이 치우친 쪽"과 "이 업종이 치우친 쪽"을 견주게 된다.
+ */
+const CENTERED_CATEGORIES = Object.fromEntries(Object.entries(CAREER_CATEGORIES)
+  .map(([k, d]) => [k, { ...d, proto: centered(d.proto, AXES.career) }]));
 
-  const floor = opts.other ? OTHER_FLOOR : 0;
-  let dist = Object.fromEntries(raw.map(([k, x]) => [k, (x / sum) * (1 - floor)]));
-  if (opts.other) dist.other = floor;
+export function distributeCentered(profile, set = CENTERED_CATEGORIES) {
+  if (!profile) return null;
+  const raw = Object.fromEntries(Object.entries(set)
+    .map(([k, d]) => [k, Math.max(0, cosine(profile, d.proto))]));
+  return toDist(raw, set);
+}
 
-  // 바닥을 깔고 다시 정규화 — 0 짜리 범주를 만들지 않는다
-  const keys = Object.keys(dist);
-  const lifted = Object.fromEntries(keys.map((k) => [k, dist[k] + MIN_P]));
-  const lsum = keys.reduce((a, k) => a + lifted[k], 0);
-  dist = Object.fromEntries(keys.map((k) => [k, lifted[k] / lsum]));
-
-  const ranked = Object.entries(dist)
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .map(([key, p]) => ({ key, label: set[key]?.label ?? '기타', p: Math.round(p * 1000) / 1000,
-      examples: set[key]?.examples ?? [] }));
-
-  // 1위와 2위가 붙어 있으면 '골랐다'고 말하면 안 된다.
-  // `hires` 의 FLAT_SPREAD 와 같은 취지다 — 못 가리면 못 가린다고 적는다.
-  const spread = ranked.length >= 2 ? ranked[0].p - ranked[1].p : 1;
+/**
+ * 네 층을 한 번에.
+ * @param {object} features 0~1 로 편 값 (화면·문장용)
+ * @param {object|null} profile 평균에서 벗어난 방향 (−1~+1). 있으면 산업군에 쓴다
+ */
+export function categorizeCareer(features, profile = null) {
+  if (!features) return null;
+  const a = levelA(features);
+  const b = distribute(features, LEVEL_B);
+  const c = profile ? distributeCentered(profile) : distribute(features, CAREER_CATEGORIES);
   return {
-    dist: Object.fromEntries(ranked.map((r) => [r.key, r.p])),
-    ranked, spread: Math.round(spread * 1000) / 1000,
-    flat: spread < 0.05,
+    levelA: a, levelB: b, levelC: c,
+    // LEVEL D — 범주를 설명하는 보기일 뿐, 이 직업을 짚는 것이 아니다
+    levelD: c ? [...new Set(c.ranked.slice(0, 3).flatMap((x) => x.examples ?? []))].slice(0, 6) : [],
   };
 }
 
-/** 한 분야의 모든 분포를 한 번에 */
-export function categorize(domain, features) {
-  const sets = CATEGORY_SETS[domain] ?? {};
-  const out = {};
-  for (const [name, set] of Object.entries(sets)) {
-    out[name] = distribute(features, set, { other: name === 'industry' });
-  }
-  return out;
-}
+export const CATEGORY_SETS = { career: { levelB: LEVEL_B, levelC: CAREER_CATEGORIES } };

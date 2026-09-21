@@ -29,10 +29,18 @@
 
 /** 분야별 의미축. 순서가 곧 벡터의 순서다 */
 export const AXES = {
+  // 직업 스무 축.
+  //
+  // 앞의 열여섯에 넷을 더했다 — `information`(지식·정보를 다루는가),
+  // `problemSolving`(막힌 것을 푸는가), `specialist`(한 우물을 깊게
+  // 파는가), `competitive`(성과로 겨루는가). 실제 직업을 속성으로
+  // 적어 보니 이 넷이 없으면 **개발자와 연구원이 구별되지 않았고**
+  // (둘 다 기술+분석) **트레이너와 생산직도 구별되지 않았다**(둘 다 신체).
   career: [
-    'technical', 'analytical', 'research', 'creative', 'aesthetic',
-    'interpersonal', 'verbal', 'commercial', 'management', 'physical',
-    'care', 'public', 'independence', 'organization', 'stability', 'change',
+    'technical', 'analytical', 'research', 'information', 'problemSolving',
+    'creative', 'aesthetic', 'interpersonal', 'verbal', 'commercial',
+    'management', 'physical', 'care', 'public', 'competitive',
+    'specialist', 'independence', 'organization', 'stability', 'change',
   ],
   // 관계 — 양극은 두 축으로 나눈다 (위 '눈금' 참조)
   relationship: ['bonding', 'commitment', 'autonomy', 'earlyUnion', 'lateUnion', 'stability', 'volatility'],
@@ -49,11 +57,12 @@ export const DOMAINS = Object.keys(AXES);
 
 /** 화면·문맥에 적을 우리말 이름 */
 export const AXIS_LABEL = {
-  technical: '기술', analytical: '분석', research: '연구', creative: '창작',
-  aesthetic: '미적감각', interpersonal: '대인', verbal: '언어·소통',
-  commercial: '상업·영업', management: '관리·운영', physical: '신체·현장',
-  care: '돌봄', public: '공공·제도', independence: '독립·자영', organization: '조직 적응',
-  stability: '안정 추구', change: '변화·변동',
+  technical: '기술', analytical: '분석', research: '연구', information: '정보·지식',
+  problemSolving: '문제해결', creative: '창작', aesthetic: '미적감각',
+  interpersonal: '대인', verbal: '언어·소통', commercial: '상업·영업',
+  management: '관리·운영', physical: '신체·현장', care: '돌봄', public: '공공·제도',
+  competitive: '경쟁·성과', specialist: '전문성', independence: '독립·자영',
+  organization: '조직 적응', stability: '안정 추구', change: '변화·변동',
 
   bonding: '관계 형성', commitment: '결혼 지향', autonomy: '관계 안의 자율',
   earlyUnion: '이른 결합', lateUnion: '늦은 결합',

@@ -1,97 +1,146 @@
 /**
- * index.js — 의미축 해석 엔진의 입구
+ * index.js — 의미축 해석 엔진 v1 의 입구 (**직업**)
  *
- *   LEVEL 1  15체계 원시 계산            engine.js / hires/
- *   LEVEL 2  체계별 전통 해석            semantic/extract.js + rules.js + systems.js
- *   LEVEL 3  공통 의미축                 semantic/axes.js
- *   LEVEL 4  현실 결과 카테고리           semantic/categories.js
- *   LEVEL 5  15체계 종합                 semantic/ensemble.js
- *   LEVEL 6  실제 사례 검증·보정          src/validation/ + scripts/validate-semantic.mjs
- *   LEVEL 7  시기운 결합                 semantic/timing.js (이음매만)
+ *   LEVEL 1  15체계 원시 계산       engine.js · hires/
+ *   LEVEL 2  체계별 전통 해석        extract.js → rules.js → systems.js
+ *   LEVEL 3  공통 의미축            axes.js (스무 축)
+ *   LEVEL 4  현실 결과 카테고리       categories.js (A→B→C→D 네 층)
+ *   LEVEL 5  15체계 종합            ensemble.js (평균이 아니다)
+ *   LEVEL 6  사례 검증·보정          calibration.js + scripts/analyze-career.mjs
+ *   LEVEL 7  시기운 결합            timing.js (이음매만)
  *
- * ── 출생명반으로 말할 수 있는 것과 없는 것을 가른다 ───────────
- *   natal          타고난 결. 출생 정보만으로 말한다
- *   currentState   지금 무엇을 하고 있나 — **원국만으로는 말하지 않는다**
- *   timing         시기. 뼈대는 인구통계이고 명반은 곡선을 조금 밀 뿐이다
+ * 처음 보는 사람의 생년월일시만으로 답이 나온다. 근거가 약하면 "모르겠다"가
+ * 아니라 **최선의 추정 + 그 추정의 확신도**를 낸다.
  *
- * 셋을 한 덩어리로 내보내면 읽는 쪽이 구별하지 못한다. 그래서 가른다.
+ * ── 결혼·자녀·학업·재물·주거 ───────────────────────────────
+ * 표는 이미 `tables/` 에 있고(ziwei·saju·western·vedic 각 분야), 이번
+ * 작업에서는 **직업만** 끝까지 돌렸다. 방법이 실제로 도는지 한 분야에서
+ * 먼저 확인하고 같은 방식으로 넓힌다.
  */
 
 import { readFortune } from '../engine.js';
 import * as ZW from '../hires/ziwei.js';
-import { interpretSystems } from './systems.js';
-import { ensemble } from './ensemble.js';
-import { marriageTimingCurve, natalSusceptibility } from './timing.js';
-import { TIMING_EVIDENCE } from './reliability.js';
+import { interpretCareer } from './systems.js';
+import { poolCareer } from './ensemble.js';
+import { categorizeCareer } from './categories.js';
+import { AXES, AXIS_LABEL } from './axes.js';
+import { SYSTEM_NAME } from './extract.js';
+import { INDEPENDENT_LINEAGES } from './lineage.js';
 
 const safe = (fn) => { try { return fn(); } catch { return null; } };
 
 export const PRINCIPLES = [
   '한 사례의 오답을 맞히기 위한 규칙을 추가하지 않는다.',
-  '동일한 방향의 오류가 여러 독립 사례에서 반복될 때만 해석 규칙 수정 후보로 본다.',
-  '실제 데이터를 본 뒤 수정한 규칙은 반드시 그 사례를 제외한 검증(LOO)에서도 개선되는지 확인한다.',
-  '"열다섯 중 하나가 맞았다"를 적중으로 세지 않는다. 확률형 채점 규칙으로만 잰다.',
-  '시기(날짜)는 검증에서 살아남지 못했다. 성향까지만 말한다.',
+  '같은 방향의 오류가 서로 독립인 여러 사례에서 반복될 때만 수정 후보로 본다.',
+  '자료를 보고 고친 규칙은 그 사람을 뺀 검증(LOO)에서도 나아져야 남긴다.',
+  '"열다섯 중 하나가 맞았다"를 적중으로 세지 않는다.',
+  '근거가 약해도 답은 낸다. 대신 확신도를 함께 적는다.',
 ];
 
 /**
- * 한 사람을 읽는다.
+ * 확신도 — 이 답을 얼마나 믿어도 되는가.
+ *
+ * 세 가지를 센다. **맞을 확률이 아니라 근거의 두께**다.
+ */
+function confidenceOf(pool) {
+  const direct = pool.directCount ?? 0;
+  const lineages = new Set(pool.contributors.map((c) => c.lineage));
+  const indep = [...lineages].filter((L) => INDEPENDENT_LINEAGES.includes(L)).length;
+  const score = Math.min(1, (direct / 4) * 0.5 + (indep / 4) * 0.3 + Math.min(1, pool.spokeCount / 12) * 0.2);
+  return {
+    score: Math.round(score * 100) / 100,
+    level: score >= 0.7 ? '두꺼움' : score >= 0.45 ? '보통' : '얇음',
+    directSystems: direct,
+    independentLineages: indep,
+    spokeCount: pool.spokeCount,
+    note: '실제 사례 열한 명에 대고 잰 값이라, 이 확신도는 근거의 두께이지 적중률이 아니다.',
+  };
+}
+
+/**
+ * **원국을 읽을 때는 태어난 순간을 기준으로 세운다.**
+ *
+ * ── 왜 (실제로 걸린 버그) ──────────────────────────────────
+ * 열다섯 가운데 몇은 '지금'을 재료로 쓴다 — 육임은 묻는 순간으로 판을
+ * 세우고, 태을·구성학은 그 해의 연반을 본다. 그대로 두었더니 **같은
+ * 사람의 '타고난 결'이 해가 바뀌면 달라졌다.** 원국이 올해에 따라
+ * 바뀌면 그건 원국이 아니다.
+ *
+ * 그래서 원국 해석에는 `now` 를 **출생 시각**으로 준다. 본명국을 세우는
+ * 셈이라 전통적으로도 이쪽이 맞고, 무엇보다 같은 사람에게 늘 같은 답이
+ * 나온다. `asOfDate` 는 나중에 시기 층이 붙을 때 쓸 자리다.
+ */
+export function natalFortune(birth) {
+  const at = new Date(Date.UTC(birth.year, (birth.month ?? 1) - 1, birth.day ?? 1, 3, 0, 0));
+  const fortune = readFortune(birth, { now: at });
+  const stack = fortune.input.timeKnown
+    ? safe(() => ZW.stackAt(fortune.input, fortune.input.sajuYear ?? fortune.input.currentYear, null))
+    : null;
+  return { fortune, stack };
+}
+
+/** 두드러진 축 — 평균에서 가장 많이 벗어난 쪽 */
+export function leadingAxes(profile, n = 5, floor = 0.25) {
+  if (!profile) return [];
+  return Object.entries(profile)
+    .filter(([, v]) => v >= floor)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, n)
+    .map(([k, v]) => ({ axis: k, label: AXIS_LABEL[k], value: v }));
+}
+
+/**
+ * 한 사람의 직업 성향을 읽는다.
  *
  * @param {object} birth `readFortune` 과 같은 입력
  * @param {object} opts
- *   asOfDate     'YYYY-MM-DD'. 없으면 오늘. **원국 결과는 이 값에 흔들리지 않는다**
- *   calibration  체계×분야 실측값 (없으면 실측 무게는 전부 1.0)
+ *   asOfDate     'YYYY-MM-DD'. 원국 결과는 이 값에 흔들리지 않는다
+ *   featureWeights calibration.weightsFrom 결과 (없으면 보정 없음)
  */
-export function interpretPerson(birth, opts = {}) {
-  const asOfDate = opts.asOfDate ?? null;
-  const now = asOfDate ? new Date(`${asOfDate}T12:00:00+09:00`) : new Date();
-  const fortune = readFortune(birth, { now });
+export function readCareer(birth, opts = {}) {
+  const { fortune, stack } = natalFortune(birth);
   const input = fortune.input;
-
-  const stack = input.timeKnown
-    ? safe(() => ZW.stackAt(input, input.currentYear, null))
-    : null;
-
-  const interpreted = interpretSystems(fortune, stack);
-  const { domains, weights } = ensemble(interpreted, opts.calibration ?? null);
-
-  const timing = {
-    marriage: marriageTimingCurve({ age: input.age, gender: input.gender },
-      domains.relationship?.categories?.unionTiming ?? null),
-    susceptibility: natalSusceptibility(domains),
-    evidence: TIMING_EVIDENCE,
-    note: '사건이 일어나는 해를 말하지 않는다. 구간 사이의 상대적 높낮이까지다.',
-  };
+  const systems = interpretCareer(fortune, stack);
+  const pool = poolCareer(systems, opts.featureWeights ?? null);
+  const categories = pool.features ? categorizeCareer(pool.features, pool.profile) : null;
 
   return {
-    natal: {
-      domains,
-      // 건강은 분야 자체에 표시를 단다. 답변에서 진단처럼 쓰지 못하게
-      health: { ...domains.health, notMedical: true,
-        caution: '질환명·수술 여부를 말하지 않는다. 전통이 말하는 몸의 부담 신호까지다.' },
-    },
-    currentState: {
-      available: false,
-      why: '지금 이직 준비 중인지, 자격증 공부 중인지 같은 것은 출생명반에 들어 있지 않다. ' +
-           '현재 상태를 물으면 본인에게 물어야 한다.',
-      asOfDate, age: input.age, gender: input.gender,
-    },
-    timing,
-    systems: interpreted.byDomain,
+    domain: 'career',
+    // 평균에서 벗어난 방향 — 이것이 엔진이 실제로 읽은 것이다
+    profile: pool.profile,
+    // 0~1 로 편 값 — 화면·문장용
+    features: pool.features,
+    leading: leadingAxes(pool.profile),
+    categories,
+    confidence: confidenceOf(pool),
+    // 체계마다 따로 낸 것. **합친 것과 나란히 남긴다**
+    systems: systems.map((s) => ({
+      system: s.system, name: s.systemName, lineage: s.lineage, status: s.status,
+      why: s.why ?? null, evidenceType: s.evidenceType ?? null,
+      features: s.features,
+      top: s.features ? leadingAxes(s.features, 4, 0.15) : [],
+      evidence: s.evidence ?? [],
+    })),
+    consensus: pool.consensus,
+    contributors: pool.contributors,
+    silent: pool.silent,
     meta: {
-      asOfDate,
+      asOfDate: opts.asOfDate ?? null,
       timeKnown: input.timeKnown,
-      weights,
-      skipped: fortune.skipped,
-      errors: fortune.errors,
+      directCount: pool.directCount,
+      auxScale: pool.auxScale,
+      calibrated: Boolean(opts.featureWeights),
       principles: PRINCIPLES,
-      calibratedWith: opts.calibration ? '실측 무게 적용됨' : '실측 무게 없음 — 전부 1.0',
+      // 출생명반으로 말할 수 없는 것
+      notFromNatal: '지금 이직 준비 중인지, 올해 합격할지 같은 것은 출생명반에 들어 있지 않다.',
     },
   };
 }
 
-export { interpretSystems } from './systems.js';
-export { ensemble } from './ensemble.js';
-export { AXES, AXIS_LABEL } from './axes.js';
-export { CATEGORY_SETS } from './categories.js';
-export { allRules } from './rules.js';
+export { interpretCareer } from './systems.js';
+export { poolCareer } from './ensemble.js';
+export { categorizeCareer, CAREER_CATEGORIES, LEVEL_A, LEVEL_B } from './categories.js';
+export { measure, weightsFrom, compareOne } from './calibration.js';
+export { buildDictionary, byAxis, toMarkdown } from './dictionary.js';
+export { RULES, allRules } from './rules.js';
+export { AXES, AXIS_LABEL, SYSTEM_NAME };

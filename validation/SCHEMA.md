@@ -5,7 +5,7 @@
 
 ```bash
 node validation/build-people.mjs        # 기존 사례 파일 셋 → people.json
-node scripts/validate-semantic.mjs      # 사람 단위 LOO
+node scripts/analyze-career.mjs --loo   # 체계 × 속성 성능 + 사람 단위 LOO
 ```
 
 ---
@@ -46,7 +46,7 @@ node scripts/validate-semantic.mjs      # 사람 단위 LOO
   "career": {
     "status": "known",
     "category": "it_software",
-    "attributes": ["technical", "analytical", "organization"],
+    "occupationKey": "개발자",
     "employmentForm": "organization",
     "switching": "한우물"
   },
@@ -60,10 +60,12 @@ node scripts/validate-semantic.mjs      # 사람 단위 LOO
 ```
 
 - `category` 값은 `src/semantic/categories.js` 의 `CAREER_CATEGORIES` 키입니다.
-- `attributes` 는 `src/semantic/axes.js` 의 직업 축 이름입니다. 직업 하나에
-  여러 개가 동시에 참입니다 — 개발자는 기술·분석·조직이 함께입니다.
-- 직업 이름에서 이 값들을 뽑는 표가 `src/validation/occupations.js` 입니다.
+- `occupationKey` 는 `src/semantic/tables/occupations.js` 의 직업 이름입니다.
+  정답 속성 벡터는 거기서 읽습니다 — 정답 정의를 한 군데에만 둡니다.
   **명반은 그 파일을 보지 않습니다.** 고쳐도 예측은 안 바뀌고 채점 기준만 바뀝니다.
+- 직업 하나에 여러 속성이 동시에 참입니다 — 개발자는 기술·분석·정보·문제해결·
+  전문성이 함께이고, 그래서 연구원으로 잘못 읽은 것과 미용사로 잘못 읽은 것이
+  구별됩니다.
 
 ## 미혼을 '결혼 안 함'으로 적지 않습니다
 
@@ -91,14 +93,9 @@ node scripts/validate-semantic.mjs      # 사람 단위 LOO
 
 ---
 
-## 몇 명이 모이면 무엇을 할 수 있나
+## 표본
 
-| 사람 | 할 수 있는 것 |
-|---|---|
-| ~11 (지금) | 구조가 도는지, 규칙이 정반대를 말하지 않는지 확인 |
-| 30 | 업종 16칸에서 한계분포를 넘는지 **처음으로** 물어볼 수 있음 |
-| 60 | 체계×분야 실측 무게를 조심스럽게 움직여도 됨 (shrinkage 유지) |
-| 150+ | 축 정의 자체를 자료로 다듬고, 시기 층을 따로 검증 |
-
-16칸짜리 분포에서 11명은 **칸당 0.7명**입니다. 지금 숫자로 무엇이
-맞았다고 말할 수 없는 이유가 이것입니다.
+지금 열한 명입니다. 이 자료는 **해석 사전을 만들고 고치는 사례집**이지
+예측력을 증명하는 자료가 아닙니다. 검증이 얇은 자리는 `provisional` 로
+표시하고, 규칙은 `한 사람 때문에 고치지 않는다`는 원칙으로 다룹니다
+(`src/semantic/README.md`).

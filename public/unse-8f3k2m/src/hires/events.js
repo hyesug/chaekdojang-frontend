@@ -261,17 +261,42 @@ function readWestern(m, domain) {
   const t = m.western?.transits;
   if (!t) return { votes, tend };
 
+  // ── 고전: 그 해의 시간주 ──
+  //
+  // 여태 이 함수는 트랜싯과 프로그레션만 봤다. 섹트·디그니티·로트·조디악
+  // 릴리징·프로펙션은 전부 계산해 놓고 **월 점수에 0을 기여**했다.
+  // 그래서 '점성술'이라고 부르던 칸은 사실 '현대 트랜싯'이었다.
+  //
+  // 고전 기법은 연 단위라 그대로 더하면 12달이 통째로 동률이 된다(프로펙션은
+  // 한 해에 한 칸, ZR 2단계도 평균 18달짜리 덩어리다). 그래서 **점수를 더하지
+  // 않고 무게만 바꾼다** — 그 해의 주인 행성에 걸린 트랜싯을 무겁게 본다.
+  // 고전 독법이 원래 그렇다: 프로펙션이 그 해의 주인을 정하고, 그 주인에
+  // 걸리는 트랜싯이 달을 짚는다.
+  //
+  // 이미 달마다 변하는 값의 무게만 조절하므로 동률이 생기지 않는다.
+  const prof = m.western?.profection ?? null;
+  const lord = prof?.timeLord ?? null;
+  const profHouse = prof?.house ?? null;
+  // 그 해의 무대가 이 분야인가 (7하우스 해에 결혼을 묻는 것처럼)
+  const stageFits = profHouse != null && HOUSE_DOMAIN[profHouse] === domain;
+
   for (const h of t.hits.slice(0, 10)) {
     const d = h.house ? HOUSE_DOMAIN[h.house] : null;
     const isAngle = h.targetKind === 'angle' || h.targetKind === 'ruler';
     const relevant = d === domain || isAngle;
     const base = (h.aspect === '합' ? 1.6 : h.aspect === '대각' || h.aspect === '사각' ? 1.4 : 1.0);
-    const w = base * h.tight * (relevant ? 1.4 : 0.5) * (h.applying ? 1.15 : 0.9);
+    // 시간주에 걸린 트랜싯, 또는 시간주가 움직여서 생긴 트랜싯
+    const onLord = lord && (h.planet === lord || String(h.target).includes(lord));
+    const w = base * h.tight * (relevant ? 1.4 : 0.5) * (h.applying ? 1.15 : 0.9)
+      * (onLord ? 1.5 : 1) * (stageFits ? 1.2 : 1);
     votes.push({
       system: '점성술', w: Math.round(w * 100) / 100,
       why: `${h.planet}${h.retro ? '(역행)' : ''}이 ${h.target}에 ${h.aspect}` +
-        `${h.applying ? ', 다가오는 중' : ', 멀어지는 중'}`,
+        `${h.applying ? ', 다가오는 중' : ', 멀어지는 중'}` +
+        (onLord ? ` · 올해 시간주 ${lord}` : ''),
     });
+    // 시간주에 걸린 각은 결도 더 세게 센다
+    if (onLord) bump(tend, PLANET_TENDENCY[h.planet], 0.5);
     bump(tend, PLANET_TENDENCY[h.planet], relevant ? 1 : 0.4);
     if (h.house === 4) tend.정착 = (tend.정착 ?? 0) + 1;
     if (h.house === 9 || h.house === 3) tend.장거리 = (tend.장거리 ?? 0) + 1;

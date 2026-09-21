@@ -18,6 +18,7 @@ import { monthsOfYear } from '../forecast.js';
 import { monthlyTrack, annualTrack, daeunAt } from './bazi.js';
 import * as ZW from './ziwei.js';
 import * as WS from './western.js';
+import * as WE from './westernExt.js';
 import * as VD from './vedic.js';
 
 /**
@@ -95,6 +96,19 @@ export function buildGrid(input, chart, opts = {}) {
     const annual = ZW.annualLayer(board, y);
     const decade = ZW.decadeAt(limits, y);
 
+    // 그 해의 시간주(time lord) — 고전 점성술이 그 해를 다스린다고 보는 행성.
+    //
+    // 프로펙션은 한 해에 한 칸이라 **그 자체로는 달을 가르지 못한다**(12달이
+    // 통째로 같은 값이다). 그래서 점수에 직접 더하지 않고, **그 해에 어느
+    // 트랜싯을 무겁게 볼지**를 정하는 데만 쓴다. 고전 독법이 원래 그렇다 —
+    // 프로펙션이 그 해의 주인을 정하고, 그 주인에 걸리는 트랜싯이 달을 짚는다.
+    //
+    // 이렇게 하면 이미 달마다 변하는 값(트랜싯)의 무게만 조절하므로
+    // **동률을 만들지 않으면서** 고전이 기여한다.
+    const prof = N
+      ? safe(() => WE.profection(input, N, Math.max(0, y - input.year)))
+      : null;
+
     for (const [k, bm] of baziMonths.entries()) {
       const p = periods[k];
       // 절기월과 음력 달은 경계가 보름쯤 어긋난다. 시작일로 짝지으면
@@ -137,7 +151,7 @@ export function buildGrid(input, chart, opts = {}) {
           overlap: ZW.overlapFor(board, domain, layers),
           lunarMonth: lun?.month ?? null,
         },
-        western: { transits: tr, progressed: prog },
+        western: { transits: tr, progressed: prog, profection: prof },
         vedic: { dasha, gochara },
       });
     }

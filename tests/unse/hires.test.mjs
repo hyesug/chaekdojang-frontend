@@ -854,3 +854,44 @@ test('체계 자신의 평소와 견주어 지지를 센다', () => {
   const three = rows.filter((x) => x.strong.length >= 3).length / rows.length;
   assert.ok(three < 0.2, `셋 이상 지지가 ${Math.round(three * 100)}% 면 합의가 기본값이다`);
 });
+
+test('고전 시간주가 트랜싯 무게에 실리되 동률을 만들지 않는다', () => {
+  // 섹트·디그니티·로트·ZR·프로펙션은 전부 계산해 놓고 월 점수에 0을
+  // 기여했다. '점성술' 칸은 사실 '현대 트랜싯'이었다.
+  //
+  // 고전 기법은 연 단위라 그대로 더하면 12달이 통째로 동률이 된다
+  // (프로펙션 12달, ZR 2단계 평균 18달). 그래서 점수를 더하지 않고
+  // **무게만** 바꾼다 — 이미 달마다 변하는 트랜싯의 무게를 조절하므로
+  // 동률이 생기지 않는다.
+  const { r } = load(FORM);
+  const chunks = [];
+  for (let y = 2012; y <= 2026; y += 5) {
+    chunks.push(buildGrid(r.input, r.chart, { fromYear: y, years: Math.min(5, 2027 - y), domain: '관계' }));
+  }
+  const g = { ...chunks[0], months: chunks.flatMap((c) => c.months), fromYear: 2012, toYear: 2026 };
+
+  // 격자가 그 해의 시간주를 싣는다
+  for (const m of g.months) {
+    assert.ok(m.western.profection, `${m.label}: 프로펙션이 없다`);
+    assert.ok(m.western.profection.timeLord, '시간주가 없다');
+  }
+  // 프로펙션은 한 해에 한 칸이다 — 그래서 점수에 직접 더하면 안 된다
+  const perYear = new Map();
+  for (const m of g.months) {
+    const k = m.year;
+    const v = m.western.profection.house;
+    if (perYear.has(k)) assert.equal(perYear.get(k), v, '한 해 안에서 프로펙션이 바뀐다');
+    else perYear.set(k, v);
+  }
+  assert.ok(new Set([...perYear.values()]).size > 1, '해가 바뀌어도 프로펙션이 그대로다');
+
+  const rows = inferEvents(g, '관계').rows;
+  // 무게에만 실렸으므로 달마다 결이 여전히 다르다
+  const uniq = new Set(rows.map((x) => JSON.stringify(x.bySystem.점성술.tend))).size;
+  assert.equal(uniq, rows.length, `점성술 결이 ${uniq}/${rows.length} 가지 — 동률이 생겼다`);
+
+  // 시간주가 실제로 걸리기는 한다. 다만 모든 달에 걸리면 아무 뜻이 없다
+  const hit = rows.filter((x) => x.bySystem.점성술.votes.some((v) => /시간주/.test(v.why))).length;
+  assert.ok(hit > 0, '시간주가 한 번도 안 걸린다');
+  assert.ok(hit < rows.length, '시간주가 모든 달에 걸린다 — 상수는 아무 뜻이 없다');
+});

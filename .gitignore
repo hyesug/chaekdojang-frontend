@@ -47,6 +47,7 @@ next-env.d.ts
 # 블라인드 검증용 실제 사례 — 개인정보라 올리지 않는다 (보기는 cases.example.json)
 validation/cases.json
 validation/attributes.json
+validation/attribution.json
 validation/last-run.json
 validation/prereg-predictions.json
 validation-data/profile-cases.json

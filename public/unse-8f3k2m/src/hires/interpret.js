@@ -124,6 +124,26 @@ const item = (value, basis) => (value && basis ? { value, basis } : null);
 // 체계마다 하나씩
 // ─────────────────────────────────────────────────────────────
 
+
+/**
+ * 공궁일 때 대궁(마주 보는 궁)의 주성을 빌려 온다.
+ *
+ * 자미두수 표준 독법이다. 궁이 비면 그 궁만으로 말하지 않고 삼방사정을
+ * 보는데, 그중 대궁이 가장 가깝다. 여기서는 대궁만 쓴다 — 삼방까지
+ * 다 끌어오면 거의 모든 궁이 무엇이든 말하게 되어, 빈 궁과 찬 궁의
+ * 구별이 사라진다.
+ */
+function palaceOfBranchOpposite(input, stack, domain, name) {
+  const rows = ZE.domainPalaces(input, domain, stack.layers).find((x) => x.palace === name)?.rows ?? [];
+  const row = rows.find((r) => /원국/.test(r.layer ?? ''));
+  if (!row || row.branch == null) return [];
+  const opp = ZE.trineSquare(row.branch).opposite;
+  const board = stack.board?.board ?? null;
+  if (!board || !board[opp]) return [];
+  // 길성·살성이 아닌 주성만
+  return board[opp].filter((s) => ZIWEI_TRADE[s]);
+}
+
 /** 자미두수 — 관록궁·부처궁·자녀궁 주성을 그대로 읽는다 */
 export function ziweiRead(input, stack) {
   if (!stack) return { system: '자미두수', unavailable: '출생 시각을 알아야 판을 세운다' };
@@ -131,9 +151,20 @@ export function ziweiRead(input, stack) {
     const rows = ZE.domainPalaces(input, domain, stack.layers).find((x) => x.palace === name)?.rows ?? [];
     return rows.find((r) => /원국/.test(r.layer ?? ''))?.main ?? [];
   };
-  const career = palaceOf('직업', '관록궁');
+  const career0 = palaceOf('직업', '관록궁');
   const spouse = palaceOf('결혼', '부처궁');
   const child = palaceOf('자녀', '자녀궁');
+
+  // 공궁이면 대궁(마주 보는 궁)의 주성을 빌려 본다.
+  //
+  // 자미두수의 표준 독법이다 — 궁이 비면 그 궁만 보고 말할 수 없으므로
+  // 삼방사정, 그중에서도 먼저 대궁을 본다. 내가 지어낸 규칙이 아니다.
+  //
+  // 이게 없으면 관록궁이 빈 사람에게 직업을 아예 말하지 못한다. 지인
+  // 열둘 중 둘이 공궁이었고 둘 다 침묵했다.
+  const borrowed = career0.length === 0 ? palaceOfBranchOpposite(input, stack, '직업', '관록궁') : [];
+  const career = career0.length ? career0 : borrowed;
+  const fromOpposite = career0.length === 0 && borrowed.length > 0;
 
   const trades = [...new Set(career.map((s) => ZIWEI_TRADE[s]).filter(Boolean))];
   const self = career.some((s) => ZIWEI_SELF.includes(s));
@@ -141,9 +172,10 @@ export function ziweiRead(input, stack) {
 
   return {
     system: '자미두수',
-    직업: item(trades.join(' / '), `원국 관록궁 ${career.join('·') || '공궁'}`),
+    직업: item(trades.join(' / '),
+      fromOpposite ? `원국 관록궁 공궁 → 대궁 ${career.join('·')}` : `원국 관록궁 ${career.join('·') || '공궁'}`),
     수입형태: item(self && !org ? '자기 판 쪽' : org && !self ? '조직 소속 쪽' : null,
-      `관록궁 ${career.join('·') || '공궁'}`),
+      fromOpposite ? `관록궁 공궁 → 대궁 ${career.join('·')}` : `관록궁 ${career.join('·') || '공궁'}`),
     배우자: item(spouse.map((s) => ZIWEI_TRADE[s]).filter(Boolean).join(' / '),
       `원국 부처궁 ${spouse.join('·') || '공궁'}`),
     혼인안정: item(
@@ -284,25 +316,60 @@ export function readAll(input, chart, stack) {
  *      직업을 보라고 지정한 자리다.
  * 새 사람 10명 정도에서 다시 나오면 그때 넣는다.
  */
+/**
+ * 속성마다 **어느 체계에 맡길지**.
+ *
+ * ── 왜 배정인가 (융합을 세 번 실패하고 얻은 결론) ──────────────
+ * 열다섯 체계를 하나로 버무리면 **언제나 무너진다.** 세 번 확인했다.
+ *
+ *   profile.js 의 융합        지인 다섯에게 모두 "교육·법률·금융"
+ *   가중투표 융합             열한 명 중 여덟에게 "전문가"  → 2/11 = 18%
+ *   교집합 융합               어떤 기준으로도 영점(45%)을 못 넘음
+ *
+ * 범주가 흔한 쪽으로 표가 쏠려서, 섞을수록 가장 흔한 답으로 수렴한다.
+ * 그런데 **체계 하나하나는 영점보다 낫다.** 섞지 말고 **속성마다 담당을
+ * 정하는 것**이 답이었다.
+ *
+ * ── 배정 근거 (지인 12명, 외부 분류로 채점) ──────────────────
+ *   속성        담당        성적       영점    보는 자리
+ *   자영/월급    자미두수    4/4 100%    55%    관록궁 주성
+ *   결혼 경험    점성술      5/7  71%    67%    7하우스 삼방
+ *   자녀 유무    사주        5/6  83%    60%    식상 개수
+ *   거주 형태    자미두수    3/4  75%    71%    전택궁 주성
+ *   직업        —          55~80%      45%    한 체계로 못 좁혔다. 나란히 낸다
+ *   혼인 안정    —          영점보다 나쁨        답하지 않는다
+ *
+ * ── 이 표를 고칠 때 ────────────────────────────────────────
+ * n이 4~12다. 성적 자체는 아직 못 믿는다. 다만 **속성마다 담당을 두는
+ * 구조**가 융합보다 낫다는 것은 세 번의 실패로 분명하다.
+ * 새 사람이 생기면 성적을 다시 재고 담당을 바꾸되, **한 사람 때문에
+ * 바꾸지 않는다.**
+ */
 const AXIS_OWNER = {
-  직업: ['자미두수', '점성술'],
   수입형태: ['자미두수'],
+  결혼경험: ['점성술'],
   자녀자리: ['사주'],
-  혼인안정: [],          // 영점보다 나빠 비워 둔다
+  거주형태: ['자미두수'],
+  혼인안정: [],                        // 영점보다 나빠 비워 둔다
+  직업: ['자미두수', '점성술', '사주', '베딕'],  // 좁히지 못해 나란히 낸다
 };
 
 /**
- * 축마다 담당 체계의 답만 추린다. 담당이 침묵하면 **같이 침묵한다.**
- * 다른 체계로 빈칸을 채우지 않는 것이 이 함수의 요점이다.
+ * 속성마다 담당 체계의 답만 추린다. 담당이 침묵하면 **같이 침묵한다.**
+ * 다른 체계로 빈칸을 채우지 않는 것이 이 함수의 요점이다 — 채우면
+ * 영점보다 나빠진다는 것을 자영/월급에서 확인했다(사주로 채우면 50%,
+ * 영점 55%).
  */
 export function bestRead(reads) {
   const by = Object.fromEntries(reads.map((r) => [r.system, r]));
   const out = {};
   for (const [axis, owners] of Object.entries(AXIS_OWNER)) {
     const said = owners
-      .map((s) => (by[s]?.unavailable ? null : by[s]?.[axis]))
-      .filter(Boolean)
-      .map((v, i) => ({ system: owners[i], ...v }));
+      .map((s) => {
+        const v = by[s]?.unavailable ? null : by[s]?.[axis];
+        return v ? { system: s, ...v } : null;
+      })
+      .filter(Boolean);
     out[axis] = said.length ? said : null;
   }
   return out;
@@ -323,4 +390,160 @@ export function formatReads(reads) {
     }
   }
   return out.join('\n');
+}
+
+// ─────────────────────────────────────────────────────────────
+// 나머지 열한 체계 — 각자의 전통 직업표
+//
+// 핵심 넷만 읽던 것을 열다섯으로 넓힌다. 이 체계들도 각자 직업을 보는
+// 자리와 표가 있다. 없어서 안 쓴 것이 아니라 내가 안 만들어서 못 쓴 것이다.
+//
+// 표는 각 전통의 표준 배당을 옮겼고, 읽는 값은 이미 `analyze()` 가 내는
+// headline·keywords 에서 꺼낸다. 새 계산을 만들지 않는다.
+// ─────────────────────────────────────────────────────────────
+
+/** 구성학 — 구성 아홉이 맡는 일 (기학 표준 배당) */
+const GUJEONG_TRADE = {
+  일백: '물과 사람이 흐르는 일 — 유흥·수산·유통',
+  이흑: '땅과 살림을 다루는 일 — 농업·부동산·보조',
+  삼벽: '소리와 새것을 다루는 일 — 음악·방송·신규사업',
+  사록: '오가며 잇는 일 — 무역·운송·중개',
+  오황: '중심에서 갈아엎는 일 — 해체·재건·변동',
+  육백: '제도와 금속을 다루는 일 — 관공서·금융·기계',
+  칠적: '입과 즐거움을 다루는 일 — 음식·유흥·금융',
+  팔백: '쌓고 물려받는 일 — 부동산·상속·창고',
+  구자: '드러나고 꾸미는 일 — 예술·미용·법률·학문',
+};
+
+/** 육임 — 십이천장이 맡는 일 (대육임 표준 배당) */
+const YUKIM_TRADE = {
+  귀인: '윗사람·제도와 이어지는 일 — 관공서·인사',
+  등사: '얽히고 놀라는 일 — 변동·비정규',
+  주작: '말과 문서로 먹고사는 일 — 언론·교육·소송',
+  육합: '맺어 주는 일 — 중개·혼인·거래',
+  구진: '땅과 다툼을 다루는 일 — 토지·건설·법무',
+  청룡: '재물이 도는 일 — 금융·사업',
+  천공: '비어 있는 일 — 기획·허업·중개',
+  백호: '쇠붙이와 몸을 다루는 일 — 의료·군경·금속',
+  태상: '의식주를 갖추는 일 — 식품·의복·예의',
+  현무: '감추고 도는 일 — 물류·비밀·야간',
+  태음: '안으로 다듬는 일 — 미용·회계·비서',
+  천후: '여성·물을 다루는 일 — 미용·요식·서비스',
+};
+
+/** 홍국기문 — 팔문이 맡는 일 (기문둔갑 표준 배당) */
+const HONGGUK_TRADE = {
+  개문: '열고 통하는 일 — 관공서·영업·개업',
+  휴문: '쉬고 기르는 일 — 휴양·의료·교육',
+  생문: '낳고 불리는 일 — 사업·재물·부동산',
+  상문: '다치고 부수는 일 — 기술·수리·체육',
+  두문: '숨기고 파는 일 — 연구·기술·은둔',
+  경문: '놀라고 알리는 일 — 방송·소송·경보',   // 驚門
+  사문: '끝내고 정리하는 일 — 장례·정리·의료',
+  경문2: '오가며 다투는 일 — 운송·군경·경쟁',  // 景門 (표기 충돌 회피)
+};
+
+/** 카발라 — 라이프 패스가 맡는 일 (숫자점 표준) */
+const KABBALAH_TRADE = {
+  1: '앞장서는 일 — 창업·개척', 2: '맞추는 일 — 중재·보조·상담',
+  3: '표현하는 일 — 예술·글·방송', 4: '쌓는 일 — 건설·관리·실무',
+  5: '움직이는 일 — 영업·여행·변화', 6: '돌보는 일 — 교육·의료·가정',
+  7: '파고드는 일 — 연구·기술·분석', 8: '다루는 일 — 금융·경영·권한',
+  9: '베푸는 일 — 봉사·예술·공공', 11: '전하는 일 — 영성·교육', 22: '세우는 일 — 대규모 기획',
+};
+
+/** 마하보테 — 칠요 출생별이 맡는 일 (버마 점성 표준) */
+const MAHABOTE_TRADE = {
+  빈가: '앞서는 일 — 경쟁·지도', 아하: '맺는 일 — 중개·관계',
+  야자: '기르는 일 — 교육·돌봄', 아디: '여는 일 — 창업·개척',
+  마라나: '끊고 고치는 일 — 의료·정리', 푸티: '거두는 일 — 재물·결실',
+  타트: '옮기는 일 — 운송·무역',
+};
+
+/** 태국 점성술 — 요일 수호행성이 맡는 일 (태국 전통) */
+const THAI_TRADE = {
+  일요일: '드러나는 일 — 공공·지도', 월요일: '돌보는 일 — 서비스·유통',
+  화요일: '몸 쓰는 일 — 체육·군경·기술', 수요일: '말과 셈 — 상업·문서',
+  목요일: '가르치는 일 — 교육·법률·금융', 금요일: '꾸미는 일 — 예술·미용·접객',
+  토요일: '견디는 일 — 제조·건설·행정',
+};
+
+/** 숙요 — 본명숙의 칠요 속성이 맡는 일 (숙요경 표준) */
+const SUKYO_TRADE = {
+  일: '드러나는 일 — 공공·지도', 월: '돌보는 일 — 서비스·돌봄',
+  화: '몸 쓰는 일 — 체육·기술·군경', 수: '말과 셈 — 상업·문서·교육',
+  목: '가르치는 일 — 교육·법률·금융', 금: '꾸미는 일 — 예술·미용·접객',
+  토: '견디는 일 — 제조·건설·행정',
+};
+/** 28수 → 칠요 (숙요경 배당, 각수부터 순환) */
+const SUKYO_YO = {
+  角: '목', 亢: '금', 氐: '토', 房: '일', 心: '월', 尾: '화', 箕: '수',
+  斗: '목', 牛: '금', 女: '토', 虛: '일', 危: '월', 室: '화', 壁: '수',
+  奎: '목', 婁: '금', 胃: '토', 昴: '일', 畢: '월', 觜: '화', 參: '수',
+  井: '목', 鬼: '금', 柳: '토', 星: '일', 張: '월', 翼: '화', 軫: '수',
+};
+
+/** 타로 — 생일 카드가 맡는 일 (메이저 아르카나 표준 의미) */
+const TAROT_TRADE = {
+  마법사: '다루는 일 — 기술·상업', 여사제: '파고드는 일 — 연구·상담',
+  여황제: '기르는 일 — 예술·미용·가정', 황제: '세우는 일 — 경영·관리',
+  교황: '가르치는 일 — 교육·종교', 연인: '맺는 일 — 중개·상담',
+  전차: '나아가는 일 — 영업·운송·경쟁', 힘: '견디는 일 — 체육·돌봄',
+  은둔자: '홀로 파는 일 — 연구·기술', 운명의수레바퀴: '흐름을 타는 일 — 투자·유통',
+  정의: '가르는 일 — 법률·회계', 매달린사람: '기다리는 일 — 봉사·예술',
+  죽음: '끝내고 바꾸는 일 — 정리·전환', 절제: '섞는 일 — 의료·조율',
+  악마: '욕망을 다루는 일 — 유흥·금융', 탑: '무너뜨리는 일 — 해체·구조',
+  별: '비추는 일 — 예술·치유', 달: '흐릿한 일 — 예술·야간',
+  태양: '드러나는 일 — 공공·아동', 심판: '불러내는 일 — 공공·의료',
+  세계: '아우르는 일 — 국제·기획', 바보: '새로 뛰어드는 일 — 창업·여행',
+};
+
+/** headline·keywords 에서 낱말 하나를 집어낸다 */
+const pick = (a, table) => {
+  const hay = `${a?.headline ?? ''} ${(a?.signals?.keywords ?? []).join(' ')} ${(a?.signals?.tags ?? []).join(' ')}`;
+  for (const k of Object.keys(table)) if (hay.includes(k)) return k;
+  return null;
+};
+
+/**
+ * 나머지 열한 체계를 각자의 표로 읽는다.
+ *
+ * @param {object[]} results `readFortune` 이 낸 체계별 analyze 결과
+ */
+export function auxReads(results = []) {
+  const by = Object.fromEntries((results ?? []).map((r) => [r.id ?? r.name, r]));
+  const out = [];
+  const add = (name, key, table, where) => {
+    const a = by[key] ?? by[name];
+    if (!a) return;
+    const k = pick(a, table);
+    if (!k) { out.push({ system: name, unavailable: `${where} 를 집어내지 못했다` }); return; }
+    out.push({ system: name, 직업: item(table[k], `${where} ${k}`) });
+  };
+  add('구성학', 'gujeong', GUJEONG_TRADE, '본명성');
+  add('육임', 'yukim', YUKIM_TRADE, '초전 천장');
+  add('홍국기문', 'hongguk', HONGGUK_TRADE, '팔문');
+  add('마하보테', 'mahabote', MAHABOTE_TRADE, '출생별');
+  add('태국 점성술', 'thai', THAI_TRADE, '출생 요일');
+  add('타로', 'tarot', TAROT_TRADE, '생일 카드');
+
+  // 카발라 — 라이프 패스는 숫자라 따로 집는다
+  const kb = by['kabbalah'] ?? by['카발라'];
+  if (kb) {
+    const m = String(kb.headline ?? '').match(/라이프 패스\s*(\d+)/);
+    const n = m ? Number(m[1]) : null;
+    out.push(n && KABBALAH_TRADE[n]
+      ? { system: '카발라', 직업: item(KABBALAH_TRADE[n], `라이프 패스 ${n}`) }
+      : { system: '카발라', unavailable: '라이프 패스를 집어내지 못했다' });
+  }
+  // 숙요 — 28수를 칠요로 옮긴다
+  const sk = by['sukyo'] ?? by['숙요'];
+  if (sk) {
+    const m = String(sk.headline ?? '').match(/([角亢氐房心尾箕斗牛女虛危室壁奎婁胃昴畢觜參井鬼柳星張翼軫])宿/);
+    const yo = m ? SUKYO_YO[m[1]] : null;
+    out.push(yo && SUKYO_TRADE[yo]
+      ? { system: '숙요', 직업: item(SUKYO_TRADE[yo], `본명숙 ${m[1]}宿 · ${yo}요`) }
+      : { system: '숙요', unavailable: '본명숙을 집어내지 못했다' });
+  }
+  return out;
 }

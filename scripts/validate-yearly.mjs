@@ -40,8 +40,24 @@ for (const f of FILES) {
 const NAMES = Object.keys(MODS);
 
 const years = CASES.flatMap((c) => c.events.map((e) => e.year));
-const fromYear = Math.min(...years);
-const toYear = Math.max(...years);
+
+/**
+ * 후보 해가 20개는 되어야 순위에 뜻이 생긴다.
+ *
+ * 아래 `pcts()` 가 후보 20해 미만인 사건을 버린다. 사건이 모인 기간이
+ * 좁으면(우리 지인들은 2012~2026, 15해뿐이다) **사건이 전부 버려지고
+ * 표가 통째로 비어 나온다.** 실제로 그렇게 나왔고, 조용히 비어서 처음엔
+ * 체계가 하나도 없는 줄 알았다.
+ *
+ * 문턱을 낮추지 않고 **창을 넓힌다.** 사건이 없던 해도 후보로 세우는 것이
+ * 맞다 — "그 해에는 아무 일도 없었다"는 것도 자료다. 기준선(순열)도 같은
+ * 창을 쓰므로 창을 넓혀서 생기는 유불리는 양쪽에 똑같이 걸린다.
+ */
+const MIN_CANDIDATE_YEARS = 21;
+const evFrom = Math.min(...years), evTo = Math.max(...years);
+const pad = Math.max(0, MIN_CANDIDATE_YEARS - (evTo - evFrom + 1));
+const fromYear = evFrom - pad;          // 뒤로만 넓힌다 — 앞은 아직 오지 않은 해다
+const toYear = evTo;
 const SPAN = toYear - fromYear + 1;
 
 console.log(`사례 ${CASES.length}명 · 사건 ${CASES.reduce((t, c) => t + c.events.length, 0)}건 · ` +
@@ -116,7 +132,7 @@ function resolution(key) {
 }
 
 console.log('\n2단계 — 체계마다 따로 채점하고 순열 검정을 돌립니다\n');
-console.log('체계          해상도(78해)  제대로   기준선     p값     판정');
+console.log(`체계          해상도(${SPAN * CASES.length}해)  제대로   기준선     p값     판정`);
 const eventSets = CASES.map((c) => c.events);
 const rows = [];
 

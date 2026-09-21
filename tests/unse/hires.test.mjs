@@ -834,7 +834,12 @@ test('체계 자신의 평소와 견주어 지지를 센다', () => {
   const g = { ...chunks[0], months: chunks.flatMap((c) => c.months), fromYear: 2010, toYear: 2026 };
   const rows = inferEvents(g, '관계').rows;
 
-  for (const sys of ['사주', '자미두수', '점성술', '베딕']) {
+  // 베딕은 시기 판단에서 뺐다 — 360달에 서로 다른 결이 대여섯 가지뿐이라
+  // 아무 말도 못 하면서 '핵심 넷 중 하나'로 계산되고 있었다
+  const timing = Object.keys(rows[0].bySystem);
+  assert.deepEqual(timing, ['사주', '자미두수', '점성술'], `시기 체계가 ${timing}`);
+
+  for (const sys of timing) {
     const n = rows.filter((x) => x.strong.includes(sys)).length;
     const pct = n / rows.length;
     assert.ok(pct > 0 && pct < 0.6,

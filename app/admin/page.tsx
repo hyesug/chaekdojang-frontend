@@ -1177,6 +1177,17 @@ export default function AdminPage() {
     if (response.ok) setLottoRounds(await fetchAdmin<LottoPredictionRound[]>("/api/admin/lotto-future-validations") ?? []);
   }
 
+  async function reviseLottoModel(round: number) {
+    const reason = window.prompt("수정 모델 revision 사유를 입력하세요.", "고정 모델 정의 정정 v2");
+    if (!reason?.trim()) return;
+    const token = getToken();
+    if (!token) return;
+    const response = await authFetch(`${API_BASE}/api/admin/lotto-future-validations/${round}/model-revision`, {
+      method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ reason: reason.trim() }),
+    });
+    if (response.ok) setLottoRounds(await fetchAdmin<LottoPredictionRound[]>("/api/admin/lotto-future-validations") ?? []);
+  }
+
   async function searchAdminUsers(event?: React.FormEvent) {
     event?.preventDefault();
     const filters: UserSearchFilters = {

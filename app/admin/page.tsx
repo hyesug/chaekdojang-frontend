@@ -366,6 +366,10 @@ function formatLogTime(value: string) {
   });
 }
 
+function sortedLottoNumbers(numbers: number[]) {
+  return [...numbers].sort((a, b) => a - b);
+}
+
 function formatReviewTime(value: string) {
   const hasTimezone = /(?:Z|[+-]\d{2}:\d{2})$/.test(value);
   const date = new Date(hasTimezone ? value : `${value}Z`);

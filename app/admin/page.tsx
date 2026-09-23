@@ -252,6 +252,32 @@ interface AdminAuditLog {
   createdAt: string;
 }
 
+interface LottoPrediction {
+  model: "A" | "D" | "E" | "F" | "H";
+  revision: number;
+  numbers: number[];
+  modelVersion: string;
+  sourceCommit: string;
+  generatedAt: string;
+  reason: string | null;
+  active: boolean;
+  hitCount: number;
+  hitNumbers: number[];
+}
+
+interface LottoPredictionRound {
+  round: number;
+  drawDate: string;
+  drawTime: string;
+  timezone: string;
+  timeSource: string;
+  timeSourceDetail: string | null;
+  generatedAt: string;
+  actualNumbers: number[] | null;
+  resultConfirmedAt: string | null;
+  predictions: LottoPrediction[];
+}
+
 interface DashboardSummary {
   todayVisitors: number;
   todayBotVisitors: number;
@@ -832,6 +858,8 @@ export default function AdminPage() {
   const [actionsLoading, setActionsLoading] = useState(false);
   const [errorLogs, setErrorLogs] = useState<ErrorLog[]>([]);
   const [auditLogs, setAuditLogs] = useState<AdminAuditLog[]>([]);
+  const [lottoRounds, setLottoRounds] = useState<LottoPredictionRound[]>([]);
+  const [lottoGenerating, setLottoGenerating] = useState(false);
   const [dashboardSummary, setDashboardSummary] = useState<DashboardSummary | null>(null);
   const [aggregatedSecurity, setAggregatedSecurity] = useState<AggregatedSecurity[]>([]);
   const [publicReadAlerts, setPublicReadAlerts] = useState<PublicReadAlert[]>([]);
@@ -1059,6 +1087,7 @@ export default function AdminPage() {
         nextDashboard,
         nextSecurity,
         nextPublicReadAlerts,
+        nextLottoRounds,
       ] = await Promise.all([
         fetchAdmin<PageResponse<User>>(getUserSearchPath(0, userFiltersRef.current)),
         fetchFirstPage<Review>("/api/admin/reviews?size=100"),
@@ -1074,6 +1103,7 @@ export default function AdminPage() {
         fetchAdmin<DashboardSummary>("/api/admin/dashboard/summary"),
         fetchAdmin<AggregatedSecurity[]>("/api/admin/security/summary"),
         fetchAdmin<PublicReadAlert[]>("/api/admin/security/public-read-alerts"),
+        fetchAdmin<LottoPredictionRound[]>("/api/admin/lotto-future-validations"),
       ]);
       const nextContentLookups = await fetchContentLookups(nextMetrics, nextReviews, nextStats ?? []);
       setUsers(nextUsers?.content ?? []);
@@ -1094,9 +1124,53 @@ export default function AdminPage() {
       setDashboardSummary(nextDashboard);
       setAggregatedSecurity(nextSecurity ?? []);
       setPublicReadAlerts(nextPublicReadAlerts ?? []);
+      setLottoRounds(nextLottoRounds ?? []);
     } finally {
       setLoading(false);
     }
+  }
+
+  async function generateLottoFutureValidation() {
+    setLottoGenerating(true);
+    try {
+      const token = getToken();
+      if (!token) return;
+      const response = await authFetch(`${API_BASE}/api/admin/lotto-future-validations/generate-next`, {
+        method: "POST", headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) setLottoRounds(await fetchAdmin<LottoPredictionRound[]>("/api/admin/lotto-future-validations") ?? []);
+    } finally {
+      setLottoGenerating(false);
+    }
+  }
+
+  async function confirmLottoResult(round: number) {
+    const entered = window.prompt("실제 당첨번호 6개를 쉼표로 입력하세요.");
+    if (!entered) return;
+    const numbers = entered.split(",").map((value) => Number(value.trim())).filter(Number.isInteger);
+    if (numbers.length !== 6 || new Set(numbers).size !== 6 || numbers.some((number) => number < 1 || number > 45)) {
+      window.alert("1~45 사이의 서로 다른 번호 6개를 입력하세요.");
+      return;
+    }
+    const token = getToken();
+    if (!token) return;
+    const response = await authFetch(`${API_BASE}/api/admin/lotto-future-validations/${round}/result`, {
+      method: "PATCH", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ numbers }),
+    });
+    if (response.ok) setLottoRounds(await fetchAdmin<LottoPredictionRound[]>("/api/admin/lotto-future-validations") ?? []);
+  }
+
+  async function reviseLottoDrawTime(round: number, currentTime: string) {
+    const drawTime = window.prompt("변경된 공식 추첨 시각(HH:mm)을 입력하세요.", currentTime.slice(0, 5));
+    if (!drawTime || !/^([01]\d|2[0-3]):[0-5]\d$/.test(drawTime)) return;
+    const reason = window.prompt("공식 편성 변경 근거를 입력하세요.");
+    if (!reason?.trim()) return;
+    const token = getToken();
+    if (!token) return;
+    const response = await authFetch(`${API_BASE}/api/admin/lotto-future-validations/${round}/draw-time`, {
+      method: "PATCH", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ drawTime, reason: reason.trim() }),
+    });
+    if (response.ok) setLottoRounds(await fetchAdmin<LottoPredictionRound[]>("/api/admin/lotto-future-validations") ?? []);
   }
 
   async function searchAdminUsers(event?: React.FormEvent) {

@@ -17,7 +17,6 @@ import {
   encodeState, decodeState, buildSoloCard, buildCompatCard, saveCanvas,
   chartText, compatText, copyText, downloadText,
 } from './share.js';
-import { pickNumbers } from './lotto.js';
 import { readForecast } from './forecast.js';
 import { aiSection, initAI, initCompatAI } from './ai.js';
 import { hiresPanel, initHiResPanel } from './hires/panel.js';
@@ -137,70 +136,6 @@ function collect(p, mode) {
     dst: $(`#${p}dst`).checked,
     inputCalendar: cal,
   };
-}
-
-// ─────────────────────────────────────────────────────────────
-// 로또 번호
-// ─────────────────────────────────────────────────────────────
-
-/** 실제 로또 공 색 규칙 */
-const ballClass = (n) =>
-  n <= 10 ? 'b1' : n <= 20 ? 'b2' : n <= 30 ? 'b3' : n <= 40 ? 'b4' : 'b5';
-
-function lottoPane(d) {
-  return `
-    <div class="lotto-pane" data-pane="${d.mode}" ${d.mode === 'life' ? 'hidden' : ''}>
-      <p class="lotto-when">${d.mode === 'week'
-        ? `${d.round}회 · 추첨 ${esc(d.drawText)}`
-        : '회차와 무관하게 평생 바뀌지 않는 번호입니다'}</p>
-      <div class="balls">
-        ${d.numbers.map((x) => `<span class="ball ${ballClass(x.n)}">${x.n}</span>`).join('')}
-      </div>
-      <dl class="facts" style="margin-top:18px">
-        ${d.numbers.map((x) => `
-          <div class="fact"><dt><span class="ball mini ${ballClass(x.n)}">${x.n}</span></dt>
-            <dd>${esc(x.system)}<small>${esc(x.why)}</small></dd></div>`).join('')}
-      </dl>
-    </div>`;
-}
-
-function lottoSection(input, chart) {
-  const week = pickNumbers(input, chart, 'week');
-  const life = pickNumbers(input, chart, 'life');
-
-  return `
-    <div class="section-label">로또 번호</div>
-    <div class="card">
-      <div class="lotto-tabs">
-        <button type="button" class="lt on" data-lt="week">이번 주 번호</button>
-        <button type="button" class="lt" data-lt="life">내 평생 번호</button>
-      </div>
-
-      ${lottoPane(week)}
-      ${lottoPane(life)}
-
-      <details class="pool">
-        <summary>열다섯 체계의 후보 번호 전부 보기</summary>
-        <p class="poolnote">
-          여섯 자리는 아래 후보에서 골랐습니다. 서로 다른 숫자는 ${week.distinct}개뿐이라
-          여러 게임을 뽑아도 번호가 겹칩니다. 더 필요하시면 여기서 직접 고르세요.
-        </p>
-        <dl class="facts">
-          ${week.pool.map((c) => `
-            <div class="fact ${c.picked ? 'ispick' : ''}">
-              <dt><span class="ball mini ${ballClass(c.n)}">${c.n}</span></dt>
-              <dd>${esc(c.system)}${c.picked ? ' <em>선택됨</em>' : ''}<small>${esc(c.why)}</small></dd>
-            </div>`).join('')}
-        </dl>
-      </details>
-
-      <p class="lotto-warn">
-        로또는 어떤 방법으로도 예측되지 않습니다. 매 회차가 독립 시행이라
-        지난 회차 통계도, 명반도, 그 무엇도 다음 추첨에 대해 아무것도 말해주지 않습니다.
-        이건 맞히는 방법이 아니라 <strong>고르는 방법</strong>입니다 —
-        아무 번호나 찍는 대신 자기 명반에서 나온 번호로 고르는 것, 딱 그만큼의 의미입니다.
-      </p>
-    </div>`;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -744,8 +679,7 @@ function render(form, r, f) {
           앞의 풀이와 같은 무게로 보지 마세요.
         </p>
         ${block('행운의 색과 숫자', `모자란 기운을 채우는 색은 ${L.color.join('·')}이고 숫자는 ${L.num.join(', ')}, 방향은 ${L.dir}입니다. 이름의 첫 자음이 ${L.consonant.join('·')}인 사람과 결이 맞는다고 보는데, 이 대목은 사주가 아니라 한글 자음을 오행에 배정하는 성명학 쪽 규칙이라 참고로만 보세요.`, [])}
-      </div>
-      ${lottoSection(r.input, r.chart)}`)}
+      </div>`)}
 
     ${hiresPanel()}
 
@@ -864,14 +798,6 @@ $('#result').addEventListener('click', (e) => {
   document.querySelectorAll('.tabs button').forEach((x) => x.classList.toggle('on', x === btn));
   document.querySelectorAll('.tab-pane').forEach((x) => { x.hidden = x.dataset.tab !== id; });
   document.querySelector('.tabs').scrollIntoView({ behavior: 'smooth', block: 'start' });
-});
-
-// 로또 탭
-$('#result').addEventListener('click', (e) => {
-  const lt = e.target.closest('[data-lt]')?.dataset.lt;
-  if (!lt) return;
-  document.querySelectorAll('.lt').forEach((b) => b.classList.toggle('on', b.dataset.lt === lt));
-  document.querySelectorAll('.lotto-pane').forEach((p) => { p.hidden = p.dataset.pane !== lt; });
 });
 
 $('#result').addEventListener('click', (e) => {

@@ -117,6 +117,30 @@ export const SIHWA = {
 export const SIHWA_LABEL = ['화록 (재물과 기회가 붙는다)', '화권 (권한과 주도권이 생긴다)',
                      '화과 (명예와 평판이 오른다)', '화기 (막히고 집착하게 된다)'];
 
+/**
+ * 재백궁에 든 별이 말하는 **돈의 결**.
+ *
+ * 위 `STARS` 의 설명과 같은 성질을 돈 쪽으로 옮긴 것이다. 새 뜻을 만들지
+ * 않았다 — 무곡이 재성의 별, 천부가 곳간, 태음이 저축, 파군이 소모(耗)라는
+ * 것은 `STARS` 표가 이미 적어 둔 그대로다.
+ */
+const WEALTH_STAR = {
+  자미: '큰 판에서 도는 돈입니다. 규모가 커야 움직이고, 작은 돈에는 마음이 잘 안 갑니다.',
+  천기: '머리로 버는 쪽입니다. 수입 경로가 자주 바뀌고, 한 갈래로 고정되지 않습니다.',
+  태양: '명예는 따르되 실속이 뒤로 밀리기 쉽습니다. 이름값에 비해 손에 쥐는 것이 적습니다.',
+  무곡: '재물의 별이 제자리에 앉았습니다. 맺고 끊음이 분명해 돈을 만드는 힘이 강합니다.',
+  천동: '애써 좇지 않아도 굶지는 않는 자리입니다. 대신 스스로 밀어붙여 크게 불리지도 않습니다.',
+  염정: '진폭이 큽니다. 원칙을 세우면 단단하고, 욕망 쪽으로 기울면 끝까지 갑니다.',
+  천부: '곳간의 별입니다. 모으고 지키는 데 강해 위기에도 잘 무너지지 않습니다.',
+  태음: '조용히 쌓는 쪽입니다. 저축의 감각이 좋고 티 내지 않고 불립니다.',
+  탐랑: '들어오는 만큼 쓰는 쪽입니다. 손대는 것이 많아 한곳에 모이기 어렵습니다.',
+  거문: '말과 전문성으로 버는 쪽입니다. 따져서 얻는 돈이라 시비도 함께 붙습니다.',
+  천상: '중재하고 조율하는 자리에서 돈이 붙습니다. 스스로 판을 여는 힘은 약합니다.',
+  천량: '늦게 자리 잡는 쪽입니다. 급히 불리려 하면 오히려 어긋납니다.',
+  칠살: '크게 걸고 크게 얻거나 잃습니다. 안전한 자리에 두면 답답해합니다.',
+  파군: '耗(소모)의 별입니다. 들어오는 것도 크고 나가는 것도 커서 남기기가 어렵습니다.',
+};
+
 export function analyze(input) {
   const { lunar, hourBranch, timeKnown, yearBranch, sajuYear } = input;
   if (!timeKnown) throw new Error('자미두수는 태어난 시각이 있어야 판을 세울 수 있습니다');
@@ -220,14 +244,26 @@ export function analyze(input) {
   const careerStars = palaceAt['관록궁'].stars;
   const wealthStars = palaceAt['재백궁'].stars;
   const healthStars = palaceAt['질액궁'].stars;
+  // 원래 관록궁과 재백궁을 한 읽기에 묶어 놓고 **해석은 전부 직업 이야기**만
+  // 했다. 재백궁 별은 이름만 적히고 돈에 대해서는 한 마디도 안 나왔다.
+  // 그래서 돈 칸이 이 읽기를 받으면 직업 이야기가 딸려 들어갔다. 갈랐다.
   readings.push({
-    title: '관록궁과 재백궁',
-    text: `일의 자리에 ${careerStars.join('·') || '주성 없음'}, 돈의 자리에 ${wealthStars.join('·') || '주성 없음'}이(가) 들었습니다. ` +
+    title: '관록궁 — 일의 자리',
+    text: `일의 자리에 ${j(careerStars.join('·') || '주성 없음', '이')} 들었습니다. ` +
       (careerStars.includes('칠살') || careerStars.includes('파군')
         ? '직업에 변동이 큰 구조라, 한 조직에 오래 머무는 것보다 자기 판을 만드는 쪽이 맞습니다.'
         : careerStars.includes('자미') || careerStars.includes('천부')
         ? '조직 안에서 자리를 얻는 구조입니다. 책임이 커질수록 안정됩니다.'
         : '일의 성격이 한 갈래로 고정되지 않습니다. 환경에 맞춰 방향을 정하게 됩니다.'),
+  });
+
+  readings.push({
+    title: '재백궁 — 돈의 자리',
+    text: wealthStars.length
+      ? `돈의 자리에 ${j(wealthStars.join('·'), '이')} 들었습니다. `
+        + wealthStars.filter((s) => WEALTH_STAR[s]).map((s) => WEALTH_STAR[s]).join(' ')
+      : '돈의 자리가 공궁입니다. 자미두수에서 공궁은 흠이 아니라 **정해진 색이 옅다**는 '
+        + '뜻이라, 버는 방식이 타고나기보다 그때그때 환경과 하는 일을 따라갑니다.',
   });
 
   readings.push({
@@ -275,7 +311,9 @@ export function analyze(input) {
     const rok = sihwaWhere.find((x) => x.label.startsWith('화록'));
     readings.push({
       title: '사화가 떨어진 궁',
-      text: sihwaWhere.map((x) => `${x.star} ${x.label.split(' ')[0]} → ${x.palace}`).join(' · ')
+      // 목록 다음에 마침표를 찍는다 — 안 찍으면 마지막 항목과 뒷문장이 한 덩어리로
+      // 붙어 조각을 갈라 낼 수 없다(`compose/slots.js` 의 `pick`).
+      text: `${sihwaWhere.map((x) => `${x.star} ${x.label.split(' ')[0]} → ${x.palace}`).join(' · ')}.`
         + (gi ? ` 화기가 ${gi.palace}에 들었습니다. 그 자리가 이 사람이 가장 애를 먹고, 놓지 못해 되풀이해서 붙드는 영역입니다.` : '')
         + (rok ? ` 화록은 ${rok.palace}에 들어 그쪽에서 먹을 것과 기회가 열립니다.` : ''),
     });

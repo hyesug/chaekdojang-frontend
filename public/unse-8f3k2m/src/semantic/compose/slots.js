@@ -58,7 +58,9 @@ export const SLOTS = {
       key: 'content', label: '무슨 일을 하나', ask: '직무가 무엇인가',
       source: '자미 관록궁(직업의 궁) · 베딕 D10 다샴샤(직업 전용 분할도, 라그나주가 1순위 지표)'
         + ' · 숙요 지배 행성',
-      from: [['자미두수', /관록궁/], ['베딕', /^D10/], ['숙요', /지배 행성/]],
+      from: [['자미두수', /관록궁 — 일의 자리/], ['베딕', /^D10/], ['숙요', /지배 행성/],
+        // 사화·살성 읽기는 여러 궁을 한 줄에 늘어놓는다. 관록궁 조각만 떼 온다.
+        ['자미두수', /사화가 떨어진 궁|살성이 몰린 궁/, { pick: /관록궁/ }]],
       struct: [],
     },
     {
@@ -103,7 +105,8 @@ export const SLOTS = {
     {
       key: 'earning', label: '버는 힘', ask: '어디서 돈이 들어오는가',
       source: '사주 재성·식상생재 (만든 것이 돈이 되는 길) · 자미 재백궁',
-      from: [['자미두수', /재백궁|관록궁과 재백궁/]],
+      from: [['자미두수', /재백궁 — 돈의 자리/],
+        ['자미두수', /사화가 떨어진 궁|살성이 몰린 궁/, { pick: /재백궁/ }]],
       struct: ['식상생재', '편재독존'],
     },
     {
@@ -121,7 +124,8 @@ export const SLOTS = {
     {
       key: 'partner', label: '상대의 결', ask: '어떤 사람과 인연이 깊은가',
       source: '자미 부처궁 주성 — 그 별의 성질이 배우자의 기질이다',
-      from: [['자미두수', /부처궁/], ['사주', /인연의 자리/]],
+      from: [['자미두수', /부처궁/], ['사주', /인연의 자리/],
+        ['자미두수', /사화가 떨어진 궁|살성이 몰린 궁/, { pick: /부처궁/ }]],
       struct: ['배우자궁'],
     },
     {
@@ -146,6 +150,26 @@ export const SLOTS = {
 const norm = (s) => String(s ?? '').replace(/\s*[(（][^)）]*[)）]/g, '').trim();
 
 /**
+ * 읽기 하나가 여러 칸에 걸칠 때 — **조각을 골라낸다.**
+ *
+ * 사화 읽기는 네 궁을 한 줄에 늘어놓는다.
+ *
+ *   "거문 화록 → 명궁 · 태양 화권 → 천이궁 · 문곡 화과 → 질액궁 · 문창 화기 → 자녀궁"
+ *
+ * 관록궁이 들었다고 이 줄을 통째로 직업 칸에 넣으면 나머지 세 궁이 딸려
+ * 들어온다. 제목만 보는 필터로는 못 가른다. 그래서 `pick` 정규식을 주면
+ * **그 조각만** 떼어 온다.
+ *
+ * 조각은 ` · ` 와 문장 끝에서 가른다 — 이 저장소 읽기가 그 두 가지로만
+ * 나열하기 때문이다. 골라낸 조각이 없으면 그 칸은 이 읽기를 받지 않는다
+ * (그 사람에게는 해당 궁에 아무것도 안 떨어졌다는 뜻이다).
+ */
+const fragments = (text) => String(text ?? '')
+  .split(/\s+·\s+|(?<=[.。!?])\s+|\n+/)
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+/**
  * 칸을 채운다.
  *
  * @param {object} fortune `natalFortune(...).fortune`
@@ -160,12 +184,29 @@ export function fillSlots(fortune, structures = [], domain = 'career') {
   return table.map((slot) => {
     const filled = [];
 
-    for (const [sysName, titleRe] of slot.from) {
+    for (const [sysName, titleRe, opts] of slot.from) {
       const v = systems.find((x) => x.name === sysName);
       if (!v) continue;
       for (const r of v.readings ?? []) {
         if (r?.mono || !titleRe.test(norm(r.title))) continue;
-        filled.push({ system: sysName, what: r.title, text: r.text, kind: 'reading' });
+
+        let text = r.text;
+        if (opts?.pick) {
+          const keep = fragments(r.text).filter((f) => opts.pick.test(f));
+          // 골라낼 것이 없으면 이 사람에게는 해당 자리가 비어 있는 것이다
+          if (!keep.length) continue;
+          // 목록 조각("무곡 화록 → 재백궁")은 가운뎃점으로, 문장은 그냥 잇는다.
+          // 섞어서 공백으로만 이으면 "→ 재백궁 탐랑 화권 → 재백궁 화록은…" 처럼
+          // 어디서 끊기는지 알 수 없게 된다.
+          const list = keep.filter((f) => f.includes('→'));
+          const prose = keep.filter((f) => !f.includes('→'));
+          const head = list.join(' · ').replace(/([^.!?])$/, '$1.');
+          text = [head, prose.join(' ')].filter(Boolean).join(' ');
+        }
+        filled.push({
+          system: sysName, what: r.title, text, kind: 'reading',
+          picked: opts?.pick ? true : undefined,
+        });
       }
     }
     for (const name of slot.struct) {

@@ -15,7 +15,7 @@ import { lunarToSolar } from './core/lunar.js';
 import { j } from './core/josa.js';
 import { encodeState, decodeState } from './share.js';
 import { readForecast, areaText } from './forecast.js';
-import { aiSection, initAI } from './ai.js';
+import { aiSection, initAI, initCompatAI } from './ai.js';
 import { buildView, buildCompatView } from './viewmodel.js';
 import { SYSTEM_META, TIER_LABEL, SOURCE_LABEL } from './meta.js';
 import { loadProfile, saveProfile, deleteProfile, loginUrl } from './profile.js';
@@ -54,6 +54,8 @@ export async function run(mode, box, next) {
     const c = compareFortune(form, formB);
     await next();
     box.innerHTML = renderCompat(form, formB, c);
+    await next();
+    initCompatAI(form, formB, c);
     await next();
   } else {
     prepareInput(form);
@@ -127,7 +129,7 @@ function collect(p, mode) {
 // ─────────────────────────────────────────────────────────────
 
 /**
- * 궁합 화면 — 축마다 엔진이 쓴 문장을 그대로 이어서 나열만 한다.
+ * 궁합 화면 — 축마다 엔진이 쓴 문장을 그대로 이어서 나열하고, 아래에 AI 묻기.
  * 판정 개수·근거·양 끝은 싣지 않는다.
  */
 function renderCompat(formA, formB, r) {
@@ -145,6 +147,8 @@ function renderCompat(formA, formB, r) {
         <p class="say-text"><strong>${esc(a.label)}</strong> — ${esc([a.conclusion, a.reality, a.good, a.bad].filter(Boolean).join(' '))}</p>
       `).join('')}
     </div>
+
+    ${aiSection('pair')}
   `;
 }
 

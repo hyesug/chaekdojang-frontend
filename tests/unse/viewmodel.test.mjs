@@ -49,7 +49,7 @@ test('상세 성향은 여러 체계에서 실제로 반복된 것만 남긴다'
   }
 });
 
-test('개인 화면은 명반 · 오늘/이달 두 탭 · 프로필 저장 · AI 만 둔다', async () => {
+test('개인 화면은 명반 · 오늘/이달 두 탭 · 프로필 저장 · AI 만, 궁합은 문장과 AI 만 둔다', async () => {
   const ui = await readFile(
     new URL('../../public/unse-8f3k2m/src/ui.js', import.meta.url),
     'utf8',
@@ -64,7 +64,8 @@ test('개인 화면은 명반 · 오늘/이달 두 탭 · 프로필 저장 · AI
   assert.match(ui, /aiSection\('solo', v\)/);
 
   // 걷어낸 것들
-  for (const gone of ['나라는 사람', 'hiresPanel', 'shareBar', 'sensitivityPanel', "aiSection('pair'"]) {
+  assert.match(ui, /aiSection\('pair'\)/);
+  for (const gone of ['나라는 사람', 'hiresPanel', 'shareBar', 'sensitivityPanel']) {
     assert.equal(ui.includes(gone), false, gone + ' 이(가) 남아 있다');
   }
 });

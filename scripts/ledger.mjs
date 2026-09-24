@@ -130,6 +130,67 @@ const sentences = (text) => String(text ?? '')
   .filter((s) => s.length >= 6);
 
 /**
+ * 명반 낱말 — 이것이 주어 자리에 있으면 사람이 아니라 **판**을 말하는 문장이다.
+ *
+ * 짧은 것(목·화·토·금·수·살·관·인)은 다른 낱말 속에 흔히 들어가므로
+ * (`수`면, 변`화`) 조사가 붙은 꼴로만 센다.
+ */
+const CHART_LONG = new RegExp([
+  '비견', '겁재', '식신', '상관', '편재', '정재', '편관', '정관', '편인', '정인',
+  '비겁', '식상', '재성', '관성', '인성', '칠살', '십신', '오행', '지장간', '납음',
+  '일간', '일지', '년지', '월지', '시지', '년간', '월간', '대운', '세운', '원국', '명식',
+  '명궁', '신궁', '부처궁', '관록궁', '재백궁', '질액궁', '전택궁', '복덕궁',
+  '형제궁', '자녀궁', '노복궁', '천이궁', '부모궁', '명반', '오행국',
+  '자미', '천기', '무곡', '천동', '염정', '천부', '태음', '탐랑', '거문', '천상',
+  '천량', '파군', '문창', '문곡', '좌보', '우필', '화록', '화권', '화과', '화기', '사화',
+  '상승점', '중천', '하우스', '아야남샤',
+  '라그나', '찬드라', '수르야', '다샤', '나크샤트라', '라시',
+  '본괘', '지괘', '동효', '상괘', '하괘', '중괘', '초효',
+  '삼전', '사과', '초전', '말전', '월장', '기궁', '천반', '지반',
+  '태을궁', '주산', '객산', '본명성', '월명성', '중궁', '본명숙', '파다', '태세수',
+  '세피라', '라이프 ?패스', '생일수', '개인년', '생일 카드',
+].join('|'));
+
+/** 짧은 낱말은 조사가 붙은 꼴로만 — `금이` 는 오행이지만 `지금` 의 금은 아니다 */
+const CHART_SHORT = /(^|[\s(·「])(목|화|토|금|수|살|관|인|재|식)[이가은는을를과와]([\s.,)]|$)/;
+
+/**
+ * 존재·위치·수량을 말하는 서술어.
+ *
+ * 이런 서술어가 명반 낱말과 함께 오면 **계산을 되읊은 것**이다. "금이
+ * 강합니다"는 참/거짓을 물을 수 없다 — 명반을 보면 그냥 그렇다.
+ * 반대로 "기준이 뚜렷하고 판단이 빠릅니다"는 사람에 대한 주장이라 물을 수 있다.
+ */
+const CALC_TAIL = new RegExp(`(${[
+  '있습니다', '없습니다', '입니다', '것입니다', '셈입니다',
+  '해당합니다', '충합니다', '형합니다', '합합니다',
+  '강합니다', '약합니다', '우세합니다', '뚜렷합니다',
+  '들었습니다', '듭니다', '앉았습니다', '떨어졌습니다', '놓였습니다', '섰습니다',
+  '낳습니다', '지킵니다', '나옵니다', '봅니다', '뜻입니다',
+].join('|')})[.!?]?$`);
+
+/** 표를 찾아 읽은 것 — 색·방위·숫자·시간대는 대응표 조회지 주장이 아니다 */
+const LOOKUP = /^(색은|방향은|방위는|숫자는|시간대는|행운의|수호)/;
+
+/**
+ * 이 문장은 표시할 수 있는가.
+ *
+ * 가리는 기준은 하나다 — **명반을 보지 않고 맞다/아니다를 말할 수 있는가.**
+ * 말할 수 없으면 그것은 계산이거나 낱말 뜻풀이지 이 사람에 대한 주장이 아니다.
+ *
+ * 완벽하지 않다. 그래서 걸러낸 문장을 지우지 않고 접어서 함께 싣는다 —
+ * 잘못 걸렀으면 보여야 고칠 수 있다.
+ */
+function markable(s) {
+  if (LOOKUP.test(s)) return false;
+  // 괄호 안 주석("(시지 정관 · 년간 편관)")을 떼고 서술어를 본다
+  const bare = s.replace(/\s*[(（][^)）]*[)）]\s*/g, ' ').replace(/\*\*/g, '').trim();
+  // 한자가 섞인 문장은 거의 언제나 명반 표기다
+  const chart = CHART_LONG.test(s) || CHART_SHORT.test(s) || /[一-鿿]/.test(s);
+  return !(chart && CALC_TAIL.test(bare));
+}
+
+/**
  * 이미 표시해 둔 것을 되살린다.
  *
  * 체계를 고치면 장부를 다시 뽑게 되는데, 그때마다 표시가 날아가면 아무도
@@ -209,7 +270,46 @@ lines.push('---');
 lines.push('');
 
 // ── 체계마다 ──
-let total = 0; let learnable = 0; let kept = 0;
+let total = 0; let learnable = 0; let kept = 0; let calc = 0;
+
+/**
+ * 한 덩이를 적는다 — **주장은 표시 줄로, 계산은 접어서.**
+ *
+ * 걸러낸 것을 지우지 않고 함께 싣는 이유: 가리는 규칙이 완벽하지 않다.
+ * 보이지 않으면 잘못 걸러도 알 수가 없다.
+ */
+function block(title, key, text, extra = null) {
+  const ss = sentences(text);
+  if (!ss.length) return;
+  const claims = ss.filter(markable);
+  const restated = ss.filter((s) => !markable(s));
+  if (!claims.length && !restated.length) return;
+
+  const rc = reach(key);
+  lines.push(`**${title}** ${rc ? `\`◆${rc.tag}\`` : ''} <sub>\`${key}\`</sub>`);
+  lines.push('');
+  if (extra) { lines.push(extra); lines.push(''); }
+
+  for (const s of claims) {
+    const mark = prev.marks[s] ?? ' ';     // 문장이 그대로일 때만 옛 표시를 옮긴다
+    lines.push(`- [${mark}] ${s}`);
+    total += 1;
+    if (mark !== ' ') kept += 1;
+  }
+  if (claims.length && rc?.worth === 2) learnable += claims.length;
+
+  if (restated.length) {
+    if (claims.length) lines.push('');
+    lines.push('<details><summary>명반을 되읊은 줄 (표시 안 함)</summary>');
+    lines.push('');
+    for (const s of restated) lines.push(`- ${s}`);
+    lines.push('');
+    lines.push('</details>');
+    calc += restated.length;
+  }
+  lines.push('');
+}
+
 for (const v of Object.values(fortune.results ?? {})) {
   lines.push(`## ${v.name} ${v.hanja ? `(${v.hanja})` : ''}`);
   lines.push('');
@@ -232,20 +332,7 @@ for (const v of Object.values(fortune.results ?? {})) {
   // 주장 — 여기가 표시할 자리
   for (const r of v.readings ?? []) {
     if (r?.mono) continue;             // 판을 그린 것은 주장이 아니다
-    const key = keyOf(v.hanja || v.name, r.title);
-    const ss = sentences(r.text);
-    if (!ss.length) continue;
-    const rc = reach(key);
-    lines.push(`**${r.title}** ${rc ? `\`◆${rc.tag}\`` : ''} <sub>\`${key}\`</sub>`);
-    lines.push('');
-    for (const s of ss) {
-      const mark = prev.marks[s] ?? ' ';   // 문장이 그대로일 때만 옛 표시를 옮긴다
-      lines.push(`- [${mark}] ${s}`);
-      total += 1;
-      if (mark !== ' ') kept += 1;
-    }
-    lines.push('');
-    if (rc?.worth === 2) learnable += ss.length;
+    block(r.title, keyOf(v.hanja || v.name, r.title), r.text);
   }
 
   // 사주는 개수만 말하고("관성 3 · 인성 0") 이름 붙은 조합은 안 낸다.
@@ -260,19 +347,7 @@ for (const v of Object.values(fortune.results ?? {})) {
         + ` 대 쓰는 힘 ${st.facts.strength.drain})</sub>`);
       lines.push('');
       for (const s of st.structures) {
-        const key = `四柱格:${s.name}`;
-        const rc = reach(key);
-        lines.push(`**${s.name} ${s.hanja}** ${rc ? `\`◆${rc.tag}\`` : ''} <sub>\`${key}\`</sub>`);
-        lines.push('');
-        lines.push(`<sub>출전: ${s.source}</sub>`);
-        lines.push('');
-        for (const sen of sentences(s.text)) {
-          const mark = prev.marks[sen] ?? ' ';
-          lines.push(`- [${mark}] ${sen}`);
-          total += 1;
-          if (mark !== ' ') kept += 1;
-        }
-        lines.push('');
+        block(`${s.name} ${s.hanja}`, `四柱格:${s.name}`, s.text, `<sub>출전: ${s.source}</sub>`);
       }
     }
   }
@@ -286,8 +361,8 @@ for (const v of Object.values(fortune.results ?? {})) {
 
 lines.push('---');
 lines.push('');
-lines.push(`표시할 문장 **${total}개**`
-  + (shared ? ` · 그중 지금 배울 수 있는 자리(◆2~${shared.n - 1}명) **${learnable}개**` : '') + '.');
+lines.push(`표시할 주장 **${total}개** · 명반을 되읊어 표시에서 뺀 줄 ${calc}개`
+  + (shared ? ` · 지금 배울 수 있는 자리(◆2~${shared.n - 1}명) **${learnable}개**` : '') + '.');
 lines.push('');
 lines.push('다 표시하지 않아도 됩니다. **확실한 것만** 표시하는 편이 낫습니다.');
 

@@ -33,6 +33,10 @@ import { narrateScenario, auditNarration } from './narrator.js';
 import { matchReality, auditRealityMatch } from './reality.js';
 import { supportingReads } from './supporting.js';
 import { locationEvidenceFor, asGateEvidence } from './locationEvidence.js';
+import {
+  fetchCandidates, fixtureProvider, normalizeJobPosting, normalizeCompany,
+  lexiconPick, parseLocation,
+} from './provider.js';
 import { selectEvidence, questionTypeOf } from './evidence.js';
 import { buildChains, chainOf, checkTemporalConsistency } from './chain.js';
 import { attributesOf } from './attributes.js';
@@ -365,6 +369,25 @@ export function matchScenarioReality(scenario, candidates, options = {}) {
   return matchReality(scenario, candidates, options);
 }
 
+
+/**
+ * provider 에게서 실제 후보를 받아 온 뒤 답까지 만든다.
+ *
+ * `answerScenario` 는 그대로 동기로 둔다 — 자료를 들고 오는 일만 기다리면
+ * 되므로 그 부분만 여기서 감싼다. **자료가 하나도 안 와도 답은 나온다.**
+ * 현실은 붙이는 것이지 없으면 못 하는 것이 아니다.
+ */
+export async function answerWithReality(o = {}) {
+  const fetched = o.providers?.length
+    ? await fetchCandidates({
+      providers: o.providers, asOf: o.asOf ?? o.now ?? new Date(),
+      maxAgeDays: o.maxAgeDays, limit: o.candidateLimit,
+    })
+    : { candidates: [], rejected: [], meta: { providers: [] } };
+  const out = answerScenario({ ...o, candidates: fetched.candidates });
+  return { ...out, fetched };
+}
+
 /**
  * 재료 → 조립 → 한국어까지 한 번에. 각 층은 여전히 따로 부를 수 있다.
  *
@@ -400,6 +423,8 @@ export {
   narrateScenario, auditNarration,
   matchReality, auditRealityMatch, supportingReads,
   locationEvidenceFor, asGateEvidence,
+  fetchCandidates, fixtureProvider, normalizeJobPosting, normalizeCompany,
+  lexiconPick, parseLocation,
   selectEvidence, questionTypeOf,
   buildChains, chainOf, checkTemporalConsistency, attributesOf,
   interpretQuestion, resolveConflict, timingPhases, specificityGate,

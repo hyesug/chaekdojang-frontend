@@ -96,6 +96,41 @@ export function palaceChart(centerStar) {
 /** 오행 상생 — 나를 낳는 별과 내가 낳는 별이 길하다 */
 const GENERATES = (a, b) => (a + 1) % 5 === b;
 
+/**
+ * 그 해 방위반에서 본명성에게 열린 방위와 막힌 방위.
+ * 풀이 문장과 AI 문맥(길방 도시 후보)이 같은 판정을 쓰도록 한곳에 둔다.
+ */
+export function yearDirections(sajuYear, year) {
+  const honmei = starOfYear(sajuYear);
+  const center = starOfYear(year);
+  const chart = palaceChart(center);
+
+  const myDir = Object.keys(chart).find((d) => chart[d] === honmei);
+  const fiveYellowDir = Object.keys(chart).find((d) => chart[d] === 5);
+
+  const bad = [];
+  if (fiveYellowDir && fiveYellowDir !== '중앙') {
+    bad.push({ dir: fiveYellowDir, kind: '오황살' });
+    if (OPPOSITE[fiveYellowDir]) bad.push({ dir: OPPOSITE[fiveYellowDir], kind: '암검살' });
+  }
+  if (myDir && myDir !== '중앙') {
+    bad.push({ dir: myDir, kind: '본명살' });
+    if (OPPOSITE[myDir]) bad.push({ dir: OPPOSITE[myDir], kind: '본명적살' });
+  }
+
+  const el = STARS[honmei].element;
+  const good = DIRECTIONS
+    .filter((d) => {
+      const s = chart[d.name];
+      if (s === 5 || s === honmei) return false;
+      const e = STARS[s].element;
+      return GENERATES(e, el) || GENERATES(el, e);
+    })
+    .map((d) => ({ dir: d.name, star: STARS[chart[d.name]].name }));
+
+  return { center, myDir, good, bad };
+}
+
 export function analyze(input) {
   const { sajuYear, sectorIndex, currentYear, age } = input;
 
@@ -107,30 +142,11 @@ export function analyze(input) {
   const getsumei = ((monthBase - sectorIndex - 1) % 9 + 9) % 9 + 1;
 
   // 올해의 방위반
-  const centerThisYear = starOfYear(currentYear);
-  const chart = palaceChart(centerThisYear);
-
-  const myDir = Object.keys(chart).find((d) => chart[d] === honmei);
-  const fiveYellowDir = Object.keys(chart).find((d) => chart[d] === 5);
-
-  const bad = new Set();
-  if (fiveYellowDir && fiveYellowDir !== '중앙') {
-    bad.add(`${fiveYellowDir} (오황살)`);
-    if (OPPOSITE[fiveYellowDir]) bad.add(`${OPPOSITE[fiveYellowDir]} (암검살)`);
-  }
-  if (myDir && myDir !== '중앙') {
-    bad.add(`${myDir} (본명살)`);
-    if (OPPOSITE[myDir]) bad.add(`${OPPOSITE[myDir]} (본명적살)`);
-  }
-
-  const good = DIRECTIONS
-    .filter((d) => {
-      const s = chart[d.name];
-      if (s === 5 || s === honmei) return false;
-      const e = STARS[s].element;
-      return GENERATES(e, star.element) || GENERATES(star.element, e);
-    })
-    .map((d) => `${d.name} (${STARS[chart[d.name]].name})`);
+  const dirs = yearDirections(sajuYear, currentYear);
+  const centerThisYear = dirs.center;
+  const myDir = dirs.myDir;
+  const bad = new Set(dirs.bad.map((x) => `${x.dir} (${x.kind})`));
+  const good = dirs.good.map((x) => `${x.dir} (${x.star})`);
 
   // 아홉 해 주기 안의 현재 위치 — 구성학의 연운
   const phase = ((currentYear - sajuYear) % 9 + 9) % 9;

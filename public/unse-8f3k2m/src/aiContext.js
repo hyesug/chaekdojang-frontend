@@ -17,6 +17,8 @@
 
 import { ELEMENTS, computeDaeun } from './core/ganzhi.js';
 import { AREAS } from './forecast.js';
+import { candidatesToward, DIR8 } from './hires/location.js';
+import { yearDirections } from './systems/gujeong.js';
 import { dayRange, rankSurgeryDays, structureReading, patternReading,
          yearTimeline, innerReading, tabooReading } from './reading.js';
 import { buildMultilayer, formatMultilayer } from './multilayerInterpretation.js';
@@ -81,6 +83,10 @@ export function buildContext(form, r, f = null) {
     out.push(sys.headline);
     const folded = foldFacts(sys.facts);
     if (folded) out.push(folded);
+    // 부처궁·관록궁·올해 열린 방위 같은 해석은 facts가 아니라 readings에만 있다
+    for (const v of sys.readings ?? []) {
+      out.push(`- ${v.title}: ${String(v.text).replace(/\n+/g, ' ')}`);
+    }
     if (sys.confidence < 1) {
       out.push(`※ 재료가 부족해 종합 반영 ${Math.round(sys.confidence * 100)}%`);
     }
@@ -155,6 +161,26 @@ export function buildContext(form, r, f = null) {
   // 모델이 "몇 개가 같은 말을 하는가"를 눈대중으로 세면 매번 답이 달라지므로
   // 세는 일은 코드가 하고 개수만 넘긴다.
   out.push(formatMultilayer(buildMultilayer(r, f)));
+  out.push('');
+
+  // ── 이동 방위 ──
+  // "어디로 옮길까"에 방위만 주면 모델이 도시를 지어낸다. 거주지에서 그 방위에
+  // 실제로 있는 도시를 좌표로 골라 둔다. 구성학 연반은 입춘에 바뀌므로 내년 것도 싣는다.
+  out.push(`## 이동 방위와 도시 후보 (거주지 ${input.home.name} 기준, 구성학 연반)`);
+  for (const year of [input.currentYear, input.currentYear + 1]) {
+    const d = yearDirections(input.sajuYear, year);
+    const bad = new Set(d.bad.map((x) => x.dir));
+    const good = d.good.filter((x) => !bad.has(x.dir));
+    out.push(`${year}년(입춘~이듬해 입춘)`);
+    out.push(good.length
+      ? good.map((x) => {
+          const near = candidatesToward(input.home, DIR8.indexOf(x.dir) * 45, { spread: 22.5, limit: 3 });
+          return `- 열린 방위 ${x.dir}: ${near.length ? near.map((c) => `${c.name}(${c.km}km)`).join(', ') : '목록에 해당 도시 없음'}`;
+        }).join('\n')
+      : '- 열린 방위 없음 — 큰 이동보다 자리를 지키는 해');
+    if (d.bad.length) out.push(`- 피할 방위: ${d.bad.map((x) => `${x.dir}(${x.kind})`).join(', ')}`);
+  }
+  out.push('도시는 방위에 맞는 후보일 뿐 운세가 특정 도시를 고른 것이 아니다. 동네·회사까지 단정하지 말 것.');
   out.push('');
 
   // ── 타고난 구성 ──

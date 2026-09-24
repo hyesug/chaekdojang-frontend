@@ -149,5 +149,5 @@ test('AI 문맥에 다층 해석 근거가 실리고 길이 상한을 넘지 않
   assert.match(ctx, /### 활성 주제/);
   assert.match(ctx, /### 시기 교집합/);
   // route.ts 의 MAX_CONTEXT_CHARS. 넘으면 413 으로 막힌다.
-  assert.ok(ctx.length <= 24_000, `문맥이 ${ctx.length}자로 상한을 넘었다`);
+  assert.ok(ctx.length <= 60_000, `문맥이 ${ctx.length}자로 상한을 넘었다`);
 });

@@ -153,6 +153,7 @@ export function narrateSlots(slots) {
     sections.push({
       key: slot.key,
       label: slot.label,
+      ask: slot.ask,
       empty: false,
       source: slot.source,
       text: `${LEAD[slot.key] ?? slot.label} — ${head}`,

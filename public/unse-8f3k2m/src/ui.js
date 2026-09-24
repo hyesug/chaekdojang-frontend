@@ -313,6 +313,16 @@ function render(form, r, f) {
       <p class="agree-note" style="margin:0">프로필 저장 여부를 확인하는 중…</p>
     </div>
 
+    <div class="section-label">칸으로 펼쳐 보기</div>
+    <div id="cmpPanel">
+      <div class="card">
+        <p class="agree-note" style="margin:0">
+          열다섯 체계의 말을 <b>합치지 않고</b> 일·돈·관계의 칸마다 나란히 놓습니다.
+          <button type="button" id="cmp-open" class="linklike">열기</button>
+        </p>
+      </div>
+    </div>
+
     <div class="section-label">앞일 묻기</div>
     <div id="scenPanel">
       <div class="card">
@@ -395,10 +405,35 @@ $('#result').addEventListener('click', (e) => {
   document.querySelector('.tabs').scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 
-// '앞일 묻기' 는 누를 때 받는다
+// 무거운 두 층은 누를 때 받는다
 $('#result').addEventListener('click', (e) => {
   if (e.target.closest('#scen-open')) openAsk();
+  if (e.target.closest('#cmp-open')) openCompose();
 });
+
+/**
+ * '칸으로 펼쳐 보기' 를 누를 때만 조립 층을 받는다.
+ *
+ * 열다섯을 다시 세우므로 무겁다. `scenarioPanel.js` 와 같은 이유로
+ * 여기서 `import()` 한다.
+ */
+let cmpLoaded = false;
+async function openCompose() {
+  if (cmpLoaded || !last || last.mode !== 'solo') return;
+  cmpLoaded = true;
+  const root = $('#cmpPanel');
+  if (!root) return;
+  root.innerHTML = '<div class="card"><p class="agree-note" style="margin:0">조립 층을 받는 중입니다…</p></div>';
+  try {
+    const P = await import('./composePanel.js');
+    root.innerHTML = P.panelHtml();
+    await P.initCompose(root, last.formA);
+  } catch (err) {
+    cmpLoaded = false;
+    root.innerHTML = '<p class="agree-note" style="margin:0">조립 층을 받지 못했습니다. 새로고침 후 다시 시도해 주세요.</p>';
+    void err;
+  }
+}
 
 /**
  * '앞일 묻기' 를 누를 때만 시나리오 층을 받는다.

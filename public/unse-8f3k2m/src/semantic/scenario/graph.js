@@ -110,6 +110,22 @@ export const STATE_GRAPH = {
     ],
   },
 
+  education: {
+    states: ['unknown', 'not_studying', 'studying', 'detour', 'completed'],
+    transitions: [
+      t('not_studying', 'studying', 'study_start'),
+      t('not_studying', 'studying', 'return_to_study'),
+      t('studying', 'studying', 'exam_preparation'),
+      t('studying', 'studying', 'qualification_attempt'),
+      t('studying', 'completed', 'exam_success_window',
+        { note: '결실이 나올 만한 구간이지 합격을 뜻하지 않는다' }),
+      t('studying', 'detour', 'academic_detour'),
+      t('detour', 'studying', 'return_to_study'),
+      t('completed', 'studying', 'study_start'),
+      t('completed', 'studying', 'qualification_attempt'),
+    ],
+  },
+
   children: {
     states: ['unknown', 'no_children', 'child_related_transition', 'parenting'],
     transitions: [
@@ -162,6 +178,11 @@ export function stateOf(domain, ctx) {
       if (ctx.hasChildren === true) return 'parenting';
       if (ctx.hasChildren === false) return 'no_children';
       return 'unknown';
+    case 'education':
+      if (g.states.includes(ctx.educationState)) return ctx.educationState;
+      if (ctx.studying === true) return 'studying';
+      if (ctx.studying === false) return 'not_studying';
+      return 'unknown';
     default:
       return 'unknown';
   }
@@ -201,6 +222,63 @@ export function filterByState(domain, state, events) {
   }
   return { kept, removed, stateKnown: true, state };
 }
+
+/**
+ * 이사에는 **까닭**이 있다.
+ *
+ * 취직하며 옮긴 이사를 '주거'에만 물어 150/228 위를 짚은 적이 있다. 이사는
+ * 결과이고 원인은 대개 다른 분야다. 까닭을 목록으로 두고, 아래
+ * `CROSS_DOMAIN` 이 그 연결을 만든다.
+ */
+export const MOVE_REASONS = ['career', 'relationship', 'marriage', 'family', 'financial', 'independence'];
+
+/**
+ * 한 분야의 사건이 다른 분야를 **켤 수 있다**.
+ *
+ * **자동 확정이 아니다.** 여기 적힌 것은 "그 분야도 함께 봐야 한다"까지이고,
+ * 그 분야에서 실제로 시기 신호가 잡히는지는 따로 계산한다. 이직했다고
+ * 반드시 이사하는 것이 아니다.
+ */
+export const CROSS_DOMAIN = {
+  job_change: [
+    { domain: 'wealth', why: '소속이 바뀌면 수입 구조가 바뀐다' },
+    { domain: 'residence', why: '일터가 옮겨지면 거처가 따라 움직일 수 있다', reason: 'career' },
+  ],
+  first_job: [
+    { domain: 'wealth', why: '수입이 처음 생긴다' },
+    { domain: 'residence', why: '일터를 따라 옮길 수 있다', reason: 'career' },
+  ],
+  business_start: [
+    { domain: 'wealth', why: '수입의 모양 자체가 바뀐다' },
+    { domain: 'residence', why: '일하는 자리가 필요해진다', reason: 'career' },
+  ],
+  resignation: [{ domain: 'wealth', why: '수입이 끊기는 구간이 생긴다' }],
+  freelance: [{ domain: 'wealth', why: '수입이 고르지 않게 된다' }],
+  promotion: [{ domain: 'wealth', why: '보상이 조정된다' }],
+  regional_move: [
+    { domain: 'career', why: '생활권을 넘는 이동은 대개 일이 원인이다', reason: 'career' },
+    { domain: 'residence', why: '거처가 바뀐다', reason: 'career' },
+  ],
+  abroad: [{ domain: 'career', why: '장거리 이동은 대개 일이 원인이다', reason: 'career' }],
+  marriage: [
+    { domain: 'wealth', why: '살림이 합쳐진다' },
+    { domain: 'residence', why: '함께 살 자리가 필요해진다', reason: 'marriage' },
+    { domain: 'children', why: '자녀 국면이 열릴 수 있다' },
+  ],
+  cohabitation: [{ domain: 'residence', why: '함께 사는 자리로 옮긴다', reason: 'relationship' }],
+  cohabitation_move: [{ domain: 'relationship', why: '거처를 합치는 것은 관계의 단계다', reason: 'relationship' }],
+  breakup: [{ domain: 'residence', why: '거처를 다시 나눌 수 있다', reason: 'relationship' }],
+  birth: [
+    { domain: 'wealth', why: '지출 구조가 바뀐다' },
+    { domain: 'residence', why: '자리가 더 필요해진다', reason: 'family' },
+  ],
+  home_purchase_related: [{ domain: 'wealth', why: '큰돈이 움직인다' }],
+  study_start: [{ domain: 'wealth', why: '학비가 든다' }],
+  exam_success_window: [{ domain: 'career', why: '자격이 일자리로 이어질 수 있다' }],
+};
+
+/** 그 사건이 함께 켜는 분야들 (확정이 아니라 후보다) */
+export const crossDomainOf = (event) => (CROSS_DOMAIN[event] ?? []).map((x) => ({ ...x }));
 
 /** 한 전이가 실제로 가능한가 (테스트·후속 층용) */
 export const canTransition = (domain, from, event) =>

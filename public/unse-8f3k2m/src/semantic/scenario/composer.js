@@ -22,6 +22,8 @@ import { DOMAIN_LABEL } from '../domains.js';
 import { EVENT_CANDIDATES } from '../timing/events.js';
 import { detailFor, DETAIL_SLOT } from './detail.js';
 import { auditCoherence } from './coherence.js';
+import { attributesOf } from './attributes.js';
+import { buildChains } from './chain.js';
 
 /** 시기 눈금 — 뒤로 갈수록 잘다 */
 const GRAIN = ['year', 'halfyear', 'quarter', 'month'];
@@ -282,6 +284,13 @@ export function composePrepared(prepared, options = {}) {
     phaseId: sp.phaseId,
     signalIndex: sp.signalIndex,
     timing, event, direction, detail,
+    /** 그 사건이 얼마나 오래 걸리는 일인가 (사건의 성질이지 계산값이 아니다) */
+    attributes: event ? attributesOf(event.type) : null,
+    /**
+     * 칸마다 확신이 다르다. 하나의 점수로 뭉개면 "시기는 두터운데 지역은
+     * 얇다"가 사라진다. **확률이 아니라 근거의 두께다.**
+     */
+    confidence: confidenceOf({ cap, grain, conflict: sig?.conflict, phase: sig?.phase, detail, location }),
     /** 사건 점수와 계보 표결이 같은 곳을 가리켰는가 — 갈렸으면 방향은 비운다 */
     selectionConflict,
     detailProvenanceMode,
@@ -442,6 +451,9 @@ export function composePrepared(prepared, options = {}) {
     },
   };
 
+  // 사건의 연쇄와 딸려 올 수 있는 다른 분야 — 순서가 성립하는 것만 남는다
+  scenario.chains = buildChains(scenario);
+
   const audit = auditCoherence(scenario, prepared);
   // 게이트가 제 일을 해서 잘라낸 것과, 앞 층이 넘겨서 잘라낸 것을 가른다.
   // 앞의 것은 정상 동작이고 뒤의 것은 위층의 잘못이다. 둘 다 적되 `ok` 는
@@ -457,6 +469,42 @@ export function composePrepared(prepared, options = {}) {
 
 /** 게이트가 설계대로 잘라낸 것 — 있어도 시나리오가 어긋난 것은 아니다 */
 const EXPECTED_CUTS = new Set(['cut_conflicting_direction', 'cut_branches']);
+
+const BANDS = [[0.75, 'high'], [0.55, 'medium_high'], [0.35, 'medium'], [0.15, 'low'], [0, 'insufficient']];
+const band = (v) => (BANDS.find(([f]) => v >= f) ?? BANDS[BANDS.length - 1])[1];
+const AGREE = { strong: 1, partial: 0.6, weak: 0.3, none: 0 };
+const DIR = { unanimous: 1, majority: 0.75, mixed: 0.4, unknown: 0 };
+
+/**
+ * 칸마다 따로 매긴 확신.
+ *
+ * **아래 칸이 위 칸보다 두터울 수 없다.** 좁힐수록 같은 근거를 더 잘게 쪼개
+ * 쓰는 것이지 근거가 늘어나는 것이 아니다. 그래서 내려가면서 깎는다.
+ * 이 값은 근거의 두께이고 확률이 아니다.
+ */
+export function confidenceOf(o = {}) {
+  const { cap = 0, grain = 'year', conflict = null, phase = null, detail = {}, location = {} } = o;
+  const act = AGREE[conflict?.activationAgreement] ?? 0;
+  const dir = DIR[conflict?.directionalAgreement] ?? 0;
+  const sharp = phase ? Math.min(1, (phase.peakPercentile ?? 0) / 100 * Math.min(1.2, phase.persistence ?? 1)) : 0;
+  const grainCut = { year: 1, halfyear: 0.9, quarter: 0.8, month: 0.6 }[grain] ?? 0.8;
+
+  let cur = 1;
+  const step = (v) => { cur = Math.min(cur, Math.max(0, v)); return cur; };
+  const out = {};
+  out.event = band(step(cap >= 2 ? act * (0.4 + 0.6 * dir) : 0));
+  out.timing = band(step(sharp * grainCut));
+  out.direction = band(step(cap >= 3 ? dir : 0));
+  out.role = band(step(detail?.roleFamily ? cur : cur * 0.5));
+  out.location = band(step(location?.metro ? cur * 0.6 : 0));
+  out.district = band(step(location?.district ? cur * 0.6 : 0));
+  return {
+    ...out,
+    scale: ['insufficient', 'low', 'medium', 'medium_high', 'high'],
+    monotonic: true,
+    note: '근거의 두께이지 확률이 아니다. 아래 칸이 위 칸보다 두터울 수 없다',
+  };
+}
 
 /** 이 시나리오가 실제로 내려간 가장 깊은 단계 */
 function usedLevel(p) {

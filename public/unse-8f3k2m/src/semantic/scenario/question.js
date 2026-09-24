@@ -29,6 +29,27 @@ const NO_REQUEST = {
  *   events    이 의도가 겨냥하는 사건 후보 (events.js 의 key)
  */
 export const INTENTS = [
+  // ── 분야 전체를 묻는 말은 특정 사건 질문보다 먼저 가른다 ──
+  // "내년에 직장운 어때"를 '이직'으로 읽으면, 묻지도 않은 사건을 앞세우게 된다
+  { key: 'domain_overview', domain: 'career', label: '직업 전반',
+    patterns: [/직장운/, /직업운/, /커리어 ?운/, /일 ?운[^가-힣]/],
+    requests: {}, events: null, overview: true },
+  { key: 'domain_overview', domain: 'wealth', label: '재물 전반',
+    patterns: [/재물운/, /금전운/, /돈 ?운/], requests: {}, events: null, overview: true },
+  { key: 'domain_overview', domain: 'relationship', label: '관계 전반',
+    patterns: [/애정운/, /연애운/], requests: {}, events: null, overview: true },
+  { key: 'domain_overview', domain: 'marriage', label: '결혼 전반',
+    patterns: [/결혼운/, /혼인운/], requests: {}, events: null, overview: true },
+  { key: 'domain_overview', domain: 'health', label: '건강 전반',
+    patterns: [/건강운/], requests: {}, events: null, overview: true },
+  { key: 'domain_overview', domain: 'education', label: '학업 전반',
+    patterns: [/학업운/, /시험운/], requests: {}, events: null, overview: true },
+
+  // 지금 자리를 지킬 수 있는지는 '이직'과 다른 질문이다
+  { key: 'employment_stability', domain: 'career', label: '자리 유지',
+    patterns: [/오래 다닐/, /계속 다닐/, /계속 다녀/, /버틸 수/, /잘리/, /정년/, /안정적으로 다닐/],
+    requests: {}, events: ['resignation', 'job_change', 'role_change'], stability: true },
+
   { key: 'job_change', domain: 'career', label: '이직',
     patterns: [/이직/, /직장[^.]{0,4}(옮|바꾸|바뀌|이동)/, /회사[^.]{0,4}(옮|바꾸|나가|그만)/],
     requests: { role: true, industry: true }, events: ['job_change', 'role_change'] },
@@ -185,28 +206,61 @@ export function interpretQuestion(text, opts = {}) {
   const best = matched[0] ?? null;
 
   const requestedSpecificity = { ...NO_REQUEST, ...(best?.requests ?? {}) };
+  // 의도가 기본으로 켜는 칸과 **사용자가 직접 물은 칸**을 갈라 둔다.
+  // "언제 이직해?"는 이직 의도가 역할·업종을 기본으로 켜지만, 사용자가
+  // 그것까지 물은 것은 아니다 — 그 차이가 답의 구체성을 정한다
+  const askedExplicit = [];
   for (const a of ASK) {
-    if (a.patterns.some((p) => p.test(t))) requestedSpecificity[a.key] = true;
+    if (!a.patterns.some((p) => p.test(t))) continue;
+    requestedSpecificity[a.key] = true;
+    askedExplicit.push(a.key);
   }
   const grain = TIMING_ASK.find((g) => g.patterns.some((p) => p.test(t)));
   if (grain) requestedSpecificity.timing = grain.grain;
 
   const horizon = readHorizon(t, now, opts.defaultYears ?? 3);
 
+  // ── 어디까지 물었나 ────────────────────────────────────────
+  // "내년 운세 어때"에 구 단위까지 말할 필요가 없고, "어디쯤 어떤 회사"라고
+  // 물으면 근거가 닿는 데까지 내려가야 한다. 그 차이를 여기서 적어 둔다.
+  const narrow = ['role', 'industry', 'location', 'company'].filter((k) => askedExplicit.includes(k));
+  const level = best?.overview ? 'low' : narrow.length ? 'high' : 'normal';
+  requestedSpecificity.level = level;
+
+  const requestedAttributes = ['timing',
+    ...(best?.overview ? [] : ['event']), ...narrow];
+
   return {
     raw: t,
+    /** 스키마 이름 그대로 쓰는 쪽을 위해 함께 둔다 */
+    rawQuestion: t,
     domain: best?.domain ?? null,
     intent: best?.key ?? 'unknown',
     label: best?.label ?? null,
     /** 이 의도가 겨냥하는 사건 후보. null 이면 그 분야 전체를 본다 */
     targetEvents: best?.events ?? null,
+    /** 전반을 묻는 질문인가 (사건 하나를 앞세우지 않는다) */
+    overview: best?.overview === true,
     horizon,
+    timeRange: { from: horizon.from, to: horizon.to },
     requestedSpecificity,
+    requestedAttributes,
+    /** 현재 상태를 모르면 갈 수 없는 길을 지우지 못하는 질문인가 */
+    requiresCurrentState: REQUIRES_STATE.has(best?.key ?? '') || !!best?.stability,
+    /** 실제 자료(채용·지역)를 맞대야 답할 수 있는 질문인가 */
+    requiresRealityContext: !!(requestedSpecificity.location || requestedSpecificity.company),
     /** 두 번째로 맞은 의도들 — 질문이 겹치면 버리지 않고 남긴다 */
     alsoMatched: matched.slice(1).map((i) => ({ intent: i.key, domain: i.domain, label: i.label })),
     ...(best ? {} : { note: '어느 분야를 묻는지 읽지 못했다 — 분야를 골라 다시 물어야 한다' }),
   };
 }
+
+/** 현재 상태가 있어야 갈 수 없는 길을 지울 수 있는 의도 */
+const REQUIRES_STATE = new Set([
+  'job_change', 'first_job', 'promotion', 'resignation', 'independence',
+  'employment_stability', 'marriage', 'new_relationship', 'relationship_status',
+  'children', 'home_purchase', 'move',
+]);
 
 /** 분야 이름이 실제로 있는 것인지 (오타로 조용히 빈 결과가 나오지 않게) */
 export const isDomain = (d) => DOMAINS.includes(d);

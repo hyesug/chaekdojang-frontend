@@ -31,6 +31,9 @@ import { claim, evidenceFrom, auditProvenance, resetIds } from './provenance.js'
 import { composePrepared, timingAt } from './composer.js';
 import { narrateScenario, auditNarration } from './narrator.js';
 import { matchReality, auditRealityMatch } from './reality.js';
+import { selectEvidence, questionTypeOf } from './evidence.js';
+import { buildChains, chainOf, checkTemporalConsistency } from './chain.js';
+import { attributesOf } from './attributes.js';
 import { auditCoherence } from './coherence.js';
 import { detailFor } from './detail.js';
 
@@ -370,6 +373,8 @@ export {
   composePrepared, auditCoherence, detailFor, timingAt,
   narrateScenario, auditNarration,
   matchReality, auditRealityMatch,
+  selectEvidence, questionTypeOf,
+  buildChains, chainOf, checkTemporalConsistency, attributesOf,
   interpretQuestion, resolveConflict, timingPhases, specificityGate,
   buildBranches, conditionalStateAt, snapshotFromState, contextFor, stateOf, possibleTransitions,
   filterByState, claim, evidenceFrom, auditProvenance, scoreEvents, monthNo,

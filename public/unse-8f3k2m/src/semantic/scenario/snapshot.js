@@ -19,7 +19,7 @@
  */
 
 import { monthNo } from '../timing/schema.js';
-import { stateOf, possibleTransitions, STATE_GRAPH } from './graph.js';
+import { stateOf, possibleTransitions, transitionFor, STATE_GRAPH } from './graph.js';
 
 /** 빈 스냅숏 한 벌 */
 export function makeSnapshot(at, o = {}) {
@@ -69,108 +69,153 @@ export function contextFor(snapshot, { includePlanned = true } = {}) {
 }
 
 /**
+ * 한 국면에서 **그 국면의 재료만으로** 고른 사건 후보.
+ *
+ * 세 가지를 모두 그 국면 것으로 쓴다.
+ *   1. 그 국면의 `rawEvents` — 시기 신호가 실제로 있는 사건
+ *   2. 그 국면의 `conflict` 방향 — 체계들이 그쪽을 가리켰는가
+ *   3. 지금(또는 앞 단계를 가정한) 상태에서 갈 수 있는 전이인가
+ *
+ * **다른 국면의 방향을 빌려 오지 않는다.** 2029년이 창업을 가리켰다고
+ * 2028년 국면에 창업을 붙이면, 시기는 2028이고 방향은 2029인 이야기가 된다.
+ *
+ * 1번이 비면 후보가 없다. **상태 기계에 길이 있다는 이유만으로 사건을
+ * 만들지 않는다** — 그 시기에 아무 신호가 없다는 뜻이기 때문이다.
+ */
+export function phaseCandidates(domain, state, signal, { exclude = new Set() } = {}) {
+  const support = new Set([
+    signal?.conflict?.primaryDirection,
+    ...(signal?.conflict?.competingDirections ?? []),
+  ].filter(Boolean));
+
+  const out = [];
+  for (const e of signal?.rawEvents ?? []) {
+    if (exclude.has(e.type)) continue;
+    const tr = transitionFor(domain, state, e.type);
+    if (!tr) continue;                       // 그 상태에서 갈 수 없는 길
+    out.push({
+      event: e.type, label: e.label ?? null, score: e.score ?? 0, tr,
+      supported: support.has(e.type),
+      phaseId: signal.phase?.id ?? signal.phase?.start ?? null,
+    });
+  }
+  // 체계가 지지한 쪽을 먼저, 그다음 그 국면의 사건 점수 순
+  out.sort((a, b) => (Number(b.supported) - Number(a.supported)) || (b.score - a.score));
+  return out;
+}
+
+/**
  * 미래 가지를 만든다.
  *
- * 한 국면에서 갈 수 있는 전이가 여럿이면 **하나로 좁히지 않고** 가지를
+ * 한 국면에서 갈 수 있는 길이 여럿이면 **하나로 좁히지 않고** 가지를
  * 벌린다. 각 가지의 상태 변화는 전부 `predicted` 로만 적힌다.
  *
- * ── 두 가지 순서를 가른다 ──────────────────────────────────
- * `timingPhases()` 는 **좋은 국면 순서**(봉우리 높은 순)로 준다. 가지는
- * **시간 순서**로 이어져야 한다. 둘을 같은 배열로 쓰면
- * "2029 창업 → 2028 공백" 같은 역행이 나온다. 그래서 여기서 **날짜순으로
- * 다시 세우고**, 다음 단계는 앞 단계보다 **뒤에 오는 국면만** 쓴다.
- * 뒤에 국면이 없으면 **다음 사건을 만들지 않고 끝낸다.** 한 국면을 두
- * 단계에 겹쳐 쓰지도 않는다.
+ * ── 시기와 방향을 따로 넘기지 않는다 ───────────────────────
+ * 전에는 `phases` 배열과 `directions` 배열을 따로 받았다. `timingPhases()`
+ * 는 봉우리 높은 순으로 주고 여기서는 날짜순으로 다시 세우므로, **가장 강한
+ * 국면의 방향이 가장 이른 국면에 붙는** 어긋남이 생겼다. 이제 국면·충돌·
+ * 사건 후보를 한 덩어리(`signal`)로 받아 **단계마다 그 국면 것만** 쓴다.
  *
  * ── 조건부 시뮬레이션 ──────────────────────────────────────
  * 앞 단계가 일어났다고 **가정하면** 상태는 X 다. 그 X 에서 갈 수 있는
- * 길을 다음 후보로 본다. 이것은 가지 안에서만 성립하는 가정이고,
+ * 길을 다음 국면의 후보와 맞댄다. 가정은 가지 안에서만 성립하고
  * `snapshot.observed` 를 덮어쓰지 않는다. 가지 A 의 가정이 가지 B 로
  * 새지도 않는다 — 가지마다 상태를 따로 들고 간다.
  *
  * @param {object} o
- *   domain, snapshot, phases, directions  (conflict 가 고른 방향들)
- *   maxBranches  기본 3
- *   depth        한 가지에서 이어 볼 단계 수 (기본 2)
+ *   domain, snapshot
+ *   signals        [{ phase, conflict, rawEvents }] — 순서는 상관없다
+ *   primaryPhaseId 어느 국면에서 시작할지 (없으면 가장 이른 국면)
+ *   maxBranches    기본 3
+ *   depth          한 가지에서 이어 볼 단계 수 (기본 2)
  */
 export function buildBranches(o) {
-  const { domain, snapshot, phases = [], directions = [], maxBranches = 3, depth = 2 } = o;
+  const { domain, snapshot, signals = [], maxBranches = 3, depth = 2, primaryPhaseId = null } = o;
   const start = stateOf(domain, contextFor(snapshot).context);
-  const p = possibleTransitions(domain, start);
-  const graph = STATE_GRAPH[domain];
-  if (!graph) return { domain, startState: start, stateKnown: false, branches: [], note: '이 분야에는 상태 기계가 없다' };
-
-  // **날짜순**으로 다시 세운다. 들어온 순서(봉우리 높은 순)를 믿지 않는다
-  const ordered = phases
-    .filter((x) => x && x.start)
-    .slice()
-    .sort((a, b) => String(a.start).localeCompare(String(b.start)));
-
-  // 방향이 지목한 전이를 앞에 둔다. 방향이 없으면 갈 수 있는 순서대로
-  const order = new Map(directions.map((d, i) => [d, i]));
-  const byOrder = (a, b) => (order.get(a.event) ?? 99) - (order.get(b.event) ?? 99);
-
-  // 같은 사건으로 가는 전이가 여럿이면 하나만
-  const seen = new Set();
-  const heads = [];
-  for (const tr of p.transitions.slice().sort(byOrder)) {
-    if (seen.has(tr.event)) continue;
-    seen.add(tr.event); heads.push(tr);
-    if (heads.length >= maxBranches) break;
+  const known = possibleTransitions(domain, start).stateKnown;
+  if (!STATE_GRAPH[domain]) {
+    return { domain, startState: start, stateKnown: false, branches: [], phaseOrder: [],
+      note: '이 분야에는 상태 기계가 없다' };
   }
 
-  const branches = heads.map((head, i) => {
+  // **날짜순**으로 다시 세운다. 들어온 순서(봉우리 높은 순)를 믿지 않는다
+  const ordered = signals
+    .filter((s) => s?.phase?.start)
+    .slice()
+    .sort((a, b) => String(a.phase.start).localeCompare(String(b.phase.start)));
+  const phaseOrder = ordered.map((s) => s.phase.start);
+  const idOf = (s) => s.phase.id ?? s.phase.start;
+
+  const base = { domain, startState: start, stateKnown: known, phaseOrder };
+  if (!ordered.length) {
+    return { ...base, branches: [], note: '국면이 없다 — 시점을 지어내지 않는다' };
+  }
+
+  // primary 가 고른 국면에서 출발한다. 그래야 primary 와 가지 1단계가 어긋나지 않는다
+  const at = primaryPhaseId ? ordered.findIndex((s) => idOf(s) === primaryPhaseId) : 0;
+  const startIdx = at >= 0 ? at : 0;
+  const head = ordered[startIdx];
+
+  const heads = phaseCandidates(domain, start, head).slice(0, maxBranches);
+  if (!heads.length) {
+    return { ...base, branches: [], startPhaseId: idOf(head),
+      note: `${head.phase.start} 국면에 지금 상태에서 갈 수 있는 사건 신호가 없다 — 상태 기계만 보고 만들지 않는다` };
+  }
+
+  const branches = heads.map((h, i) => {
     const steps = [];
     // **이 가지 안에서만** 굴러가는 상태. 다른 가지와 공유하지 않는다
-    let state = head.from === 'unknown' ? start : head.from;
-    let phaseIdx = -1;                    // 마지막으로 쓴 국면
-    const usedEvents = new Set();
+    let state = h.tr.assumedFrom ? h.tr.from : start;
+    let idx = startIdx;
+    let pick = h;
+    const used = new Set();
 
-    const push = (tr) => {
-      phaseIdx += 1;                      // 앞 단계보다 **뒤** 국면만 쓴다
-      const ph = ordered[phaseIdx] ?? null;
+    for (;;) {
+      const sig = ordered[idx];
       const before = state;
       const assumedSoFar = steps.map((s) => s.event);
       steps.push({
-        event: tr.event, from: before, to: tr.to,
-        // 국면이 있으면 그 구간에 얹는다. 없으면 시점을 지어내지 않는다
-        window: ph ? { from: ph.start, to: ph.end, peak: ph.peak } : null,
+        event: pick.event, label: pick.label,
+        from: before, to: pick.tr.to,
+        phaseId: idOf(sig),
+        // 시기·방향·사건이 **같은 국면**에서 나왔다
+        window: { from: sig.phase.start, to: sig.phase.end, peak: sig.phase.peakMonth ?? sig.phase.peak ?? null },
+        eventScore: pick.score,
+        phaseDirection: sig.conflict?.primaryDirection ?? null,
+        directionSupported: pick.supported,
         sourceType: 'derived',
         stateBefore: {
           value: before,
-          kind: steps.length === 0 ? (p.stateKnown ? 'observed' : 'unknown') : 'predicted',
+          kind: steps.length === 0 ? (known && !h.tr.assumedFrom ? 'observed' : 'unknown') : 'predicted',
         },
-        stateAfter: { value: tr.to, kind: 'predicted' },
+        stateAfter: { value: pick.tr.to, kind: 'predicted' },
         /** 이 단계가 성립하려면 앞의 어떤 단계가 먼저 일어나야 하는가 */
         conditionalOn: assumedSoFar,
         assumption: assumedSoFar.length
           ? `${assumedSoFar.join(' → ')} 가 실제로 일어난다는 가정`
-          : (p.stateKnown ? `현재 상태가 '${before}' 라는 사실` : '현재 상태를 모른다 — 가정한 출발점'),
-        note: tr.note ?? null,
+          : (known ? `현재 상태가 '${before}' 라는 사실` : '현재 상태를 모른다 — 가정한 출발점'),
+        note: pick.tr.note ?? null,
       });
-      state = tr.to;
-      usedEvents.add(tr.event);
-    };
+      state = pick.tr.to;
+      used.add(pick.event);
 
-    push(head);
-    for (let d = 1; d < depth; d++) {
-      // 뒤에 쓸 국면이 없으면 다음 사건을 억지로 만들지 않는다
-      if (phaseIdx + 1 >= ordered.length) break;
-      // **앞 단계가 일어났다고 가정한 상태**에서 갈 수 있는 길
-      const next = graph.transitions
-        .filter((x) => x.from === state && !usedEvents.has(x.event))
-        .sort(byOrder)[0];
-      if (!next) break;
-      push(next);
+      if (steps.length >= depth) break;
+      // 다음 단계는 **바로 뒤 국면**에서만 본다. 앞으로 건너뛰며 찾지 않는다
+      const nextIdx = idx + 1;
+      if (nextIdx >= ordered.length) break;
+      const next = phaseCandidates(domain, state, ordered[nextIdx], { exclude: used })[0];
+      if (!next) break;                       // 그 국면에 맞는 사건이 없으면 거기서 끝
+      pick = next; idx = nextIdx;
     }
 
     return {
       id: String.fromCharCode(65 + i),
       label: steps.map((s) => s.event).join(' → '),
-      startState: start, stateKnown: p.stateKnown,
+      startState: start, stateKnown: known,
+      startPhaseId: steps[0].phaseId,
       steps,
       /** 이 가지가 성립하려면 무엇이 먼저 참이어야 하는가 */
-      assumption: p.stateKnown
+      assumption: known
         ? `현재 ${domain} 상태가 '${start}' 이라는 것`
         : '현재 상태를 듣지 못했다 — 이 가지는 상태를 가정한 것이다',
       // 두 번째 단계부터는 앞 단계가 일어났다는 가정 위에 선다
@@ -181,12 +226,10 @@ export function buildBranches(o) {
   });
 
   return {
-    domain, startState: start, stateKnown: p.stateKnown,
-    branches,
-    phaseOrder: ordered.map((x) => x.start),
+    ...base, branches, startPhaseId: idOf(head),
     note: branches.length > 1
       ? '가지를 하나로 좁히지 않았다 — 갈린 채로 다음 층에 넘긴다'
-      : (p.stateKnown ? '이 상태에서 갈 수 있는 길이 하나다' : p.note),
+      : (known ? '이 국면에서 갈 수 있는 길이 하나다' : '현재 상태를 모른다 — 출발 상태를 가정했다'),
   };
 }
 

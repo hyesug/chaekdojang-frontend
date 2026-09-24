@@ -87,6 +87,8 @@ export function timingPhases(result, domain, o = {}) {
 
     phases.push({
       domain,
+      // 국면은 이어진 달 덩어리라 시작 달이 겹치지 않는다 — 그대로 식별자로 쓴다
+      id: run[0].key,
       resolution: RESOLUTION[domain] ?? 'month',
       start: run[0].key,
       peak: run[peakIdx].key,
@@ -118,6 +120,7 @@ export function timingPhases(result, domain, o = {}) {
  * (`resolution` 이라는 이름이 해상도와 겹쳐서 내부에서는 `resolution_` 로 둔다)
  */
 export const asPhaseShape = (p) => ({
+  id: p.id ?? p.start,
   buildup: p.buildup, peak: p.peakPhase, resolution: p.resolution_,
   start: p.start, peakMonth: p.peak, end: p.end,
   peakPercentile: p.peakPercentile, persistence: p.persistence,

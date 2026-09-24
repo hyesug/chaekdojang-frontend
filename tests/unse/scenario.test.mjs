@@ -31,6 +31,21 @@ const sc = () => (cachedSc ??= prepareScenario({
   currentState: { employmentType: 'employed', occupation: '개발자' },
 }));
 
+/**
+ * 국면 하나를 손으로 만든다 — 시기·방향·사건 후보가 **한 덩어리**여야 한다.
+ * @param start  국면 시작 (곧 id)
+ * @param events 그 국면에 시기 신호가 있는 사건들 (앞쪽이 점수가 높다)
+ * @param dirs   그 국면에서 체계들이 가리킨 방향 (첫째가 primary)
+ */
+const sig = (start, events, dirs = [], pct = 90) => ({
+  phase: { id: start, start, end: `${start.slice(0, 4)}-12`, peakMonth: start,
+    peakPercentile: pct, persistence: 1, grain: 'quarter' },
+  conflict: { primaryDirection: dirs[0] ?? null, competingDirections: dirs.slice(1),
+    activationAgreement: 'strong', directionalAgreement: dirs.length > 1 ? 'mixed' : 'unanimous',
+    evidenceStrength: 0.6 },
+  rawEvents: events.map((t, i) => ({ type: t, label: t, score: 0.5 - i * 0.05 })),
+});
+
 // ── 1. 질문 해석 ─────────────────────────────────────────────
 
 test('1. 자연어 질문이 올바른 분야·의도로 읽힌다', () => {
@@ -186,21 +201,27 @@ test('6. predicted 는 observed 와 섞이지 않는다', () => {
   assert.match(c.note, /predicted 는 넣지 않았다/);
 
   // 가지의 상태 변화는 전부 predicted 로만 적힌다
-  const b = buildBranches({ domain: 'career', snapshot: s, phases: [], directions: [] });
+  const b = buildBranches({ domain: 'career', snapshot: s,
+    signals: [sig('2028-02', ['role_change'], ['role_change', 'promotion'])] });
+  assert.ok(b.branches.length);
   for (const br of b.branches) {
     for (const st of br.steps) {
       assert.equal(st.stateAfter.kind, 'predicted');
       assert.equal(st.sourceType, 'derived');
     }
   }
+  // 국면이 없으면 가지를 만들지 않는다 — 시점을 지어내지 않는다
+  const none = buildBranches({ domain: 'career', snapshot: s, signals: [] });
+  assert.deepEqual(none.branches, []);
+  assert.ok(none.note);
 });
 
 test('7. 미래 가지 A/B 가 동시에 남는다', () => {
   const s = snapshotFromState('2028-01', { relationshipStatus: 'dating' });
   const b = buildBranches({
     domain: 'relationship', snapshot: s,
-    phases: [{ start: '2028-03', peak: '2028-05', end: '2028-07' }],
-    directions: ['relationship_deepening', 'conflict'],
+    signals: [sig('2028-03', ['relationship_deepening', 'conflict'],
+      ['relationship_deepening', 'conflict'])],
   });
   assert.equal(b.startState, 'dating');
   assert.ok(b.branches.length >= 2, `가지가 ${b.branches.length}개뿐`);
@@ -343,14 +364,13 @@ test('13. 같은 입력이면 같은 결과다', () => {
 
 test('14. 가지의 단계는 시간 오름차순이고, 같은 국면을 두 번 쓰지 않는다', () => {
   // 일부러 봉우리 높은 순(= 시간 역순)으로 넣는다
-  const phases = [
-    { start: '2029-04', peak: '2029-05', end: '2029-07', peakPercentile: 99 },
-    { start: '2028-02', peak: '2028-03', end: '2028-05', peakPercentile: 90 },
-    { start: '2030-01', peak: '2030-02', end: '2030-03', peakPercentile: 88 },
+  const signals = [
+    sig('2029-04', ['promotion'], ['promotion'], 99),
+    sig('2028-02', ['role_change'], ['role_change'], 90),
+    sig('2030-01', ['job_change'], ['job_change'], 88),
   ];
   const s = snapshotFromState('2028-01', { employmentType: 'employed' });
-  const b = buildBranches({ domain: 'career', snapshot: s, phases,
-    directions: ['role_change', 'promotion'], depth: 3 });
+  const b = buildBranches({ domain: 'career', snapshot: s, signals, depth: 3 });
 
   assert.deepEqual(b.phaseOrder, ['2028-02', '2029-04', '2030-01'], '날짜순으로 다시 세운다');
   for (const br of b.branches) {
@@ -368,27 +388,25 @@ test('14. 가지의 단계는 시간 오름차순이고, 같은 국면을 두 �
   }
 
   // 뒤에 국면이 없으면 depth 가 2 라도 1단계에서 끝낸다
-  const one = buildBranches({ domain: 'career', snapshot: s,
-    phases: [phases[0]], directions: ['role_change', 'promotion'], depth: 2 });
+  const one = buildBranches({ domain: 'career', snapshot: s, signals: [signals[2]], depth: 2 });
+  assert.ok(one.branches.length);
   for (const br of one.branches) assert.equal(br.steps.length, 1, `${br.id} 가 ${br.steps.length}단계`);
 
-  // 국면이 아예 없으면 시점을 지어내지 않는다
-  const none = buildBranches({ domain: 'career', snapshot: s, phases: [], directions: [], depth: 2 });
-  for (const br of none.branches) {
-    assert.equal(br.steps.length, 1);
-    assert.equal(br.steps[0].window, null);
-  }
+  // 국면이 아예 없으면 가지를 만들지 않는다 — 시점을 지어내지 않는다
+  const none = buildBranches({ domain: 'career', snapshot: s, signals: [], depth: 2 });
+  assert.deepEqual(none.branches, []);
+  assert.match(none.note, /국면이 없다/);
 });
 
 test('15. 앞 단계를 가정한 상태에서 다음 단계를 고른다 (조건부)', () => {
   const s = snapshotFromState('2028-01', { employmentType: 'none' });
   assert.equal(stateOf('career', { employmentType: 'none' }), 'unemployed');
-  const phases = [
-    { start: '2028-02', peak: '2028-03', end: '2028-05', peakPercentile: 90 },
-    { start: '2029-04', peak: '2029-05', end: '2029-07', peakPercentile: 99 },
+  // 2028 국면에는 취업 신호가, 2029 국면에는 승진 신호가 있다
+  const signals = [
+    sig('2028-02', ['first_job', 'freelance'], ['first_job'], 90),
+    sig('2029-04', ['promotion', 'role_change'], ['promotion'], 99),
   ];
-  const b = buildBranches({ domain: 'career', snapshot: s, phases,
-    directions: ['first_job', 'promotion'], depth: 2 });
+  const b = buildBranches({ domain: 'career', snapshot: s, signals, depth: 2 });
 
   const a = b.branches.find((x) => x.steps[0].event === 'first_job');
   assert.ok(a, '취업 가지가 있어야 한다');
@@ -423,10 +441,15 @@ test('15. 앞 단계를 가정한 상태에서 다음 단계를 고른다 (조�
   assert.deepEqual(c.assumedEvents, ['first_job']);
   assert.match(c.note, /사실로 쓰지 않는다/);
 
+  // 승진은 2029 국면 것이지 2028 국면 것이 아니다
+  assert.equal(a.steps[0].phaseId, '2028-02');
+  assert.equal(a.steps[1].phaseId, '2029-04');
+  assert.equal(a.steps[1].window.from, '2029-04');
+
   // 현재 재직 중이면 first_job 은 첫 단계에서 여전히 없다
   const emp = buildBranches({ domain: 'career',
     snapshot: snapshotFromState('2028-01', { employmentType: 'employed' }),
-    phases, directions: ['first_job', 'promotion'], depth: 2 });
+    signals, depth: 2 });
   assert.ok(!emp.branches.some((x) => x.steps[0].event === 'first_job'));
 });
 
@@ -469,4 +492,126 @@ test('16. 연도 × 상·하반기를 함께 읽는다', () => {
   assert.equal(r.specificity.timing.requested, 'halfyear');
   assert.ok(['year', 'halfyear'].includes(r.specificity.timing.allowed),
     `반기로 물었는데 ${r.specificity.timing.allowed} 로 답한다`);
+});
+
+// ── 17~19. 국면 ↔ 사건 ↔ 조건부 상태 연결 ─────────────────────
+
+test('17. 강한 국면의 방향이 다른 날짜의 국면에 붙지 않는다', () => {
+  // 2029 가 더 강하지만(99) 2028 도 국면이다. 방향은 서로 다르다
+  const signals = [
+    sig('2029-04', ['business_start'], ['business_start'], 99),
+    sig('2028-02', ['role_change'], ['role_change'], 88),
+  ];
+  const s = snapshotFromState('2028-01', { employmentType: 'employed' });
+
+  // 2029 에서 출발하라고 하면 1단계는 반드시 2029 의 방향이다
+  const fromStrong = buildBranches({ domain: 'career', snapshot: s, signals,
+    primaryPhaseId: '2029-04', depth: 2 });
+  assert.equal(fromStrong.branches[0].steps[0].phaseId, '2029-04');
+  assert.equal(fromStrong.branches[0].steps[0].event, 'business_start');
+  assert.equal(fromStrong.branches[0].steps[0].window.from, '2029-04');
+
+  // 2028 에서 출발하면 2029 의 business_start 를 빌려 오지 않는다
+  const fromEarly = buildBranches({ domain: 'career', snapshot: s, signals,
+    primaryPhaseId: '2028-02', depth: 2 });
+  const a = fromEarly.branches[0];
+  assert.equal(a.steps[0].phaseId, '2028-02');
+  assert.equal(a.steps[0].event, 'role_change', '2029 의 방향이 2028 에 붙었다');
+  // 이어지는 단계는 그 국면(2029) 것이어야 한다
+  if (a.steps[1]) {
+    assert.equal(a.steps[1].phaseId, '2029-04');
+    assert.equal(a.steps[1].event, 'business_start');
+  }
+  // 모든 단계에서 사건·방향·시기가 같은 국면 것이다
+  for (const br of [...fromStrong.branches, ...fromEarly.branches]) {
+    for (const st of br.steps) {
+      const own = signals.find((x) => x.phase.id === st.phaseId);
+      assert.ok(own.rawEvents.some((e) => e.type === st.event),
+        `${st.phaseId} 에 없는 사건 ${st.event} 가 붙었다`);
+      assert.equal(st.window.from, own.phase.start);
+      assert.equal(st.phaseDirection, own.conflict.primaryDirection);
+    }
+  }
+});
+
+test('18. 시기 신호가 없는 사건은 상태 기계만 보고 만들어지지 않는다', () => {
+  const s = snapshotFromState('2028-01', { employmentType: 'employed' });
+  // 재직 중이면 상태 기계에는 promotion·job_change·resignation … 길이 여럿이다
+  assert.ok(possibleTransitions('career', 'employed').transitions.length > 3);
+
+  // 그런데 이 국면의 시기 후보는 role_change 하나뿐이다
+  const only = buildBranches({ domain: 'career', snapshot: s,
+    signals: [sig('2028-02', ['role_change'], ['role_change'])], depth: 2 });
+  assert.equal(only.branches.length, 1, '시기 신호가 없는 길까지 가지로 만들면 안 된다');
+  assert.equal(only.branches[0].steps[0].event, 'role_change');
+
+  // 다음 국면에 갈 수 있는 사건이 하나도 없으면 거기서 끝낸다
+  const dead = buildBranches({ domain: 'career', snapshot: s, depth: 3,
+    signals: [
+      sig('2028-02', ['role_change'], ['role_change']),
+      // 재직 중에서 갈 수 없는 사건만 있는 국면
+      sig('2029-04', ['first_job'], ['first_job']),
+    ] });
+  assert.equal(dead.branches[0].steps.length, 1, '갈 수 없는 국면인데 단계가 이어졌다');
+
+  // 시기 후보가 아예 없는 국면에서 출발하라고 하면 가지를 만들지 않는다
+  const empty = buildBranches({ domain: 'career', snapshot: s,
+    signals: [sig('2028-02', [], [])] });
+  assert.deepEqual(empty.branches, []);
+  assert.match(empty.note, /상태 기계만 보고 만들지 않는다/);
+});
+
+test('19. 현재 상태가 미래 사건 원재료를 미리 지우지 않는다', () => {
+  const opts = { birth: BIRTH, question: '2027년부터 2030년 사이에 이직할까?', now: NOW };
+  const emp = prepareScenario({ ...opts, currentState: { employmentType: 'employed' } });
+  const un = prepareScenario({ ...opts, currentState: { employmentType: 'none' } });
+
+  // 상태 중립으로 계산했으므로 원재료는 두 경우가 같아야 한다
+  assert.equal(emp.meta.stateNeutralTimeline, true);
+  const rawOf = (r) => r.resolvedSignals.map((s) =>
+    [s.phase.id, s.rawEvents.map((e) => e.type).sort().join(',')].join('|')).sort();
+  assert.deepEqual(rawOf(un), rawOf(emp),
+    '현재 상태가 timeline 단계에서 사건 후보를 지웠다');
+
+  // 무직이라고 미래의 승진·이직 후보가 원재료에서 사라지지 않는다
+  const rawAll = new Set(un.resolvedSignals.flatMap((s) => s.rawEvents.map((e) => e.type)));
+  assert.ok(rawAll.has('promotion'), `원재료에 promotion 이 없다: ${[...rawAll].join(',')}`);
+
+  // 대신 지금 상태에서 갈 수 없는 것으로 표시된다 — 지워지는 게 아니다
+  const withProm = un.resolvedSignals.find((s) => s.rawEvents.some((e) => e.type === 'promotion'));
+  assert.ok(!withProm.reachableEvents.some((e) => e.type === 'promotion'),
+    '무직인데 승진이 지금 갈 수 있는 후보로 남았다');
+  assert.ok(withProm.removedEvents.some((x) => x.event === 'promotion'),
+    '왜 빠졌는지 적지 않고 조용히 지웠다');
+
+  // 예측이 관측으로 승격되지 않는다
+  assert.deepEqual(un.snapshot.observed, { employmentType: 'none' });
+  assert.equal(un.contextUsed.context.employmentType, 'none');
+  for (const br of un.branches) {
+    for (const st of br.steps.slice(1)) assert.equal(st.stateBefore.kind, 'predicted');
+  }
+});
+
+test('20. 주 시나리오와 가지 1단계가 같은 국면·같은 사건에서 출발한다', () => {
+  for (const cur of [{ employmentType: 'employed' }, { employmentType: 'none' }, null]) {
+    const r = prepareScenario({
+      birth: BIRTH, question: '2027년부터 2030년 사이에 이직할까?', now: NOW, currentState: cur });
+    const p = r.scenarioInput.primary;
+    if (!p) continue;
+    const bs = r.scenarioInput.branchStart;
+    assert.equal(bs.matchesPrimary, true,
+      `primary ${p.phaseId}/${p.eventType} vs 가지 ${bs.phaseId}/${bs.event}`);
+    if (bs.branch) {
+      const a = r.branches.find((x) => x.id === bs.branch);
+      assert.equal(a.steps[0].phaseId, p.phaseId);
+      assert.equal(a.steps[0].event, p.eventType);
+      assert.equal(a.steps[0].window.from, p.timing.window.from);
+      // 이후 단계는 더 미래 국면으로만 이어진다
+      for (let i = 1; i < a.steps.length; i++) {
+        assert.ok(a.steps[i].window.from > a.steps[i - 1].window.to);
+      }
+    }
+    // 대안도 어느 국면에서 나온 말인지 밝힌다
+    for (const alt of r.scenarioInput.alternatives) assert.ok(alt.phaseId);
+  }
 });

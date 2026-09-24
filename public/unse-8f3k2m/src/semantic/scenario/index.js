@@ -68,7 +68,16 @@ export function prepareScenario(o = {}) {
   const ctx = contextFor(snapshot);
 
   // ── 시기 ──
-  const result = predictTimeline({ birth, from, to, currentState: ctx.context, domains: [domain] });
+  //
+  // **오늘의 상태를 미래 전체에 미리 먹이지 않는다.** `scoreEvents` 의
+  // `contextOk` 는 상태가 안 맞는 후보를 0 으로 없앤다. 여기에 오늘 상태를
+  // 넣으면 지금 무직이라는 이유로 2029년 승진 후보가 **timeline 단계에서
+  // 이미 사라진다** — 2027년에 취업한 뒤의 2029년을 볼 수 없게 된다.
+  //
+  // 그래서 원재료는 상태 중립으로 만들고, 상태는 아래 상태 기계에서
+  // **단계마다** 적용한다. 상태를 모른 척하는 것이 아니라, 재료를 미리
+  // 지우지 않는 것이다.
+  const result = predictTimeline({ birth, from, to, currentState: null, domains: [domain] });
   const natal = readPerson(birth, { domains: [domain] });
   const natalProfile = natal.domains[domain]?.profile ?? null;
 
@@ -79,36 +88,62 @@ export function prepareScenario(o = {}) {
   const state = stateOf(domain, ctx.context);
   const transitions = possibleTransitions(domain, state);
 
+  /** 그 국면 **전체**에서 사건 후보를 모은다 (종류마다 가장 높은 달) */
+  const rawEventsOf = (p) => {
+    const best = new Map();
+    for (const k of p.keys ?? []) {
+      for (const e of result.timeline[k]?.events ?? []) {
+        if (e.domain !== domain) continue;
+        const cur = best.get(e.type);
+        if (!cur || e.score > cur.score) {
+          best.set(e.type, { type: e.type, label: e.label, score: e.score, at: k, parts: e.parts });
+        }
+      }
+    }
+    return [...best.values()].sort((a, b) => b.score - a.score);
+  };
+
   const resolvedSignals = phases.map((p) => {
+    // 국면·충돌·사건 후보를 **한 덩어리로 묶어** 둔다. 이 셋이 흩어지면
+    // 다른 국면의 방향이 이 국면의 시기에 붙는다
     const conflict = resolveConflict(result, domain, { from: p.start, to: p.end });
-    // 그 국면의 사건 후보 — 상태로 거른다 (모르면 거르지 않는다)
-    const peakCell = result.timeline[p.peak];
-    const raw = peakCell?.events?.filter((e) => e.domain === domain) ?? [];
-    const f = filterByState(domain, state, raw);
+    const rawEvents = rawEventsOf(p);
+    const f = filterByState(domain, state, rawEvents);
     return {
       phase: asPhaseShape(p),
       conflict,
-      events: f.kept.slice(0, 5),
+      /** 상태를 적용하지 않은 시기 후보 — **지우지 않는다** */
+      rawEvents,
+      /** 지금 상태에서 갈 수 있는 것 (상태를 모르면 전부) */
+      reachableEvents: f.kept.slice(0, 5),
+      /** 상태 때문에 빠진 것. 시기 신호가 없는 것과 구별하려고 남긴다 */
       removedEvents: f.removed,
       stateKnown: f.stateKnown,
     };
   });
 
+  // ── 어느 국면을 주 시나리오로 삼는가 ──
+  // 가지도 여기서 출발해야 primary 와 1단계가 어긋나지 않는다
+  const scored = resolvedSignals.map((s, i) =>
+    ({ s, i, w: s.conflict.evidenceStrength * (s.phase.peakPercentile / 100) }));
+  const withEvents = scored.filter((x) => x.s.reachableEvents.length);
+  const ranked = (withEvents.length ? withEvents : scored).sort((a, b) => b.w - a.w);
+  const primaryIndex = ranked[0]?.i ?? null;
+  const primaryPhaseId = primaryIndex != null ? resolvedSignals[primaryIndex].phase.id : null;
+
   // ── 가지 ──
-  const lead = resolvedSignals[0] ?? null;
-  const directions = lead
-    ? [lead.conflict.primaryDirection, ...lead.conflict.competingDirections].filter(Boolean)
-    : [];
-  // `phases` 는 봉우리 높은 순이다. 가지는 시간 순서로 이어져야 하므로
-  // `buildBranches` 가 안에서 날짜순으로 다시 세운다
-  const branching = buildBranches({ domain, snapshot, phases, directions });
+  // 시기와 방향을 따로 넘기지 않는다. 국면 덩어리를 그대로 넘겨
+  // 단계마다 **그 국면의** 시기·방향·사건만 쓰게 한다
+  const branching = buildBranches({ domain, snapshot, signals: resolvedSignals, primaryPhaseId });
 
   // ── 어디까지 내려가도 되는가 ──
+  const lead = primaryIndex != null ? resolvedSignals[primaryIndex] : null;
+  const leadPhase = primaryIndex != null ? phases.find((p) => p.id === primaryPhaseId) ?? null : null;
   const natalSupport = natalProfile
     ? Math.min(1, Object.values(natalProfile).filter((v) => Math.abs(v) >= 0.3).length / 4)
     : null;
   const specificity = specificityGate({
-    conflict: lead?.conflict ?? null, phase: phases[0] ?? null, question,
+    conflict: lead?.conflict ?? null, phase: leadPhase, question,
     natalSupport, locationEvidence, contextLocation,
   });
 
@@ -148,6 +183,7 @@ export function prepareScenario(o = {}) {
   // ── 다음 층이 먹을 모양 ──
   const scenarioInput = buildScenarioInput({
     domain, question, resolvedSignals, phaseClaims, specificity, branching, snapshot,
+    ranked, primaryIndex,
   });
 
   return {
@@ -169,6 +205,10 @@ export function prepareScenario(o = {}) {
       phaseNote: ph.note ?? null,
       monthCount: result.meta.monthCount,
       timeKnown: result.meta.timeKnown,
+      /** 시기·사건 원재료는 상태를 넣지 않고 만들었다 (미리 지우지 않으려고) */
+      stateNeutralTimeline: true,
+      primaryPhaseId,
+      primarySignalIndex: primaryIndex,
       note: '여기까지가 재료다. 문장은 Scenario Composer 가 쓴다.',
       caution: '내부 점수는 근거의 두께이지 확률이 아니다.',
     },
@@ -182,19 +222,29 @@ export function prepareScenario(o = {}) {
  * `distinct: false` 로 적어 다음 층이 "이쪽일 가능성이 높다"로 쓰지 못하게 한다.
  */
 function buildScenarioInput(o) {
-  const { domain, question, resolvedSignals, phaseClaims, specificity, branching, snapshot } = o;
-  if (!resolvedSignals.length) {
+  const { domain, question, resolvedSignals, phaseClaims, specificity, branching, snapshot,
+    ranked, primaryIndex } = o;
+  if (!resolvedSignals.length || primaryIndex == null) {
     return { primary: null, alternatives: [],
       note: '국면이 없다 — "이 기간에는 뚜렷한 구간이 없다" 가 정답이다' };
   }
 
   const cap = specificity.allowedLevel;
-  const shape = (s, i, rank) => {
+  // 주 시나리오의 1단계는 **가지 A 의 1단계와 같은 것**이어야 한다.
+  // 둘이 어긋나면 "2029 창업" 이라 말하고 가지는 2028 에서 시작하게 된다
+  const branchA = branching.branches[0] ?? null;
+  const step1 = branchA?.steps?.[0] ?? null;
+
+  const shape = (s, i, rank, head = null) => {
     const c = s.conflict;
     const pc = phaseClaims[i];
+    const ev = head ?? s.reachableEvents[0] ?? null;
     return {
       rank,
       domain,
+      /** 어느 국면에서 나온 말인가 — 가지와 맞대어 볼 수 있게 남긴다 */
+      phaseId: s.phase.id,
+      signalIndex: i,
       /** 허용 단계까지만 채운다. 그 아래 칸은 **비운다** */
       timing: {
         grain: specificity.timing.allowed,
@@ -203,8 +253,8 @@ function buildScenarioInput(o) {
         peakPercentile: s.phase.peakPercentile,
         persistence: s.phase.persistence,
       },
-      eventType: cap >= 2 ? (s.events[0]?.type ?? c.primaryDirection ?? null) : null,
-      eventLabel: cap >= 2 ? (s.events[0]?.label ?? null) : null,
+      eventType: cap >= 2 ? (ev?.event ?? ev?.type ?? null) : null,
+      eventLabel: cap >= 2 ? (ev?.label ?? null) : null,
       direction: cap >= 3 ? c.primaryDirection : null,
       competingDirections: cap >= 3 ? c.competingDirections : [],
       industryOrEmployment: cap >= 4 ? 'derive-from-natal' : null,
@@ -217,16 +267,14 @@ function buildScenarioInput(o) {
         evidenceStrength: c.evidenceStrength,
       },
       claimIds: [pc?.claimId, pc?.directionClaimId].filter(Boolean),
-      candidates: s.events.map((e) => ({ type: e.type, label: e.label, score: round3(e.score) })),
+      candidates: s.reachableEvents.map((e) => ({ type: e.type, label: e.label, score: round3(e.score) })),
+      /** 시기 신호 자체가 없는 것과 상태 때문에 막힌 것을 구별한다 */
+      rawCandidateCount: s.rawEvents.length,
       removedByState: s.removedEvents,
     };
   };
 
-  const ranked = resolvedSignals
-    .map((s, i) => ({ s, i, w: s.conflict.evidenceStrength * (s.phase.peakPercentile / 100) }))
-    .sort((a, b) => b.w - a.w);
-
-  const primary = shape(ranked[0].s, ranked[0].i, 1);
+  const primary = shape(ranked[0].s, ranked[0].i, 1, step1);
   const alternatives = ranked.slice(1, 3).map((x, k) => shape(x.s, x.i, k + 2));
 
   // 1위와 2위의 근거 차이가 거의 없으면 그렇다고 적는다
@@ -234,17 +282,20 @@ function buildScenarioInput(o) {
   const distinct = gap > 0.1;
 
   // 방향이 갈렸으면 그 자체가 대안이다.
-  // 다만 **지금 상태에서 갈 수 없는 방향은 대안이 아니다** — 충돌 기록에는
-  // 남겨 두되(체계가 실제로 그렇게 말했으니) 다음 층에 넘기지는 않는다
-  const reachable = filterByState(domain, branching.startState,
-    (primary.competingDirections ?? []).map((d) => ({ type: d })));
-  const dirAlts = reachable.kept.map((x) => x.type).slice(0, 2).map((d, k) => ({
-    rank: 90 + k, domain, sameWindowAs: 1,
-    timing: primary.timing, eventType: d, direction: d,
-    agreement: primary.agreement,
-    note: '같은 구간, 다른 방향 — 평균으로 지우지 않고 남긴다',
-    company: null,
-  }));
+  // 다만 **그 국면에 시기 신호가 있고 지금 상태에서 갈 수 있는 방향만** 넘긴다 —
+  // 충돌 기록에는 남겨 두되(체계가 실제로 그렇게 말했으니) 다음 층에는 넘기지 않는다
+  const leadSignal = ranked[0].s;
+  const hasSignal = new Set(leadSignal.reachableEvents.map((e) => e.type));
+  const dirAlts = (primary.competingDirections ?? [])
+    .filter((d) => hasSignal.has(d) && d !== primary.eventType)
+    .slice(0, 2)
+    .map((d, k) => ({
+      rank: 90 + k, domain, sameWindowAs: 1, phaseId: primary.phaseId,
+      timing: primary.timing, eventType: d, direction: d,
+      agreement: primary.agreement,
+      note: '같은 구간, 다른 방향 — 평균으로 지우지 않고 남긴다',
+      company: null,
+    }));
 
   return {
     primary,
@@ -254,6 +305,12 @@ function buildScenarioInput(o) {
     unknownFacts: snapshot.unknown,
     allowedLevel: cap,
     blocked: specificity.blocked,
+    /** 주 시나리오와 가지 A 가 같은 국면·같은 사건에서 출발하는가 */
+    branchStart: step1
+      ? { branch: branchA.id, phaseId: step1.phaseId, event: step1.event,
+          matchesPrimary: step1.phaseId === primary.phaseId && step1.event === primary.eventType }
+      : { branch: null, phaseId: null, event: null, matchesPrimary: primary.eventType == null,
+          note: branching.note },
     intent: question.intent,
     /** 물은 것과 엔진이 찾은 것이 다를 수 있다 — 물은 쪽을 지우지 않는다 */
     askedFor: question.targetEvents,

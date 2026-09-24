@@ -205,3 +205,19 @@ export function filterByState(domain, state, events) {
 /** 한 전이가 실제로 가능한가 (테스트·후속 층용) */
 export const canTransition = (domain, from, event) =>
   (STATE_GRAPH[domain]?.transitions ?? []).some((x) => x.from === from && x.event === event);
+
+/**
+ * 그 상태에서 그 사건으로 가는 전이 하나.
+ *
+ * 상태를 모르면(`unknown`) **그 사건을 쓰는 전이 아무거나** 돌려주고
+ * 출발 상태를 가정했다고 적는다. 모른다고 길을 막아 버리면 "모르면
+ * 아무것도 못 한다"가 되고, 그건 모른다는 것과 다른 말이다.
+ */
+export function transitionFor(domain, from, event) {
+  const all = STATE_GRAPH[domain]?.transitions ?? [];
+  if (!from || from === 'unknown') {
+    const any = all.find((x) => x.event === event);
+    return any ? { ...any, assumedFrom: true } : null;
+  }
+  return all.find((x) => x.from === from && x.event === event) ?? null;
+}

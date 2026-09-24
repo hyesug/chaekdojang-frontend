@@ -33,9 +33,49 @@ const WHY = [
   ['why_not_narrower', '왜 더 못 좁히는가'],
 ];
 
+/**
+ * 알려 주면 답이 달라지는 것들.
+ *
+ * **이건 운세가 맞힌 것이 아니라 사용자가 말해 준 것이다.** 그래서
+ * `contextAnchor` 로 따로 들어가고, 답에도 "알려주신 사실"이라고 적힌다.
+ * 비워 두면 추측하지 않는다 — 모르는 채로 답이 굵어질 뿐이다.
+ */
+const FIELDS = [
+  { k: 'occupation', label: '지금 하는 일', type: 'text', ph: '예: 백엔드 개발자' },
+  { k: 'employmentType', label: '고용 형태', type: 'select', opts: [
+    ['', '모름/안 밝힘'], ['employed', '회사에 소속'], ['none', '일을 쉬는 중'],
+    ['freelance', '프리랜서'], ['business', '자기 사업'],
+  ] },
+  { k: 'region', label: '사는 곳', type: 'text', ph: '예: 대전 유성구' },
+  { k: 'relationshipStatus', label: '관계', type: 'select', opts: [
+    ['', '모름/안 밝힘'], ['single', '혼자'], ['dating', '사귀는 사람 있음'],
+    ['cohabiting', '함께 삶'], ['married', '기혼'], ['separated', '별거·이혼'],
+  ] },
+  { k: 'hasChildren', label: '자녀', type: 'select', opts: [
+    ['', '모름/안 밝힘'], ['true', '있음'], ['false', '없음'],
+  ] },
+];
+
+const fieldHtml = (f) => `
+  <label class="scen-f">
+    <span>${esc(f.label)}</span>
+    ${f.type === 'text'
+    ? `<input type="text" data-ctx="${f.k}" placeholder="${esc(f.ph ?? '')}">`
+    : `<select data-ctx="${f.k}">${f.opts
+      .map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join('')}</select>`}
+  </label>`;
+
 export function panelHtml() {
   return `
     <div class="card scenario">
+      <details class="scen-ctx">
+        <summary>지금 상황을 알려주면 더 좁혀서 답합니다 (선택)</summary>
+        <div class="scen-fields">${FIELDS.map(fieldHtml).join('')}</div>
+        <p class="scen-ctx-note">
+          여기 적은 것은 <b>알려주신 사실</b>로만 씁니다. 운세가 맞힌 것처럼 쓰지 않고,
+          답에도 그렇게 적힙니다. 비워 두면 추측하지 않습니다.
+        </p>
+      </details>
       <div class="scen-quick">
         ${PRESETS.map(([q], i) => `<button type="button" data-sq="${i}">${esc(q)}</button>`).join('')}
       </div>
@@ -106,6 +146,31 @@ function renderWhy(box, picked) {
  * @param {HTMLElement} root 패널이 들어 있는 칸
  * @param {object} birth     출생 정보 (`readFortune` 과 같은 모양)
  */
+/** 화면에서 적은 것을 시나리오 층이 읽는 모양으로 */
+function readContext(root) {
+  const v = {};
+  for (const el of root.querySelectorAll('[data-ctx]')) {
+    const raw = String(el.value ?? '').trim();
+    if (!raw) continue;
+    v[el.dataset.ctx] = raw;
+  }
+  const currentState = {};
+  if (v.occupation) currentState.occupation = v.occupation;
+  if (v.employmentType) currentState.employmentType = v.employmentType;
+  if (v.relationshipStatus) {
+    currentState.relationshipStatus = v.relationshipStatus;
+    // 기혼·별거는 결혼 상태로도 읽힌다 (상태 기계가 갈 수 없는 길을 지운다)
+    if (v.relationshipStatus === 'married') currentState.maritalStatus = 'married';
+    if (v.relationshipStatus === 'separated') currentState.maritalStatus = 'separated';
+  }
+  if (v.hasChildren) currentState.hasChildren = v.hasChildren === 'true';
+  return {
+    currentState: Object.keys(currentState).length ? currentState : null,
+    // 지역은 **사용자가 말해 준 것**이라 운세 근거로 올라가지 않는다
+    contextLocation: v.region || null,
+  };
+}
+
 export async function initScenario(root, birth) {
   const out = root.querySelector('#scen-out');
   const box = root.querySelector('#scen-q');
@@ -123,10 +188,13 @@ export async function initScenario(root, birth) {
     await new Promise((r) => setTimeout(r, 0));
     try {
       const y = new Date().getFullYear();
+      const ctx = readContext(root);
       const r = S.answerScenario({
         birth, question: q,
         from: `${y}-01`, to: `${y + 3}-12`,
         supporting: true,
+        currentState: ctx.currentState,
+        contextLocation: ctx.contextLocation,
         narrate: { detail: 'normal' },
       });
       last = r;

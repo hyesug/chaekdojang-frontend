@@ -30,6 +30,7 @@ import { specificityGate } from './specificity.js';
 import { claim, evidenceFrom, auditProvenance, resetIds } from './provenance.js';
 import { composePrepared, timingAt } from './composer.js';
 import { narrateScenario, auditNarration } from './narrator.js';
+import { matchReality, auditRealityMatch } from './reality.js';
 import { auditCoherence } from './coherence.js';
 import { detailFor } from './detail.js';
 
@@ -351,6 +352,14 @@ export function composeScenario(o = {}) {
   return { prepared, scenario: composePrepared(prepared, o.compose ?? {}) };
 }
 
+/**
+ * 시나리오에 실제 후보를 맞대 본다 (편의 export).
+ * **이 층은 시나리오를 바꾸지 않는다** — 맞물리는 정도만 낸다.
+ */
+export function matchScenarioReality(scenario, candidates, options = {}) {
+  return matchReality(scenario, candidates, options);
+}
+
 /** 재료 → 조립 → 한국어까지 한 번에. 각 층은 여전히 따로 부를 수 있다 */
 export function answerScenario(o = {}) {
   const { prepared, scenario } = composeScenario(o);
@@ -360,6 +369,7 @@ export function answerScenario(o = {}) {
 export {
   composePrepared, auditCoherence, detailFor, timingAt,
   narrateScenario, auditNarration,
+  matchReality, auditRealityMatch,
   interpretQuestion, resolveConflict, timingPhases, specificityGate,
   buildBranches, conditionalStateAt, snapshotFromState, contextFor, stateOf, possibleTransitions,
   filterByState, claim, evidenceFrom, auditProvenance, scoreEvents, monthNo,

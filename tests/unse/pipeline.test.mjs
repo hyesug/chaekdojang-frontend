@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import {
   interpretQuestion, composeScenario, selectEvidence, questionTypeOf,
   checkTemporalConsistency, chainOf, attributesOf, stateOf, possibleTransitions,
-  supportingReads, answerScenario,
+  supportingReads, answerScenario, locationEvidenceFor, asGateEvidence,
 } from '../../public/unse-8f3k2m/src/semantic/scenario/index.js';
 import {
   STATE_GRAPH, CROSS_DOMAIN, MOVE_REASONS, crossDomainOf, canTransition,
@@ -375,4 +375,95 @@ test('14. 곁가지·현실을 붙여도 결정적이고 게이트를 넘지 않
   // short 모드에서도 선 긋는 문장은 남는다
   const short = answerScenario({ ...opts, narrate: { detail: 'short' } });
   assert.equal(short.narration.meta.auditOk, true, JSON.stringify(short.narration.meta.issues));
+});
+
+// ── 15~17. 위치 근거를 실제로 계산해 게이트에 잇는다 ───────────
+
+/** 표본 명반 — 같은 규칙으로 만들어 늘 같은 것이 나온다 */
+const PLACES = ['서울', '부산', '대구', '광주광역시', '여주', '전주', '춘천', '포항'];
+const sample = (i) => ({
+  name: 't', gender: i % 2 ? 'male' : 'female',
+  year: 1980 + (i % 25), month: ((i * 5) % 12) + 1, day: ((i * 7) % 27) + 1,
+  hour: (i * 3) % 24, minute: (i * 11) % 60,
+  birthPlace: PLACES[i % PLACES.length], homePlace: PLACES[(i + 3) % PLACES.length],
+});
+
+test('15. 근거가 없으면 위치 단계를 열지 않는다', () => {
+  const ev = locationEvidenceFor({ birth: BIRTH, domain: 'career' });
+  assert.equal(ev.available, false);
+  assert.equal(ev.metro, null);
+  assert.equal(asGateEvidence(ev), null, '근거가 없는데 게이트에 넘겼다');
+  assert.ok(ev.why, '왜 없는지 적는다');
+
+  // 시각을 모르면 하우스를 못 세운다
+  const noTime = locationEvidenceFor({
+    birth: { ...BIRTH, hour: undefined, minute: undefined }, domain: 'career' });
+  assert.equal(noTime.available, false);
+  assert.match(noTime.why, /출생 시각/);
+  // 위치를 볼 자리가 없는 분야는 아예 보지 않는다
+  assert.match(locationEvidenceFor({ birth: BIRTH, domain: 'health' }).why, /볼 자리가 없다/);
+
+  // 통째로 돌려도 도시가 생기지 않는다
+  const r = answerScenario({
+    birth: BIRTH, question: '어디로 이직할까?', now: NOW, from: '2027-01', to: '2029-12',
+    currentState: { employmentType: 'employed' }, useLocation: true,
+  });
+  assert.ok(r.scenario.meta.allowedLevel <= 4, `위치 근거 없이 ${r.scenario.meta.allowedLevel} 단계까지 열렸다`);
+  assert.equal(r.scenario.primary.location.metro, null);
+  assert.ok(!/제주|강릉|대전권/.test(r.narration.text));
+  assert.equal(r.narration.meta.auditOk, true, JSON.stringify(r.narration.meta.issues));
+});
+
+test('16. 한 도시로 좁혔을 때만 열고, 여럿이 걸리면 방위까지다', () => {
+  // 후보가 하나뿐인 명반 — 게이트가 열린다
+  const one = locationEvidenceFor({ birth: sample(16), domain: 'wealth' });
+  assert.equal(one.available, true);
+  assert.equal(one.metro, '제주');
+  assert.equal(one.candidates.length, 1);
+  assert.ok(asGateEvidence(one));
+  assert.match(one.caveat, /명반이 그 도시를 가리킨 것이 아니다/);
+
+  const r = answerScenario({
+    birth: sample(16), question: '앞으로 돈은 어디쯤에서 풀릴까?', now: NOW,
+    from: '2027-01', to: '2029-12', useLocation: true, narrate: { detail: 'full' },
+  });
+  assert.equal(r.scenario.meta.allowedLevel, 5);
+  assert.equal(r.scenario.primary.location.metro, '제주');
+  assert.equal(r.scenario.primary.location.sourceType, 'fortune');
+  assert.ok(r.scenario.primary.provenance.location.length, '도시에 근거가 없다');
+  assert.match(r.narration.text, /방위 계산으로는 제주 쪽이 걸립니다/);
+  assert.equal(r.narration.meta.auditOk, true, JSON.stringify(r.narration.meta.issues));
+  // 구·회사는 여전히 닫혀 있다
+  assert.equal(r.scenario.primary.location.district, null);
+  assert.equal(r.scenario.primary.company, null);
+
+  // 후보가 여럿이면 도시를 짚지 않는다
+  const many = locationEvidenceFor({ birth: sample(20), domain: 'career' });
+  assert.equal(many.available, true);
+  assert.ok(many.candidates.length > 1);
+  assert.equal(many.metro, null, '여러 곳이 걸렸는데 한 곳을 골랐다');
+  assert.equal(asGateEvidence(many), null);
+  assert.match(many.why, /한 곳으로 좁히지 못한다/);
+});
+
+test('17. 대부분의 명반에서는 열리지 않는다 — 그것이 정상이다', () => {
+  let n = 0; let opened = 0; let hasCandidates = 0;
+  for (let i = 0; i < 24; i++) {
+    const ev = locationEvidenceFor({ birth: sample(i), domain: 'career' });
+    n++;
+    if (ev.available) hasCandidates++;
+    if (asGateEvidence(ev)) opened++;
+  }
+  assert.equal(n, 24);
+  // 국내는 도시를 옮겨도 하우스가 거의 그대로다 — 후보가 나오는 쪽이 드물다
+  assert.ok(hasCandidates <= n / 3, `${hasCandidates}/${n} 이면 너무 자주 열린다`);
+  assert.ok(opened <= hasCandidates);
+  // 열리지 않은 명반은 모두 왜 그런지 적혀 있다
+  for (let i = 0; i < 24; i++) {
+    const ev = locationEvidenceFor({ birth: sample(i), domain: 'career' });
+    if (!ev.available) assert.ok(ev.why, `i=${i} 에 이유가 없다`);
+  }
+  // 같은 입력이면 같은 결과다
+  assert.deepEqual(locationEvidenceFor({ birth: sample(16), domain: 'wealth' }),
+    locationEvidenceFor({ birth: sample(16), domain: 'wealth' }));
 });

@@ -71,7 +71,16 @@ export function specificityGate(o = {}) {
     2: act * (0.4 + 0.6 * dir),
     3: dir * (0.5 + 0.5 * strength),
     4: dir * natal * 0.9,
-    5: locationEvidence ? Math.min(0.5, dir * 0.5) : 0,
+    // 위치 근거는 **그 근거 자체의 두께**로 센다. 전에는 `dir * 0.5` 였는데,
+    // 그때는 `locationEvidence` 가 늘 비어 있어서 "있으면 이쯤"이라고 적어 둔
+    // 자리표시였다. 이제 실제 계산이 들어오므로 그 계산이 무엇을 말했는지로 센다.
+    //   · 도시를 한 곳으로 좁혔는가 (여럿이 나란히 걸리면 도시가 아니라 방위다)
+    //   · 여러 신호가 같은 쪽을 가리켰는가
+    // 방향이 갈려 있으면 여전히 도시까지 내려가지 않는다
+    5: locationEvidence
+      ? ((locationEvidence.metro ? 0.45 : 0)
+        + (locationEvidence.direction?.corroborated ? 0.15 : 0)) * (0.5 + 0.5 * dir)
+      : 0,
     6: contextLocation ? Math.min(0.4, dir * 0.4) : 0,
     7: 0,
   };

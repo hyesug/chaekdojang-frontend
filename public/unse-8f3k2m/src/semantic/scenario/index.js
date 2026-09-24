@@ -32,6 +32,7 @@ import { composePrepared, timingAt } from './composer.js';
 import { narrateScenario, auditNarration } from './narrator.js';
 import { matchReality, auditRealityMatch } from './reality.js';
 import { supportingReads } from './supporting.js';
+import { locationEvidenceFor, asGateEvidence } from './locationEvidence.js';
 import { selectEvidence, questionTypeOf } from './evidence.js';
 import { buildChains, chainOf, checkTemporalConsistency } from './chain.js';
 import { attributesOf } from './attributes.js';
@@ -372,7 +373,17 @@ export function matchScenarioReality(scenario, candidates, options = {}) {
  * 시나리오를 바꾸지 않는다** — 곁가지는 곁가지이고 현실은 현실이다.
  */
 export function answerScenario(o = {}) {
-  const { prepared, scenario } = composeScenario(o);
+  // 위치 근거를 실제로 계산해서 게이트에 넘긴다. **도시를 한 곳으로 좁혔을
+  // 때만** 5단계가 열리고, 대개는 열리지 않는다 (국내는 도시를 옮겨도
+  // 하우스가 거의 그대로다)
+  const askedDomain = o.domain ?? interpretQuestion(o.question ?? '', { now: o.now }).domain;
+  const locationAnalysis = o.useLocation
+    ? locationEvidenceFor({ birth: o.birth, domain: askedDomain })
+    : null;
+  const withLoc = locationAnalysis
+    ? { ...o, locationEvidence: o.locationEvidence ?? asGateEvidence(locationAnalysis) }
+    : o;
+  const { prepared, scenario } = composeScenario(withLoc);
   const supporting = o.supporting
     ? supportingReads({ birth: o.birth, scenario, from: prepared.from, to: prepared.to })
     : null;
@@ -380,14 +391,15 @@ export function answerScenario(o = {}) {
     ? matchReality(scenario, o.candidates, o.realityOptions ?? {})
     : null;
   const narration = narrateScenario(scenario,
-    { ...(o.narrate ?? {}), supporting, realityMatch });
-  return { prepared, scenario, supporting, realityMatch, narration };
+    { ...(o.narrate ?? {}), supporting, realityMatch, locationAnalysis });
+  return { prepared, scenario, supporting, realityMatch, locationAnalysis, narration };
 }
 
 export {
   composePrepared, auditCoherence, detailFor, timingAt,
   narrateScenario, auditNarration,
   matchReality, auditRealityMatch, supportingReads,
+  locationEvidenceFor, asGateEvidence,
   selectEvidence, questionTypeOf,
   buildChains, chainOf, checkTemporalConsistency, attributesOf,
   interpretQuestion, resolveConflict, timingPhases, specificityGate,

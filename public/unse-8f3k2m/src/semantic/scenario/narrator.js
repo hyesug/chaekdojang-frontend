@@ -276,6 +276,16 @@ export function narrateScenario(scenario, options = {}) {
   // ── ⑥ 어디까지 모르는가 — **질문과 관련 있는 것만** ──
   if (asked.location) {
     if (!p.location?.metro) {
+      // 위치 계산을 돌리기는 했는데 한 곳으로 좁히지 못한 경우와, 아예 근거가
+      // 없는 경우는 다른 말이다. 방위 이름은 적지 않는다 — 그것까지 말하려면
+      // 게이트가 열려야 하고, 열리지 않았다는 것이 지금의 결론이다
+      const la = options.locationAnalysis ?? null;
+      if (la?.available && la.candidates?.length > 1) {
+        out.push(S('limit',
+          `위치 계산으로는 조건이 달라지는 도시가 ${la.candidates.length}곳 나란히 걸려, 한 곳으로 좁히지는 못했습니다.`));
+      } else if (la && !la.available && la.why) {
+        out.push(S('limit', `어느 도시인지까지는 좁히지 못했습니다 — ${la.why}.`));
+      }
       out.push(S('limit',
         `${dl} 변화의 방향까지는 볼 수 있지만, 어느 도시로 옮기는지까지 좁힐 위치 근거는 이 계산에 없습니다.`));
     } else {

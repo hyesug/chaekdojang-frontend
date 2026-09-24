@@ -601,6 +601,7 @@ details.pool[open] > summary::before { content: '▾ '; }
 .mb-cell dt { font-size: 11px; color: var(--ink-3); margin-bottom: 3px; }
 .mb-cell dd { margin: 0; font-size: 13.5px; color: var(--ink-1); }
 .mb-cell dd small { display: block; font-size: 11px; color: var(--ink-3); margin-top: 2px; }
+.mb-brief { font-size: 13px; color: var(--ink-2); line-height: 1.6; margin: 0; text-align: center; }
 @media (max-width: 420px) { .mb-grid { grid-template-columns: 1fr; } }
 
 /* ── 계산 과정 ── */

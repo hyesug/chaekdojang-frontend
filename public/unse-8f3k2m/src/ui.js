@@ -191,28 +191,36 @@ function chartPanel(r) {
 
   const rest = r.results.filter((x) => !SHOWN.includes(x.id));
 
+  // 펼치지 않아도 보이는 한 줄 — 점성술 태양·달·상승점, 자미 명궁
+  const val = (sys, k) => sys?.facts.find((x) => x.label === k)?.value;
+  const brief = [
+    ['태양', val(by('astrology'), '태양')],
+    ['달', val(by('astrology'), '달')],
+    ['상승점', val(by('astrology'), '상승점')],
+    ['자미 명궁', val(by('jamidusu'), '명궁')],
+  ].filter(([, x]) => x && x !== '—')
+    .map(([k, x]) => `${k} ${String(x).replace(/ [\d.]+°$/, '')}`).join(' · ');
+
   return `
     <div class="section-label">명반</div>
     <div class="card">
-      ${group('사주팔자', `<div class="pillars">${pillar}</div>`)}
-      ${group('점성술 네이탈', `<dl class="mb-grid">${
-        cells(by('astrology'), ['태양', '달', '상승점', '중천'])}</dl>`)}
-      ${group('자미두수 명반', `<dl class="mb-grid">${
-        cells(by('jamidusu'), ['명궁', '부처궁', '재백궁', '관록궁', '질액궁', '천이궁'])}</dl>`)}
-      ${group('타로', `<dl class="mb-grid">${
-        cells(by('tarot'), ['생일 카드', '상황', '과제', '조언'])}</dl>`)}
+      <div class="pillars">${pillar}</div>
+      ${brief ? `<p class="mb-brief">${esc(brief)}</p>` : ''}
 
       <details class="pool">
-        <summary>나머지 ${rest.length}개 체계가 세운 것</summary>
-        <dl class="facts">
-          ${rest.map((x) => `<div class="fact"><dt>${esc(x.name)}</dt>
-            <dd>${esc(x.headline)}</dd></div>`).join('')}
-        </dl>
+        <summary>명반 자세히 보기</summary>
+        ${group('점성술 네이탈', `<dl class="mb-grid">${
+          cells(by('astrology'), ['태양', '달', '상승점', '중천'])}</dl>`)}
+        ${group('자미두수 명반', `<dl class="mb-grid">${
+          cells(by('jamidusu'), ['명궁', '부처궁', '재백궁', '관록궁', '질액궁', '천이궁'])}</dl>`)}
+        ${group('타로', `<dl class="mb-grid">${
+          cells(by('tarot'), ['생일 카드', '상황', '과제', '조언'])}</dl>`)}
+        ${group(`나머지 ${rest.length}개 체계`, `<dl class="facts">${
+          rest.map((x) => `<div class="fact"><dt>${esc(x.name)}</dt><dd>${esc(x.headline)}</dd></div>`).join('')}</dl>`)}
+        <p class="area-src" style="margin-top:12px">
+          천문 계산으로 구한 값만 적었습니다. 뜻이 궁금하면 아래에서 AI 에게 물어보세요.
+        </p>
       </details>
-
-      <p class="area-src" style="margin-top:12px">
-        천문 계산으로 구한 값만 적었습니다. 뜻이 궁금하면 아래에서 AI 에게 물어보세요.
-      </p>
     </div>
   `;
 }

@@ -51,6 +51,8 @@ validation/attribution.json
 validation/last-run.json
 validation/prereg-predictions.json
 validation/people.json
+# 학습 장부 — 열다섯이 한 말 옆에 그 사람의 실제 삶을 적는 판이라 더 민감하다
+validation/ledger-*.md
 validation-data/profile-cases.json
 
 # 검증용 개인정보 — 올리지 않는다

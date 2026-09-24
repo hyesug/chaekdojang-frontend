@@ -14,6 +14,9 @@ import {
   DOMAINS, DOMAIN_LABEL, RESOLUTION, WINDOW_MONTHS, signal, unavailable, monthNo,
 } from '../../public/unse-8f3k2m/src/semantic/timing/schema.js';
 import { EVENT_CANDIDATES, scoreEvents, candidatesOf } from '../../public/unse-8f3k2m/src/semantic/timing/events.js';
+import {
+  evidenceOr, SIHWA_ACT, SIHWA_DIR, VEDIC_VARGA,
+} from '../../public/unse-8f3k2m/src/semantic/timing/adapters.js';
 import { SYSTEM_IDS } from '../../public/unse-8f3k2m/src/semantic/extract.js';
 import { AXES } from '../../public/unse-8f3k2m/src/semantic/axes.js';
 
@@ -25,6 +28,12 @@ const RANGE = { from: '2028-01', to: '2029-12' };
 
 let cached = null;
 const run = () => (cached ??= predictTimeline({ birth: BIRTH, ...RANGE }));
+
+// 보강한 재료를 보려면 창이 넉넉해야 한다 (대운 전환·다샤 전환이 들어오도록)
+let cached20 = null;
+const run20 = () => (cached20 ??= predictTimeline({ birth: BIRTH, from: '2019-01', to: '2022-12' }));
+const ziweiSihwaAct = (k) => SIHWA_ACT[k];
+const ziweiSihwaDir = (k) => SIHWA_DIR[k];
 
 test('열두 분야 해상도가 정의돼 있고 창 크기로 이어진다', () => {
   for (const d of DOMAINS) {
@@ -209,4 +218,107 @@ test('신호 스키마가 빈 값을 조용히 만들지 않는다', () => {
   assert.equal(u.available, false);
   assert.equal(u.resolution, 'none');
   assert.ok(u.why);
+});
+
+// ── 보강한 재료가 실제로 쓰이는가 ─────────────────────────────
+
+test('같은 원천은 두 번 세지 않는다 — 묶음 안은 포화, 묶음끼리만 누적', () => {
+  // 한 묶음에 같은 크기 셋을 넣어도 +30% 를 넘지 않는다
+  const one = evidenceOr({ a: [0.4] });
+  const three = evidenceOr({ a: [0.4, 0.4, 0.4] });
+  assert.ok(three > one);
+  assert.ok(three <= 0.4 * 1.3 + 1e-9, `한 묶음이 ${three} 까지 부풀었다`);
+  // 서로 다른 묶음이면 겹쳐 오른다 (noisy-OR)
+  const two = evidenceOr({ a: [0.4], b: [0.4] });
+  assert.ok(two > three, '다른 원천이 겹치는 쪽이 더 높아야 한다');
+  assert.ok(two < 0.8, '그래도 단순 덧셈보다는 낮다');
+  assert.equal(evidenceOr({}), 0);
+  assert.equal(evidenceOr({ a: [], b: [null] }), 0);
+});
+
+test('사주 — 근묘화실 기둥 충돌과 대운 전환이 evidence 에 남는다', () => {
+  const r = run20();
+  const kinds = new Set();
+  for (const m of Object.values(r.systemResults.saju.months)) {
+    for (const e of m?.evidence ?? []) kinds.add(e.what.replace(/\s.*$/, ''));
+  }
+  // 월운 십성은 늘 있고, 원국 기둥과의 관계도 실려야 한다
+  assert.ok([...kinds].some((k) => k === '월운 십성' || k.startsWith('월운')), '월운 십성');
+  assert.ok(['년주', '월주', '일주', '시주', '세운', '대운'].some((p) => kinds.has(p)),
+    `원국·세운 기둥과의 관계가 하나도 안 실렸다: ${[...kinds].join(', ')}`);
+  // 십성이 배정되지 않은 분야는 0 이 아니라 null 이다
+  const any = Object.values(r.systemResults.saju.months).find(Boolean);
+  assert.equal(any.rawActivations.personality, null);
+});
+
+test('자미 — 사화 넷이 방향에서 서로 다르게 쓰인다', () => {
+  // 화록과 화기는 같은 별이라도 방향이 갈려야 한다
+  const rec = ziweiSihwaDir('화록');
+  const gi = ziweiSihwaDir('화기');
+  assert.ok(rec > 0 && gi < 0, `화록 ${rec} · 화기 ${gi} — 부호가 갈려야 한다`);
+  assert.ok(ziweiSihwaDir('화권') > ziweiSihwaDir('화과'), '화권이 화과보다 세다');
+  // activation 에서는 넷 다 시끄럽다 — 화기도 0 이 아니다
+  for (const k of ['화록', '화권', '화과', '화기']) assert.ok(ziweiSihwaAct(k) > 0.15, k);
+});
+
+test('자미 — 직업 넷 말고 다른 분야의 궁도 실제로 켜진다', () => {
+  const r = run20();
+  // 부처궁·자녀궁·전택궁·질액궁은 '직업' 궁 목록에 없다. 재료가 닿지 않으면
+  // 이 분야들의 시계열이 통째로 같은 값이 된다
+  for (const d of ['marriage', 'children', 'residence', 'health']) {
+    const xs = Object.values(r.systemResults.jamidusu.months)
+      .map((m) => m?.rawActivations?.[d]).filter(Number.isFinite);
+    assert.ok(xs.length, `${d} 값이 없다`);
+    assert.ok(new Set(xs).size > 1, `자미 ${d} 가 달마다 같은 값이다 — 궁 재료가 안 닿았다`);
+  }
+});
+
+test('서양 — 느린 배경과 빠른 방아쇠를 합쳐도 값이 터지지 않는다', () => {
+  const r = run20();
+  const xs = [];
+  for (const m of Object.values(r.systemResults.astrology.months)) {
+    for (const [d, v] of Object.entries(m?.rawActivations ?? {})) {
+      if (Number.isFinite(v)) { assert.ok(v >= 0 && v <= 1, `${d} activation ${v}`); xs.push(v); }
+    }
+  }
+  assert.ok(xs.length);
+  // 배경이 몇 해씩 이어지므로 늘 1.0 에 붙어 있으면 시기를 못 가른다
+  const pinned = xs.filter((v) => v > 0.98).length / xs.length;
+  assert.ok(pinned < 0.5, `${Math.round(pinned * 100)}% 가 1.0 에 붙었다 — 중복 누적이다`);
+  assert.ok(new Set(xs.map((v) => Math.round(v * 100))).size > 5, '값이 달마다 갈려야 한다');
+});
+
+test('베딕 — 분야마다 그 분야의 분할도를 쓴다', () => {
+  const r = run20();
+  const ev = Object.values(r.systemResults.vedic.months).flatMap((m) => m?.evidence ?? []);
+  const codes = new Set(ev.map((e) => e.what.match(/\b(D\d+)\b/)?.[1]).filter(Boolean));
+  assert.ok(codes.size >= 2, `분할도가 ${[...codes].join(',') || '하나도'} 안 쓰였다`);
+  // 다샤 주인을 문자열로 읽는다 — 예전에는 노드 객체를 비교해 늘 0 이었다
+  const xs = Object.values(r.systemResults.vedic.months)
+    .map((m) => m?.rawActivations?.career).filter(Number.isFinite);
+  assert.ok(xs.length && new Set(xs).size > 1, '베딕 직업 activation 이 상수다');
+  // 직업은 D10, 결혼은 D9 로 본다 (표에 박아 둔 배당)
+  assert.equal(VEDIC_VARGA.career, 'D10');
+  assert.equal(VEDIC_VARGA.marriage, 'D9');
+  assert.equal(VEDIC_VARGA.children, 'D7');
+  assert.equal(VEDIC_VARGA.residence, 'D4');
+  assert.equal(VEDIC_VARGA.wealth, 'D2');
+  // 학업은 D24 가 없으므로 D1 로 둔다 — 자녀의 D7 을 빌려 쓰지 않는다
+  assert.equal(VEDIC_VARGA.education, 'D1');
+});
+
+test('보강 뒤에도 시각 미상이면 자미·점성만 빠지고 결정적이다', () => {
+  const noTime = { ...BIRTH, hour: undefined, minute: undefined };
+  const a = predictTimeline({ birth: noTime, from: '2020-01', to: '2021-12' });
+  const k = Object.keys(a.systemResults.jamidusu.months)[0];
+  assert.equal(a.systemResults.jamidusu.months[k].available, false);
+  assert.equal(a.systemResults.astrology.months[k].available, false);
+  assert.equal(a.systemResults.saju.months[k].available, true);
+  assert.equal(a.systemResults.vedic.months[k].available, true, '베딕은 다샤로 계속 말한다');
+  // 같은 입력이면 같은 값 (보강한 재료도 결정적이어야 한다)
+  const b = predictTimeline({ birth: noTime, from: '2020-01', to: '2021-12' });
+  assert.deepEqual(a.systemResults.vedic.months[k].rawActivations,
+    b.systemResults.vedic.months[k].rawActivations);
+  assert.deepEqual(a.timeline[Object.keys(a.timeline)[5]].domains,
+    b.timeline[Object.keys(b.timeline)[5]].domains);
 });

@@ -12,7 +12,7 @@ import {
 } from '../../public/unse-8f3k2m/src/semantic/timing/schema.js';
 import {
   scoreEvent, scoreEventYearly, toYearly, permutationBaseline, personWeighted, personBootstrap,
-  aggregateNull, prepareNullDraws, nullPosition, NULL_METRICS, scoreAtResolution,
+  aggregateNull, prepareNullDraws, nullPosition, NULL_METRICS, scoreAtResolution, poolFor,
 } from '../../public/unse-8f3k2m/src/validation/timingMetrics.js';
 import { predictTimeline } from '../../public/unse-8f3k2m/src/semantic/timing/timeline.js';
 import { scoreEvents } from '../../public/unse-8f3k2m/src/semantic/timing/events.js';
@@ -421,4 +421,53 @@ test('24. 눈금이 없는 체계는 채점에서 빼고, 구분못함·무자�
     scoreAtResolution(empty, { ...row, resolution: 'month' }),
     scoreAtResolution(live, { ...row, resolution: 'month' })].map((x) => x.skipped);
   assert.deepEqual(tally, ['no_resolution', 'no_variation', 'unavailable', null]);
+});
+
+// ── 25. 가장자리 보정 ─────────────────────────────────────────
+
+test('25. 창 지표의 null 후보에서 가장자리 달을 뺀다', () => {
+  const series = mk(Array.from({ length: 36 }, (_, j) => ((j * 7) % 36) / 36));
+  const p = prepareNullDraws(series);
+  const keyOf = (pool) => pool.map((d) => d.key);
+
+  // ±6 은 앞뒤 여섯 달을 확보한 달만 후보다
+  const six = keyOf(poolFor(p.draws, 'bestPercentileWithin6'));
+  assert.ok(!six.includes('2020-01'), '첫 달이 ±6 후보에 있으면 안 된다');
+  assert.ok(!six.includes('2022-12'), '마지막 달이 ±6 후보에 있으면 안 된다');
+  assert.ok(!six.includes('2020-06'), '여섯째 달은 앞쪽 여유가 5달뿐이다');
+  assert.ok(six.includes('2020-07'), '일곱째 달부터 ±6 이 온전하다');
+  assert.ok(six.includes('2021-06'), '한가운데 달은 후보다');
+  assert.equal(six.length, 36 - 12);
+
+  // 창이 좁을수록 후보가 넓다
+  assert.ok(poolFor(p.draws, 'top3Within1').length > poolFor(p.draws, 'top3Within6').length);
+  assert.equal(poolFor(p.draws, 'top3Within1').length, 36 - 2);
+  // EventPercentile 은 창을 쓰지 않으므로 전부 후보다
+  assert.equal(poolFor(p.draws, 'eventPercentile').length, 36);
+
+  // 스무딩 창이 덜 찬 달은 한가운데라도 창 지표에서 뺀다
+  const withHole = series.map((e, i) => (i === 18 ? { ...e, full: false } : e));
+  const h = prepareNullDraws(withHole);
+  assert.ok(!keyOf(poolFor(h.draws, 'top3Within1')).includes(series[18].k));
+  assert.ok(keyOf(poolFor(h.draws, 'eventPercentile')).includes(series[18].k),
+    'EventPercentile 후보에서까지 빼지는 않는다');
+});
+
+test('25b. 가장자리 보정 뒤에도 합산 null 구조와 재현성이 그대로다', () => {
+  const rows = [0, 1, 2, 3].map((i) => ({
+    person: `P${i}`,
+    series: mk(Array.from({ length: 36 }, (_, j) => ((j * 11 + i * 5) % 36) / 36)),
+  }));
+  const a = aggregateNull(rows, { rounds: 600, seed: 31 });
+  const b = aggregateNull(rows, { rounds: 600, seed: 31 });
+  for (const m of NULL_METRICS) {
+    assert.ok(a.metrics[m].event && a.metrics[m].person, `${m} 두 가중이 모두 있다`);
+    assert.deepEqual(a.metrics[m].event.samples, b.metrics[m].event.samples, `${m} 재현 실패`);
+    // 후보가 몇 달이었는지 적어 둔다 — 조용히 좁히지 않는다
+    assert.ok(a.metrics[m].pool.candidates > 0);
+    assert.ok(a.metrics[m].pool.candidates <= a.metrics[m].pool.total);
+  }
+  assert.equal(a.metrics.eventPercentile.pool.candidates, a.metrics.eventPercentile.pool.total);
+  assert.ok(a.metrics.bestPercentileWithin6.pool.candidates
+    < a.metrics.bestPercentileWithin1.pool.candidates, '±6 후보가 ±1 보다 좁다');
 });

@@ -30,6 +30,29 @@ import * as NA from '../tables/nature.js';
 
 const safe = (fn) => { try { return fn(); } catch { return null; } };
 
+/**
+ * **같은 원천을 두 번 세지 않는다.**
+ *
+ * 대운이 바뀌는 달은 세운 충도 같이 걸리기 쉽고, 마주 보는 두 커스프는 한
+ * 각이 만든 두 줄이다. 그런 것을 그냥 더하면 한 가지 사실이 두세 몫을 받는다.
+ *
+ * 그래서 근거를 **원천(group)** 으로 묶는다. 한 묶음 안에서는 가장 센 것을
+ * 쓰고 되풀이된 만큼만 조금 올린다(포화). 묶음끼리는 noisy-OR 로 합친다 —
+ * 서로 다른 원천이 겹칠 때만 확신이 오른다.
+ */
+export function evidenceOr(groups) {
+  let miss = 1;
+  for (const xs of Object.values(groups)) {
+    const v = (xs ?? []).filter(Number.isFinite);
+    if (!v.length) continue;
+    const top = Math.max(...v);
+    // 같은 원천이 두 번, 세 번 걸리면 조금만 올린다 (최대 +30%)
+    const rep = 1 + 0.15 * Math.min(2, v.length - 1);
+    miss *= 1 - clamp01(top * rep);
+  }
+  return clamp01(1 - miss);
+}
+
 /** activation 이 숫자인 분야만 '말할 수 있다'로 센다 */
 const availabilityOf = (acts) =>
   Object.fromEntries(Object.entries(acts).map(([d, v]) => [d, Number.isFinite(v)]));
@@ -86,43 +109,107 @@ const SAJU_SEAT_GODS = {
   timing: null,
 };
 
-export function sajuTiming(month, period) {
+/**
+ * 근묘화실 — 원국의 어느 기둥이 그 분야의 자리인가.
+ *
+ * 년주=뿌리·조상, 월주=부모·사회·직업, 일주=자신과 배우자, 시주=자녀·말년.
+ * **명리 기본 배당이다.** 여기 없는 분야는 기둥을 배정하지 않는다 —
+ * 재물은 기둥이 아니라 재성(십성)으로 보기 때문이다.
+ */
+const SAJU_PILLAR = {
+  career: '월주', education: '월주',
+  marriage: '일주', relationship: '일주',
+  children: '시주',
+  health: '일주',
+};
+
+/** 관계의 종류별 무게 — 충이 가장 크게 자리를 흔든다 */
+const HIT_W = { 충: 1, 천간충: 0.9, 형: 0.7, 삼형: 0.8, 자형: 0.6, 해: 0.5, 파: 0.4,
+  육합: 0.7, 천간합: 0.7, 삼합: 0.8, 반합: 0.6, 방합: 0.7, 가합: 0.3 };
+/** 어느 층과 부딪쳤나 — 원국을 직접 치는 것이 가장 세다 */
+const LAYER_W = { 년주: 0.8, 월주: 1, 일주: 1, 시주: 0.9, 세운: 0.7, 대운: 0.6 };
+
+export function sajuTiming(month, period, ctx = null) {
   const b = month?.bazi;
   if (!b) return unavailable('saju', period, '월운을 세우지 못했다');
 
-  // 원국과의 합·충·형 — 그 달이 얼마나 시끄러운가
-  const friction = (b.hits ?? []).reduce((a, h) => a + (h.weight ?? 0), 0);
-  const stir = clamp01(friction / 1.8);
+  const hits = b.hits ?? [];
+  // 그 달이 얼마나 시끄러운가 — 합과 충형을 **따로** 센다.
+  // 합도 충도 자리를 움직이지만 뜻이 다르고, 뭉쳐서 더하면 방향이 사라진다.
+  const sumOf = (pick) => hits.filter(pick)
+    .reduce((a, h) => a + (HIT_W[h.kind] ?? h.weight ?? 0.4) * (LAYER_W[h.with] ?? 0.6), 0);
+  // 그 분야의 기둥을 친 관계는 아래에서 따로 센다. 여기서 또 세면 한 번의
+  // 충이 두 몫을 받는다 — 같은 원천을 두 번 세지 않는다
+  const stirOf = (pillar) => {
+    const rest = (h) => h.with !== pillar;
+    return clamp01((sumOf((h) => rest(h) && h.good === false)
+      + sumOf((h) => rest(h) && h.good !== false) * 0.7) / 2.2);
+  };
 
-  const gods = [b.god, b.branchGod].filter(Boolean);
+  // 세운 십성도 함께 본다 — 그 해의 십성이 자리에 들면 그 해 내내 그 분야가
+  // 열려 있고, 달은 그 위에서 언제인지를 가린다
+  const yearGods = ctx?.year ? [ctx.year.god, ctx.year.branchGod].filter(Boolean) : [];
+  const monthGods = [b.god, b.branchGod].filter(Boolean);
   const activations = zeroActivations();
   const featureShift = {};
   const evidence = [];
 
+  // 대운이 바뀌는 무렵은 판 자체가 바뀐다.
+  // (전에는 `b.daeun?.changing` 을 봤는데 `b.daeun` 은 간지 문자열이라
+  //  이 가지가 한 번도 실행되지 않았다. 실제 전환 시점으로 고쳤다.)
+  const toTurn = ctx?.daeun?.toTurn;
+  const daeunTurn = Number.isFinite(toTurn) && toTurn < 1;
+
   for (const d of DOMAINS) {
     const seat = SAJU_SEAT_GODS[d];
-    // 그 시기 십성이 이 분야의 자리에 들었는가
-    const onSeat = seat ? gods.filter((g) => seat.includes(g)).length : 0;
-    const seatHit = seat ? clamp01(onSeat / Math.max(1, gods.length)) : 0.3;
-    activations[d] = clamp01(0.25 * stir + 0.75 * seatHit * (0.4 + 0.6 * stir));
+    if (!seat) { activations[d] = null; continue; }
 
-    const sh = shiftFrom('saju', d, gods.map((g) => `god:${g}`));
-    if (sh) featureShift[d] = sh;
-  }
+    const onMonth = monthGods.filter((g) => seat.includes(g)).length;
+    const onYear = yearGods.filter((g) => seat.includes(g)).length;
+    // 그 분야의 기둥이 이 달에 직접 부딪쳤는가 (근묘화실)
+    const pillar = SAJU_PILLAR[d];
+    const own = pillar ? hits.filter((h) => h.with === pillar) : [];
+    const ownClash = own.filter((h) => h.good === false)
+      .reduce((a, h) => a + (HIT_W[h.kind] ?? 0.5), 0);
+    const ownBond = own.filter((h) => h.good !== false)
+      .reduce((a, h) => a + (HIT_W[h.kind] ?? 0.5), 0);
 
-  // 대운이 바뀌는 무렵은 판 자체가 바뀐다
-  if (b.daeun?.changing) {
-    for (const d of ['career', 'majorChange', 'residence', 'movement']) {
-      activations[d] = clamp01(activations[d] + 0.2);
+    // 원천을 묶는다 — 십성 자리 / 그 기둥의 충 / 그 기둥의 합 / 전체 소란 / 대운 전환
+    activations[d] = evidenceOr({
+      seat: [
+        onMonth ? 0.55 * clamp01(onMonth / Math.max(1, monthGods.length)) : 0,
+        onYear ? 0.35 * clamp01(onYear / Math.max(1, yearGods.length)) : 0,
+      ],
+      pillarClash: [clamp01(ownClash * 0.45)],
+      pillarBond: [clamp01(ownBond * 0.3)],
+      stir: [stirOf(pillar) * 0.3],
+      daeun: [daeunTurn && ['career', 'majorChange', 'residence', 'movement'].includes(d) ? 0.25 : 0],
+    });
+
+    // 방향은 그 시기 십성이 정한다. 세운은 달보다 약하게 싣는다
+    const sh = shiftFrom('saju', d, monthGods.map((g) => `god:${g}`));
+    const shY = yearGods.length ? shiftFrom('saju', d, yearGods.map((g) => `god:${g}`), 0.5) : null;
+    if (sh || shY) {
+      featureShift[d] = Object.fromEntries((AXES[d] ?? []).map((ax) =>
+        [ax, Math.round((((sh?.[ax] ?? 0) + (shY?.[ax] ?? 0)) / (shY ? 1.5 : 1)) * 1000) / 1000]));
     }
-    evidence.push({ what: '대운 전환', basis: b.daeun.label ?? '대운이 바뀌는 무렵', weight: 0.2 });
+    if (pillar && own.length) {
+      evidence.push({ what: `${pillar} ${own.map((h) => h.kind).join('·')}`,
+        basis: `${DOMAINS.includes(d) ? d : ''} 자리를 직접 건드린다`, domain: d, weight: clamp01(ownClash + ownBond) });
+    }
   }
 
-  if (gods.length) {
-    evidence.push({ what: '시기 십성', basis: `${b.gz ?? ''} ${gods.join('·')}`, weight: 1 });
+  if (daeunTurn) {
+    evidence.push({ what: '대운 전환', basis: `${ctx?.daeun?.current?.hanja ?? ''} → ${ctx?.daeun?.next?.hanja ?? ''} (${toTurn}년 남음)`, weight: 0.25 });
   }
-  for (const h of (b.hits ?? []).slice(0, 3)) {
-    evidence.push({ what: `원국 ${h.with} ${h.kind}`, basis: `무게 ${h.weight}`, weight: h.weight ?? 0 });
+  if (monthGods.length) {
+    evidence.push({ what: '월운 십성', basis: `${b.gz?.hanja ?? b.gz ?? ''} ${monthGods.join('·')}`, weight: 1 });
+  }
+  if (yearGods.length) {
+    evidence.push({ what: '세운 십성', basis: `${ctx.year.gz?.hanja ?? ''} ${yearGods.join('·')}`, weight: 0.5 });
+  }
+  for (const h of hits.slice(0, 3)) {
+    evidence.push({ what: `${h.with} ${h.kind}`, basis: `무게 ${h.weight}`, weight: h.weight ?? 0 });
   }
 
   // 기질은 시기로 움직이지 않고, timing 은 메타 분야다 — 말하지 않는다
@@ -144,7 +231,23 @@ const ZIWEI_PALACE = {
   movement: '천이궁', health: '질액궁', majorChange: '명궁', timing: '명궁',
 };
 
-export function ziweiTiming(month, period, stack) {
+/**
+ * 사화 넷은 같은 크기의 '있음'이 아니다.
+ *
+ *   화록 재물·기회가 열린다        방향을 그대로 밀어 준다
+ *   화권 권한·추진이 붙는다        그대로, 조금 세게
+ *   화과 이름·시험이 밝아진다      약하게
+ *   화기 막히고 집착한다           **반대로 당긴다** — 그 별의 성질이 뒤틀린다
+ *
+ * activation(얼마나 시끄러운가)에는 넷 다 더한다. 화기는 오히려 가장
+ * 시끄럽다. 방향(featureShift)에서만 부호가 갈린다.
+ */
+export const SIHWA_ACT = { 화록: 0.3, 화권: 0.3, 화과: 0.22, 화기: 0.35 };
+export const SIHWA_DIR = { 화록: 1, 화권: 0.9, 화과: 0.6, 화기: -0.5 };
+const sihwaKind = (s) => (typeof s === 'string' ? s.slice(-2) : `${s?.kind ?? ''}`);
+const sihwaStar = (s) => (typeof s === 'string' ? s.slice(0, -2) : `${s?.star ?? ''}`);
+
+export function ziweiTiming(month, period, stack, ctx = null) {
   const z = month?.ziwei;
   if (!z || !stack) return unavailable('jamidusu', period, '출생 시각을 알아야 판을 세운다');
 
@@ -152,42 +255,69 @@ export function ziweiTiming(month, period, stack) {
   const featureShift = {};
   const evidence = [];
 
-  // 그 달의 유월 층에서 어느 궁이 어디에 왔는가
-  const monthMap = z.month?.map ?? null;
+  // 유월 명궁이 **원국의 어느 궁**에 내려앉았는가.
+  // (전에는 유월 판의 자기 자리를 봤는데, 그 자리는 언제나 '명궁'이라
+  //  명궁 말고는 한 번도 걸리지 않았다. 원국 궁으로 고쳤다.)
+  const monthOnNatal = z.month?.palaceOfNatal ?? null;
   const monthStars = z.month?.stars ?? [];
-  const monthSihwa = (z.month?.sihwa ?? []).map((s) => (typeof s === 'string' ? s : `${s.star ?? ''}${s.kind ?? ''}`));
+  const monthSihwa = z.month?.sihwa ?? [];
+
+  // 열두 분야가 보는 궁은 '직업' 넷보다 넓다. ctx 가 분야별 궁을 모아 준다
+  const rowOf = (palace) => ctx?.palaceRows?.[palace]
+    ?? (z.overlap?.rows ?? []).find((x) => x.palace === palace) ?? null;
 
   for (const d of DOMAINS) {
     const palace = ZIWEI_PALACE[d];
-    let act = 0;
+    const row = rowOf(palace);
+    const groups = { repeat: [], sihwa: [], monthPalace: [], monthSihwa: [] };
     const stars = [];
+    const dirs = [];   // {star, w}
 
-    // 층이 겹치는 수 — 두수가 '되풀이 켜진다'고 보는 자리
-    const row = (z.overlap?.rows ?? []).find((x) => x.palace === palace);
     if (row) {
-      const layers = row.hits ?? [];
-      const repeated = layers.length > 1 ? layers.length - 1 : 0;
-      act += clamp01(repeated / 3) * 0.5;
-      for (const h of layers) {
+      // 대한·유년·유월이 **같은 지지**에서 그 궁을 되풀이 켜는가
+      const rep = (row.repeated ?? []).reduce((a, x) => a + (x.layers - 1), 0);
+      groups.repeat.push(clamp01(rep / 3) * 0.5);
+      for (const h of row.hits ?? []) {
         for (const s of h.stars ?? []) stars.push(s);
-        // 사화가 그 궁에 들면 그 자리가 켜진다
-        if ((h.sihwa ?? []).length) {
-          act += 0.25;
-          evidence.push({ what: `${palace} 사화`, basis: `${h.layer} ${h.sihwa.join('·')}`, domain: d, weight: 0.25 });
+        for (const s of h.sihwa ?? []) {
+          const kind = sihwaKind(s); const star = sihwaStar(s);
+          groups.sihwa.push(SIHWA_ACT[kind] ?? 0.2);
+          if (star) dirs.push({ star, w: SIHWA_DIR[kind] ?? 0.5 });
+          evidence.push({ what: `${palace} ${s}`, basis: `${h.layer} 층`, domain: d,
+            weight: SIHWA_ACT[kind] ?? 0.2 });
         }
       }
     }
-    // 유월에 그 궁이 오면 그 달이 그 분야의 달이다
-    if (monthMap && monthMap[z.month?.branch ?? -1] === palace) {
-      act += 0.3;
-      evidence.push({ what: `유월 ${palace}`, basis: `${period} 유월이 ${palace}`, domain: d, weight: 0.3 });
+    // 이 달의 유월 명궁이 원국 그 궁에 오면, 그 달이 그 분야의 달이다
+    if (monthOnNatal && monthOnNatal === palace) {
+      groups.monthPalace.push(0.35);
+      evidence.push({ what: `유월 명궁 → 원국 ${palace}`, basis: period, domain: d, weight: 0.35 });
     }
-    if (monthSihwa.length && palace === ZIWEI_PALACE[d]) act += 0.1;
+    // 유월 사화는 그 달 전체의 기운이라 어느 궁에나 약하게만 싣는다
+    for (const s of monthSihwa) {
+      const kind = sihwaKind(s);
+      groups.monthSihwa.push((SIHWA_ACT[kind] ?? 0.2) * 0.35);
+      const star = sihwaStar(s);
+      if (star) dirs.push({ star, w: (SIHWA_DIR[kind] ?? 0.5) * 0.4 });
+    }
 
-    activations[d] = clamp01(act);
+    activations[d] = evidenceOr(groups);
+
+    // 방향 — 궁에 있는 별들의 뜻에 사화의 부호를 얹는다.
+    // 화기는 같은 별이라도 반대쪽으로 당긴다
     const syms = [...new Set([...stars, ...monthStars])];
-    const sh = shiftFrom('jamidusu', d, syms.map((s) => (d === 'career' ? `career:${s}` : `star:${s}`)));
-    if (sh) featureShift[d] = sh;
+    const base = shiftFrom('jamidusu', d, syms.map((s) => (d === 'career' ? `career:${s}` : `star:${s}`)));
+    const parts = [];
+    if (base) parts.push({ v: base, w: 1 });
+    for (const { star, w } of dirs) {
+      const sh = shiftFrom('jamidusu', d, [d === 'career' ? `career:${star}` : `star:${star}`], w);
+      if (sh) parts.push({ v: sh, w: Math.abs(w) });
+    }
+    if (parts.length) {
+      const den = parts.reduce((a, p) => a + p.w, 0) || 1;
+      featureShift[d] = Object.fromEntries((AXES[d] ?? []).map((ax) =>
+        [ax, Math.round((parts.reduce((a, p) => a + (p.v[ax] ?? 0) * p.w, 0) / den) * 1000) / 1000]));
+    }
   }
 
   activations.personality = null; activations.timing = null;
@@ -214,45 +344,68 @@ const SLOW = { 토성: 1, 천왕성: 1, 해왕성: 0.9, 명왕성: 1, 목성: 0.
 
 const ANGLE_HOUSE = { 중천: 10, 상승점: 1, 하강점: 7, 천저: 4 };
 
-export function westernTiming(month, period, natal) {
-  const t = month?.western?.transits;
+/** 느린 별은 판을 깔고, 빠른 별은 방아쇠를 당긴다 — 전통 독법의 두 층 */
+const SLOW_PLANETS = new Set(['명왕성', '해왕성', '천왕성', '토성', '목성', '라후']);
+
+export function westernTiming(month, period, natal, ctx = null) {
+  // 열두 하우스를 모두 겨냥한 트랜싯이 있으면 그것을 쓴다. 없으면 기존 것
+  // (분야가 '직업' 으로 고정돼 하우스 넷만 보던 자료) 으로 물러선다.
+  const t = ctx?.transits ?? month?.western?.transits;
   if (!t || !natal?.cusps) return unavailable('astrology', period, '출생 시각을 알아야 하우스를 세운다');
+  // 시각을 모르면 커스프도 앵글도 없다. 트랜싯은 구해지지만 **어느 방을
+  // 건드렸는지** 말할 수가 없어서 열두 분야가 전부 0 으로 나온다.
+  // 그것은 "계산했고 낮다"가 아니라 "말할 수 없다"다.
+  if (ctx?.timeKnown === false) {
+    return unavailable('astrology', period, '출생 시각을 몰라 트랜싯이 어느 하우스를 건드렸는지 말할 수 없다');
+  }
 
   const activations = zeroActivations();
   const featureShift = {};
   const evidence = [];
-  const byDomain = Object.fromEntries(DOMAINS.map((d) => [d, []]));
+  const bg = Object.fromEntries(DOMAINS.map((d) => [d, []]));     // 느린 배경
+  const tg = Object.fromEntries(DOMAINS.map((d) => [d, []]));     // 빠른 방아쇠
+  const planetsOf = Object.fromEntries(DOMAINS.map((d) => [d, new Set()]));
 
   for (const h of t.hits ?? []) {
-    const w = (ASPECT_W[h.aspect] ?? 0.3) * (SLOW[h.planet] ?? 0.3) * (0.4 + 0.6 * (h.tight ?? 0.5));
-    // 맞은 자리가 어느 하우스인가
-    const targetHouse = h.house ?? ANGLE_HOUSE[h.target] ?? null;
+    // 다가오는 각이 일을 만든다. 멀어지는 각은 이미 지난 것이다
+    const phase = h.applying === false ? 0.65 : 1;
+    const w = (ASPECT_W[h.aspect] ?? 0.3) * (SLOW[h.planet] ?? 0.3)
+      * (0.4 + 0.6 * (h.tight ?? 0.5)) * phase * (h.exact ? 1.15 : 1);
+    // 맞은 자리가 어느 하우스인가. 마주 보는 커스프는 한 각이 둘을 건드린 것이다
+    const houses = h.axisHouses?.length ? h.axisHouses
+      : [h.house ?? ANGLE_HOUSE[h.target] ?? null].filter((x) => x != null);
+    const slow = SLOW_PLANETS.has(h.planet);
     for (const d of DOMAINS) {
-      const houses = WEST_HOUSE[d] ?? [];
-      if (targetHouse != null && houses.includes(targetHouse)) {
-        byDomain[d].push({ h, w });
-      }
+      if (!(WEST_HOUSE[d] ?? []).some((hn) => houses.includes(hn))) continue;
+      (slow ? bg : tg)[d].push(Math.min(0.9, w));
+      planetsOf[d].add(h.planet);
+    }
+  }
+
+  // 느린 별이 지금 어느 하우스를 지나는가 — 각이 없어도 그 방을 데운다.
+  // 이것은 몇 해씩 이어지는 배경이라 아주 낮게만 싣는다
+  for (const [p, hn] of Object.entries(t.inHouse ?? {})) {
+    if (!SLOW_PLANETS.has(p) || hn == null) continue;
+    for (const d of DOMAINS) {
+      if ((WEST_HOUSE[d] ?? []).includes(hn)) { bg[d].push(0.18 * (SLOW[p] ?? 0.5)); planetsOf[d].add(p); }
     }
   }
 
   for (const d of DOMAINS) {
-    const hits = byDomain[d];
-    // 여러 트랜싯이 겹치면 누적하되 포화시킨다
-    const act = clamp01(1 - hits.reduce((a, x) => a * (1 - Math.min(0.9, x.w)), 1));
-    activations[d] = act;
-    if (hits.length) {
-      const planets = [...new Set(hits.map((x) => x.h.planet))];
-      // 트랜싯 행성의 뜻을 정적 해석과 같은 표로 옮긴다
-      const conds = d === 'career'
-        ? planets.map((p) => `tenth:${p}`)
-        : planets.map((p) => `planet:${p}`);
+    // 배경과 방아쇠를 따로 묶는다. 같은 배경이 여러 줄로 잡혀도 한 몫이고,
+    // **배경과 방아쇠가 함께 있을 때만** 둘이 겹쳐 올라간다
+    activations[d] = evidenceOr({ background: bg[d], trigger: tg[d] });
+    const planets = [...planetsOf[d]];
+    if (planets.length) {
+      const conds = d === 'career' ? planets.map((p) => `tenth:${p}`) : planets.map((p) => `planet:${p}`);
       const sh = shiftFrom('astrology', d, conds) ?? shiftFrom('astrology', d, planets.map((p) => `sign:${p}`));
       if (sh) featureShift[d] = sh;
-      for (const x of hits.slice(0, 2)) {
-        evidence.push({ what: `${x.h.planet}–${x.h.target} ${x.h.aspect}`,
-          basis: `오브 ${x.h.orb}°${x.h.exact ? ' (정각)' : ''}`, domain: d, weight: Math.round(x.w * 100) / 100 });
-      }
     }
+  }
+  for (const h of (t.hits ?? []).slice(0, 3)) {
+    evidence.push({ what: `${h.planet}–${h.target} ${h.aspect}`,
+      basis: `오브 ${h.orb}°${h.exact ? ' 정각' : ''}${h.applying === false ? ' (멀어짐)' : ' (다가옴)'}`,
+      weight: Math.round((h.tight ?? 0) * 100) / 100 });
   }
 
   activations.personality = null; activations.timing = null;
@@ -268,40 +421,93 @@ export function westernTiming(month, period, natal) {
 
 const VEDIC_HOUSE = WEST_HOUSE;
 
-export function vedicTiming(month, period, packs) {
-  const d1 = packs?.d1;
+/**
+ * 분야마다 보는 분할도(varga)가 다르다 — 베딕의 기본 독법이다.
+ *
+ * D1 한 장으로 직업도 결혼도 자녀도 보면, 그 체계가 가진 것의 일부만 쓰는
+ * 것이다. 분할도는 `hires/vedicExt.js` 가 이미 세운다.
+ *
+ * **학업은 D1 로 둔다.** 전통은 D24(싯담샤)로 보는데 그 계산이 없다.
+ * 없는 것을 D7(자녀) 로 대신하지 않는다 — 그건 근거 없는 갖다 붙이기다.
+ */
+export const VEDIC_VARGA = {
+  career: 'D10', marriage: 'D9', relationship: 'D9', children: 'D7',
+  residence: 'D4', movement: 'D4', wealth: 'D2',
+  education: 'D1', health: 'D1', majorChange: 'D1',
+};
+/** 다샤 층의 무게 — 마하 > 안타르 > 프라탼타르 */
+const DASHA_W = [0.5, 0.35, 0.15];
+const DASHA_LABEL = ['마하', '안타르', '프라탼타르'];
+
+export function vedicTiming(month, period, packs, ctx = null) {
+  const d1 = packs?.d1 ?? packs?.D1;
   const dasha = month?.vedic?.dasha;
   if (!d1 || !dasha) return unavailable('vedic', period, '다샤를 세우지 못했다');
 
-  const lords = [dasha.maha?.lord ?? dasha.md, dasha.antar?.lord ?? dasha.ad, dasha.pratyantar?.lord ?? dasha.pd]
-    .filter(Boolean);
+  // `dashaAt` 이 주는 것은 `{md, ad, pd}` 노드다. 예전 코드는 `dasha.maha`
+  // 를 찾다 없어서 **노드 객체 자체**를 행성 이름 자리에 넣었고, 그래서
+  // 어떤 비교도 참이 되지 않아 activation 이 늘 0 이었다.
+  const lords = [dasha.md?.lord, dasha.ad?.lord, dasha.pd?.lord].filter(Boolean);
+  if (!lords.length) return unavailable('vedic', period, '다샤 주인을 읽지 못했다');
+
   const activations = zeroActivations();
   const featureShift = {};
   const evidence = [];
 
   for (const d of DOMAINS) {
     const houses = VEDIC_HOUSE[d] ?? [];
-    let act = 0;
-    // 다샤 주인이 그 분야 궁의 주인이거나 그 궁에 앉았으면 그 자리가 켜진다
+    const code = VEDIC_VARGA[d] ?? 'D1';
+    // 그 분야 전용 분할도를 먼저 본다. 없으면 D1 으로 물러선다
+    const V = ctx?.vedic?.[code] ?? d1;
+    // `background` 에 D1 확인과 고차라를 함께 담는다. 둘 다 "분할도 말고
+    // 다른 데서도 그 자리가 켜져 있다"는 한 가지 뜻이라, 따로 묶어 두 몫을
+    // 주면 배경이 본 신호보다 커진다
+    const groups = { lord: [], lagna: [], occupant: [], aspect: [], background: [], change: [] };
+
     lords.forEach((p, i) => {
-      const w = [0.5, 0.35, 0.15][i] ?? 0.1;
+      const w = DASHA_W[i] ?? 0.1;
+      // 분할도의 라그나주는 그 분야의 1순위 지표다
+      const lagnaLord = safe(() => V.lordOf(1))?.lord ?? null;
+      if (lagnaLord && lagnaLord === p) {
+        groups.lagna.push(w * 0.8);
+        evidence.push({ what: `${code} 라그나주 = ${p}`, basis: `${DASHA_LABEL[i]}다샤`, domain: d, weight: w * 0.8 });
+      }
       for (const hn of houses) {
-        const l = safe(() => d1.lordOf(hn));
-        const occ = safe(() => d1.inHouse(hn)) ?? [];
-        if (l?.lord === p) { act += w; evidence.push({ what: `다샤 ${p} = ${hn}궁주`, basis: `${i === 0 ? '마하' : i === 1 ? '안타르' : '프라탼타르'}다샤`, domain: d, weight: w }); }
-        else if (occ.includes(p)) { act += w * 0.7; }
+        const l = safe(() => V.lordOf(hn));
+        if (l?.lord === p) {
+          groups.lord.push(w);
+          evidence.push({ what: `${code} ${hn}궁주 = ${p}`, basis: `${DASHA_LABEL[i]}다샤`, domain: d, weight: w });
+          continue;
+        }
+        if ((safe(() => V.inHouse(hn)) ?? []).includes(p)) { groups.occupant.push(w * 0.7); continue; }
+        if ((safe(() => V.aspecting(hn)) ?? []).includes(p)) groups.aspect.push(w * 0.4);
+      }
+      // D1 도 함께 본다 — 분할도는 D1 을 확인하는 자리이지 대신하는 자리가 아니다
+      if (code !== 'D1') {
+        for (const hn of houses) {
+          if (safe(() => d1.lordOf(hn))?.lord === p) { groups.background.push(w * 0.5); break; }
+        }
       }
     });
-    activations[d] = clamp01(act);
+
+    // 고차라 — 느린 넷이 라그나에서 그 자리를 지나는가 (배경)
+    for (const g of month?.vedic?.gochara?.rows ?? []) {
+      if (g.fromLagna != null && houses.includes(g.fromLagna)) groups.background.push(0.15);
+    }
+    // 다샤가 바뀌는 달은 판이 바뀐다
+    if (ctx?.dashaChanged) {
+      groups.change.push(ctx.dashaChanged === 'md' ? 0.3 : ctx.dashaChanged === 'ad' ? 0.2 : 0.1);
+    }
+
+    activations[d] = evidenceOr(groups);
     const sh = shiftFrom('vedic', d, lords.map((p) => (d === 'career' ? `d10Lagnesh:${p}` : `planet:${p}`)));
     if (sh) featureShift[d] = sh;
   }
 
-  // 다샤가 바뀌는 무렵은 판이 바뀐다
-  if (month?.vedic?.changes?.length) {
-    for (const d of ['career', 'majorChange']) activations[d] = clamp01(activations[d] + 0.2);
-    evidence.push({ what: '다샤 전환', basis: String(month.vedic.changes[0]?.label ?? ''), weight: 0.2 });
+  if (ctx?.dashaChanged) {
+    evidence.push({ what: '다샤 전환', basis: `${ctx.dashaChanged.toUpperCase()} → ${dasha.label ?? ''}`, weight: 0.3 });
   }
+  evidence.push({ what: '다샤', basis: dasha.label ?? lords.join('–'), weight: 1 });
 
   activations.personality = null; activations.timing = null;
   return signal('vedic', period, {

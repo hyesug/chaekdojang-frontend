@@ -18,6 +18,7 @@ import * as ZW from '../../hires/ziwei.js';
 import * as VEX from '../../hires/vedicExt.js';
 import * as WS from '../../hires/western.js';
 import { buildGrid } from '../../hires/grid.js';
+import { daeunAt } from '../../hires/bazi.js';
 import { makePeriod, monthsOfYear } from '../../forecast.js';
 import { SYSTEMS } from '../../engine.js';
 
@@ -60,10 +61,14 @@ export function predictTimeline(o) {
 
   // ── 네 체계의 시기 재료 — grid 가 절기월 축 위에 놓아 둔다 ──
   const months = [];
+  let board = null;
+  const yearRow = {};        // 연도 → annualTrack 행 (세운 십성·환갑)
   for (let y = y0; y <= y1; y += 6) {
     const g = safe(() => buildGrid(fortune.input, fortune.chart, {
       fromYear: y, years: Math.min(6, y1 - y + 1), domain: '직업',
     }));
+    board ??= g?.board ?? null;
+    for (const row of g?.years ?? []) yearRow[row.year] = row.bazi;
     for (const m of g?.months ?? []) {
       const key = `${m.from.y}-${String(m.from.m).padStart(2, '0')}`;
       const n = monthNo(key);
@@ -74,7 +79,56 @@ export function predictTimeline(o) {
   months.sort((a, b) => a.n - b.n);
 
   const natalPack = safe(() => WS.natalPack(fortune.input));
-  const vedicPacks = { d1: safe(() => VEX.chart(fortune.input, 'D1')) };
+
+  // ── 분야마다 제 재료를 쓴다 ────────────────────────────────
+  //
+  // grid 는 `domain: '직업'` 으로 부른다. 그래서 자미 궁은 직업 넷만,
+  // 점성 커스프는 10·6·2·11 만 잡혀 있었다. 결혼(7하우스)·자녀(5하우스)·
+  // 주거(4하우스)·부처궁·자녀궁은 **재료 자체가 없어서** 늘 0 이었다.
+  // 여기서 같은 계산 함수로 나머지 자리를 채운다 — 새 천문 계산은 없다.
+  const ALL_HOUSES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  // 이 넷이면 열두 분야가 보는 궁을 모두 덮는다
+  const PALACE_SETS = ['직업', '결혼', '자녀', '건강'];
+  const VARGA_CODES = ['D1', 'D2', 'D4', 'D7', 'D9', 'D10'];
+  const vedicCharts = Object.fromEntries(
+    VARGA_CODES.map((c) => [c, safe(() => VEX.chart(fortune.input, c))]).filter(([, v]) => v));
+  const vedicPacks = { d1: vedicCharts.D1 };
+
+  const ctxOf = {};          // key → 어댑터에 넘길 보강 재료
+  let prevDasha = null;
+  for (const { key, m } of months) {
+    // 자미 — 열두 궁 전부에 대해 층 겹침을 구한다 (배열 계산뿐이라 싸다)
+    const palaceRows = {};
+    if (board && m.ziwei?.layers) {
+      for (const set of PALACE_SETS) {
+        for (const r of safe(() => ZW.overlapFor(board, set, m.ziwei.layers))?.rows ?? []) {
+          palaceRows[r.palace] ??= r;
+        }
+      }
+    }
+    // 점성 — 열두 커스프를 한 번에 겨냥한다
+    const transits = natalPack ? safe(() => WS.transitsAt(natalPack, m.jd, {
+      timeKnown: fortune.input.timeKnown, houses: ALL_HOUSES, speed: 'month',
+    })) : null;
+    // 베딕 — 다샤가 이 달에 바뀌었는가 (grid 의 months 에는 전환이 없다)
+    const dl = m.vedic?.dasha;
+    const now = dl ? [dl.md?.lord, dl.ad?.lord, dl.pd?.lord] : null;
+    let dashaChanged = null;
+    if (now && prevDasha) {
+      dashaChanged = now[0] !== prevDasha[0] ? 'md'
+        : now[1] !== prevDasha[1] ? 'ad'
+        : now[2] !== prevDasha[2] ? 'pd' : null;
+    }
+    if (now) prevDasha = now;
+
+    ctxOf[key] = {
+      palaceRows, transits, dashaChanged,
+      timeKnown: fortune.input.timeKnown,
+      vedic: vedicCharts,
+      year: yearRow[m.year] ?? null,
+      daeun: safe(() => daeunAt(fortune.input, fortune.chart, m.jd)),
+    };
+  }
 
   // ── 나머지 열한 체계 — forecast() 를 달마다 돌리고 분포를 잡는다 ──
   const sysByType = Object.fromEntries(SYSTEMS.map((s) => [s.meta.id, s]));
@@ -126,11 +180,12 @@ export function predictTimeline(o) {
   // ── 달마다 열다섯을 돌린다 ──
   const perMonth = [];
   for (const { key, m } of months) {
+    const c = ctxOf[key];
     const signals = [
-      sajuTiming(m, key),
-      ziweiTiming(m, key, stack),
-      westernTiming(m, key, natalPack),
-      vedicTiming(m, key, vedicPacks),
+      sajuTiming(m, key, c),
+      ziweiTiming(m, key, stack, c),
+      westernTiming(m, key, natalPack, c),
+      vedicTiming(m, key, vedicPacks, c),
       ...AUX_IDS.map((id) => otherTiming(id, key, auxRows[id][key], auxStats[id])),
     ];
     perMonth.push({ key, signals });

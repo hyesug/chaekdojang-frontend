@@ -187,11 +187,30 @@ export const NULL_METRICS = [
 
 const TOLERANCES = [1, 3, 6];
 
+/** 그 지표가 요구하는 앞뒤 여유 (달) — EventPercentile 은 창이 없다 */
+export const METRIC_TOLERANCE = {
+  eventPercentile: 0,
+  top3Within1: 1, top3Within3: 3, top3Within6: 6,
+  bestPercentileWithin1: 1, bestPercentileWithin3: 3, bestPercentileWithin6: 6,
+};
+
 /**
  * 한 시계열에서 **뽑을 수 있는 모든 달의 채점표**를 미리 만든다.
  *
  * 라운드마다 `scoreEvent` 를 다시 부르면 10,000회 × 사건 수만큼 정렬이 돈다.
  * 시계열이 고정이면 "그 달이 사건이었다면 받았을 점수"도 고정이므로 한 번만 센다.
+ *
+ * ── 가장자리를 같은 조건으로 맞춘다 ─────────────────────────
+ * 실제 사건은 앞뒤로 여러 해를 둔 시계열 한가운데에 있다. 그런데 null 사건이
+ * 시계열 첫 달에 뽑히면 `±6창 최고` 를 **앞쪽 없이 뒤 여섯 달로만** 재게 된다.
+ * 창이 반쪽이면 그 안의 최고값이 낮게 나오고, 기준선이 실제보다 물러진다.
+ *
+ * 그래서 창 지표의 null 후보는 **앞뒤 그 달 수를 온전히 확보한 달**로만
+ * 제한한다. 창이 덜 찬 달(`full === false`)도 뺀다. EventPercentile 은 창을
+ * 쓰지 않으므로 유효한 달 전부를 후보로 둔다.
+ *
+ * @param {Array<{k:string, v:number|null, full?:boolean}>} series
+ *        `full` 은 그 달의 스무딩 창이 다 찼는지 (`windowFull`). 없으면 참으로 본다
  */
 export function prepareNullDraws(series) {
   const xs = series.filter((e) => Number.isFinite(e.v));
@@ -200,13 +219,19 @@ export function prepareNullDraws(series) {
 
   const values = xs.map((e) => e.v);
   const nos = xs.map((e) => monthNo(e.k));
+  const lo = Math.min(...nos), hi = Math.max(...nos);
   const pctOfValue = new Map();
   for (const v of new Set(values)) pctOfValue.set(v, midRank(values, v).percentile);
   const top3 = topK(xs, 3).keys.map(monthNo);
 
   const draws = xs.map((e, i) => {
     const n = nos[i];
-    const d = { key: e.k, eventPercentile: pctOfValue.get(e.v) };
+    const full = e.full !== false;
+    const d = {
+      key: e.k, eventPercentile: pctOfValue.get(e.v),
+      // 이 달을 후보로 쓸 수 있는 가장 넓은 창 (달). full 이 아니면 창 지표에서 뺀다
+      margin: full ? Math.min(n - lo, hi - n) : -1,
+    };
     for (const tol of TOLERANCES) {
       d[`top3Within${tol}`] = top3.some((t) => Math.abs(t - n) <= tol) ? 100 : 0;
       let best = -Infinity;
@@ -217,8 +242,15 @@ export function prepareNullDraws(series) {
     }
     return d;
   });
-  return { draws, n: xs.length };
+  return { draws, n: xs.length, span: hi - lo + 1 };
 }
+
+/** 그 지표의 null 후보 달 — 실제 사건과 같은 관측 가능 범위만 남긴다 */
+export const poolFor = (draws, metric) => {
+  const tol = METRIC_TOLERANCE[metric] ?? 0;
+  if (!tol) return draws;
+  return draws.filter((d) => d.margin >= tol);
+};
 
 const quantile = (sorted, q) => sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * q))];
 
@@ -246,7 +278,9 @@ export function aggregateNull(rows, { rounds = 10000, seed = 20260924 } = {}) {
   for (const r of rows) {
     const p = prepareNullDraws(r.series);
     if (!p || p.unscorable) continue;
-    prepared.push({ person: r.person, draws: p.draws });
+    // 지표마다 후보 달이 다르다 — 창 지표는 가장자리를 뺀다
+    const pools = Object.fromEntries(NULL_METRICS.map((m) => [m, poolFor(p.draws, m)]));
+    prepared.push({ person: r.person, draws: p.draws, pools });
   }
   if (!prepared.length) return null;
 
@@ -254,19 +288,23 @@ export function aggregateNull(rows, { rounds = 10000, seed = 20260924 } = {}) {
   const rnd = seededRandom(seed);
   const acc = {};
   for (const m of NULL_METRICS) acc[m] = { event: [], person: [] };
+  // 어느 지표에서 몇 달이 후보에서 빠졌는지 적어 둔다 — 조용히 좁히지 않는다
+  const pool = Object.fromEntries(NULL_METRICS.map((m) => [m, {
+    candidates: prepared.reduce((a, p) => a + p.pools[m].length, 0),
+    total: prepared.reduce((a, p) => a + p.draws.length, 0),
+    usable: prepared.filter((p) => p.pools[m].length).length,
+  }]));
 
-  const pick = new Array(prepared.length);
   for (let i = 0; i < rounds; i++) {
-    // 한 회차 — 사건마다 **자기 시계열 안에서** 무작위 달을 하나씩 뽑는다
-    for (let j = 0; j < prepared.length; j++) {
-      const d = prepared[j].draws;
-      pick[j] = d[Math.floor(rnd() * d.length)];
-    }
+    // 한 회차 — 사건마다 **자기 시계열 안에서** 무작위 달을 하나씩 뽑는다.
+    // 지표마다 후보 범위가 달라 뽑기도 지표마다 한다.
     for (const m of NULL_METRICS) {
       let sum = 0, n = 0;
       const byPerson = new Map();
       for (let j = 0; j < prepared.length; j++) {
-        const v = pick[j][m];
+        const cand = prepared[j].pools[m];
+        if (!cand.length) continue;
+        const v = cand[Math.floor(rnd() * cand.length)][m];
         if (v == null) continue;
         sum += v; n++;
         const cur = byPerson.get(prepared[j].person) ?? { s: 0, c: 0 };
@@ -282,7 +320,7 @@ export function aggregateNull(rows, { rounds = 10000, seed = 20260924 } = {}) {
   const metrics = {};
   for (const m of NULL_METRICS) {
     if (!acc[m].event.length) continue;
-    metrics[m] = { event: summarize(acc[m].event), person: summarize(acc[m].person) };
+    metrics[m] = { event: summarize(acc[m].event), person: summarize(acc[m].person), pool: pool[m] };
   }
   return { rounds, seed, events: prepared.length, people: people.length, metrics };
 }

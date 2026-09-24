@@ -66,7 +66,7 @@ export function natalPack(input) {
 }
 
 /** 트랜싯이 건드릴 출생 차트의 점들 */
-function natalTargets(N, timeKnown, domain = null) {
+function natalTargets(N, timeKnown, domain = null, houses = null) {
   const t = [
     { name: '출생 태양', lon: N.pos.태양.lon, kind: 'planet' },
     { name: '출생 달', lon: N.pos.달.lon, kind: 'planet' },
@@ -80,7 +80,9 @@ function natalTargets(N, timeKnown, domain = null) {
   if (N.rulerLon != null && !near(N.rulerLon, N.pos.태양.lon) && !near(N.rulerLon, N.pos.달.lon)) {
     t.push({ name: `차트 주인 ${N.ruler}`, lon: N.rulerLon, kind: 'ruler' });
   }
-  const want = domain && DOMAIN_POINTS[domain] ? DOMAIN_POINTS[domain].houses : KEY_HOUSES;
+  // 부를 때 하우스를 직접 지정하면 그것을 쓴다. 분야를 하나로 좁히지 않고
+  // 열두 하우스를 한 번에 볼 때 쓴다 — 달마다 분야 수만큼 다시 돌리지 않으려고.
+  const want = houses ?? (domain && DOMAIN_POINTS[domain] ? DOMAIN_POINTS[domain].houses : KEY_HOUSES);
   for (const hn of want) {
     t.push({ name: `${hn}하우스 시작점`, lon: N.cusps[hn], kind: 'cusp', house: hn,
       relevant: domain ? (DOMAIN_POINTS[domain]?.houses ?? []).includes(hn) : false });
@@ -103,9 +105,9 @@ const targetRank = (tg) =>
  * @param {object} opts   { timeKnown, domain, speed: 'slow'|'month'|'day' }
  */
 export function transitsAt(N, jd, opts = {}) {
-  const { timeKnown = true, domain = null, speed = 'month' } = opts;
+  const { timeKnown = true, domain = null, speed = 'month', houses = null } = opts;
   const now = planetPositions(jd);
-  const targets = natalTargets(N, timeKnown, domain);
+  const targets = natalTargets(N, timeKnown, domain, houses);
 
   const movers = speed === 'slow' ? SLOW
     : speed === 'day' ? ['달', ...FAST, ...MID]
@@ -139,12 +141,19 @@ export function transitsAt(N, jd, opts = {}) {
   // 마주 보는 두 커스프(3–9, 4–10)는 한쪽에 합이면 다른 쪽에 대각이다.
   // 같은 각을 두 줄로 적으면 근거가 두 배로 부풀어 보이므로 하나만 남긴다.
   hits.sort((x, y) => y.rank - x.rank || y.tight - x.tight);
-  const seen = new Set();
+  const seen = new Map();
   const deduped = [];
   for (const h of hits) {
     const key = `${h.planet}|${Math.round(h.orb * 100)}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
+    const prev = seen.get(key);
+    if (prev) {
+      // 3–9 처럼 마주 보는 커스프는 **한 각이 두 자리를 함께 건드린 것**이다.
+      // 줄은 하나만 남기되, 어느 자리들이 걸렸는지는 잃지 않는다.
+      if (h.house != null && !prev.axisHouses.includes(h.house)) prev.axisHouses.push(h.house);
+      continue;
+    }
+    h.axisHouses = h.house != null ? [h.house] : [];
+    seen.set(key, h);
     deduped.push(h);
   }
   deduped.sort((x, y) => y.tight - x.tight);

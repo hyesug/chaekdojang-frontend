@@ -71,7 +71,16 @@ const seriesOf = (r, domain, sysId = null) => Object.keys(r.timeline).sort().map
   v: sysId
     ? (r.systemResults[sysId]?.months?.[k]?.rawActivations?.[domain] ?? null)
     : (r.timeline[k]?.domains?.[domain]?.rawActivation ?? null),
+  // 스무딩 창이 덜 찬 달은 창 지표의 null 후보에서 뺀다 (체계별 시계열은 스무딩하지 않는다)
+  full: sysId ? true : (r.timeline[k]?.domains?.[domain]?.windowFull !== false),
 }));
+
+/** 사건월이 시계열 양 끝에서 몇 달 떨어져 있는가 — null 후보 제한과 같은 자로 잰다 */
+const marginOf = (r, key) => {
+  const keys = Object.keys(r.timeline).sort();
+  const i = keys.indexOf(key);
+  return i < 0 ? null : Math.min(i, keys.length - 1 - i);
+};
 
 const resolutionOf = (r, sysId) => {
   const m = Object.values(r.systemResults[sysId]?.months ?? {}).find(Boolean);
@@ -160,14 +169,22 @@ if (agg) {
   console.log('## 기준선 — 사건월을 각자 자기 시계열 안에서 무작위로 옮기면');
   console.log(`  합산값 자체의 null 분포. ${agg.rounds.toLocaleString()}회 · seed ${agg.seed} · 사건 ${agg.events}건 · 사람 ${agg.people}명`);
   console.log('  **개별 사건의 null 구간을 평균한 값이 아니다** — 합산 통계의 분포다.');
+  // 실제 사건이 가장자리에 붙어 있으면 null 만 제한하는 것이 불공평해진다
+  const tight = M.map((r) => ({ person: r.person, key: r.key, margin: marginOf(r.result, r.key) }))
+    .filter((x) => x.margin != null && x.margin < 6);
+  console.log(`  창 지표의 null 후보는 **실제 사건과 같은 조건**(앞뒤 ±N달 확보 · 창이 다 찬 달)으로 제한한다.`);
+  console.log(tight.length
+    ? `  ※ 실제 사건 중 가장자리 ±6달 안에 있는 것: ${tight.map((x) => `${x.person} ${x.key}(${x.margin})`).join(', ')}`
+    : '  ※ 실제 사건은 모두 앞뒤 6달 이상 여유가 있다 — 같은 조건으로 비교된다.');
   console.log('');
-  console.log('  지표                      관측    null평균  null 95% 구간   null 안 위치');
+  console.log('  지표                      관측    null평균  null 95% 구간   null 안 위치   후보달');
   const line = (label, key, kind) => {
     const m = agg.metrics[key]?.[kind];
     if (!m) return;
     const o = obs[key];
     const pos = nullPosition(o, m);
-    console.log(`  ${pad(label, 24)} ${pad(o != null ? o + '%' : '—', 7)} ${pad(m.mean + '%', 9)} ${pad(`${m.lo}~${m.hi}%`, 15)} ${pos != null ? `상위 ${(100 - pos).toFixed(1)}%` : '—'}`);
+    const p = agg.metrics[key].pool;
+    console.log(`  ${pad(label, 24)} ${pad(o != null ? o + '%' : '—', 7)} ${pad(m.mean + '%', 9)} ${pad(`${m.lo}~${m.hi}%`, 15)} ${pad(pos != null ? `상위 ${(100 - pos).toFixed(1)}%` : '—', 14)} ${p.candidates}/${p.total}`);
   };
   line('EventPercentile(사건)', 'eventPercentile', 'event');
   // 사람 가중 관측값은 personWeighted, null 도 같은 방식으로 뽑은 분포와 맞댄다

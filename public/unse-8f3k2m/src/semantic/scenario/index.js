@@ -28,6 +28,9 @@ import { snapshotFromState, contextFor, buildBranches, conditionalStateAt } from
 import { stateOf, possibleTransitions, filterByState } from './graph.js';
 import { specificityGate } from './specificity.js';
 import { claim, evidenceFrom, auditProvenance, resetIds } from './provenance.js';
+import { composePrepared, timingAt } from './composer.js';
+import { auditCoherence } from './coherence.js';
+import { detailFor } from './detail.js';
 
 const round3 = (v) => Math.round(v * 1000) / 1000;
 
@@ -191,6 +194,17 @@ export function prepareScenario(o = {}) {
     domain, from, to,
     snapshot,
     contextUsed: ctx,
+    /** 위치를 말할 근거가 실제로 들어왔는가 — 없으면 아래 층이 도시를 만들 수 없다 */
+    locationEvidenceUsed: locationEvidence ?? null,
+    contextLocationUsed: contextLocation ?? null,
+    /** 정적 해석 — 초구체화는 여기서 나온다. 새 운세 규칙을 만들지 않으려고 */
+    natal: {
+      domain,
+      profile: natalProfile,
+      leading: natal.domains[domain]?.leading ?? [],
+      spokeCount: natal.domains[domain]?.spokeCount ?? 0,
+      directCount: natal.domains[domain]?.directCount ?? 0,
+    },
     timingPhases: resolvedSignals.map((s) => s.phase),
     resolvedSignals,
     possibleTransitions: transitions.transitions,
@@ -323,7 +337,18 @@ function buildScenarioInput(o) {
   };
 }
 
+/**
+ * 편의 API — 재료를 만들고 바로 조립까지 한다.
+ *
+ * `composer.js` 는 이 파일을 import 하지 않는다. 한쪽 방향으로만 의존한다.
+ */
+export function composeScenario(o = {}) {
+  const prepared = prepareScenario(o);
+  return { prepared, scenario: composePrepared(prepared, o.compose ?? {}) };
+}
+
 export {
+  composePrepared, auditCoherence, detailFor, timingAt,
   interpretQuestion, resolveConflict, timingPhases, specificityGate,
   buildBranches, conditionalStateAt, snapshotFromState, contextFor, stateOf, possibleTransitions,
   filterByState, claim, evidenceFrom, auditProvenance, scoreEvents, monthNo,

@@ -65,6 +65,11 @@ export function signal(system, period, o = {}) {
     activations: o.activations ?? {},
     /** 분야 → 축 → −1~+1. 움직인다면 어느 쪽인가 */
     featureShift: o.featureShift ?? {},
+    /**
+     * 분야 → true/false. **그 분야의 시기를 말할 근거가 있는가.**
+     * activation 0 (계산했고 낮다) 과 근거 없음을 가르는 자리다.
+     */
+    domainAvailability: o.domainAvailability ?? {},
     /** 'month' | 'year' | 'none' — 이 체계가 이 눈금을 가를 수 있는가 */
     resolution: o.resolution ?? 'month',
     evidence: o.evidence ?? [],
@@ -98,3 +103,83 @@ export const monthsApart = (a, b) => Math.abs(monthNo(a) - monthNo(b));
 
 /** 분야가 쓰는 축 목록 */
 export const axesOf = (domain) => AXES[domain] ?? [];
+
+// ─────────────────────────────────────────────────────────────
+// 0 · null · flat 을 엄격히 가른다
+//
+//   0            계산했고 낮다
+//   null         계산 근거 자체가 없다 (unavailable)
+//   no_variation 값은 나오지만 시기를 구분하지 못한다 (flat)
+//
+// 셋을 섞으면 "없는 정보"가 0점으로 들어가 앙상블을 끌어내리고,
+// "구분 못 함"이 "틀림"으로 채점된다. 둘 다 거짓이다.
+// ─────────────────────────────────────────────────────────────
+
+/** 그 체계가 그 분야의 시기를 말할 근거가 있는가 */
+export const isAvailable = (v) => v != null && Number.isFinite(v);
+
+/**
+ * 동점을 배열 순서로 깨지 않는 순위.
+ *
+ * 내림차순 index 를 rank 로 쓰면 **같은 점수인데 앞 달이 이긴다.** 값이
+ * 달마다 같은 체계에서는 그것만으로 가짜 성능이 생긴다. 중간 순위를 쓴다.
+ *
+ * @returns {{rank, n, percentile, tied, allEqual}} allEqual 이면 채점하지 않는다
+ */
+export function midRank(values, target) {
+  const xs = values.filter(Number.isFinite);
+  if (!xs.length || !Number.isFinite(target)) return null;
+  const higher = xs.filter((v) => v > target).length;
+  const equal = xs.filter((v) => v === target).length;
+  const rank = higher + (equal + 1) / 2;          // 동점은 중간 순위
+  const n = xs.length;
+  const allEqual = new Set(xs).size <= 1;
+  return {
+    rank: Math.round(rank * 100) / 100, n,
+    // 1등이 100, 꼴찌가 0. 전부 같으면 뜻이 없으므로 null
+    percentile: allEqual || n < 2 ? null : Math.round(((n - rank) / (n - 1)) * 100),
+    tied: equal, allEqual,
+  };
+}
+
+/**
+ * 동점을 배열 순서로 자르지 않는 Top-K.
+ *
+ * 3위 자리에 네 달이 동점이면 셋만 뽑는 것은 배열 순서로 고르는 것이다.
+ * 잘라내는 점수와 같은 달은 **모두** 넣고, 실제로 몇 달이 들어갔는지 함께 낸다.
+ */
+export function topK(entries, k) {
+  const xs = entries.filter((e) => Number.isFinite(e.v));
+  if (!xs.length) return { keys: [], candidateCount: 0, topKRequested: k, cutoff: null };
+  const sorted = xs.slice().sort((a, b) => b.v - a.v);
+  const cutoff = sorted[Math.min(k, sorted.length) - 1].v;
+  const keys = sorted.filter((e) => e.v >= cutoff).map((e) => e.k);
+  return { keys, candidateCount: keys.length, topKRequested: k, cutoff };
+}
+
+/**
+ * 창에 **정확히 그 달 수**만 담는다.
+ *
+ * `floor(w/2)` 로 앞뒤를 잘라내면 6개월 창이 7개, 12개월 창이 13개가 된다.
+ * 짝수 창은 **왼쪽을 하나 적게** 둔다 (6개월이면 왼쪽 2 · 현재 · 오른쪽 3).
+ * 규칙을 정해 두지 않으면 구현마다 달라진다.
+ */
+export function windowSlice(keys, i, months) {
+  if (months <= 1) return { from: i, to: i, count: 1, full: true };
+  const left = Math.floor((months - 1) / 2);
+  const right = months - 1 - left;
+  const from = Math.max(0, i - left);
+  const to = Math.min(keys.length - 1, i + right);
+  return { from, to, count: to - from + 1, full: to - from + 1 === months };
+}
+
+/** 재현 가능한 난수 — 순열 기준선이 돌릴 때마다 달라지면 안 된다 */
+export function seededRandom(seed = 20260924) {
+  let s = seed >>> 0;
+  return () => {
+    s ^= s << 13; s >>>= 0;
+    s ^= s >> 17;
+    s ^= s << 5; s >>>= 0;
+    return s / 4294967296;
+  };
+}

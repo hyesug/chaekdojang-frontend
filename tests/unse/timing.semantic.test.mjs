@@ -87,14 +87,22 @@ test('activation 을 그 사람 안에서의 순위로도 낸다', () => {
   }
 });
 
-test('방향이 그 분야의 축으로만 나온다', () => {
+test('방향과 세기를 따로 낸다 — 약한 흔들림이 강한 방향으로 둔갑하지 않는다', () => {
   const r = run();
   for (const t of Object.values(r.timeline)) {
     for (const [d, shift] of Object.entries(t.featureShift)) {
-      for (const [ax, v] of Object.entries(shift)) {
-        assert.ok(AXES[d].includes(ax), `${d} 에 없는 축 ${ax}`);
-        assert.ok(v >= -1 && v <= 1, `${d}.${ax} = ${v}`);
+      assert.ok('raw' in shift && 'direction' in shift && 'magnitude' in shift,
+        `${d} 는 raw·direction·magnitude 를 따로 낸다`);
+      assert.ok(shift.magnitude >= 0 && shift.magnitude <= 1);
+      for (const kind of ['raw', 'direction']) {
+        for (const [ax, v] of Object.entries(shift[kind])) {
+          assert.ok(AXES[d].includes(ax), `${d}.${kind} 에 없는 축 ${ax}`);
+          assert.ok(v >= -1 && v <= 1, `${d}.${kind}.${ax} = ${v}`);
+        }
       }
+      // raw 가 작으면 magnitude 도 작아야 한다
+      const peak = Math.max(0, ...Object.values(shift.raw).map(Math.abs));
+      if (peak < 0.05) assert.ok(shift.magnitude < 0.2, `${d} raw ${peak} 인데 magnitude ${shift.magnitude}`);
     }
   }
 });

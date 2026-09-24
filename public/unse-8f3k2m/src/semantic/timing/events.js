@@ -8,14 +8,23 @@
  *
  * ── 점수 식 ────────────────────────────────────────────────
  *
- *   eventScore = domainActivation      그 분야가 움직이는가
+ *   eventScore = domainActivation      그 분야가 움직이는가          (얼마나)
  *              × natalSusceptibility   원국이 그 사건에 열려 있는가
- *              × directionMatch        움직이는 방향이 그 사건과 맞는가
+ *              × directionMatch        방향이 그 사건과 맞는가        (어느 쪽)
+ *              × shiftMagnitude        그 방향 신호가 선명한가        (얼마나 또렷이)
  *              × contextCompatibility  지금 상황에 성립하는 사건인가
- *              × systemConsensus       독립 계보 여럿이 같은 말을 하는가
+ *              × (0.6 + 0.4 × systemConsensus)  독립 계보가 겹치는가
  *
- * 다섯 가운데 하나라도 0 이면 후보가 아니다. 곱으로 둔 이유가 그것이다 —
+ * 하나라도 0 이면 후보가 아니다. 곱으로 둔 이유가 그것이다 —
  * "직업이 시끄럽지만 방향이 안 맞는다"면 그 사건은 아니다.
+ *
+ * ── 한 정보를 두 번 세지 않는다 ────────────────────────────
+ *   activation  분야가 얼마나 움직이나        ← 세기
+ *   direction   어느 쪽으로                  ← 방향만. 크기는 뺐다
+ *   magnitude   그 방향이 얼마나 또렷한가      ← 방향의 세기
+ * 셋이 재는 것이 다르다. `direction` 을 ±1 로 펴 놓고 그 크기까지
+ * 쓰면 약한 흔들림이 두 번 증폭된다 — 그래서 크기를 따로 뺐다.
+ * `systemConsensus` 는 0 으로 후보를 죽이지 않도록 0.6~1.0 범위로만 건다.
  *
  * ── 후보를 늘릴 때 ─────────────────────────────────────────
  * 틀린 사례를 보고 **그 사례에 맞는 후보를 새로 만들지 않는다.** 그렇게
@@ -264,13 +273,17 @@ function contextOk(cand, ctx) {
  * @param {number} consensus    독립 계보 합의 0~1
  * @param {object|null} ctx     현재 상태
  */
-export function scoreEvents(domain, activation, shift, natalProfile, consensus, ctx = null) {
+export function scoreEvents(domain, activation, direction, natalProfile, consensus, ctx = null, magnitude = 1) {
   const out = [];
+  if (!Number.isFinite(activation)) return out;      // 말할 근거가 없으면 후보도 없다
   for (const cand of EVENT_CANDIDATES[domain] ?? []) {
     const c = contextOk(cand, ctx);
-    const directionMatch = match(shift, cand.needs) * penalty(shift, cand.avoid);
+    // `direction` 은 방향만 편 값이고, 얼마나 선명한지는 `magnitude` 가 쥔다.
+    // 둘을 곱해야 아주 약한 흔들림이 강한 사건으로 둔갑하지 않는다.
+    const directionMatch = match(direction, cand.needs) * penalty(direction, cand.avoid);
     const susc = susceptibility(natalProfile, cand.natal);
-    const score = activation * susc * directionMatch * c.factor * (0.6 + 0.4 * consensus);
+    const mag = clamp01(magnitude);
+    const score = activation * susc * directionMatch * mag * c.factor * (0.6 + 0.4 * consensus);
     out.push({
       type: cand.key, label: cand.label,
       score: Math.round(score * 1000) / 1000,
@@ -278,6 +291,7 @@ export function scoreEvents(domain, activation, shift, natalProfile, consensus, 
         activation: Math.round(activation * 1000) / 1000,
         natalSusceptibility: Math.round(susc * 1000) / 1000,
         directionMatch: Math.round(directionMatch * 1000) / 1000,
+        shiftMagnitude: Math.round(mag * 1000) / 1000,
         contextCompatibility: c.factor,
         systemConsensus: Math.round(consensus * 1000) / 1000,
       },

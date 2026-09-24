@@ -30,6 +30,10 @@ import * as NA from '../tables/nature.js';
 
 const safe = (fn) => { try { return fn(); } catch { return null; } };
 
+/** activation 이 숫자인 분야만 '말할 수 있다'로 센다 */
+const availabilityOf = (acts) =>
+  Object.fromEntries(Object.entries(acts).map(([d, v]) => [d, Number.isFinite(v)]));
+
 /** 그 분야 규칙을 찾는다 — 직업은 rules.js, 나머지는 domains.js */
 const ruleOf = (system, domain, condition) => {
   const pool = domain === 'career' ? RULES : DOMAIN_RULES;
@@ -121,7 +125,12 @@ export function sajuTiming(month, period) {
     evidence.push({ what: `원국 ${h.with} ${h.kind}`, basis: `무게 ${h.weight}`, weight: h.weight ?? 0 });
   }
 
-  return signal('saju', period, { activations, featureShift, evidence, resolution: 'month' });
+  // 기질은 시기로 움직이지 않고, timing 은 메타 분야다 — 말하지 않는다
+  activations.personality = null; activations.timing = null;
+  return signal('saju', period, {
+    activations, featureShift, evidence, resolution: 'month',
+    domainAvailability: availabilityOf(activations),
+  });
 }
 
 // ═════════════════════════════════════════════════════════════
@@ -181,7 +190,11 @@ export function ziweiTiming(month, period, stack) {
     if (sh) featureShift[d] = sh;
   }
 
-  return signal('jamidusu', period, { activations, featureShift, evidence, resolution: 'month' });
+  activations.personality = null; activations.timing = null;
+  return signal('jamidusu', period, {
+    activations, featureShift, evidence, resolution: 'month',
+    domainAvailability: availabilityOf(activations),
+  });
 }
 
 // ═════════════════════════════════════════════════════════════
@@ -242,7 +255,11 @@ export function westernTiming(month, period, natal) {
     }
   }
 
-  return signal('astrology', period, { activations, featureShift, evidence, resolution: 'month' });
+  activations.personality = null; activations.timing = null;
+  return signal('astrology', period, {
+    activations, featureShift, evidence, resolution: 'month',
+    domainAvailability: availabilityOf(activations),
+  });
 }
 
 // ═════════════════════════════════════════════════════════════
@@ -286,7 +303,11 @@ export function vedicTiming(month, period, packs) {
     evidence.push({ what: '다샤 전환', basis: String(month.vedic.changes[0]?.label ?? ''), weight: 0.2 });
   }
 
-  return signal('vedic', period, { activations, featureShift, evidence, resolution: 'month' });
+  activations.personality = null; activations.timing = null;
+  return signal('vedic', period, {
+    activations, featureShift, evidence, resolution: 'month',
+    domainAvailability: availabilityOf(activations),
+  });
 }
 
 // ═════════════════════════════════════════════════════════════
@@ -301,15 +322,36 @@ export function vedicTiming(month, period, packs) {
 // 시기를 가르지 못한다고 **적어 둔다.**
 // ═════════════════════════════════════════════════════════════
 
-/** 옛 여섯 영역 → 열두 분야 */
+/**
+ * 옛 여섯 영역 → 열두 분야. **다시 감사했다.**
+ *
+ * ── 뺀 것 ─────────────────────────────────────────────────
+ *   학업운 → children   학업과 자녀는 같은 분야가 아니다. 영역이 모자란다고
+ *                       남의 영역 점수를 빌려 쓰면 없는 신호를 만든다.
+ *
+ * ── 대응이 없어 **말하지 않는** 분야 ────────────────────────
+ *   children · residence · movement
+ *   보조 열한 체계의 여섯 영역에 이 셋에 해당하는 자리가 없다. 억지로
+ *   다른 영역을 재사용하지 않고 `null`(unavailable) 로 둔다.
+ *
+ *   **중요** — 그 시기의 괘가 '이동'을 뜻한다는 것은 `featureShift` 의
+ *   근거가 될 수 있어도 "이번 달 이동 분야가 켜졌다"는 뜻이 아니다.
+ *   방향을 말할 수 있는 것과 시기를 말할 수 있는 것은 별개다.
+ *
+ * ── personality · timing ──────────────────────────────────
+ *   기질은 시기로 움직이는 것이 아니고, timing 은 메타 분야다. 둘 다 뺀다.
+ */
 const AREA_TO_DOMAIN = {
-  총운: ['personality', 'majorChange', 'timing'],
+  총운: ['majorChange'],
   애정운: ['relationship', 'marriage'],
   금전운: ['wealth'],
   직장운: ['career'],
-  학업운: ['education', 'children'],
+  학업운: ['education'],
   건강운: ['health'],
 };
+
+/** 보조 열한 체계가 시기를 말할 수 있는 분야 */
+const OTHER_TIMING_DOMAINS = new Set(Object.values(AREA_TO_DOMAIN).flat());
 
 /** 그 체계가 그 시기에 낸 기호 — headline·facts 에서 집는다 */
 function periodSymbol(system, row) {
@@ -348,7 +390,11 @@ function periodSymbol(system, row) {
  */
 export function otherTiming(system, period, row, stats) {
   if (!row) return unavailable(system, period, '그 시기를 계산하지 못했다');
-  const activations = zeroActivations();
+  // 말할 근거가 없는 분야는 **0 이 아니라 null** 이다. 0 으로 두면
+  // "계산했는데 낮다"가 되어 앙상블 분모에 들어가고, 없는 정보가 결과를
+  // 끌어내린다.
+  const activations = Object.fromEntries(DOMAINS.map((d) =>
+    [d, OTHER_TIMING_DOMAINS.has(d) ? 0 : null]));
   const featureShift = {};
   const evidence = [];
 
@@ -375,6 +421,7 @@ export function otherTiming(system, period, row, stats) {
 
   return signal(system, period, {
     activations, featureShift, evidence,
+    domainAvailability: Object.fromEntries(DOMAINS.map((d) => [d, OTHER_TIMING_DOMAINS.has(d)])),
     resolution: flat ? 'none' : yearly ? 'year' : 'month',
     ...(flat ? { why: '달마다 값이 같아 시기를 가르지 못한다' }
       : yearly ? { why: '해 단위로만 바뀐다 — 달을 가르지 못한다' } : {}),

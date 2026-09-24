@@ -27,7 +27,7 @@ import { lineageOf, INDEPENDENT_LINEAGES } from '../lineage.js';
 import { SYSTEM_IDS, SYSTEM_NAME } from '../extract.js';
 import {
   DOMAINS, DOMAIN_LABEL, RESOLUTION, WINDOW_MONTHS,
-  clamp01, monthNo, monthKey,
+  clamp01, monthNo, monthKey, windowSlice,
 } from './schema.js';
 import {
   sajuTiming, ziweiTiming, westernTiming, vedicTiming, otherTiming,
@@ -151,29 +151,48 @@ export function predictTimeline(o) {
     timeline[key] = { period: key, domains: {}, featureShift: {}, events: [] };
   }
   for (const d of want) {
-    const w = WINDOW_MONTHS[RESOLUTION[d]] ?? 1;
+    const months = WINDOW_MONTHS[RESOLUTION[d]] ?? 1;
     const keys = perMonth.map((x) => x.key);
-    const smoothed = smooth(keys, pooled[d], w);
-    // 그 사람의 그 기간 안에서의 순위
-    const vals = keys.map((k) => smoothed[k].activation);
+    const smoothed = smooth(keys, pooled[d], months);
+    // 그 사람의 그 기간 안에서의 순위 — **반올림하지 않은 값으로** 센다
+    const vals = keys.map((k) => smoothed[k].activation).filter(Number.isFinite);
     for (const k of keys) {
       const a = smoothed[k];
-      const pct = percentileOf(vals, a.activation);
+      if (a.unavailable || !Number.isFinite(a.activation)) {
+        timeline[k].domains[d] = {
+          activation: null, rawActivation: null, percentile: null,
+          resolution: RESOLUTION[d], window: months, unavailable: true,
+          why: '이 분야의 시기를 말할 수 있는 체계가 없다',
+        };
+        continue;
+      }
       timeline[k].domains[d] = {
-        activation: round3(a.activation), percentile: pct,
-        resolution: RESOLUTION[d], window: w,
+        // 화면·로그용 (반올림)
+        activation: round3(a.activation),
+        // **검증용 원값** — 반올림하면 없던 동점이 생겨 순위가 망가진다
+        rawActivation: a.activation,
+        percentile: percentileOf(vals, a.activation),
+        resolution: RESOLUTION[d], window: months,
+        windowCount: a.windowCount, windowFull: a.windowFull,
         consensus: round3(a.consensus), spokeCount: a.spokeCount,
+        magnitude: round3(a.magnitude),
       };
-      timeline[k].featureShift[d] = round3v(a.shift);
+      // 방향과 세기를 따로 남긴다
+      timeline[k].featureShift[d] = {
+        raw: round3v(a.rawShift),
+        direction: round3v(a.direction),
+        magnitude: round3(a.magnitude),
+      };
 
-      const events = scoreEvents(d, a.activation, a.shift,
-        natal.domains[d]?.profile ?? null, a.consensus, currentState);
+      const events = scoreEvents(d, a.activation, a.direction,
+        natal.domains[d]?.profile ?? null, a.consensus, currentState, a.magnitude);
       for (const e of events) {
         if (e.score <= 0.02) continue;
         timeline[k].events.push({ domain: d, ...e });
       }
     }
   }
+
   for (const k of Object.keys(timeline)) {
     timeline[k].events.sort((a, b) => b.score - a.score);
     timeline[k].events = timeline[k].events.slice(0, 8);
@@ -202,9 +221,14 @@ export function predictTimeline(o) {
       name: SYSTEM_NAME[id], lineage: lineageOf(id),
       months: Object.fromEntries(perMonth.map(({ key, signals }) => {
         const s = signals.find((x) => x.system === id);
-        return [key, s ? { available: s.available, resolution: s.resolution,
-          activations: round3v(s.activations), why: s.why,
-          evidence: (s.evidence ?? []).slice(0, 3) } : null];
+        return [key, s ? {
+          available: s.available, resolution: s.resolution, why: s.why,
+          // 화면용 (반올림) 과 검증용 원값을 함께 남긴다
+          activations: round3v(s.activations),
+          rawActivations: s.activations,
+          domainAvailability: s.domainAvailability ?? {},
+          evidence: (s.evidence ?? []).slice(0, 3),
+        } : null];
       })),
     }])),
     meta: {
@@ -217,32 +241,42 @@ export function predictTimeline(o) {
   };
 }
 
-/** 한 달 한 분야를 열다섯에서 합친다 */
+/**
+ * 한 달 한 분야를 열다섯에서 합친다.
+ *
+ * ── 없는 정보를 0 으로 세지 않는다 ─────────────────────────
+ * 그 체계가 그 분야를 말할 근거가 없으면(`activation === null`) **분모에서
+ * 뺀다.** 0 으로 넣으면 "계산했는데 낮다"가 되어 앙상블을 끌어내린다.
+ * 타로에게 이동 시기를 물어 0점을 받아 오는 셈이다.
+ */
 function poolDomainMonth(signals, domain, domainRes = 'month') {
-  const ok = signals.filter((s) => s.available && s.resolution !== 'none');
-  if (!ok.length) return { activation: 0, shift: {}, consensus: 0, spokeCount: 0 };
+  const usable = signals.filter((s) => s.available && s.resolution !== 'none'
+    && Number.isFinite(s.activations?.[domain]));
+  if (!usable.length) {
+    return { activation: null, rawShift: {}, direction: {}, magnitude: 0,
+      consensus: 0, spokeCount: 0, availableCount: 0, unavailable: true };
+  }
 
-  // 같은 계보는 한 표를 나눠 갖는다
+  // 같은 계보는 한 표를 나눠 갖는다 — **말할 수 있는 체계끼리만** 센다
   const count = {};
-  for (const s of ok) { const L = lineageOf(s.system); count[L] = (count[L] ?? 0) + 1; }
+  for (const s of usable) { const L = lineageOf(s.system); count[L] = (count[L] ?? 0) + 1; }
 
   let num = 0, den = 0;
   const shift = {};
   const shiftDen = {};
   const lineagesUp = new Set();
-  for (const s of ok) {
+  const lineagesAvailable = new Set();
+
+  for (const s of usable) {
     const L = lineageOf(s.system);
-    // 해 단위로만 바뀌는 체계는 달 눈금에서 제 몫을 다 주지 않는다.
-    // 없는 해상도를 있다고 세는 것이기 때문이다. 다만 0 으로 두지도 않는다 —
-    // 해 단위 신호는 해 단위로는 진짜다.
+    lineagesAvailable.add(L);
+    // 해 단위로만 바뀌는 체계는 달 눈금에서 제 몫을 다 주지 않는다
     const coarse = s.resolution === 'year' && ['month', 'quarter'].includes(domainRes) ? 0.5 : 1;
-    const w = (1 / count[L]) * (['saju', 'jamidusu', 'astrology', 'vedic'].includes(s.system) ? 1 : 0.45) * coarse;
-    const a = s.activations?.[domain] ?? 0;
+    const w = (1 / count[L]) * (CORE.includes(s.system) ? 1 : 0.45) * coarse;
+    const a = s.activations[domain];
     num += a * w; den += w;
     if (a >= 0.5) lineagesUp.add(L);
-    // 방향은 **활성화된 체계만** 싣는다. 조용한 체계의 방향은 뜻이 없다.
-    // 다만 활성도를 곱하지는 않는다 — 곱하면 무게와 활성도로 두 번 눌려
-    // 방향이 0.06 까지 주저앉고, 그러면 사건 후보가 전부 0 이 된다.
+    // 방향은 활성화된 체계만 싣는다. 조용한 체계의 방향은 뜻이 없다
     if (a >= 0.15) {
       for (const [ax, v] of Object.entries(s.featureShift?.[domain] ?? {})) {
         shift[ax] = (shift[ax] ?? 0) + v * w;
@@ -250,32 +284,78 @@ function poolDomainMonth(signals, domain, domainRes = 'month') {
       }
     }
   }
-  const activation = den ? clamp01(num / den) : 0;
-  for (const ax of Object.keys(shift)) shift[ax] = shift[ax] / (shiftDen[ax] || 1);
 
-  // 가장 센 축이 ±1 이 되게 편다. 절대 크기가 아니라 **어느 쪽으로 기울었나**
-  // 를 보는 값이라, 이 엔진의 다른 층과 같은 방식으로 상대화한다.
-  const peak = Math.max(1e-6, ...Object.values(shift).map(Math.abs));
-  for (const ax of Object.keys(shift)) shift[ax] = Math.max(-1, Math.min(1, shift[ax] / peak));
+  const activation = den ? clamp01(num / den) : null;
 
-  const indep = [...lineagesUp].filter((L) => INDEPENDENT_LINEAGES.includes(L)).length;
-  return { activation, shift, consensus: clamp01(indep / 3), spokeCount: ok.length };
+  // ── 방향과 세기를 가른다 ──────────────────────────────────
+  //
+  // 전에는 가장 센 축을 무조건 ±1 로 폈다. 그러면 raw 0.03 짜리 흔들림도
+  // "변화 +1" 로 보여서, 아주 약한 신호가 강한 사건 후보를 만든다.
+  //
+  //   rawShift   실제 가중 평균 (−1~1)
+  //   direction  방향만 비교하려고 편 값
+  //   magnitude  그 방향 신호가 얼마나 선명한가 (0~1)
+  //
+  // 사건 점수는 direction 과 magnitude 를 **따로** 쓴다.
+  const rawShift = {};
+  for (const ax of Object.keys(shift)) rawShift[ax] = shift[ax] / (shiftDen[ax] || 1);
+  const peak = Math.max(...Object.values(rawShift).map(Math.abs), 0);
+  const direction = {};
+  for (const ax of Object.keys(rawShift)) {
+    direction[ax] = peak > 1e-9 ? Math.max(-1, Math.min(1, rawShift[ax] / peak)) : 0;
+  }
+  // 0.5 쯤 되면 선명한 것으로 본다. 그 위는 더 올리지 않는다
+  const magnitude = clamp01(peak / 0.5);
+
+  // consensus 도 **말할 수 있는 계보**만 분모로 쓴다
+  const indepAvailable = [...lineagesAvailable].filter((L) => INDEPENDENT_LINEAGES.includes(L)).length;
+  const indepUp = [...lineagesUp].filter((L) => INDEPENDENT_LINEAGES.includes(L)).length;
+  const consensus = indepAvailable ? clamp01(indepUp / indepAvailable) : 0;
+
+  return {
+    activation, rawShift, direction, magnitude, consensus,
+    spokeCount: usable.length, availableCount: usable.length, unavailable: false,
+  };
 }
 
-/** 해상도에 맞춰 이웃 달을 섞는다 */
-function smooth(keys, byKey, window) {
-  if (window <= 1) return byKey;
+const CORE = ['saju', 'jamidusu', 'astrology', 'vedic'];
+
+/**
+ * 해상도에 맞춰 이웃 달을 섞는다 — **정확히 그 달 수만** 담는다.
+ *
+ * `floor(w/2)` 로 앞뒤를 자르면 6개월 창이 7개, 12개월 창이 13개가 됐다.
+ * `windowSlice` 가 짝수 창을 왼쪽 적게 두는 규칙으로 정확한 개수를 준다.
+ * 경계에서는 담긴 개수와 창이 다 찼는지를 함께 남긴다.
+ */
+function smooth(keys, byKey, months) {
   const out = {};
-  const half = Math.floor(window / 2);
   keys.forEach((k, i) => {
-    const slice = keys.slice(Math.max(0, i - half), i + half + 1).map((x) => byKey[x]);
-    const act = slice.reduce((a, s) => a + s.activation, 0) / slice.length;
-    const shift = {};
-    for (const s of slice) for (const [ax, v] of Object.entries(s.shift)) shift[ax] = (shift[ax] ?? 0) + v / slice.length;
+    const w = windowSlice(keys, i, months);
+    const slice = keys.slice(w.from, w.to + 1).map((x) => byKey[x]).filter((x) => x && !x.unavailable);
+    if (!slice.length) {
+      out[k] = { ...byKey[k], windowCount: 0, windowFull: false };
+      return;
+    }
+    const rawShift = {};
+    const denom = {};
+    for (const s of slice) {
+      for (const [ax, v] of Object.entries(s.rawShift ?? {})) {
+        rawShift[ax] = (rawShift[ax] ?? 0) + v; denom[ax] = (denom[ax] ?? 0) + 1;
+      }
+    }
+    for (const ax of Object.keys(rawShift)) rawShift[ax] /= denom[ax];
+    const peak = Math.max(...Object.values(rawShift).map(Math.abs), 0);
+    const direction = {};
+    for (const ax of Object.keys(rawShift)) {
+      direction[ax] = peak > 1e-9 ? Math.max(-1, Math.min(1, rawShift[ax] / peak)) : 0;
+    }
     out[k] = {
-      activation: act, shift,
+      activation: slice.reduce((a, s) => a + s.activation, 0) / slice.length,
+      rawShift, direction, magnitude: clamp01(peak / 0.5),
       consensus: Math.max(...slice.map((s) => s.consensus)),
       spokeCount: Math.max(...slice.map((s) => s.spokeCount)),
+      unavailable: false,
+      windowCount: w.count, windowFull: w.full,
     };
   });
   return out;
@@ -287,6 +367,7 @@ const percentileOf = (vals, v) => {
   return Math.round(((below + equal / 2) / vals.length) * 100);
 };
 const round3 = (v) => Math.round(v * 1000) / 1000;
+/** 화면용 반올림. **null 은 null 로 남긴다** — 0 으로 바꾸면 뜻이 달라진다 */
 const round3v = (o) => Object.fromEntries(Object.entries(o ?? {}).map(([k, v]) =>
   [k, typeof v === 'number' ? round3(v) : v]));
 
@@ -297,7 +378,7 @@ const round3v = (o) => Object.fromEntries(Object.entries(o ?? {}).map(([k, v]) =
 export function peakWindows(result, domain, topN = 2, floor = 80) {
   const rows = Object.values(result.timeline)
     .map((t) => ({ period: t.period, ...t.domains[domain] }))
-    .filter((x) => x.percentile != null);
+    .filter((x) => x.percentile != null && !x.unavailable);
   const hot = rows.filter((x) => x.percentile >= floor).sort((a, b) => a.period.localeCompare(b.period));
   const runs = [];
   for (const r of hot) {

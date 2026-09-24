@@ -206,7 +206,7 @@ export const EVENT_CANDIDATES = {
 };
 
 /** 그 축들이 실제로 올라왔는가 (0~1) */
-function match(shift, wants) {
+export function match(shift, wants) {
   const keys = Object.keys(wants ?? {});
   if (!keys.length) return 1;
   let num = 0, den = 0;
@@ -220,7 +220,7 @@ function match(shift, wants) {
 }
 
 /** 피해야 할 축이 올라왔으면 깎는다 */
-function penalty(shift, avoid) {
+export function penalty(shift, avoid) {
   const keys = Object.keys(avoid ?? {});
   if (!keys.length) return 1;
   let worst = 0;

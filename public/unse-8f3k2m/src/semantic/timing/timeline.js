@@ -281,6 +281,9 @@ export function predictTimeline(o) {
           // 화면용 (반올림) 과 검증용 원값을 함께 남긴다
           activations: round3v(s.activations),
           rawActivations: s.activations,
+          // 방향도 체계별로 남긴다 — 합치고 나면 "어느 체계가 다른 쪽을
+          // 가리켰나"를 물을 수 없다. 갈린 것을 평균으로 지우지 않으려면 필요하다
+          featureShift: s.featureShift ?? {},
           domainAvailability: s.domainAvailability ?? {},
           evidence: (s.evidence ?? []).slice(0, 3),
         } : null];

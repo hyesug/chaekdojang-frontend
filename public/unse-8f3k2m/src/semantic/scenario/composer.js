@@ -237,9 +237,16 @@ export function composePrepared(prepared, options = {}) {
   }
 
   // ── 사용자가 말해 준 것은 context 로만 ──
+  //
+  // 값마다 근거를 단다. 근거가 없으면 아래 층에서 "계산이 말한 것"과
+  // 구별할 길이 사라진다. **출처는 언제나 context 다** — 앞 층이 만든
+  // 근거가 있으면 그것을 이어 단다(fortune 으로 바꾸지 않는다).
   const anchor = {};
   for (const [k, v] of Object.entries(prepared.snapshot?.observed ?? {})) {
-    anchor[k] = { value: v, sourceType: 'context' };
+    const prior = prepared.contextClaims?.[k] ?? null;
+    const ref = book.add(`알려주신 값: ${k} = ${JSON.stringify(v)}`, 'context',
+      { value: v, ...(prior ? { derivedFrom: [prior] } : {}) });
+    anchor[k] = { value: v, sourceType: 'context', sourceRefs: [ref] };
   }
   const contextAnchor = Object.keys(anchor).length ? anchor : null;
 

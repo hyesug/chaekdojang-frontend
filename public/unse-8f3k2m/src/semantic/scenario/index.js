@@ -158,6 +158,7 @@ export function prepareScenario(o = {}) {
     const c = claim(`현재 ${k} = ${JSON.stringify(v)}`, 'context', { value: v });
     ctxClaims[k] = c.id; evidence.push(c);
   }
+  void ctxClaims;
   for (const [k, v] of Object.entries(snapshot.planned)) {
     evidence.push(claim(`계획: ${k} = ${JSON.stringify(v)}`, 'context',
       { value: v, caution: '계획이지 사실이 아니다' }));
@@ -214,6 +215,8 @@ export function prepareScenario(o = {}) {
     branchNote: branching.note,
     specificity,
     evidence,
+    /** 사용자가 알려준 값마다 그 근거 id — 아래 층이 "이건 계산이 아니다"를 되짚을 때 쓴다 */
+    contextClaims: ctxClaims,
     provenanceAudit: auditProvenance(evidence),
     scenarioInput,
     meta: {

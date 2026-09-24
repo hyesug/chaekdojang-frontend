@@ -321,3 +321,171 @@ test('21. short·normal·full 모두 넘지 않는다', () => {
   }
   assert.ok(lens[0] <= lens[1] && lens[1] <= lens[2], `short ${lens[0]} / normal ${lens[1]} / full ${lens[2]}`);
 });
+
+// ── 22~26. 값을 말하면 근거가 따라온다 ────────────────────────
+
+test('22. 알려준 값을 말한 문장은 context 근거를 가진다', () => {
+  const { scenario, narration: n } = career();
+  const anchor = scenario.primary.contextAnchor.occupation;
+  assert.equal(anchor.sourceType, 'context');
+  assert.ok(anchor.sourceRefs?.length, 'contextAnchor 에 근거가 없다');
+
+  const s = n.sentences.find((x) => x.kind === 'context');
+  assert.ok(s, 'context 문장이 없다');
+  assert.equal(s.requiresSource, true);
+  for (const r of anchor.sourceRefs) assert.ok(s.sourceRefs.includes(r), r);
+
+  // 그 근거의 출처는 context 이고, 운세로 바뀌지 않았다
+  const byId = new Map(scenario.evidence.map((c) => [c.id, c]));
+  for (const r of s.sourceRefs) assert.equal(byId.get(r).sourceType, 'context');
+
+  // 근거를 떼면 감사가 잡는다
+  const bad = { ...n, sentences: n.sentences.map((x) =>
+    (x.kind === 'context' ? { ...x, sourceRefs: [] } : x)) };
+  const a = auditNarration(bad, scenario);
+  assert.equal(a.ok, false);
+  assert.ok(a.issues.some((x) => x.code === 'context_without_context_ref'));
+  assert.ok(a.severe.includes('sentence_without_source') || a.severe.includes('context_without_context_ref'));
+
+  // 운세 근거로 바꿔 달면 그것도 잡는다
+  const wrong = { ...n, sentences: n.sentences.map((x) =>
+    (x.kind === 'context' ? { ...x, sourceRefs: scenario.primary.provenance.timing } : x)) };
+  assert.ok(auditNarration(wrong, scenario).issues.some((x) => x.code === 'context_ref_wrong_source'));
+});
+
+test('23. 불일치 문장이 사건·시기를 말하면 그 근거를 가진다', () => {
+  const { scenario, narration: n } = career();
+  assert.equal(scenario.questionAnswer.answersQuestion, false);
+  const ms = n.sentences.filter((x) => x.kind === 'mismatch');
+  assert.ok(ms.length >= 2);
+  const withEvent = ms.find((x) => x.text.includes(scenario.primary.event.label));
+  const withTiming = ms.find((x) => x.text.includes(scenario.primary.timing.label));
+  assert.ok(withEvent && scenario.primary.provenance.event
+    .every((r) => withEvent.sourceRefs.includes(r)), '사건 근거가 없다');
+  assert.ok(withTiming && scenario.primary.provenance.timing
+    .every((r) => withTiming.sourceRefs.includes(r)), '시기 근거가 없다');
+  for (const x of ms) assert.equal(x.requiresSource, true);
+
+  // 시기 근거를 떼면 잡는다
+  const bad = { ...n, sentences: n.sentences.map((x) =>
+    (x === withTiming ? { ...x, sourceRefs: [] } : x)) };
+  const codes = auditNarration(bad, scenario).issues.map((x) => x.code);
+  assert.ok(codes.includes('mismatch_without_ref') || codes.includes('sentence_without_source'));
+});
+
+test('24. 갈림 문장은 양쪽 근거를 모두 가진다', () => {
+  const { scenario, narration: n } = career();
+  const sc = scenario.primary.selectionConflict;
+  assert.equal(sc.agreement, false);
+  assert.ok(sc.provenance.length >= 2, '갈림 근거가 둘이 아니다');
+  const s = n.sentences.find((x) => x.kind === 'conflict' && /갈렸습니다/.test(x.text));
+  assert.ok(s);
+  for (const r of sc.provenance) assert.ok(s.sourceRefs.includes(r), `${r} 이 빠졌다`);
+
+  // 한쪽만 남기면 잡는다
+  const half = { ...n, sentences: n.sentences.map((x) =>
+    (x === s ? { ...x, sourceRefs: [sc.provenance[0]] } : x)) };
+  assert.ok(auditNarration(half, scenario).issues.some((x) => x.code === 'conflict_ref_incomplete'));
+});
+
+test('25. 가지 문장은 뒤 단계의 시기·사건·상태 근거까지 가진다', () => {
+  const { scenario, narration: n } = answerScenario({
+    birth: BIRTH, question: '2027년부터 2030년 사이에 이직할까?', now: NOW,
+    currentState: { employmentType: 'employed' }, narrate: { detail: 'full' },
+  });
+  const multi = scenario.branches.filter((b) => b.steps.length > 1);
+  if (!multi.length) return;
+  for (const br of multi) {
+    // 가지마다 1단계 사건이 다르므로 그 앞부분으로 고른다
+    // (뒤 단계 이름이 다른 가지의 1단계와 겹칠 수 있다)
+    const head = `${br.steps[0].timing?.label ?? ''} 무렵 ${br.steps[0].label} 쪽으로 간다면`;
+    const s = n.sentences.find((x) => x.kind === 'branch' && x.text.startsWith(head));
+    if (!s) continue;
+    for (const k of ['timing', 'event']) {
+      for (const r of br.steps[0].provenance[k]) assert.ok(s.sourceRefs.includes(r), `step1 ${k} ${r}`);
+      for (const r of br.steps[1].provenance[k]) assert.ok(s.sourceRefs.includes(r), `step2 ${k} ${r}`);
+    }
+    for (const r of br.steps[1].provenance.state) {
+      assert.ok(s.sourceRefs.includes(r), `조건부 상태 근거 ${r} 가 없다`);
+    }
+  }
+  // 상태 근거를 떼면 잡는다
+  const h0 = `${multi[0].steps[0].timing?.label ?? ''} 무렵 ${multi[0].steps[0].label} 쪽으로 간다면`;
+  const target = n.sentences.find((x) => x.kind === 'branch' && x.text.startsWith(h0));
+  const bad = { ...n, sentences: n.sentences.map((x) => (x === target
+    ? { ...x, sourceRefs: x.sourceRefs.filter((r) => !multi[0].steps[1].provenance.state.includes(r)) }
+    : x)) };
+  const codes = auditNarration(bad, scenario).issues.map((x) => x.code);
+  assert.ok(codes.includes('branch_state_ref_missing'), codes.join(','));
+});
+
+test('26. 위치·대안 근거와, 근거가 필요 없는 문장', () => {
+  const { scenario, narration: n } = career();
+
+  // 대안 문장은 각 대안의 시기·사건 근거를 모두 가진다
+  const alt = n.sentences.find((x) => x.kind === 'alternative');
+  if (alt) {
+    for (const a of scenario.alternatives.filter((x) => x.event)) {
+      for (const r of [...a.provenance.timing, ...a.provenance.event]) {
+        assert.ok(alt.sourceRefs.includes(r), `대안 근거 ${r} 가 없다`);
+      }
+    }
+    const bad = { ...n, sentences: n.sentences.map((x) => (x === alt ? { ...x, sourceRefs: [] } : x)) };
+    assert.ok(auditNarration(bad, scenario).issues.some((x) =>
+      ['alternative_ref_missing', 'sentence_without_source'].includes(x.code)));
+  }
+
+  // 한계 문장은 새 사실을 주장하지 않으므로 근거가 없어도 된다
+  const limits = n.sentences.filter((x) => x.kind === 'limit');
+  assert.ok(limits.length);
+  for (const s of limits) assert.equal(s.requiresSource, false);
+  assert.equal(n.meta.auditOk, true, JSON.stringify(n.meta.issues));
+
+  // 도시를 말하면 그 위치 근거가, 알려준 지역이면 context 근거가 붙는다
+  const { narration: loc, scenario: ls } = (() => {
+    const s2 = composeScenario({
+      birth: BIRTH, question: '2027년부터 2030년 사이에 어디로 이직할까?', now: NOW,
+      currentState: { employmentType: 'employed' },
+      locationEvidence: { metro: '대전권', what: '아스트로카토그래피' }, contextLocation: '대덕구',
+    }).scenario;
+    return { scenario: s2, narration: narrateScenario(s2) };
+  })();
+  const byId = new Map(ls.evidence.map((c) => [c.id, c]));
+  const metroS = loc.sentences.find((x) => ls.primary.location.metro && x.text.includes(ls.primary.location.metro));
+  if (metroS) {
+    assert.ok(metroS.sourceRefs.length);
+    for (const r of metroS.sourceRefs) assert.equal(byId.get(r).sourceType, 'fortune');
+    const bad = { ...loc, sentences: loc.sentences.map((x) => (x === metroS ? { ...x, sourceRefs: [] } : x)) };
+    assert.ok(auditNarration(bad, ls).issues.some((x) =>
+      ['location_without_ref', 'sentence_without_source'].includes(x.code)));
+  }
+  const distS = loc.sentences.find((x) => ls.primary.location.district
+    && x.text.includes(`${ls.primary.location.district}는 알려주신`));
+  if (distS) {
+    assert.ok(distS.sourceRefs.length);
+    for (const r of distS.sourceRefs) assert.equal(byId.get(r).sourceType, 'context');
+  }
+});
+
+test('27. 세 모드 모두 같은 근거 계약을 지키고, 같은 입력이면 같다', () => {
+  const opts = { birth: BIRTH, question: '2027년부터 2030년 사이에 어디로 이직할까?', now: NOW,
+    currentState: { employmentType: 'employed', occupation: '개발자' } };
+  const { scenario } = composeScenario(opts);
+  const ids = new Set(scenario.evidence.map((c) => c.id));
+  for (const detail of ['short', 'normal', 'full']) {
+    const n = narrateScenario(scenario, { detail });
+    assert.equal(n.meta.auditOk, true, `${detail}: ${JSON.stringify(n.meta.issues)}`);
+    for (const s of n.sentences) {
+      if (s.requiresSource) assert.ok(s.sourceRefs.length, `${detail}/${s.kind}: ${s.text}`);
+      for (const r of s.sourceRefs) assert.ok(ids.has(r), r);
+    }
+    // 같은 모드를 두 번 불러도 같다
+    assert.deepEqual(narrateScenario(scenario, { detail }), n);
+  }
+  // 없는 근거는 계속 severe 다
+  const n = narrateScenario(scenario);
+  const bad = { ...n, sentences: [...n.sentences, { kind: 'timing', text: 'x', sourceRefs: ['X999'], requiresSource: true }] };
+  const a = auditNarration(bad, scenario);
+  assert.equal(a.ok, false);
+  assert.ok(a.severe.includes('dangling_source_ref'));
+});

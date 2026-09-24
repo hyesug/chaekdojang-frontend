@@ -42,11 +42,32 @@ const DOMAIN_CAVEAT = {
   wealth: '수익을 보장한다는 뜻이 아니라 재정 변동이 커지는 흐름이라는 뜻입니다.',
 };
 
-/** 문장 하나 — 어떤 값을 읽어 만들었는지 함께 들고 다닌다 */
-const S = (kind, text, sourceRefs = []) => ({ kind, text, sourceRefs: sourceRefs.filter(Boolean) });
+/**
+ * 문장 하나 — 어떤 값을 읽어 만들었는지 함께 들고 다닌다.
+ *
+ * `requiresSource` 를 **문장마다 직접 적는다.** 전에는 `kind` 목록으로
+ * 판정했는데, 그러면 새 종류를 더할 때마다 또 빠진다. 시나리오의 구체
+ * 값(시기·사건·상세·대안·가지·알려준 값·위치·갈림의 양쪽)을 문장에 넣었으면
+ * 참이고, "회사까지는 좁힐 수 없습니다" 처럼 새 사실을 주장하지 않는
+ * 안내·한계 문장은 거짓이다.
+ */
+const S = (kind, text, sourceRefs = [], o = {}) => ({
+  kind, text, sourceRefs: sourceRefs.filter(Boolean),
+  requiresSource: o.requiresSource ?? false,
+});
+/** 값을 말하는 문장 */
+const V = (kind, text, sourceRefs) => S(kind, text, sourceRefs, { requiresSource: true });
 
-/** 사실을 말하는 문장은 근거가 있어야 한다 (안내·한계 문장은 제외) */
+/** `requiresSource` 가 안 적힌 옛 문장을 위한 뒷받침 */
 const FACTUAL = new Set(['answer', 'timing', 'event', 'detail', 'alternative', 'branch', 'conflict']);
+const needsSource = (s) => s.requiresSource === true
+  || (s.requiresSource === undefined && FACTUAL.has(s.kind));
+
+/** 그 근거들 가운데 이 출처인 것만 */
+const refsOf = (scenario, refs, sourceType) => {
+  const by = new Map((scenario?.evidence ?? []).map((c) => [c.id, c]));
+  return (refs ?? []).filter((r) => by.get(r)?.sourceType === sourceType);
+};
 
 const SECTION_OF = {
   answer: 'answer', mismatch: 'answer',
@@ -118,70 +139,79 @@ export function narrateScenario(scenario, options = {}) {
   if (qa.answersQuestion === false) {
     const askedName = qa.askedLabel ?? (qa.askedFor?.length ? labelOf(domain, qa.askedFor[0]) : null);
     const gotName = p.event?.label ?? null;
-    out.push(S('mismatch',
-      askedName && gotName
-        ? `${askedName} 시기를 물으셨지만, 이 계산에서는 ${askedName}보다 ${gotName} 쪽 신호가 먼저 잡힙니다.`
-        : '물으신 것과 이 계산이 짚는 자리가 다릅니다.',
-      eRef));
-    out.push(S('mismatch',
-      askedName
-        ? `그래서 이 결과만으로 "${when}에 ${askedName}한다"고 답하기는 어렵습니다.`
-        : '그래서 물으신 것에 그대로 답하기는 어렵습니다.'));
+    if (askedName && gotName) {
+      out.push(V('mismatch',
+        `${askedName} 시기를 물으셨지만, 이 계산에서는 ${askedName}보다 ${gotName} 쪽 신호가 먼저 잡힙니다.`,
+        eRef));
+    } else {
+      out.push(S('mismatch', '물으신 것과 이 계산이 짚는 자리가 다릅니다.'));
+    }
+    if (askedName) {
+      // 시기 값을 그대로 쓰므로 시기 근거가 따라붙는다
+      out.push(V('mismatch', `그래서 이 결과만으로 "${when}에 ${askedName}한다"고 답하기는 어렵습니다.`, tRef));
+    } else {
+      out.push(S('mismatch', '그래서 물으신 것에 그대로 답하기는 어렵습니다.'));
+    }
     if (qa.directAlternative) {
-      out.push(S('mismatch',
-        `물으신 쪽(${labelOf(domain, qa.directAlternative)})은 아래 다른 흐름에 남아 있습니다.`));
+      // 주 시나리오 근거를 베끼지 않는다 — 그 대안 자신의 근거를 찾는다
+      const hit = (scenario.alternatives ?? []).find((a) => a.event?.type === qa.directAlternative);
+      out.push(V('mismatch',
+        `물으신 쪽(${labelOf(domain, qa.directAlternative)})은 아래 다른 흐름에 남아 있습니다.`,
+        hit?.provenance?.event ?? []));
     }
   } else if (p.event) {
-    out.push(S('answer', `이 계산에서 ${dl} 쪽 변화가 가장 두드러지는 구간은 ${when}입니다.`, tRef));
+    out.push(V('answer', `이 계산에서 ${dl} 쪽 변화가 가장 두드러지는 구간은 ${when}입니다.`, tRef));
   } else {
-    out.push(S('answer', `${when}에 ${dl} 쪽이 움직이는 신호가 두드러집니다.`, tRef));
-    out.push(S('answer', `다만 그 움직임이 어떤 사건인지까지 좁힐 근거는 모자랍니다.`));
+    out.push(V('answer', `${when}에 ${dl} 쪽이 움직이는 신호가 두드러집니다.`, tRef));
+    out.push(S('answer', '다만 그 움직임이 어떤 사건인지까지 좁힐 근거는 모자랍니다.'));
   }
 
   // ── ② 시기 · 사건 · 상세 ──
   if (qa.answersQuestion === false) {
-    out.push(S('timing', `그 신호가 실리는 구간은 ${when}입니다.`, tRef));
+    out.push(V('timing', `그 신호가 실리는 구간은 ${when}입니다.`, tRef));
   }
   if (p.event) {
-    out.push(S('event', `이 구간에서는 ${p.event.label} 쪽 사건 후보가 잡힙니다.`, eRef));
+    out.push(V('event', `이 구간에서는 ${p.event.label} 쪽 사건 후보가 잡힙니다.`, eRef));
     if (p.event.caution) out.push(S('caveat', p.event.caution, eRef));
   }
   if (DOMAIN_CAVEAT[domain]) out.push(S('caveat', DOMAIN_CAVEAT[domain]));
 
   const d = p.detail ?? {};
   const dref = (k) => p.provenance?.detail?.[k] ?? [];
-  if (d.roleFamily) out.push(S('detail', `일의 성격은 ${d.roleFamily.label} 쪽으로 읽힙니다.`, dref('roleFamily')));
-  if (d.workStyle) out.push(S('detail', `역할은 ${d.workStyle.label}에 가깝습니다.`, dref('workStyle')));
+  if (d.roleFamily) out.push(V('detail', `일의 성격은 ${d.roleFamily.label} 쪽으로 읽힙니다.`, dref('roleFamily')));
+  if (d.workStyle) out.push(V('detail', `역할은 ${d.workStyle.label}에 가깝습니다.`, dref('workStyle')));
   if (d.employmentSetting) {
-    out.push(S('detail', `버는 방식은 ${d.employmentSetting.label}입니다.`, dref('employmentSetting')));
+    out.push(V('detail', `버는 방식은 ${d.employmentSetting.label}입니다.`, dref('employmentSetting')));
   }
   if (d.industryFamily) {
-    out.push(S('detail', `산업군까지 보면 ${d.industryFamily.label} 언저리입니다.`, dref('industryFamily')));
+    out.push(V('detail', `산업군까지 보면 ${d.industryFamily.label} 언저리입니다.`, dref('industryFamily')));
   }
   for (const [k, w] of Object.entries(SLOT_WORD)) {
     if (!d[k]) continue;
     // SLOT_WORD 는 모두 '결' 로 끝난다 (받침 있음) — 조사는 '은'
-    out.push(S('detail', `${w}은 ${d[k].label} 쪽이 두드러집니다.`, dref(k)));
+    out.push(V('detail', `${w}은 ${d[k].label} 쪽이 두드러집니다.`, dref(k)));
   }
   if (domain === 'career' && !d.roleFamily && (scenario.meta?.allowedLevel ?? 0) >= 3) {
     out.push(S('limit', '어떤 일의 갈래인지는 축이 한쪽으로 모이지 않아 좁히지 않았습니다.'));
   }
 
   // 사용자가 말해 준 것과 계산이 말한 것을 섞지 않는다
-  const occ = p.contextAnchor?.occupation?.value ?? null;
-  if (occ) {
-    out.push(S('context',
-      `지금 ${occ}로 일하고 있다는 것은 알려주신 사실이고, 계산이 맞힌 것이 아닙니다. 위 이야기는 그 전제를 함께 놓고 읽은 것입니다.`));
+  const occAnchor = p.contextAnchor?.occupation ?? null;
+  if (occAnchor?.value) {
+    out.push(V('context',
+      `지금 ${occAnchor.value}로 일하고 있다는 것은 알려주신 사실이고, 계산이 맞힌 것이 아닙니다. 위 이야기는 그 전제를 함께 놓고 읽은 것입니다.`,
+      occAnchor.sourceRefs ?? []));
   }
 
   // ── ③ 갈림 ──
   const sc = p.selectionConflict;
   if (sc && sc.agreement === false) {
-    out.push(S('conflict',
+    // 양쪽 승자를 모두 말하므로 **양쪽 근거를 모두** 단다
+    out.push(V('conflict',
       `사건 후보 점수로는 ${labelOf(domain, sc.eventScoreWinner)} 쪽이 잡히지만, 체계별 방향 표결은 ${labelOf(domain, sc.lineageVoteWinner)} 쪽으로 갈렸습니다.`,
-      p.provenance?.selectionConflict ?? []));
+      sc.provenance ?? p.provenance?.selectionConflict ?? []));
     out.push(S('conflict', '두 신호가 같은 결론을 내는 상태가 아니라서, 방향은 하나로 적지 않았습니다.',
-      p.provenance?.selectionConflict ?? []));
+      sc.provenance ?? p.provenance?.selectionConflict ?? []));
   }
   if (scenario.selectionStatus === 'close') {
     out.push(S('close', '한쪽이 뚜렷하게 앞선 결과는 아닙니다. 비슷한 수준의 흐름이 함께 남아 있습니다.'));
@@ -191,7 +221,7 @@ export function narrateScenario(scenario, options = {}) {
   const alts = (scenario.alternatives ?? []).filter((a) => a.event);
   if (alts.length) {
     const parts = alts.map((a) => `${a.timing?.label ?? ''} ${a.event.label}`.trim());
-    out.push(S('alternative', `다른 흐름으로는 ${parts.join(', ')} 쪽도 남아 있습니다.`,
+    out.push(V('alternative', `다른 흐름으로는 ${parts.join(', ')} 쪽도 남아 있습니다.`,
       alts.flatMap((a) => [...(a.provenance?.timing ?? []), ...(a.provenance?.event ?? [])])));
   }
 
@@ -205,13 +235,15 @@ export function narrateScenario(scenario, options = {}) {
     if (!s1) continue;
     const refs = [...(s1.provenance?.timing ?? []), ...(s1.provenance?.event ?? [])];
     if (!s2) {
-      out.push(S('branch',
+      out.push(V('branch',
         `${s1.timing?.label ?? ''} 무렵 ${s1.label} 쪽으로 가는 흐름이 하나 있습니다.`.trim(), refs));
       continue;
     }
-    out.push(S('branch',
+    // 두 단계의 시기·사건을 모두 말하고, 조건부 상태도 말하므로 state 근거까지 단다
+    out.push(V('branch',
       `${s1.timing?.label ?? ''} 무렵 ${s1.label} 쪽으로 간다면, 그 단계가 실제로 일어난다는 전제에서 ${s2.timing?.label ?? ''}에는 ${s2.label} 쪽 신호를 볼 수 있습니다.`.trim(),
-      [...refs, ...(s2.provenance?.event ?? [])]));
+      [...refs, ...(s2.provenance?.timing ?? []), ...(s2.provenance?.event ?? []),
+        ...(s2.provenance?.state ?? [])]));
   }
   if (seen.size) {
     out.push(S('caveat', '뒤 단계는 앞 단계가 일어난다는 가정 위의 이야기이고, 정해진 순서가 아닙니다.'));
@@ -223,12 +255,13 @@ export function narrateScenario(scenario, options = {}) {
       out.push(S('limit',
         `${dl} 변화의 방향까지는 볼 수 있지만, 어느 도시로 옮기는지까지 좁힐 위치 근거는 이 계산에 없습니다.`));
     } else {
-      out.push(S('detail', `방위 계산으로는 ${p.location.metro} 쪽이 걸립니다.`, p.provenance?.location ?? []));
+      out.push(V('detail', `방위 계산으로는 ${p.location.metro} 쪽이 걸립니다.`,
+        refsOf(scenario, p.provenance?.location, 'fortune')));
     }
     if (p.location?.district && p.location.sourceType === 'context') {
-      out.push(S('context',
+      out.push(V('context',
         `${p.location.district}는 알려주신 현재 지역이고, 계산이 짚은 지역이 아닙니다.`,
-        p.provenance?.location ?? []));
+        refsOf(scenario, p.provenance?.location, 'context')));
     }
   }
   if (asked.company) {
@@ -369,13 +402,83 @@ export function auditNarration(narration, scenario) {
   // 10. 내부 점수를 확률로 옮기지 않았는가
   if (PERCENT_LIKE.test(text)) add('probability_language', '내부 점수를 확률처럼 말했다', true);
 
-  // 11~12. 사실 문장에는 근거가 있고, 그 근거가 실제로 있는가
+  // 11~12. 값을 말한 문장에는 근거가 있고, 그 근거가 실제로 있는가
+  const byId = new Map((scenario?.evidence ?? []).map((c) => [c.id, c]));
+  const has = (s, refs) => (refs ?? []).some((r) => s.sourceRefs.includes(r));
   for (const s of narration.sentences ?? []) {
-    if (FACTUAL.has(s.kind) && !s.sourceRefs.length) {
-      add('sentence_without_source', `${s.kind}: ${s.text}`);
+    if (needsSource(s) && !s.sourceRefs.length) {
+      add('sentence_without_source', `${s.kind}: ${s.text}`, true);
     }
     for (const r of s.sourceRefs) {
       if (!ids.has(r)) add('dangling_source_ref', `없는 근거 ${r}`, true);
+    }
+
+    // 알려준 값을 말했으면 **context 근거**가 있어야 한다.
+    // 여기에 fortune 근거를 달면 "계산이 맞혔다"가 되어 버린다
+    if (s.kind === 'context') {
+      if (!s.sourceRefs.some((r) => byId.get(r)?.sourceType === 'context')) {
+        add('context_without_context_ref', s.text, true);
+      }
+      if (s.sourceRefs.some((r) => byId.get(r)?.sourceType === 'fortune')) {
+        add('context_ref_wrong_source', `알려준 값에 운세 근거를 달았다: ${s.text}`, true);
+      }
+    }
+
+    // 물은 것과 다르다고 말하면서 시기·사건 값을 쓰면 그 근거가 있어야 한다
+    if (s.kind === 'mismatch') {
+      if (p?.timing?.label && s.text.includes(p.timing.label) && !has(s, p.provenance?.timing)) {
+        add('mismatch_without_ref', `시기를 말했는데 시기 근거가 없다: ${s.text}`, true);
+      }
+      if (p?.event?.label && s.text.includes(p.event.label) && !has(s, p.provenance?.event)) {
+        add('mismatch_without_ref', `사건을 말했는데 사건 근거가 없다: ${s.text}`, true);
+      }
+      const da = scenario?.questionAnswer?.directAlternative;
+      if (da) {
+        const alt = (scenario.alternatives ?? []).find((a) => a.event?.type === da);
+        if (s.text.includes(labelOf(scenario.meta?.domain, da)) && !has(s, alt?.provenance?.event)) {
+          add('alternative_ref_missing', `${da} 를 말했는데 그 대안의 근거가 없다`, true);
+        }
+      }
+    }
+
+    // 갈림은 양쪽 승자를 모두 말하므로 양쪽 근거가 다 있어야 한다
+    if (s.kind === 'conflict' && sc && sc.agreement === false) {
+      const a = labelOf(scenario.meta?.domain, sc.eventScoreWinner);
+      const b = labelOf(scenario.meta?.domain, sc.lineageVoteWinner);
+      if (s.text.includes(a) && s.text.includes(b)) {
+        const need = sc.provenance ?? p?.provenance?.selectionConflict ?? [];
+        if (!need.length || !need.every((r) => s.sourceRefs.includes(r))) {
+          add('conflict_ref_incomplete', `갈림의 양쪽 근거가 다 붙지 않았다: ${s.text}`, true);
+        }
+      }
+    }
+
+    // 도시를 말했으면 위치 근거가 있어야 한다
+    if (p?.location?.metro && s.text.includes(p.location.metro)
+      && !has(s, p.provenance?.location)) {
+      add('location_without_ref', `${p.location.metro} 를 말했는데 위치 근거가 없다`, true);
+    }
+
+    // 대안의 시기·사건을 말했으면 그 대안의 근거여야 한다
+    if (s.kind === 'alternative') {
+      for (const a of scenario?.alternatives ?? []) {
+        if (!a.event || !s.text.includes(a.event.label)) continue;
+        if (!has(s, a.provenance?.event) || !has(s, a.provenance?.timing)) {
+          add('alternative_ref_missing', `대안 ${a.event.type} 의 근거가 다 붙지 않았다`, true);
+        }
+      }
+    }
+
+    // 조건부 뒤 단계를 말했으면 그 단계의 상태 근거까지 있어야 한다
+    if (s.kind === 'branch' && /전제/.test(s.text)) {
+      const br = (scenario?.branches ?? []).find((b) =>
+        b.steps?.[0] && s.text.includes(b.steps[0].label) && b.steps[1]);
+      if (br && !has(s, br.steps[1].provenance?.state)) {
+        add('branch_state_ref_missing', `${br.id} 뒤 단계의 상태 근거가 없다`, true);
+      }
+      if (br && !has(s, br.steps[1].provenance?.timing)) {
+        add('branch_state_ref_missing', `${br.id} 뒤 단계의 시기 근거가 없다`, true);
+      }
     }
   }
 

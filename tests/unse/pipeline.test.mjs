@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import {
   interpretQuestion, composeScenario, selectEvidence, questionTypeOf,
   checkTemporalConsistency, chainOf, attributesOf, stateOf, possibleTransitions,
+  supportingReads, answerScenario,
 } from '../../public/unse-8f3k2m/src/semantic/scenario/index.js';
 import {
   STATE_GRAPH, CROSS_DOMAIN, MOVE_REASONS, crossDomainOf, canTransition,
@@ -276,4 +277,102 @@ test('11. 같은 입력이면 같은 결과다', () => {
   assert.deepEqual(selectEvidence({ scenario: a, questionType: 'why_event' }),
     selectEvidence({ scenario: b, questionType: 'why_event' }));
   assert.deepEqual(chainOf(a.branches[0], 'career'), chainOf(b.branches[0], 'career'));
+});
+
+// ── 12~14. 곁가지 분야와 현실 후보를 붙인 최종 조립 ─────────────
+
+test('12. 주 사건이 켠 분야를 같은 구간에서 읽되 주 시나리오를 바꾸지 않는다', () => {
+  const r = composeScenario({
+    birth: BIRTH, question: '나 이직하게 될까?', now: NOW, from: '2027-01', to: '2029-12',
+    currentState: { employmentType: 'employed', occupation: '백엔드 개발자' },
+  });
+  const sup = supportingReads({ birth: BIRTH, scenario: r.scenario, from: '2027-01', to: '2029-12' });
+  assert.ok(sup.reads.length, '켜진 분야를 읽지 않았다');
+  const main = r.scenario.meta.domain;
+  for (const s of sup.reads) {
+    assert.notEqual(s.domain, main, '주 분야를 곁가지로 다시 읽었다');
+    assert.equal(s.role, 'supporting');
+    assert.equal(s.sourceType, 'fortune');
+    // 곁가지는 주 시나리오보다 깊이 갈 수 없다
+    assert.ok(s.allowedLevel < r.scenario.meta.allowedLevel);
+    assert.match(s.note, /주 시나리오를 바꾸지도 않는다/);
+    if (s.candidate) assert.match(s.candidate.note, /일어난다는 뜻이 아니다/);
+    // 곁가지는 주 국면과 같은 구간을 본다
+    assert.ok(s.window?.grain === r.scenario.primary.timing.grain);
+  }
+  // 주 시나리오는 그대로다
+  const again = composeScenario({
+    birth: BIRTH, question: '나 이직하게 될까?', now: NOW, from: '2027-01', to: '2029-12',
+    currentState: { employmentType: 'employed', occupation: '백엔드 개발자' },
+  }).scenario;
+  assert.deepEqual(again.primary.event, r.scenario.primary.event);
+  // 묻지 않은 분야를 새 주제로 꺼내지 않는다 — 켜진 것만 읽는다
+  const lit = new Set(r.scenario.chains.chains.flatMap((c) => c.crossDomain.map((x) => x.domain)));
+  for (const s of sup.reads) assert.ok(lit.has(s.domain), s.domain);
+});
+
+test('13. 현실 후보를 붙여도 운세가 회사를 짚은 것처럼 말하지 않는다', () => {
+  const pre = composeScenario({
+    birth: BIRTH, question: '나 이직하게 될까?', now: NOW, from: '2027-01', to: '2029-12',
+    currentState: { employmentType: 'employed', occupation: '백엔드 개발자' },
+  }).scenario;
+  const ev = pre.primary.event.type;
+  const w = pre.primary.timing;
+  const cands = [
+    { id: 'JOB-1', domain: 'career', kind: 'opportunity', supportsEvents: [ev],
+      detail: { roleFamily: 'technical_analytical' },
+      company: { name: '대덕넷웍스' }, location: { metro: '대전', district: '유성구' },
+      validity: { from: `${w.from}-01`, to: `${w.to}-28` },
+      source: { id: 'S1', sourceType: 'reality', provider: 'fixture' } },
+  ];
+  const r = answerScenario({
+    birth: BIRTH, question: '나 이직하게 될까?', now: NOW, from: '2027-01', to: '2029-12',
+    currentState: { employmentType: 'employed', occupation: '백엔드 개발자' },
+    supporting: true, candidates: cands, narrate: { detail: 'full' },
+  });
+  assert.equal(r.narration.meta.auditOk, true, JSON.stringify(r.narration.meta.issues));
+  assert.equal(r.realityMatch.audit.ok, true);
+
+  const txt = r.narration.text;
+  assert.match(txt, /대덕넷웍스/, '실제 후보를 붙였는데 이름이 없다');
+  assert.match(txt, /운세가 짚은 회사가 아니고, 가게 된다는 뜻도 아닙니다/);
+  assert.match(txt, /합격하거나 그리로 간다는 뜻이 아닙니다/);
+  // 확정으로 말하지 않는다
+  assert.ok(!/대덕넷웍스[^.]{0,10}(입사|갑니다|간다|합격)/.test(txt), txt);
+  // 회사 이름을 말한 문장은 현실 근거를 단다
+  const ids = new Set(r.realityMatch.evidence.map((c) => c.id));
+  const named = r.narration.sentences.find((s) => s.text.includes('대덕넷웍스'));
+  assert.ok(named.sourceRefs.some((x) => ids.has(x)), '회사 이름에 현실 근거가 없다');
+  // 시나리오 자체는 여전히 회사를 비워 둔다
+  assert.equal(r.scenario.primary.company, null);
+  assert.equal(r.scenario.primary.location.metro, null);
+  // 현실 후보가 없으면 없다고 말한다
+  const none = answerScenario({
+    birth: BIRTH, question: '나 이직하게 될까?', now: NOW, from: '2027-01', to: '2029-12',
+    currentState: { employmentType: 'employed' }, candidates: [
+      { id: 'X', domain: 'career', kind: 'opportunity', supportsEvents: ['__none__'],
+        source: { id: 'S', sourceType: 'reality' } }],
+  });
+  assert.match(none.narration.text, /조건이 겹치는 것은 없습니다/);
+});
+
+test('14. 곁가지·현실을 붙여도 결정적이고 게이트를 넘지 않는다', () => {
+  const opts = {
+    birth: BIRTH, question: '나 이직하게 될까?', now: NOW, from: '2027-01', to: '2029-12',
+    currentState: { employmentType: 'employed', occupation: '백엔드 개발자' },
+    supporting: true, narrate: { detail: 'full' },
+  };
+  const a = answerScenario(opts);
+  const b = answerScenario(opts);
+  assert.equal(a.narration.text, b.narration.text);
+  assert.deepEqual(a.supporting, b.supporting);
+  // 허용 눈금보다 잘게 말하지 않는다
+  if (a.scenario.primary.timing.grain !== 'month') {
+    assert.ok(!/\d{4}-\d{2}\b|\d{1,2}\s*월/.test(a.narration.text), a.narration.text);
+  }
+  // 확률·회사형 문자열이 없다
+  assert.ok(!/(\d+\s*%|확률|퍼센트|주식회사|㈜)/.test(a.narration.text));
+  // short 모드에서도 선 긋는 문장은 남는다
+  const short = answerScenario({ ...opts, narrate: { detail: 'short' } });
+  assert.equal(short.narration.meta.auditOk, true, JSON.stringify(short.narration.meta.issues));
 });

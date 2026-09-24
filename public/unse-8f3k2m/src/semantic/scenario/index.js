@@ -31,6 +31,7 @@ import { claim, evidenceFrom, auditProvenance, resetIds } from './provenance.js'
 import { composePrepared, timingAt } from './composer.js';
 import { narrateScenario, auditNarration } from './narrator.js';
 import { matchReality, auditRealityMatch } from './reality.js';
+import { supportingReads } from './supporting.js';
 import { selectEvidence, questionTypeOf } from './evidence.js';
 import { buildChains, chainOf, checkTemporalConsistency } from './chain.js';
 import { attributesOf } from './attributes.js';
@@ -363,16 +364,30 @@ export function matchScenarioReality(scenario, candidates, options = {}) {
   return matchReality(scenario, candidates, options);
 }
 
-/** 재료 → 조립 → 한국어까지 한 번에. 각 층은 여전히 따로 부를 수 있다 */
+/**
+ * 재료 → 조립 → 한국어까지 한 번에. 각 층은 여전히 따로 부를 수 있다.
+ *
+ * `supporting: true` 면 주 사건이 켠 분야(수입·이동·주거…)를 같은 구간에서
+ * 함께 읽고, `candidates` 를 주면 실제 후보까지 맞대 본다. **둘 다 주
+ * 시나리오를 바꾸지 않는다** — 곁가지는 곁가지이고 현실은 현실이다.
+ */
 export function answerScenario(o = {}) {
   const { prepared, scenario } = composeScenario(o);
-  return { prepared, scenario, narration: narrateScenario(scenario, o.narrate ?? {}) };
+  const supporting = o.supporting
+    ? supportingReads({ birth: o.birth, scenario, from: prepared.from, to: prepared.to })
+    : null;
+  const realityMatch = o.candidates?.length
+    ? matchReality(scenario, o.candidates, o.realityOptions ?? {})
+    : null;
+  const narration = narrateScenario(scenario,
+    { ...(o.narrate ?? {}), supporting, realityMatch });
+  return { prepared, scenario, supporting, realityMatch, narration };
 }
 
 export {
   composePrepared, auditCoherence, detailFor, timingAt,
   narrateScenario, auditNarration,
-  matchReality, auditRealityMatch,
+  matchReality, auditRealityMatch, supportingReads,
   selectEvidence, questionTypeOf,
   buildChains, chainOf, checkTemporalConsistency, attributesOf,
   interpretQuestion, resolveConflict, timingPhases, specificityGate,

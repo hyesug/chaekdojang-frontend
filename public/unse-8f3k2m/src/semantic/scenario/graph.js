@@ -242,6 +242,7 @@ export const MOVE_REASONS = ['career', 'relationship', 'marriage', 'family', 'fi
 export const CROSS_DOMAIN = {
   job_change: [
     { domain: 'wealth', why: '소속이 바뀌면 수입 구조가 바뀐다' },
+    { domain: 'movement', why: '옮기는 자리가 생활권을 넘는지 아닌지가 갈린다', reason: 'career' },
     { domain: 'residence', why: '일터가 옮겨지면 거처가 따라 움직일 수 있다', reason: 'career' },
   ],
   first_job: [

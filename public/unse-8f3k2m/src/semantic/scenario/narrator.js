@@ -73,16 +73,20 @@ const SECTION_OF = {
   answer: 'answer', mismatch: 'answer',
   timing: 'timing', event: 'timing',
   detail: 'detail', context: 'detail',
+  supporting: 'supporting',
+  reality: 'reality',
   conflict: 'alternatives', close: 'alternatives', alternative: 'alternatives',
   branch: 'branches',
   limit: 'uncertainty', caveat: 'uncertainty',
 };
-const SECTION_ORDER = ['answer', 'timing', 'detail', 'alternatives', 'branches', 'uncertainty'];
+const SECTION_ORDER = ['answer', 'timing', 'detail', 'supporting', 'reality',
+  'alternatives', 'branches', 'uncertainty'];
 
 /** 모드별로 어떤 절까지 싣는가. **어느 모드도 새 사실을 만들지 않는다** */
 const MODES = {
   short: new Set(['answer', 'timing']),
-  normal: new Set(['answer', 'timing', 'detail', 'alternatives', 'uncertainty']),
+  // 실제 자료를 붙여 물었으면 그 절은 기본 모드에서도 뺄 수 없다
+  normal: new Set(['answer', 'timing', 'detail', 'supporting', 'reality', 'alternatives', 'uncertainty']),
   full: new Set(SECTION_ORDER),
 };
 
@@ -203,6 +207,26 @@ export function narrateScenario(scenario, options = {}) {
       occAnchor.sourceRefs ?? []));
   }
 
+  // ── ②-b 딸려 오는 분야 — 주 사건이 켠 것만, 한 단계 얕게 ──
+  for (const s of options.supporting?.reads ?? []) {
+    if (!s.activation?.band) continue;
+    const what = s.detail?.label ?? null;
+    out.push(V('supporting',
+      what
+        ? `${s.label} 쪽은 같은 구간에서 ${s.activation.join ?? s.activation.label}, 결로는 ${what} 쪽입니다.`
+        : `${s.label} 쪽은 같은 구간에서 ${s.activation.label}`,
+      // 곁가지는 그 분야를 따로 계산한 것이라 주 시나리오의 근거를 빌리지 않는다
+      [...(p.provenance?.timing ?? [])]));
+    if (s.candidate) {
+      out.push(S('caveat',
+        `${s.label} 쪽에서는 ${s.candidate.label} 후보가 잡히지만, 그 분야를 따로 물어본 것이 아니라 이 사건에 딸려 본 것입니다.`));
+    }
+  }
+
+  // ── ②-c 현실 후보 — **운세가 짚은 것이 아니다** ──
+  const rm = options.realityMatch ?? null;
+  if (rm) out.push(...realitySentences(rm, dl));
+
   // ── ③ 갈림 ──
   const sc = p.selectionConflict;
   if (sc && sc.agreement === false) {
@@ -286,7 +310,7 @@ export function narrateScenario(scenario, options = {}) {
     meta: { deterministic: true, generatedFacts: 0, mode, grain, auditOk: true, issues: [] },
   };
 
-  const audit = auditNarration(narration, scenario);
+  const audit = auditNarration(narration, scenario, options);
   narration.meta.auditOk = audit.ok;
   narration.meta.issues = audit.issues;
   // 넘지 말아야 할 선을 넘었으면 글을 내보내지 않는다
@@ -305,7 +329,61 @@ const SAFE_CAVEATS = new Set([
   ...Object.values(DOMAIN_CAVEAT),
   ...Object.values(EVENT_CANDIDATES).flat().map((c) => c.note).filter(Boolean),
   '뒤 단계는 앞 단계가 일어난다는 가정 위의 이야기이고, 정해진 순서가 아닙니다.',
+  '실제 후보와 조건이 겹친다는 것뿐이고, 합격하거나 그리로 간다는 뜻이 아닙니다.',
 ]);
+/** 곁가지·현실 절에서 만들어지는 주의문은 틀이 정해져 있다 */
+const SAFE_CAVEAT_SHAPES = [
+  /^.+ 쪽에서는 .+ 후보가 잡히지만, 그 분야를 따로 물어본 것이 아니라 이 사건에 딸려 본 것입니다\.$/,
+];
+
+/**
+ * 현실 후보를 말하는 문장.
+ *
+ * **여기서 지키는 선이 하나 있다** — 회사·지역은 실제 자료에서 온 것이지
+ * 운세가 짚은 것이 아니다. 그래서 "간다"·"입사한다"로 쓰지 않고 "지금 열려
+ * 있는 후보 가운데 조건이 겹치는 것"까지만 쓴다. 날짜는 적지 않는다(공고의
+ * 유효 기간을 시나리오의 시기처럼 읽게 만들기 때문이다).
+ */
+function realitySentences(rm, domainLabel) {
+  const out = [];
+  if (rm.status === 'unsafe_input' || rm.status === 'unsafe_match') {
+    return [S('reality', '실제 후보 자료에 맞지 않는 데가 있어 그 부분은 붙이지 않았습니다.')];
+  }
+  const direct = (rm.primaryMatches ?? []).filter((m) => m.eligible && m.matchMode === 'direct');
+  const illus = (rm.primaryMatches ?? []).filter((m) => m.eligible && m.matchMode === 'illustrative_only');
+
+  if (!direct.length && !illus.length) {
+    return [S('reality',
+      `지금 들어와 있는 실제 후보 가운데 이 ${domainLabel} 시나리오와 조건이 겹치는 것은 없습니다.`)];
+  }
+
+  if (direct.length) {
+    const metros = [...new Set(direct.map((m) => m.reality?.location?.metro).filter(Boolean))];
+    const names = [...new Set(direct.map((m) => m.reality?.company?.value).filter(Boolean))];
+    const refs = direct.flatMap((m) => m.provenance?.reality ?? []);
+    const where = metros.length ? `${metros.join('·')} 쪽 ` : '';
+    out.push(V('reality',
+      `현실 조건까지 합치면, 지금 열려 있는 실제 후보 가운데 ${where}${direct.length}곳이 이 시나리오와 조건이 겹칩니다.`,
+      refs));
+    if (names.length) {
+      out.push(V('reality',
+        `이름을 대면 ${names.join('·')}입니다. 이것은 실제 자료에서 찾은 후보이지 운세가 짚은 회사가 아니고, 가게 된다는 뜻도 아닙니다.`,
+        direct.flatMap((m) => (m.reality?.company ? m.provenance?.reality ?? [] : []))));
+    }
+    const fields = [...new Set(direct.flatMap((m) => m.compatibility?.matches ?? []))];
+    const clash = [...new Set(direct.flatMap((m) => m.compatibility?.contradictions ?? []))];
+    if (fields.length) {
+      out.push(S('reality', `겹치는 자리는 ${fields.join('·')} 이고, 어긋나는 자리는 ${clash.length ? clash.join('·') : '없습니다'}.`));
+    }
+  }
+  if (illus.length) {
+    out.push(S('reality',
+      `기간이 지났거나 회사 자체만 있는 후보 ${illus.length}건은 성격을 견주는 데만 썼습니다. 그때 그곳이 뽑는다는 근거는 아닙니다.`));
+  }
+  out.push(S('caveat',
+    '실제 후보와 조건이 겹친다는 것뿐이고, 합격하거나 그리로 간다는 뜻이 아닙니다.'));
+  return out;
+}
 
 /** 확률처럼 읽히는 말 */
 const PERCENT_LIKE = /(\d+\s*%|확률|가능성\s*\d|퍼센트)/;
@@ -320,7 +398,7 @@ const MONTH_LIKE = /(\d{4}-\d{2}\b|\d{1,2}\s*월)/;
  * `severe` 에 걸리면 글을 내보내지 않는다 — 넘은 선을 다듬어 내보내면
  * 넘었다는 사실이 사라진다.
  */
-export function auditNarration(narration, scenario) {
+export function auditNarration(narration, scenario, options = {}) {
   const issues = [];
   const severe = [];
   const add = (code, detail, bad = false) => {
@@ -329,7 +407,12 @@ export function auditNarration(narration, scenario) {
   };
   const text = narration?.text ?? '';
   const p = scenario?.primary ?? null;
-  const ids = new Set((scenario?.evidence ?? []).map((c) => c.id));
+  // 근거는 두 곳에 있다 — 시나리오(X…)와 현실 자료(R…). 둘 다 실재해야 한다
+  const realityIds = new Set((options.realityMatch?.evidence ?? []).map((c) => c.id));
+  const ids = new Set([
+    ...(scenario?.evidence ?? []).map((c) => c.id),
+    ...realityIds,
+  ]);
 
   // 1. 회사 이름을 만들지 않았는가
   if (COMPANY_LIKE.test(text)) add('company_generated', '회사 이름 같은 문자열', true);
@@ -392,7 +475,9 @@ export function auditNarration(narration, scenario) {
   const claimed = (narration.sentences ?? [])
     .filter((s) => s.kind !== 'caveat').map((s) => s.text).join(' ');
   for (const s of (narration.sentences ?? []).filter((x) => x.kind === 'caveat')) {
-    if (!SAFE_CAVEATS.has(s.text)) add('unknown_caveat', `정해 두지 않은 주의문: ${s.text}`, true);
+    if (SAFE_CAVEATS.has(s.text)) continue;
+    if (SAFE_CAVEAT_SHAPES.some((re) => re.test(s.text))) continue;
+    add('unknown_caveat', `정해 두지 않은 주의문: ${s.text}`, true);
   }
   if (scenario?.meta?.domain === 'health' && HEALTH_FORBIDDEN.test(claimed)) {
     add('health_medical_language', '진단·질환·수술을 말했다', true);
@@ -457,6 +542,13 @@ export function auditNarration(narration, scenario) {
     if (p?.location?.metro && s.text.includes(p.location.metro)
       && !has(s, p.provenance?.location)) {
       add('location_without_ref', `${p.location.metro} 를 말했는데 위치 근거가 없다`, true);
+    }
+
+    // 현실 값을 말했으면 그 근거는 **현실 자료**에서 온 것이어야 한다
+    if (s.kind === 'reality' && s.requiresSource) {
+      if (realityIds.size && !s.sourceRefs.some((r) => realityIds.has(r))) {
+        add('reality_without_reality_ref', s.text, true);
+      }
     }
 
     // 대안의 시기·사건을 말했으면 그 대안의 근거여야 한다

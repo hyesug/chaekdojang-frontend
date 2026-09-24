@@ -1,0 +1,17 @@
+# Vercel 로 올리지 않을 것
+#
+# **이 파일이 있으면 Vercel 은 `.gitignore` 를 보지 않습니다.** 그래서 거기
+# 적어 둔 개인정보 경로를 여기에 다시 적습니다. `.gitignore` 쪽을 고칠 때
+# 이 파일도 같이 보세요.
+#
+# 만든 까닭: Git 연동이 끊긴 동안 로컬에서 `vercel deploy` 로 스테이징을
+# 올려야 했는데, 로컬 배포는 **작업트리를 통째로** 올린다. 추적되지 않고
+# 무시되지도 않던 `analysis/` 가 그대로 따라 올라갔을 것이다.
+
+# 개인 분석 작업 — 배포와 무관하다
+analysis/
+
+# 지인 실제 개인정보 (.gitignore 와 같은 자리)
+validation/
+validation-data/
+bench.json

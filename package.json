@@ -18,7 +18,9 @@
     "unse:casebook-benchmark": "node scripts/fortune-casebook-benchmark.mjs",
     "test": "npm run test:unse",
     "unse:career": "node scripts/analyze-career.mjs",
-    "unse:dictionary": "node scripts/build-dictionary.mjs validation/people.json"
+    "unse:dictionary": "node scripts/build-dictionary.mjs validation/people.json",
+    "unse:timing": "node scripts/timing-coverage.mjs",
+    "unse:timing-validate": "node scripts/validate-timing.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

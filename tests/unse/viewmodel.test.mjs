@@ -69,3 +69,25 @@ test('개인 화면은 명반 · 오늘/이달 두 탭 · 프로필 저장 · AI
     assert.equal(ui.includes(gone), false, gone + ' 이(가) 남아 있다');
   }
 });
+
+test('앞일 묻기는 탭을 늘리지 않고, 누를 때만 무거운 층을 받는다', async () => {
+  const ui = await readFile(
+    new URL('../../public/unse-8f3k2m/src/ui.js', import.meta.url), 'utf8');
+
+  // 두 탭 구조는 그대로다
+  const tabs = [...ui.matchAll(/<button type="button"[^>]*data-tab="([^"]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(tabs, ['today', 'month']);
+
+  // 자리는 AI 옆이고, 누르기 전에는 아무것도 받지 않는다
+  assert.match(ui, /id="scenPanel"/);
+  assert.match(ui, /id="scen-open"/);
+  assert.match(ui, /import\('\.\/scenarioPanel\.js'\)/, '동적 import 가 아니면 첫 화면이 무거워진다');
+  assert.equal(/^import .*scenarioPanel/m.test(ui), false, 'scenarioPanel 을 정적으로 import 하면 안 된다');
+
+  // 패널은 모델을 부르지 않는다 — 계산 결과를 그대로 옮긴다
+  const panel = await readFile(
+    new URL('../../public/unse-8f3k2m/src/scenarioPanel.js', import.meta.url), 'utf8');
+  assert.match(panel, /import\('\.\/semantic\/scenario\/index\.js'\)/);
+  assert.equal(/fetch\(|fortune-ai/.test(panel), false, '패널이 바깥을 부르면 안 된다');
+  assert.match(panel, /모델이 쓴 글이 아니라/);
+});

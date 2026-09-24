@@ -313,6 +313,16 @@ function render(form, r, f) {
       <p class="agree-note" style="margin:0">프로필 저장 여부를 확인하는 중…</p>
     </div>
 
+    <div class="section-label">앞일 묻기</div>
+    <div id="scenPanel">
+      <div class="card">
+        <p class="agree-note" style="margin:0">
+          «언제 이직해?» 처럼 물으면 <b>모델을 거치지 않고</b> 계산 결과로 답합니다.
+          <button type="button" id="scen-open" class="linklike">열기</button>
+        </p>
+      </div>
+    </div>
+
     ${aiSection('solo', v)}
   `;
 }
@@ -384,6 +394,35 @@ $('#result').addEventListener('click', (e) => {
   document.querySelectorAll('.tab-pane').forEach((x) => { x.hidden = x.dataset.tab !== id; });
   document.querySelector('.tabs').scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
+
+// '앞일 묻기' 는 누를 때 받는다
+$('#result').addEventListener('click', (e) => {
+  if (e.target.closest('#scen-open')) openAsk();
+});
+
+/**
+ * '앞일 묻기' 를 누를 때만 시나리오 층을 받는다.
+ *
+ * 이 층은 명반을 여러 해치 다시 세워서 무겁다. 첫 화면에 끼우면 안 되고,
+ * 여기 `import()` 한 줄이 번들을 가르는 지점이다.
+ */
+let askLoaded = false;
+async function openAsk() {
+  if (askLoaded || !last || last.mode !== 'solo') return;
+  askLoaded = true;
+  const root = $('#scenPanel');
+  if (!root) return;
+  root.innerHTML = '<div class="card"><p class="agree-note" style="margin:0">계산 층을 받는 중입니다…</p></div>';
+  try {
+    const P = await import('./scenarioPanel.js');
+    root.innerHTML = P.panelHtml();
+    await P.initScenario(root, last.formA);
+  } catch (err) {
+    askLoaded = false;
+    root.innerHTML = '<p class="agree-note" style="margin:0">계산 층을 받지 못했습니다. 새로고침 후 다시 시도해 주세요.</p>';
+    void err;
+  }
+}
 
 $('#result').addEventListener('click', async (e) => {
   const btn = e.target.closest('[data-act]');

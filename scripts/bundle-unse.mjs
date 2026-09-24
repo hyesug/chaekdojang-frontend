@@ -101,10 +101,23 @@ function report() {
     .map((n) => ({ name: n, buf: readFileSync(join(siteDir, n)) }))
     .sort((a, b) => b.buf.length - a.buf.length);
 
-  // 첫 화면에 받는 것은 진입점과 그것이 곧바로 import 하는 공용 덩이다.
-  // 엔진 덩이(app-ui.js)는 '풀이 보기'를 누를 때 받는다.
-  const lazy = (n) => n === 'app-ui.js';
-  const first = outs.filter((o) => !lazy(o.name));
+  // 첫 화면이 실제로 받는 것은 app.js 와 **거기서 정적으로 이어지는 덩이**뿐이다.
+  // 이름으로 찍지 말고 app.js 의 import 를 따라가서 센다 — 덩이 이름에 해시가
+  // 붙은 뒤로 이름 비교는 더 이상 맞지 않는다.
+  const byName = new Map(outs.map((o) => [o.name, o]));
+  const staticImports = (name) => {
+    const txt = byName.get(name)?.buf?.toString('utf8') ?? '';
+    return [...txt.matchAll(/from *"\.\/(app-[^"]+\.js)"/g)].map((m) => m[1]);
+  };
+  const eager = new Set();
+  const walkEager = (name) => {
+    if (!name || eager.has(name)) return;
+    eager.add(name);
+    for (const next of staticImports(name)) walkEager(next);
+  };
+  walkEager('app.js');
+  const lazy = (n) => !eager.has(n);
+  const first = outs.filter((o) => eager.has(o.name));
   const kbSum = (arr, f = (b) => b.length) =>
     kb(arr.reduce((t, o) => t + f(o.buf), 0));
 
@@ -113,7 +126,7 @@ function report() {
     console.log(
       `  ${o.name.padEnd(16)} ${kb(o.buf.length).padStart(6)} ` +
       `(gzip ${kb(gzipSync(o.buf).length).padStart(6)})  ` +
-      `${lazy(o.name) ? '풀이 보기를 누를 때' : '첫 화면'}`
+      `${lazy(o.name) ? '눌렀을 때' : '첫 화면'}`
     );
   }
   console.log(
@@ -133,11 +146,11 @@ const options = {
   // 진입점 파일 이름은 boot 가 아니라 app 으로 둔다. index.html 이 읽는 이름이라
   // 여기서 바꾸면 index.html 도 같이 고쳐야 한다.
   entryNames: 'app',
-  // 덩이 이름에 해시를 넣지 않는다. 해시를 넣으면 엔진을 한 줄 고칠 때마다
-  // 파일 이름이 바뀌어 저장소에 새 파일이 쌓인다. app.js 도 이미 고정 이름이라
-  // 캐시 정책이 달라지지도 않는다.
-  // app.js 옆에 app-ui.js, app-chunk.js 로 놓여 한 벌인 것이 눈에 보인다.
-  chunkNames: 'app-[name]',
+  // 떼어 낸 진입점이 둘 이상이 되면서 esbuild 가 공용 덩이를 여럿 만든다.
+  // 그것들이 전부 'chunk' 라는 같은 이름을 원해서 부딪쳤다 — 해시를 붙여
+  // 가른다. 쌓이지는 않는다. `sweep()` 이 묶기 전에 `app-*.js` 를 모두 지운다.
+  // (진입점 `app.js` 는 여전히 고정 이름이라 index.html 은 그대로다)
+  chunkNames: 'app-[name]-[hash]',
   bundle: true,
   splitting: true,        // import('./ui.js') 를 보고 덩이를 가른다
   format: 'esm',          // index.html 이 <script type="module"> 로 읽는다

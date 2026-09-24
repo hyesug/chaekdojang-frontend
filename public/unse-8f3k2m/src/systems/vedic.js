@@ -16,7 +16,27 @@ import { planetPositions, houses, toSidereal, PLANET_ORDER } from '../core/plane
 import { j } from '../core/josa.js';
 import { norm360, lahiriAyanamsa } from '../core/astro.js';
 import { NAKSHATRA_LORDS, NAKSHATRA_NAMES } from './sukyo.js';
+import { dasamsa } from '../core/varga.js';
 import { result, WESTERN_TO_OHAENG } from './_base.js';
+
+/**
+ * 행성이 그리는 직업의 결 — BPHS 의 행성 카라카.
+ *
+ * `hires/profile.js` 의 같은 이름 표와 내용이 같다. 그쪽은 해석 층이고
+ * 이쪽은 체계 모듈이라 서로 가져다 쓰지 않는다(그러면 계산이 해석에
+ * 매달린다). 표를 고칠 때는 **양쪽 다** 고쳐야 한다.
+ */
+const PLANET_TRADE = {
+  태양: '공공·행정·관리직, 권위가 있는 자리',
+  달: '돌봄·서비스·유통처럼 사람과 흐름을 다루는 일',
+  화성: '기술·공학·의료·군경·체육처럼 몸과 손, 판단이 곧 결과가 되는 일',
+  수성: '상업·문서·IT·교육처럼 말과 셈을 다루는 일',
+  목성: '교육·법률·금융·상담처럼 가르치고 판단해 주는 일',
+  금성: '예술·디자인·미용·접객처럼 감각과 관계를 파는 일',
+  토성: '제조·건설·행정처럼 오래 걸리고 책임이 무거운 일',
+  라후: '신기술·외국·비정통 — 정해진 틀 밖의 일',
+  케투: '기술 하나로 파고드는 일, 또는 드러나지 않는 자리',
+};
 
 export const meta = {
   id: 'vedic',
@@ -198,6 +218,48 @@ export function analyze(input) {
       .map((x) => `${Math.max(0, x.fromAge).toFixed(0)}~${x.toAge.toFixed(0)}세 ${x.lord}`)
       .join('  ·  ') + '\n빔쇼타리는 120년을 아홉 행성이 나눠 갖는 구조라, 한 사람이 평생 겪는 순서가 태어날 때 이미 정해집니다.',
   });
+
+  // ── D10 다샴샤 — 직업 전용 분할 차트 ──
+  //
+  // 베딕에서 직업을 보는 자리는 D1 이 아니라 **D10** 이고, 표준 독법에서
+  // D10 라그나주가 직업의 1순위 지표다. 그런데 이 모듈은 그것을 읽기로
+  // 내놓지 않아, 직업 질문에서 베딕이 사실상 빠져 있었다
+  // (`semantic/compose/slots.js` 가 '무슨 일을 하나' 칸에서 베딕을 뺀 이유).
+  //
+  // D10 은 라그나가 있어야 선다 — 시각을 모르면 만들지 않는다.
+  if (timeKnown) {
+    const d10Lagna = dasamsa(lagnaLon);
+    const d10LagnaLord = RASHI[d10Lagna].lord;
+    // D10 의 10궁 = D10 라그나에서 열 번째 별자리
+    const d10Tenth = (d10Lagna + 9) % 12;
+    const d10TenthLord = RASHI[d10Tenth].lord;
+    // 그 10궁에 실제로 든 행성 (D10 좌표로 옮겨서)
+    const inTenth = PLANET_ORDER.slice(0, 9)
+      .filter((n) => dasamsa(sid[n].lon) === d10Tenth);
+
+    const trades = [...new Set([d10LagnaLord, d10TenthLord, ...inTenth])]
+      .map((p) => PLANET_TRADE[p]).filter(Boolean);
+
+    readings.push({
+      title: `D10 — 일의 자리`,
+      text: `직업은 원 차트가 아니라 D10(다샴샤)에서 봅니다. 황경 3도마다 한 칸씩 잘라 다시 세운 판이라 `
+        + `같은 명반이라도 일에 관해서는 다른 그림이 나옵니다. `
+        + `D10 라그나는 ${RASHI[d10Lagna].name}, 그 주인은 ${d10LagnaLord}입니다. `
+        + `${PLANET_TRADE[d10LagnaLord]}에 결이 가깝습니다.`
+        + (d10TenthLord !== d10LagnaLord
+          ? ` 10궁의 주인은 ${d10TenthLord}이라 ${PLANET_TRADE[d10TenthLord]} 쪽도 함께 걸립니다.` : '')
+        + (inTenth.length
+          ? ` 10궁에 ${j(inTenth.join('·'), '이')} 들어 그 색이 더 진해집니다.` : ''),
+    });
+
+    if (trades.length > 1) {
+      readings.push({
+        title: 'D10 — 갈래가 여럿일 때',
+        text: `일의 지표가 ${trades.length}갈래로 갈립니다. 한 갈래로 좁혀지지 않는 명반이라 `
+          + `업종보다 **일하는 방식**이 먼저 정해지는 쪽이고, 업종은 그때그때 환경을 따라갑니다.`,
+      });
+    }
+  }
 
   // ── 종합용 지표 ──
   const elCount = { 불: 0, 흙: 0, 공기: 0, 물: 0 };

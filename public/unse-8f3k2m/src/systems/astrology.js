@@ -240,6 +240,72 @@ export function analyze(input) {
     });
   }
 
+  // ── 각의 모양 (aspect pattern) ──
+  //
+  // 각을 하나씩 늘어놓으면 "목성–토성 사각"까지는 나오지만 **명반 전체가
+  // 어떤 모양인지**는 안 나온다. 셋 이상이 얽혀 만드는 꼴에는 전통적으로
+  // 이름이 붙어 있고, 그 이름이 그 사람의 삶이 굴러가는 방식을 말한다.
+  //
+  // 여기서 새로 만든 규칙은 없다 — 스텔리움·T스퀘어·그랜드트라인은
+  // 현대 점성술의 표준 패턴이고, 오브는 위 `ASPECTS` 표를 그대로 쓴다.
+  const linked = (p, q, name) => aspects.some((a) =>
+    a.name === name && ((a.from === p && a.to === q) || (a.from === q && a.to === p)));
+
+  // 스텔리움 — 한 별자리에 셋 이상. 그 영역에 힘이 쏠린다
+  const bySign = {};
+  for (const p of MAJOR) (bySign[signOf(pos[p].lon)] ??= []).push(p);
+  const stellium = Object.entries(bySign).filter(([, ps]) => ps.length >= 3);
+  for (const [sign, ps] of stellium) {
+    readings.push({
+      title: `스텔리움 — ${SIGNS[sign].name}에 ${ps.length}개`,
+      text: `${ps.join('·')}이 한 별자리에 몰려 있습니다. 셋 이상이 한자리에 모이면 `
+        + `그 별자리의 결이 다른 모든 것을 덮습니다. 여러 면을 고루 갖춘 사람이라기보다 `
+        + `**한쪽으로 깊게 치우친 사람**이 되고, 그 치우침이 곧 이 사람의 힘이자 약점입니다. `
+        + `${SIGNS[sign].text}`,
+    });
+  }
+
+  // T스퀘어 — 마주 본 둘이 제삼자를 함께 친다. 이 저장소에서 가장 자주 일이 나는 꼴
+  const tsq = [];
+  for (const o of aspects.filter((a) => a.name === '대각')) {
+    for (const c of MAJOR) {
+      if (c === o.from || c === o.to) continue;
+      if (linked(c, o.from, '사각') && linked(c, o.to, '사각')) {
+        tsq.push({ ends: [o.from, o.to], apex: c });
+      }
+    }
+  }
+  for (const t of tsq.slice(0, 2)) {
+    readings.push({
+      title: `T스퀘어 — ${t.apex}이 꼭짓점`,
+      text: `${t.ends.join('과 ')}이 정면으로 마주 보고, 그 둘이 함께 ${j(t.apex, '을')} 칩니다. `
+        + `세 힘이 직각으로 물려 있어 **가만히 두면 계속 부딪히고, 밀어붙이면 결과가 나오는** 꼴입니다. `
+        + `${t.apex}이 걸린 자리가 이 사람이 평생 붙들고 씨름하는 지점이 되고, `
+        + `대개 그 씨름한 자리가 나중에 특기가 됩니다.`,
+    });
+  }
+
+  // 그랜드 트라인 — 셋이 서로 삼각. 너무 쉬워서 안 쓰게 되는 재능
+  const grand = [];
+  for (let i = 0; i < MAJOR.length; i++) {
+    for (let k = i + 1; k < MAJOR.length; k++) {
+      for (let m = k + 1; m < MAJOR.length; m++) {
+        const [a, b, c] = [MAJOR[i], MAJOR[k], MAJOR[m]];
+        if (linked(a, b, '삼각') && linked(b, c, '삼각') && linked(a, c, '삼각')) {
+          grand.push([a, b, c]);
+        }
+      }
+    }
+  }
+  for (const g of grand.slice(0, 1)) {
+    readings.push({
+      title: `그랜드 트라인 — ${g.join('·')}`,
+      text: `세 별이 서로 삼각으로 물려 닫힌 삼각형을 이룹니다. 이 셋이 하는 일은 `
+        + `**애쓰지 않아도 됩니다.** 그래서 재능인데, 너무 쉬워 정작 안 쓰게 되는 것이 함정입니다. `
+        + `밖에서 밀어 주는 힘(사각·대각)이 없으면 좋은 재료를 쥐고도 움직이지 않습니다.`,
+    });
+  }
+
   // ── 종합용 지표 ──
   const elements = [0, 0, 0, 0, 0];
   for (const [el, n] of Object.entries(elCount)) {

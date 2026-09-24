@@ -17,6 +17,9 @@
 
 import { BRANCHES, BRANCHES_KR, STEMS, STEMS_KR, branchRelations } from '../core/ganzhi.js';
 import { j } from '../core/josa.js';
+import {
+  auxPlacements, helperPlacements, trineSquare, SIX_EVIL, STAR_MEANING,
+} from '../core/ziweiStars.js';
 import { result } from './_base.js';
 
 export const meta = {
@@ -240,11 +243,88 @@ export function analyze(input) {
       : '몸의 자리에 주성이 없는 공궁입니다. 타고난 한 가지 약점으로 단정하기보다, 생활 리듬과 그때그때 들어오는 흐름의 영향을 더 크게 받는 자리로 봅니다.',
   });
 
+  // 사화는 네 별에 표시를 다는 것인데, **그 별이 어느 궁에 들었는지**까지
+  // 말해야 쓸모가 있다. "화기가 붙은 별이 든 궁이 애를 먹는 영역"이라고
+  // 적어 놓고 정작 그 궁을 안 알려 주고 있었다.
+  //
+  // 사화표는 주성 열넷 말고 **문창·문곡·좌보·우필**도 쓴다(신년생 화기가
+  // 문창이다). 그 넷이 이 모듈의 판에 없어서 정작 화기의 자리를 못 찾고
+  // 있었다. 판 자체는 건드리지 않고 — 화면과 테스트가 보는 판이라 —
+  // 자리만 따로 구해 사화 조회에 쓴다.
+  const helpers = helperPlacements(lm, hourBranch);
+  const palaceOfStar = (star) => {
+    if (helpers[star] != null) {
+      const h = PALACES.find(([kr]) => palaceAt[kr].pos === helpers[star]);
+      return h ? h[0] : null;
+    }
+    const hit = PALACES.find(([kr]) => palaceAt[kr].stars.includes(star));
+    return hit ? hit[0] : null;
+  };
+  const sihwaWhere = sihwa
+    .map((x) => ({ ...x, palace: palaceOfStar(x.star) }))
+    .filter((x) => x.palace);
+
   readings.push({
     title: `사화 — ${stemKr}년생`,
     text: sihwa.map((x) => `${x.star} ${x.label}`).join('\n') +
       '\n사화는 태어난 해의 천간이 네 별에 표시를 다는 것입니다. 화기가 붙은 별이 든 궁이 그 사람이 가장 애를 먹는 영역이 됩니다.',
   });
+
+  if (sihwaWhere.length) {
+    const gi = sihwaWhere.find((x) => x.label.startsWith('화기'));
+    const rok = sihwaWhere.find((x) => x.label.startsWith('화록'));
+    readings.push({
+      title: '사화가 떨어진 궁',
+      text: sihwaWhere.map((x) => `${x.star} ${x.label.split(' ')[0]} → ${x.palace}`).join(' · ')
+        + (gi ? ` 화기가 ${gi.palace}에 들었습니다. 그 자리가 이 사람이 가장 애를 먹고, 놓지 못해 되풀이해서 붙드는 영역입니다.` : '')
+        + (rok ? ` 화록은 ${rok.palace}에 들어 그쪽에서 먹을 것과 기회가 열립니다.` : ''),
+    });
+  }
+
+  // ── 삼방사정 — 한 궁만 보지 않는다 ──
+  //
+  // 자미두수는 명궁 하나로 읽지 않고 **삼합 둘과 대궁까지 네 자리를 한 묶음**
+  // 으로 본다. 명궁 주성만 내면 같은 별을 가진 사람이 전부 같은 답을 받는다.
+  const ts = trineSquare(myeong);
+  const trineStars = ts.all.flatMap((b) => board[b]);
+  if (trineStars.length > mainStars.length) {
+    const others = ts.all.filter((b) => b !== myeong)
+      .map((b) => ({ b, stars: board[b] })).filter((x) => x.stars.length);
+    readings.push({
+      title: '삼방사정 — 함께 보는 세 자리',
+      text: `명궁만 보지 않고 삼합 두 자리와 마주 보는 대궁까지 넷을 한 묶음으로 읽습니다. `
+        + others.map((x) => `${BRANCHES[x.b]}궁 ${x.stars.join('·')}`).join(' · ')
+        + `이(가) 명궁을 함께 받칩니다. 명궁 주성이 밑그림이라면 이 별들은 그 밑그림이 실제로 어떻게 굴러가는지를 정합니다.`,
+    });
+  }
+
+  // ── 육살성 — 주성만 보면 같은 별이 전부 같은 답을 받는다 ──
+  if (timeKnown) {
+    const at = auxPlacements(yearStem, yearBranch, hourBranch, stemKr);
+    const evilHere = SIX_EVIL
+      .map((s) => ({ star: s, pos: at[s] }))
+      .filter((x) => x.pos != null);
+    const inMyeong = evilHere.filter((x) => ts.all.includes(x.pos));
+    if (inMyeong.length) {
+      readings.push({
+        title: '살성이 낀 자리',
+        text: inMyeong.map((x) => `${x.star} — ${STAR_MEANING[x.star]}`).join('\n')
+          + `\n이 별들이 명궁의 삼방사정 안에 들었습니다. 같은 주성이라도 살성이 끼면 결이 크게 달라집니다 — `
+          + `밀어붙이는 힘이 세지는 대신 매듭이 잘 안 풀리고, 잘 풀리다가 갑자기 어긋나는 일이 섞입니다.`,
+      });
+    }
+    const evilPalaces = PALACES
+      .map(([kr]) => ({ kr, hit: evilHere.filter((x) => x.pos === palaceAt[kr].pos) }))
+      .filter((x) => x.hit.length >= 2);
+    if (evilPalaces.length) {
+      readings.push({
+        title: '살성이 몰린 궁',
+        text: evilPalaces.map((x) => `${x.kr}에 ${x.hit.map((h) => h.star).join('·')}`).join(' · ')
+          + `. 살성이 둘 이상 겹친 궁은 그 영역에서 유난히 굴곡이 큽니다. 없애야 할 것이 아니라 `
+          + `그쪽에 힘이 몰려 있다는 뜻이라, 조심하면 오히려 그 자리가 특기가 되기도 합니다.`,
+      });
+    }
+  }
 
   readings.push({
     title: '판 전체', mono: true,

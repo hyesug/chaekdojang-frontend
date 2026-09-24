@@ -29,56 +29,20 @@
  */
 
 import { BRANCHES, BRANCHES_KR, STEMS_KR } from '../core/ganzhi.js';
+import { auxPlacements } from '../core/ziweiStars.js';
 import { buildBoard, palaceMap, palaceBranch, sihwaOn, DOMAIN_PALACES } from './ziwei.js';
 
 const mod12 = (n) => ((n % 12) + 12) % 12;
 
-// ── 보조성 배치표 ────────────────────────────────────────────
+// 배치표와 삼방사정은 `core/ziweiStars.js` 로 내렸다. 이 파일이
+// `hires/ziwei.js` 를 거쳐 `systems/jamidusu.js` 에 기대고 있어서,
+// 체계 모듈 쪽에서 보조성을 쓰면 순환 import 가 되기 때문이다.
+// 기존 import 경로가 깨지지 않게 여기서 그대로 다시 내보낸다.
+import {
+  SIX_EVIL, LUCKY, STAR_MEANING, trineSquare, flanking,
+} from '../core/ziweiStars.js';
 
-/** 연간 → 녹존 자리 */
-const LUCUN_BY_STEM = [2, 3, 5, 6, 5, 6, 8, 9, 11, 0]; // 甲乙丙丁戊己庚辛壬癸
-
-/** 연지 삼합 → 천마 자리 */
-const HORSE_BY_TRINE = { 0: 2, 4: 2, 8: 2, 2: 8, 6: 8, 10: 8, 5: 11, 9: 11, 1: 11, 11: 5, 3: 5, 7: 5 };
-
-/** 연지 삼합 → [화성 기점, 영성 기점] */
-function fireBellStart(yearBranch) {
-  if ([2, 6, 10].includes(yearBranch)) return [1, 3];    // 寅午戌
-  if ([8, 0, 4].includes(yearBranch)) return [2, 10];    // 申子辰
-  if ([5, 9, 1].includes(yearBranch)) return [3, 10];    // 巳酉丑
-  return [9, 10];                                        // 亥卯未
-}
-
-/** 연간 → [천괴, 천월] */
-const NOBLE_BY_STEM = {
-  갑: [1, 7], 무: [1, 7], 경: [1, 7],
-  을: [0, 8], 기: [0, 8],
-  병: [11, 9], 정: [11, 9],
-  신: [6, 2],
-  임: [3, 5], 계: [3, 5],
-};
-
-/** 여섯 살성 — 이 별이 든 자리는 흔들린다 */
-export const SIX_EVIL = ['경양', '타라', '화성', '영성', '지공', '지겁'];
-/** 길성 — 이 별이 든 자리는 받쳐진다 */
-export const LUCKY = ['녹존', '천마', '천괴', '천월', '문창', '문곡', '좌보', '우필'];
-
-export const STAR_MEANING = {
-  경양: '날이 서는 별. 밀어붙이는 힘이자 다치는 자리',
-  타라: '끄는 별. 일이 늦어지고 매듭이 잘 안 풀린다',
-  화성: '급한 불. 갑작스레 터지고 갑자기 식는다',
-  영성: '속으로 타는 불. 오래 끌며 신경을 갉는다',
-  지공: '비는 자리. 계획이 헛돌거나 방향이 바뀐다',
-  지겁: '새는 자리. 돈과 힘이 빠져나간다',
-  녹존: '녹(祿)의 별. 먹을 것과 자리가 붙는다',
-  천마: '역마. 움직이고 옮기고 오간다',
-  천괴: '귀인. 윗사람이 끌어 준다',
-  천월: '귀인. 뜻밖의 도움이 온다',
-  문창: '글과 시험의 별',
-  문곡: '말과 재주의 별',
-  좌보: '곁에서 돕는 별',
-  우필: '곁에서 돕는 별',
-};
+export { SIX_EVIL, LUCKY, STAR_MEANING, trineSquare, flanking };
 
 /**
  * 원국 판에 보조성을 얹는다.
@@ -91,20 +55,8 @@ export function auxStars(input) {
   const yearBranch = mod12(input.sajuYear - 4);
   const h = input.hourBranch;
 
-  const lucun = LUCUN_BY_STEM[yearStem];
-  const [fireFrom, bellFrom] = fireBellStart(yearBranch);
-  const [gwae, weol] = NOBLE_BY_STEM[STEMS_KR[yearStem]] ?? [null, null];
-
   const at = {
-    녹존: lucun,
-    경양: mod12(lucun + 1),
-    타라: mod12(lucun - 1),
-    천마: HORSE_BY_TRINE[yearBranch],
-    화성: mod12(fireFrom + h),
-    영성: mod12(bellFrom + h),
-    지겁: mod12(11 + h),
-    지공: mod12(11 - h),
-    ...(gwae != null ? { 천괴: gwae, 천월: weol } : {}),
+    ...auxPlacements(yearStem, yearBranch, h, STEMS_KR[yearStem]),
     // ziwei.js 가 이미 놓은 넷
     ...b.helpers,
   };
@@ -115,19 +67,6 @@ export function auxStars(input) {
 
   return { board: b, at, byBranch, yearBranch };
 }
-
-// ── 삼방사정 · 협궁 · 대궁 ───────────────────────────────────
-
-/** 그 궁의 삼방사정 — 자기 자리, 삼합 둘, 마주 보는 대궁 */
-export const trineSquare = (branch) => ({
-  self: branch,
-  trine: [mod12(branch + 4), mod12(branch + 8)],
-  opposite: mod12(branch + 6),
-  all: [branch, mod12(branch + 4), mod12(branch + 8), mod12(branch + 6)],
-});
-
-/** 양옆 두 궁 — 낀 별이 그 자리의 성격을 크게 바꾼다 */
-export const flanking = (branch) => [mod12(branch - 1), mod12(branch + 1)];
 
 /**
  * 한 궁을 삼방사정·협궁까지 펴서 읽는다.

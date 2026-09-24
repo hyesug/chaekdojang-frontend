@@ -101,7 +101,8 @@ const eunNeun = (word) => {
 /** 칸마다 말을 어떻게 시작할지 */
 const LEAD = {
   setting: '일하는 자리는',
-  content: '일의 결은',
+  content: '직무는',
+  style: '일하는 결은',
   entry: '이 길에 들어선 모양은',
   tenure: '한 자리에 머무는 방식은',
   visibility: '일이 드러나는 정도는',

@@ -136,48 +136,13 @@ export function dashaChanges(tree, fromYear, toYear) {
 // 분할 차트 (바르가)
 // ─────────────────────────────────────────────────────────────
 
-/** D9 나밤샤 — 3°20′ 마다 한 칸. 황경을 9배 해 이어 세면 표와 같아진다 */
-export const navamsa = (lon) => Math.floor(lon / (30 / 9)) % 12;
+// 분할 함수는 `core/varga.js` 로 내렸다. 이 파일이 `systems/vedic.js` 에서
+// RASHI 를 가져오는 탓에, systems 쪽에서 분할 차트를 쓰면 순환 import 가
+// 되기 때문이다. 기존 import 경로가 깨지지 않게 여기서 그대로 다시 내보낸다.
+// 재수출만 하면 이 파일 안에서는 못 쓴다 — 함께 들여온다.
+import { navamsa, dasamsa, hora, chaturthamsa, saptamsa, VARGA } from '../core/varga.js';
 
-/** D10 다샴샤 — 홀수 별자리는 자기 자리부터, 짝수는 아홉 번째부터 */
-export function dasamsa(lon) {
-  const sign = Math.floor(lon / 30);
-  const part = Math.floor((lon % 30) / 3);
-  const odd = sign % 2 === 0;                  // 0=메샤(양자리)=홀수 별자리
-  return (sign + (odd ? 0 : 8) + part) % 12;
-}
-
-/** D2 호라 — 홀수 별자리 앞 절반은 사자(4), 뒤는 게(3). 짝수는 반대 */
-export function hora(lon) {
-  const sign = Math.floor(lon / 30);
-  const firstHalf = (lon % 30) < 15;
-  const odd = sign % 2 === 0;
-  return odd ? (firstHalf ? 4 : 3) : (firstHalf ? 3 : 4);
-}
-
-/** D4 차투르탐샤 — 7°30′ 마다. 자기 별자리에서 세 칸씩 순행 */
-export function chaturthamsa(lon) {
-  const sign = Math.floor(lon / 30);
-  const part = Math.floor((lon % 30) / 7.5);
-  return (sign + part * 3) % 12;
-}
-
-/** D7 삽탐샤 — 30/7 도마다. 홀수 별자리는 자기 자리부터, 짝수는 일곱 번째부터 */
-export function saptamsa(lon) {
-  const sign = Math.floor(lon / 30);
-  const part = Math.floor((lon % 30) / (30 / 7));
-  const odd = sign % 2 === 0;
-  return (sign + (odd ? 0 : 6) + part) % 12;
-}
-
-export const VARGA = {
-  D1: (lon) => Math.floor(lon / 30),
-  D2: hora,
-  D4: chaturthamsa,
-  D7: saptamsa,
-  D9: navamsa,
-  D10: dasamsa,
-};
+export { navamsa, dasamsa, hora, chaturthamsa, saptamsa, VARGA };
 
 /** 질문 분야에 따라 어느 분할 차트를 볼지 */
 export const DOMAIN_VARGA = {

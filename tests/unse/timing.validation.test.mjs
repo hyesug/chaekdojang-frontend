@@ -12,6 +12,7 @@ import {
 } from '../../public/unse-8f3k2m/src/semantic/timing/schema.js';
 import {
   scoreEvent, scoreEventYearly, toYearly, permutationBaseline, personWeighted, personBootstrap,
+  aggregateNull, prepareNullDraws, nullPosition, NULL_METRICS, scoreAtResolution,
 } from '../../public/unse-8f3k2m/src/validation/timingMetrics.js';
 import { predictTimeline } from '../../public/unse-8f3k2m/src/semantic/timing/timeline.js';
 import { scoreEvents } from '../../public/unse-8f3k2m/src/semantic/timing/events.js';
@@ -290,4 +291,134 @@ test('열두 분야 모두 unavailable 을 조용히 0 으로 바꾸지 않는�
     }
   }
   void DOMAINS;
+});
+
+// ── 19~24. 합산 통계의 null 분포 · 사람별 눈금 ────────────────
+
+test('19. 합산 null 은 개별 사건 null 구간의 평균이 아니다', () => {
+  // 사건 여섯 건 — 각자 다른 시계열
+  const rows = [0, 1, 2, 3, 4, 5].map((i) => ({
+    person: `P${i}`,
+    series: mk(Array.from({ length: 36 }, (_, j) => ((j * 7 + i * 13) % 36) / 36)),
+  }));
+  const agg = aggregateNull(rows, { rounds: 2000, seed: 1 });
+  const each = rows.map((r) => permutationBaseline(r.series, 2000, 1));
+
+  const avgLo = each.reduce((a, b) => a + b.lo, 0) / each.length;
+  const avgHi = each.reduce((a, b) => a + b.hi, 0) / each.length;
+  const A = agg.metrics.eventPercentile.event;
+
+  // 평균은 √n 만큼 좁아진다 — 개별 구간을 평균한 폭보다 확실히 좁아야 한다
+  assert.ok(A.hi - A.lo < (avgHi - avgLo) / 1.8,
+    `합산 폭 ${A.hi - A.lo} 가 개별 평균 폭 ${avgHi - avgLo} 만큼 넓다`);
+  assert.ok(A.lo > avgLo + 10, '합산 null 하한이 개별 하한과 같으면 안 된다');
+  assert.ok(A.hi < avgHi - 10, '합산 null 상한이 개별 상한과 같으면 안 된다');
+  // 중심은 비슷해야 한다 (좁아진 것이지 옮겨간 것이 아니다)
+  assert.ok(Math.abs(A.mean - 50) < 6, `합산 null 평균 ${A.mean}`);
+});
+
+test('20. 같은 씨앗이면 합산 null 이 똑같이 재현된다', () => {
+  const rows = [0, 1, 2].map((i) => ({
+    person: `P${i}`,
+    series: mk(Array.from({ length: 24 }, (_, j) => ((j * 5 + i * 3) % 24) / 24)),
+  }));
+  const a = aggregateNull(rows, { rounds: 500, seed: 777 });
+  const b = aggregateNull(rows, { rounds: 500, seed: 777 });
+  const c = aggregateNull(rows, { rounds: 500, seed: 778 });
+  for (const m of NULL_METRICS) {
+    assert.deepEqual(a.metrics[m].event.samples, b.metrics[m].event.samples, `${m} 재현 실패`);
+  }
+  assert.notDeepEqual(a.metrics.eventPercentile.event.samples,
+    c.metrics.eventPercentile.event.samples, '씨앗이 다르면 달라야 한다');
+});
+
+test('21. 사건 가중 null 과 사람 가중 null 을 따로 만든다', () => {
+  // 한 사람이 사건 다섯, 다른 두 사람이 하나씩 — 두 가중이 갈려야 한다
+  const heavy = mk(Array.from({ length: 36 }, (_, j) => (j < 6 ? 0.9 : 0.1)));
+  const light = mk(Array.from({ length: 36 }, (_, j) => j / 36));
+  const rows = [
+    ...Array.from({ length: 5 }, () => ({ person: 'A', series: heavy })),
+    { person: 'B', series: light },
+    { person: 'C', series: light },
+  ];
+  const agg = aggregateNull(rows, { rounds: 2000, seed: 42 });
+  assert.equal(agg.events, 7);
+  assert.equal(agg.people, 3);
+  const e = agg.metrics.eventPercentile.event;
+  const p = agg.metrics.eventPercentile.person;
+  assert.notDeepEqual(e.samples, p.samples, '두 분포가 같으면 따로 계산하지 않은 것이다');
+  // 사람 가중은 A 한 사람이 5/7 을 차지하지 않으므로 폭이 더 넓다
+  assert.ok(p.hi - p.lo > e.hi - e.lo, '사람 가중이 사건 가중보다 좁을 수 없다');
+});
+
+test('22. 창 지표에도 null 기준선이 만들어진다', () => {
+  const rows = [0, 1, 2, 3].map((i) => ({
+    person: `P${i}`,
+    series: mk(Array.from({ length: 36 }, (_, j) => ((j * 11 + i) % 36) / 36)),
+  }));
+  const agg = aggregateNull(rows, { rounds: 1000, seed: 9 });
+  for (const t of [1, 3, 6]) {
+    const w = agg.metrics[`top3Within${t}`].event;
+    const b = agg.metrics[`bestPercentileWithin${t}`].event;
+    assert.ok(w.mean >= 0 && w.mean <= 100, `Top3Within±${t} null ${w.mean}`);
+    assert.ok(b.mean >= 0 && b.mean <= 100, `BestPercentileWithin±${t} null ${b.mean}`);
+  }
+  // 창이 넓을수록 우연히 걸릴 확률이 높다 — 기준선도 같이 올라야 한다
+  assert.ok(agg.metrics.top3Within6.event.mean > agg.metrics.top3Within1.event.mean,
+    '±6 기준선이 ±1 보다 낮으면 계산이 잘못됐다');
+  assert.ok(agg.metrics.bestPercentileWithin6.event.mean
+    > agg.metrics.bestPercentileWithin1.event.mean);
+  // 관측값의 위치를 0~100 으로 낸다
+  const pos = nullPosition(agg.metrics.top3Within3.event.mean, agg.metrics.top3Within3.event);
+  assert.ok(pos >= 0 && pos <= 100);
+  // 사전계산한 뽑기표가 scoreEvent 와 같은 값을 준다
+  const d = prepareNullDraws(rows[0].series).draws.find((x) => x.key === '2020-05');
+  const s = scoreEvent(rows[0].series, '2020-05');
+  assert.equal(d.eventPercentile, s.eventPercentile);
+  assert.equal(d.top3Within3, s.top3Within3 ? 100 : 0);
+  assert.equal(d.bestPercentileWithin3, s.bestPercentileWithin3);
+});
+
+test('23. 같은 체계라도 사람마다 눈금이 다르면 각자의 눈금으로 잰다', () => {
+  // 같은 체계, 같은 사건 달. 한 사람은 달이 갈리고(month) 한 사람은 해만 갈린다(year)
+  const monthly = mk(Array.from({ length: 36 }, (_, j) => (j % 12) / 12));
+  const yearly = mk(Array.from({ length: 36 }, (_, j) => Math.floor(j / 12) / 3));
+  const row = { precision: 'month', year: 2021, key: '2021-03' };
+
+  const a = scoreAtResolution(monthly, { ...row, resolution: 'month' });
+  const b = scoreAtResolution(yearly, { ...row, resolution: 'year' });
+  assert.equal(a.scale, 'month');
+  assert.equal(b.scale, 'year');
+  assert.equal(b.score.n, 3, '해 단위는 36달이 아니라 3해로 잰다');
+  assert.equal(a.score.n, 36);
+
+  // 첫 사람 눈금을 씌우면 값이 달라진다 — 그래서 행마다 받아야 한다
+  const wrong = scoreAtResolution(yearly, { ...row, resolution: 'month' });
+  assert.equal(wrong.scale, 'month');
+  assert.notEqual(wrong.score.n, b.score.n);
+  // 사건 날짜가 해까지만 알려졌으면 달 단위 체계라도 해로 접는다
+  const coarse = scoreAtResolution(monthly, { ...row, precision: 'year', resolution: 'month' });
+  assert.equal(coarse.scale, 'year');
+});
+
+test('24. 눈금이 없는 체계는 채점에서 빼고, 구분못함·무자료와 구별해 센다', () => {
+  const row = { precision: 'month', year: 2021, key: '2021-03' };
+  const flat = mk(Array.from({ length: 36 }, () => 0.4));
+  const empty = mk(Array.from({ length: 36 }, () => null));
+  const live = mk(Array.from({ length: 36 }, (_, j) => (j % 7) / 7));
+
+  // none 은 0점이 아니라 평가 제외다
+  const none = scoreAtResolution(live, { ...row, resolution: 'none' });
+  assert.equal(none.skipped, 'no_resolution');
+  assert.equal(none.score, null, '눈금이 없으면 점수를 만들지 않는다');
+
+  assert.equal(scoreAtResolution(flat, { ...row, resolution: 'month' }).skipped, 'no_variation');
+  assert.equal(scoreAtResolution(empty, { ...row, resolution: 'month' }).skipped, 'unavailable');
+  assert.equal(scoreAtResolution(live, { ...row, resolution: 'month' }).skipped, null);
+
+  // 넷이 서로 다른 칸으로 세어진다 — 한 칸에 뭉치면 "못 가림"이 "틀림"이 된다
+  const tally = [none, scoreAtResolution(flat, { ...row, resolution: 'month' }),
+    scoreAtResolution(empty, { ...row, resolution: 'month' }),
+    scoreAtResolution(live, { ...row, resolution: 'month' })].map((x) => x.skipped);
+  assert.deepEqual(tally, ['no_resolution', 'no_variation', 'unavailable', null]);
 });

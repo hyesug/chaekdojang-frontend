@@ -16,13 +16,16 @@
  *   · 월 미상 사건을 6월로 채우던 것 → 연 단위로만 채점
  *   · 해 단위 체계를 달 눈금으로 재던 것 → native resolution 으로
  *   · 남의 사건 섞기만 기준선으로 쓰던 것 → 같은 사람 안에서 순열
+ *   · 사건별 null 구간을 평균해 합산값에 대던 것 → 합산 통계 자체의 null 분포
+ *   · 체계 눈금을 첫 사람 것으로 고정하던 것 → 행마다 그 사람의 눈금
+ *   · 창 지표(Top3Within·BestPercentileWithin)에 기준선이 없던 것 → 같이 잰다
  */
 import { readFileSync, existsSync } from 'node:fs';
 import { predictTimeline } from '../public/unse-8f3k2m/src/semantic/timing/timeline.js';
 import { DOMAIN_LABEL } from '../public/unse-8f3k2m/src/semantic/timing/schema.js';
 import { SYSTEM_NAME, SYSTEM_IDS } from '../public/unse-8f3k2m/src/semantic/extract.js';
 import {
-  scoreEvent, scoreEventYearly, permutationBaseline, permutationP,
+  scoreEvent, scoreEventYearly, scoreAtResolution, aggregateNull, nullPosition,
   personWeighted, personBootstrap,
 } from '../public/unse-8f3k2m/src/validation/timingMetrics.js';
 
@@ -135,22 +138,49 @@ console.log(`  person-weighted 백분위 ${pw?.mean}%   (${pw?.people}명)`);
 if (boot) console.log(`  person bootstrap 95% ${boot.lo}~${boot.hi}%${boot.note ? `  — ${boot.note}` : ''}`);
 console.log('');
 
-// ── 순열 기준선 ──
-const nulls = [];
-for (const r of M) {
-  const b = permutationBaseline(seriesOf(r.result, r.domain), 10000);
-  if (b && !b.unscorable) nulls.push(b);
-}
-if (nulls.length) {
-  const nm = avg(nulls.map((b) => b.mean));
-  const nlo = avg(nulls.map((b) => b.lo));
-  const nhi = avg(nulls.map((b) => b.hi));
-  console.log('## 기준선 — 같은 사람의 같은 시계열 안에서 사건월을 무작위로 뽑으면');
-  console.log(`  null 평균 ${nm}%  ·  95% 구간 ${nlo}~${nhi}%  (10,000회 · seed 고정)`);
-  const p = permutationP(ew, nulls.flatMap((b) => [b.mean]));
-  console.log(`  관측 ${ew}% 가 null 평균보다 ${ew > nm ? '높음' : '낮음'}`);
-  console.log(`  ※ 사건이 ${M.length}건뿐이라 이 차이를 "검증됐다"로 읽지 않는다. p 값도 적지 않는다.`);
-  void p;
+// ── 순열 기준선 — **합산 통계 자체의 null 분포** ──
+//
+// 사건 하나짜리 구간(2~98%)을 평균해서 합산값 옆에 놓으면 무엇을 재도 구간 안에
+// 들어온다. 열 건의 평균은 그만큼 흔들리지 않기 때문이다. 그래서 회차마다 모든
+// 사건을 각자 자기 시계열 안에서 옮기고 **그 회차의 합산값**을 모은다.
+const agg = aggregateNull(
+  M.map((r) => ({ person: r.person, series: seriesOf(r.result, r.domain) })),
+  { rounds: 10000, seed: 20260924 },
+);
+if (agg) {
+  const obs = {
+    eventPercentile: ew,
+    top3Within1: pctOf(M.map((r) => r.score.top3Within1)),
+    top3Within3: pctOf(M.map((r) => r.score.top3Within3)),
+    top3Within6: pctOf(M.map((r) => r.score.top3Within6)),
+    bestPercentileWithin1: avg(M.map((r) => r.score.bestPercentileWithin1)),
+    bestPercentileWithin3: avg(M.map((r) => r.score.bestPercentileWithin3)),
+    bestPercentileWithin6: avg(M.map((r) => r.score.bestPercentileWithin6)),
+  };
+  console.log('## 기준선 — 사건월을 각자 자기 시계열 안에서 무작위로 옮기면');
+  console.log(`  합산값 자체의 null 분포. ${agg.rounds.toLocaleString()}회 · seed ${agg.seed} · 사건 ${agg.events}건 · 사람 ${agg.people}명`);
+  console.log('  **개별 사건의 null 구간을 평균한 값이 아니다** — 합산 통계의 분포다.');
+  console.log('');
+  console.log('  지표                      관측    null평균  null 95% 구간   null 안 위치');
+  const line = (label, key, kind) => {
+    const m = agg.metrics[key]?.[kind];
+    if (!m) return;
+    const o = obs[key];
+    const pos = nullPosition(o, m);
+    console.log(`  ${pad(label, 24)} ${pad(o != null ? o + '%' : '—', 7)} ${pad(m.mean + '%', 9)} ${pad(`${m.lo}~${m.hi}%`, 15)} ${pos != null ? `상위 ${(100 - pos).toFixed(1)}%` : '—'}`);
+  };
+  line('EventPercentile(사건)', 'eventPercentile', 'event');
+  // 사람 가중 관측값은 personWeighted, null 도 같은 방식으로 뽑은 분포와 맞댄다
+  const pwm = agg.metrics.eventPercentile?.person;
+  if (pwm && pw) {
+    const pos = nullPosition(pw.mean, pwm);
+    console.log(`  ${pad('EventPercentile(사람)', 24)} ${pad(pw.mean + '%', 7)} ${pad(pwm.mean + '%', 9)} ${pad(`${pwm.lo}~${pwm.hi}%`, 15)} ${pos != null ? `상위 ${(100 - pos).toFixed(1)}%` : '—'}`);
+  }
+  for (const t of [1, 3, 6]) line(`BestPercentileWithin±${t}`, `bestPercentileWithin${t}`, 'event');
+  for (const t of [1, 3, 6]) line(`Top3Within±${t}`, `top3Within${t}`, 'event');
+  console.log('');
+  console.log(`  ※ "null 안 위치"는 경험적 백분위다. 사건이 ${M.length}건뿐이라 p 값으로 적지 않는다.`);
+  console.log('  ※ 구간 안에 들어온다는 것은 **우연과 구별되지 않는다**는 뜻이다.');
 }
 console.log('');
 
@@ -177,36 +207,42 @@ console.log(`  Top3 동점으로 늘어난 달   평균 ${avg(M.map((r) => r.sco
 console.log('');
 
 // ── 체계별 ──
-console.log('## 체계별 — native resolution 에 맞춰 잰다');
+console.log('## 체계별 — native resolution 을 **사람마다 따로** 본다');
+console.log('');
+console.log('한 체계의 눈금은 사람마다 다를 수 있다. 태을신수는 한 궁에 세 해를 머물고,');
+console.log('그 궁이 바뀌는 자리가 사람마다 다르니 어떤 사람의 구간에서는 달이 갈리고');
+console.log('어떤 사람의 구간에서는 갈리지 않는다. 첫 사람 눈금을 전체에 씌우면');
+console.log('나머지를 남의 자로 재게 된다. **행마다 그 사람의 눈금으로 잰다.**');
 console.log('');
 for (const [d, list] of Object.entries(byDom)) {
   const lm = list.filter((r) => r.precision === 'month');
   console.log(`### ${DOMAIN_LABEL[d]} (사건 ${list.length}건 · 월 ${lm.length}건)`);
-  console.log('   체계        눈금    채점  구분못함  없음  백분위   월지표');
+  console.log('   체계        눈금(월/연/없음)  월채점  연채점  구분못함  무자료  백분위   Top3±3');
   for (const id of SYSTEM_IDS) {
-    const res = resolutionOf(list[0].result, id);
-    let ok = 0, flat = 0, na = 0;
+    const res = { month: 0, year: 0, none: 0 };
+    let monthOk = 0, yearOk = 0, flat = 0, na = 0;
     const ps = [];
+    const win = [];
     for (const row of list) {
-      const series = seriesOf(row.result, row.domain, id);
-      if (!series.some((e) => Number.isFinite(e.v))) { na++; continue; }
-      // 해 단위 체계는 해로 접어서 잰다 — 달 눈금으로 부풀리지 않는다
-      const useYear = res === 'year' || row.precision === 'year';
-      const s = useYear ? scoreEventYearly(series, row.year)
-        : scoreEvent(series, row.key);
-      if (s.unscorable === 'no_variation') { flat++; continue; }
-      if (s.unscorable) { na++; continue; }
-      ok++; ps.push(s.eventPercentile);
+      // 이 사람의 이 계산에서 이 체계가 무엇을 가를 수 있는가
+      const r = resolutionOf(row.result, id);
+      res[r] = (res[r] ?? 0) + 1;
+      const out = scoreAtResolution(seriesOf(row.result, row.domain, id), {
+        resolution: r, precision: row.precision, year: row.year, key: row.key,
+      });
+      if (out.skipped === 'no_resolution') continue;    // 눈금이 없으면 평가에서 뺀다
+      if (out.skipped === 'no_variation') { flat++; continue; }
+      if (out.skipped) { na++; continue; }
+      ps.push(out.score.eventPercentile);
+      if (out.scale === 'year') yearOk++;
+      else { monthOk++; win.push(out.score.top3Within3); }
     }
-    if (res === 'none') {
-      console.log(`   ${pad(SYSTEM_NAME[id], 10)} ${pad('none', 6)}  — 시기 해상도가 없어 평가 제외`);
+    if (res.none === list.length) {
+      console.log(`   ${pad(SYSTEM_NAME[id], 10)} ${pad(`0/0/${res.none}`, 17)} — 시기 해상도가 없어 평가 제외`);
       continue;
     }
-    const monthMetric = res === 'month' ? `${pctOf(list.filter((r) => r.precision === 'month').map((row) => {
-      const s = scoreEvent(seriesOf(row.result, row.domain, id), row.key);
-      return s.unscorable ? null : s.top3Within3;
-    }).filter((x) => x != null)) ?? '—'}%` : 'N/A (연 단위)';
-    console.log(`   ${pad(SYSTEM_NAME[id], 10)} ${pad(res, 6)} ${pad(ok, 5)} ${pad(flat, 9)} ${pad(na, 5)} ${pad(avg(ps) != null ? avg(ps) + '%' : '—', 8)} ${monthMetric}`);
+    const monthMetric = win.length ? `${pctOf(win)}%` : 'N/A (월 채점 없음)';
+    console.log(`   ${pad(SYSTEM_NAME[id], 10)} ${pad(`${res.month}/${res.year}/${res.none}`, 17)} ${pad(monthOk, 7)} ${pad(yearOk, 7)} ${pad(flat, 9)} ${pad(na, 7)} ${pad(avg(ps) != null ? avg(ps) + '%' : '—', 8)} ${monthMetric}`);
   }
   console.log('');
 }

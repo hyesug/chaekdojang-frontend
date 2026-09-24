@@ -401,6 +401,9 @@ export function composePrepared(prepared, options = {}) {
   const questionAnswer = {
     intent: prepared.question?.intent ?? 'unknown',
     askedFor: asked,
+    /** 사용자가 어디까지 물었나 — 다음 층이 "무엇을 못 말하는지"를 고를 때 쓴다 */
+    requested: prepared.question?.requestedSpecificity ?? null,
+    askedLabel: prepared.question?.label ?? null,
     answersQuestion: si.answersQuestion ?? null,
     status: matched ? 'answers' : 'question_mismatch',
     directAlternative,

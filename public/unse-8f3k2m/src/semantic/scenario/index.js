@@ -29,6 +29,7 @@ import { stateOf, possibleTransitions, filterByState } from './graph.js';
 import { specificityGate } from './specificity.js';
 import { claim, evidenceFrom, auditProvenance, resetIds } from './provenance.js';
 import { composePrepared, timingAt } from './composer.js';
+import { narrateScenario, auditNarration } from './narrator.js';
 import { auditCoherence } from './coherence.js';
 import { detailFor } from './detail.js';
 
@@ -347,8 +348,15 @@ export function composeScenario(o = {}) {
   return { prepared, scenario: composePrepared(prepared, o.compose ?? {}) };
 }
 
+/** 재료 → 조립 → 한국어까지 한 번에. 각 층은 여전히 따로 부를 수 있다 */
+export function answerScenario(o = {}) {
+  const { prepared, scenario } = composeScenario(o);
+  return { prepared, scenario, narration: narrateScenario(scenario, o.narrate ?? {}) };
+}
+
 export {
   composePrepared, auditCoherence, detailFor, timingAt,
+  narrateScenario, auditNarration,
   interpretQuestion, resolveConflict, timingPhases, specificityGate,
   buildBranches, conditionalStateAt, snapshotFromState, contextFor, stateOf, possibleTransitions,
   filterByState, claim, evidenceFrom, auditProvenance, scoreEvents, monthNo,

@@ -526,6 +526,8 @@ details.pool[open] > summary::before { content: '▾ '; }
 }
 .say-text { font-size: 14.5px; line-height: 1.75; margin: 0; color: var(--ink-1); }
 .say-text strong { color: var(--gold); font-weight: 600; }
+.compat-prose .say-text + .say-text { margin-top: 14px; }
+.profile-card { margin-top: 14px; }
 .cite { font-size: 12px; color: var(--ink-3); white-space: normal; }
 
 @media print {

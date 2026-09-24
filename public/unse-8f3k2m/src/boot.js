@@ -22,6 +22,7 @@
 
 import { CITIES } from './core/place.js';
 import { ENGINE_VERSION, CALC_CHANGES } from './meta.js';
+import { loadProfile } from './profile.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) =>
@@ -119,7 +120,6 @@ const PAIR_STEPS = [
   '두 사람의 진태양시를 각각 맞춥니다',
   '열다섯 체계로 두 명반을 견줍니다',
   '풀이를 씁니다',
-  '두 사람에게 같이 맞는 날을 찾습니다',
 ];
 
 const progressShell = (steps) => `
@@ -176,6 +176,26 @@ $('#form').addEventListener('submit', async (e) => {
 // 주소에 결과가 담겨 있으면 어차피 결과를 그릴 것이므로 지금 받아도 된다.
 if (location.hash.length > 1) {
   loadUI().then((ui) => ui.restoreFromHash()).catch(() => {});
+} else {
+  // 로그인해 두고 프로필을 저장했으면 첫 사람 칸을 채워 둔다.
+  // 그 사이 사람이 이미 적기 시작했으면 덮어쓰지 않는다.
+  loadProfile().then(({ profile }) => {
+    if (!profile || $('#year').value || $('#name').value) return;
+    const set = (id, v) => { if (v != null) $('#' + id).value = v; };
+    set('name', profile.name);
+    set('gender', profile.gender);
+    set('calendar', 'solar');
+    set('year', profile.year); set('month', profile.month); set('day', profile.day);
+    const noTime = profile.hour == null;
+    $('#noTime').checked = noTime;
+    $('#noTime').dispatchEvent(new Event('change'));
+    if (!noTime) { set('hour', profile.hour); set('minute', profile.minute); }
+    set('birthPlace', profile.birthPlace);
+    set('homePlace', profile.homePlace);
+    $('#dst').checked = !!profile.dst;
+    $('#profileNote').hidden = false;
+    loadUI().catch(() => {});
+  });
 }
 
 // 화면 아래에 판 번호를 박아 둔다. "예전과 다른데요"라는 말이 나올 때

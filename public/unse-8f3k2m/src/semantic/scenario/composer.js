@@ -71,17 +71,27 @@ export function timingAt(phase, grain) {
   return out;
 }
 
-/** 이 층 안에서만 쓰는 근거 번호 — 부를 때마다 같은 번호가 나와야 한다 */
+/**
+ * 이 층 안에서만 쓰는 근거 번호.
+ *
+ * 같은 입력이면 같은 번호가 나와야 하므로 **부르는 순서를 고정한다** —
+ * primary → alternatives → branches. 순서가 흔들리면 같은 시나리오인데
+ * 근거 번호가 달라지고, 그러면 되짚기가 깨진다.
+ *
+ * 근거마다 **어느 국면 것인지**를 함께 적는다. 대안이 주 시나리오의 근거를
+ * 베껴 쓰는 일을 밖에서 잡으려면 이 표시가 필요하다.
+ */
 function claimBook(prepared) {
   let n = 0;
   const list = [];
+  const byId = new Map();
   const add = (text, sourceType, o = {}) => {
     const c = { id: `X${String(++n).padStart(3, '0')}`, claim: text, sourceType, ...o };
-    list.push(c); return c.id;
+    list.push(c); byId.set(c.id, c); return c.id;
   };
   // 앞 층이 만든 근거 id 는 그대로 이어 쓴다
   const prior = new Set((prepared?.evidence ?? []).map((c) => c.id));
-  return { add, list, prior };
+  return { add, list, byId, prior };
 }
 
 /**
@@ -137,7 +147,7 @@ export function composePrepared(prepared, options = {}) {
     ?? { grain, from: sp.timing?.window?.from ?? null, to: sp.timing?.window?.to ?? null, peak: null, label: null };
   const timingRef = book.add(
     `${timing.label ?? `${timing.from}~${timing.to}`} ${DOMAIN_LABEL[domain]} 활성`,
-    'fortune', { level: LEVEL.domain, derivedFrom: sp.claimIds ?? [] });
+    'fortune', { level: LEVEL.domain, phaseId: sp.phaseId, derivedFrom: sp.claimIds ?? [] });
 
   // ── 사건 — **새로 만들지 않는다.** 그 국면의 후보에서만 ──
   let event = null; let eventRef = null;
@@ -150,18 +160,42 @@ export function composePrepared(prepared, options = {}) {
         caution: cautionOf(domain, sp.eventType),
       };
       eventRef = book.add(`사건 후보: ${event.label}`, 'fortune',
-        { level: LEVEL.event, derivedFrom: [timingRef, ...(sp.claimIds ?? [])] });
+        { level: LEVEL.event, phaseId: sp.phaseId, derivedFrom: [timingRef, ...(sp.claimIds ?? [])] });
     }
   }
 
   // ── 방향 ──
-  let direction = null; let directionRef = null;
-  if (cap >= LEVEL.direction && sp.direction) {
-    direction = { key: sp.direction, competing: sp.competingDirections ?? [] };
-    directionRef = book.add(
-      `방향: ${sp.direction}${direction.competing.length ? ` (경쟁: ${direction.competing.join(', ')})` : ''}`,
-      'derived', { level: LEVEL.direction, derivedFrom: [timingRef, eventRef].filter(Boolean) });
+  //
+  // **사건 점수가 고른 것과 계보 표결이 고른 것은 다른 잣대다.** 둘이
+  // 갈렸는데 한 시나리오 안에 나란히 두면, 다음 층이 "퇴사하는데 승진 방향"
+  // 같은 문장을 만든다. 갈렸다는 사실을 따로 적고 방향은 내보내지 않는다.
+  const eventWinner = event?.type ?? null;
+  const voteWinner = sp.direction ?? null;
+  const conflicted = !!eventWinner && !!voteWinner && eventWinner !== voteWinner;
+
+  let direction = null; let directionRef = null; let voteRef = null;
+  if (cap >= LEVEL.direction && voteWinner) {
+    // 표결이 있었다는 것 자체는 사실이므로 근거는 남긴다
+    voteRef = book.add(
+      `계보 방향 표결: ${voteWinner}` +
+      ((sp.competingDirections ?? []).length ? ` (경쟁: ${sp.competingDirections.join(', ')})` : ''),
+      'derived', { level: LEVEL.direction, phaseId: sp.phaseId,
+        derivedFrom: [timingRef, eventRef].filter(Boolean) });
+    direction = { key: voteWinner, competing: sp.competingDirections ?? [] };
+    // **갈렸으면 detail 의 근거로 쓰지 않는다.** 아래 sanitize 가 필드 자체도 지운다
+    directionRef = conflicted ? null : voteRef;
   }
+  const selectionConflict = (eventWinner && voteWinner)
+    ? {
+      eventScoreWinner: eventWinner,
+      lineageVoteWinner: voteWinner,
+      agreement: !conflicted,
+      note: conflicted
+        ? '사건 점수와 체계 방향 표결이 다르다 — 하나로 합치지 않는다'
+        : '사건 점수와 체계 방향 표결이 같은 곳을 가리킨다',
+      provenance: [eventRef, voteRef].filter(Boolean),
+    }
+    : null;
 
   // ── 초구체화 — 정적 프로필에서. 새 규칙을 만들지 않는다 ──
   const profile = prepared.natal?.profile ?? null;
@@ -175,10 +209,14 @@ export function composePrepared(prepared, options = {}) {
         evidence: [{ system: 'semantic', what: '정적 해석 프로필',
           basis: `체계 ${prepared.natal?.spokeCount ?? 0}개 · 직접근거 ${prepared.natal?.directCount ?? 0}개` }] })
     : null;
+  // 갈린 방향을 상세의 근거로 삼지 않는다 — 틀린 쪽이 설명을 떠받치게 된다
+  const detailProvenanceMode = conflicted
+    ? 'natal_only_due_to_selection_conflict' : 'natal_and_direction';
   for (const [k, v] of Object.entries(detail)) {
     if (v == null) continue;
     detailRefs[k] = [book.add(`${k}: ${v.label}`, 'derived',
       { level: k === 'employmentSetting' || k === 'industryFamily' ? LEVEL.detail : LEVEL.direction,
+        phaseId: sp.phaseId,
         derivedFrom: [profileRef, directionRef].filter(Boolean) })];
   }
 
@@ -189,13 +227,13 @@ export function composePrepared(prepared, options = {}) {
     location.metro = prepared.locationEvidenceUsed.metro ?? null;
     location.sourceType = 'fortune';
     if (location.metro) locationRefs.push(book.add(`도시권: ${location.metro}`, 'fortune',
-      { level: LEVEL.metro, evidence: [prepared.locationEvidenceUsed] }));
+      { level: LEVEL.metro, phaseId: sp.phaseId, evidence: [prepared.locationEvidenceUsed] }));
   }
   if (cap >= LEVEL.district && prepared.contextLocationUsed) {
     location.district = prepared.contextLocationUsed;
     location.sourceType = 'context';
     locationRefs.push(book.add(`지역: ${location.district}`, 'context',
-      { level: LEVEL.district, value: prepared.contextLocationUsed }));
+      { level: LEVEL.district, phaseId: sp.phaseId, value: prepared.contextLocationUsed }));
   }
 
   // ── 사용자가 말해 준 것은 context 로만 ──
@@ -218,13 +256,13 @@ export function composePrepared(prepared, options = {}) {
     conditions.push({ what: r.event, note: `지금 상태에서는 성립하지 않아 뺐다 (${r.reason})` });
   }
   // 방향 표결과 사건 점수가 다른 자리는 숨기지 않는다 — 둘은 다른 것을 잰다
-  if (direction && event && direction.key !== event.type) {
-    const hasSignal = (sig?.rawEvents ?? []).some((e) => e.type === direction.key);
+  if (conflicted) {
+    const hasSignal = (sig?.rawEvents ?? []).some((e) => e.type === voteWinner);
     conditions.push({
       what: 'direction_vs_event',
       note: hasSignal
-        ? `체계가 가리킨 방향(${direction.key})과 이 국면에서 점수가 가장 높은 사건(${event.type})이 다르다`
-        : `체계가 가리킨 방향(${direction.key})은 이 국면에 사건 신호가 없다 — 사건 쪽은 ${event.type} 이다`,
+        ? `체계가 가리킨 방향(${voteWinner})과 이 국면에서 점수가 가장 높은 사건(${eventWinner})이 다르다`
+        : `체계가 가리킨 방향(${voteWinner})은 이 국면에 사건 신호가 없다 — 사건 쪽은 ${eventWinner} 이다`,
     });
   }
   const unknown = [
@@ -237,6 +275,9 @@ export function composePrepared(prepared, options = {}) {
     phaseId: sp.phaseId,
     signalIndex: sp.signalIndex,
     timing, event, direction, detail,
+    /** 사건 점수와 계보 표결이 같은 곳을 가리켰는가 — 갈렸으면 방향은 비운다 */
+    selectionConflict,
+    detailProvenanceMode,
     contextAnchor,
     location,
     company: null,
@@ -248,28 +289,56 @@ export function composePrepared(prepared, options = {}) {
       timing: [timingRef],
       event: eventRef ? [eventRef] : [],
       direction: directionRef ? [directionRef] : [],
+      selectionConflict: selectionConflict?.provenance ?? [],
       detail: detailRefs,
       location: locationRefs,
     },
-    sourceRefs: [timingRef, eventRef, directionRef, profileRef, ...locationRefs].filter(Boolean),
+    sourceRefs: [timingRef, eventRef, voteRef, profileRef, ...locationRefs].filter(Boolean),
   };
 
   // ── 대안 — 기존 후보에서만 (최대 둘) ──
+  //
+  // **주 시나리오의 근거를 베껴 쓰지 않는다.** 대안의 사건·방향은 그 대안이
+  // 선 국면에서 나온 것이므로 근거도 거기서 나와야 한다. 같은 국면을 보는
+  // 대안이면 시기 근거만 함께 쓴다.
   const alternatives = (si.alternatives ?? []).slice(0, 2).map((a) => {
     const asig = (prepared.resolvedSignals ?? []).find((s) => s.phase.id === a.phaseId) ?? null;
+    const sameWindow = a.phaseId === sp.phaseId;
     const t = timingAt(asig?.phase ?? null, grain) ?? timingAt(sig?.phase ?? null, grain);
+    const aTimingRef = sameWindow
+      ? timingRef
+      : book.add(`${t?.label ?? a.phaseId} ${DOMAIN_LABEL[domain]} 활성`, 'fortune',
+        { level: LEVEL.domain, phaseId: a.phaseId, derivedFrom: a.claimIds ?? [] });
+
+    const ev = cap >= LEVEL.event && a.eventType
+      ? { type: a.eventType, label: labelOf(domain, a.eventType) ?? a.eventType,
+          caution: cautionOf(domain, a.eventType) }
+      : null;
+    const aEventRef = ev
+      ? book.add(`대안 사건 후보: ${ev.label}`, 'fortune',
+        { level: LEVEL.event, phaseId: a.phaseId, derivedFrom: [aTimingRef] })
+      : null;
+    const dir = cap >= LEVEL.direction && a.direction ? { key: a.direction, competing: [] } : null;
+    const aDirRef = dir
+      ? book.add(`대안 방향: ${dir.key}`, 'derived',
+        { level: LEVEL.direction, phaseId: a.phaseId, derivedFrom: [aTimingRef, aEventRef].filter(Boolean) })
+      : null;
+
     return {
       rank: a.rank, phaseId: a.phaseId,
       timing: t,
-      event: cap >= LEVEL.event && a.eventType
-        ? { type: a.eventType, label: labelOf(domain, a.eventType) ?? a.eventType,
-            caution: cautionOf(domain, a.eventType) }
-        : null,
-      direction: cap >= LEVEL.direction && a.direction ? { key: a.direction, competing: [] } : null,
+      event: ev,
+      direction: dir,
       company: null,
       agreement: a.agreement,
       note: a.note ?? null,
       sameWindowAs: a.sameWindowAs ?? null,
+      provenance: {
+        timing: [aTimingRef],
+        event: aEventRef ? [aEventRef] : [],
+        direction: aDirRef ? [aDirRef] : [],
+      },
+      sourceRefs: [aTimingRef, aEventRef, aDirRef].filter(Boolean),
     };
   });
 
@@ -278,19 +347,47 @@ export function composePrepared(prepared, options = {}) {
     id: br.id,
     startState: { value: br.startState, kind: br.stateKnown ? 'observed' : 'unknown' },
     assumption: br.assumption,
-    steps: (br.steps ?? []).map((st, i) => ({
-      event: st.event,
-      label: labelOf(domain, st.event) ?? st.label ?? st.event,
-      phaseId: st.phaseId,
-      timing: timingAt(
-        (prepared.resolvedSignals ?? []).find((s) => s.phase.id === st.phaseId)?.phase ?? null, grain),
-      conditional: i > 0,
-      conditionalOn: st.conditionalOn ?? [],
-      assumption: st.assumption,
-      stateBefore: st.stateBefore,
-      stateAfter: st.stateAfter,
-      caution: cautionOf(domain, st.event),
-    })),
+    steps: (br.steps ?? []).map((st, i) => {
+      const ssig = (prepared.resolvedSignals ?? []).find((s) => s.phase.id === st.phaseId) ?? null;
+      const t = timingAt(ssig?.phase ?? null, grain);
+      const tRef = book.add(`${br.id}${i + 1} 시기: ${t?.label ?? st.phaseId}`, 'fortune',
+        { level: LEVEL.domain, phaseId: st.phaseId, branch: br.id, step: i });
+      const eRef = book.add(`${br.id}${i + 1} 사건 후보: ${labelOf(domain, st.event) ?? st.event}`,
+        'fortune', { level: LEVEL.event, phaseId: st.phaseId, branch: br.id, step: i,
+          derivedFrom: [tRef] });
+      // 첫 단계의 상태는 사용자가 말해 준 것(또는 모름)이고,
+      // 두 번째부터는 **앞 단계가 일어났다는 가정** 위에 선 예측이다
+      const first = i === 0;
+      const kindOk = st.stateBefore?.kind ?? (first ? 'unknown' : 'predicted');
+      const sRef = book.add(
+        first
+          ? `${br.id}1 출발 상태: ${st.from} (${kindOk})`
+          : `${br.id}${i + 1} 조건부 상태: ${st.from} — ${(st.conditionalOn ?? []).join(' → ')} 가정`,
+        first && kindOk === 'observed' ? 'context' : 'derived',
+        { level: LEVEL.event, phaseId: st.phaseId, branch: br.id, step: i,
+          ...(first && kindOk === 'observed' ? { value: st.from } : { derivedFrom: [eRef] }) });
+
+      return {
+        event: st.event,
+        label: labelOf(domain, st.event) ?? st.label ?? st.event,
+        phaseId: st.phaseId,
+        timing: t,
+        conditional: !first,
+        conditionalOn: st.conditionalOn ?? [],
+        assumption: st.assumption,
+        stateBefore: st.stateBefore,
+        stateAfter: st.stateAfter,
+        /** 이 단계의 상태가 어디서 왔는가 — 예측을 사실로 바꾸지 않는다 */
+        state: {
+          sourceType: first && kindOk === 'observed' ? 'context' : 'derived',
+          conditionalOn: st.conditionalOn ?? [],
+          kind: st.stateAfter?.kind ?? 'predicted',
+        },
+        caution: cautionOf(domain, st.event),
+        provenance: { timing: [tRef], event: [eRef], state: [sRef] },
+        sourceRefs: [tRef, eRef, sRef],
+      };
+    }),
     endState: br.endState,
     note: br.note,
   }));
@@ -336,9 +433,20 @@ export function composePrepared(prepared, options = {}) {
   };
 
   const audit = auditCoherence(scenario, prepared);
-  scenario.coherence = { ok: audit.ok && !cut.issues.length, issues: [...cut.issues, ...audit.issues] };
+  // 게이트가 제 일을 해서 잘라낸 것과, 앞 층이 넘겨서 잘라낸 것을 가른다.
+  // 앞의 것은 정상 동작이고 뒤의 것은 위층의 잘못이다. 둘 다 적되 `ok` 는
+  // 뒤의 것에만 반응한다
+  const unexpected = cut.issues.filter((x) => !EXPECTED_CUTS.has(x.code));
+  scenario.coherence = {
+    ok: audit.ok && !unexpected.length,
+    issues: [...cut.issues, ...audit.issues],
+    expectedCuts: cut.issues.filter((x) => EXPECTED_CUTS.has(x.code)).map((x) => x.code),
+  };
   return scenario;
 }
+
+/** 게이트가 설계대로 잘라낸 것 — 있어도 시나리오가 어긋난 것은 아니다 */
+const EXPECTED_CUTS = new Set(['cut_conflicting_direction', 'cut_branches']);
 
 /** 이 시나리오가 실제로 내려간 가장 깊은 단계 */
 function usedLevel(p) {
@@ -378,6 +486,15 @@ export function sanitize(out, { cap, grain, prepared }) {
     if (cap < LEVEL.detail) {
       kill(p.detail, 'employmentSetting', 'cut_detail', `허용 단계 ${cap} — 고용형태까지 내려가지 않는다`);
       kill(p.detail, 'industryFamily', 'cut_detail', `허용 단계 ${cap} — 산업군까지 내려가지 않는다`);
+    }
+    // 사건 점수와 계보 표결이 갈렸으면 방향을 사용자-facing 칸에서 뺀다.
+    // **`selectionConflict` 자체는 지우지 않는다** — 갈렸다는 사실을 다음 층이
+    // 설명할 수 있어야 한다
+    if (p.selectionConflict?.agreement === false && p.direction != null) {
+      p.direction = null;
+      if (p.provenance) p.provenance.direction = [];
+      issues.push({ code: 'cut_conflicting_direction', where: 'direction',
+        detail: 'event winner 와 lineage direction winner 가 달라 direction 을 사용자-facing 필드에서 제거' });
     }
     if (cap < LEVEL.metro || !prepared?.locationEvidenceUsed) {
       kill(p.location, 'metro', 'cut_metro', '위치를 말할 계산 근거가 없다');

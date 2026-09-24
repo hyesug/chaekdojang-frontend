@@ -101,7 +101,8 @@ test('1. allowedLevel 1 이면 사건·역할·위치를 만들지 않는다', (
   assert.ok(s.meta.maxSpecificityUsed <= s.meta.allowedLevel);
   assert.deepEqual(s.branches, [], '사건을 말할 수 없으면 사건의 사슬도 내지 않는다');
   assert.ok(s.meta.sanitized.some((x) => x.code === 'cut_branches'));
-  assert.equal(s.coherence.ok, false, '잘랐으면 조용히 넘어가지 않는다');
+  assert.ok(s.coherence.issues.some((x) => x.code === 'cut_branches'), '잘랐으면 적어 둔다');
+  assert.equal(s.coherence.ok, true, '게이트가 제 일을 한 것은 어긋남이 아니다');
 
   // 앞 층이 실수로 더 채워 보내도 여기서 잘리고 **기록된다**
   const over = sanitize({
@@ -375,8 +376,11 @@ test('18. 근거 없는 상세는 감사에서 잡히고 잘려 나간다', () =
   assert.ok(codes.includes('detail_without_provenance'));
   assert.ok(codes.includes('company_generated'));
   assert.ok(codes.includes('peak_month_leaked'));
-  // 제대로 만든 것은 통과한다
+  // 제대로 만든 것은 통과한다 (게이트가 설계대로 자른 것은 어긋남이 아니다)
   assert.equal(s.coherence.ok, true, JSON.stringify(s.coherence.issues));
+  for (const x of s.coherence.issues) {
+    assert.ok(s.coherence.expectedCuts.includes(x.code), `예상 못 한 문제: ${x.code}`);
+  }
 });
 
 // ── 19. 다른 분야 ────────────────────────────────────────────
@@ -423,4 +427,179 @@ test('21. 말할 것이 없으면 "모르겠다"가 정상 결과다', () => {
   assert.deepEqual(s.alternatives, []);
   assert.ok(s.questionAnswer.note);
   assert.equal(s.meta.maxSpecificityUsed, 0);
+});
+
+// ── 22~26. 사건-방향 충돌 분리와 근거 계약 ─────────────────────
+
+test('22. 사건 점수와 계보 표결이 갈리면 방향을 내보내지 않는다', () => {
+  const s = composePrepared(mkPrepared({
+    rawEvents: [{ type: 'resignation', label: '퇴사·공백', score: 0.4 }],
+    direction: 'promotion',
+  }));
+  assert.equal(s.primary.event.type, 'resignation');
+  assert.deepEqual(
+    { e: s.primary.selectionConflict.eventScoreWinner, v: s.primary.selectionConflict.lineageVoteWinner },
+    { e: 'resignation', v: 'promotion' });
+  assert.equal(s.primary.selectionConflict.agreement, false);
+  assert.equal(s.primary.direction, null, '갈린 방향이 정상 방향처럼 남았다');
+  assert.deepEqual(s.primary.provenance.direction, []);
+  assert.ok(s.meta.sanitized.some((x) => x.code === 'cut_conflicting_direction'));
+  // 갈림 자체는 지우지 않는다 — 다음 층이 설명할 수 있어야 한다
+  assert.ok(s.primary.selectionConflict.provenance.length);
+  assert.ok(s.primary.conditions.some((c) => c.what === 'direction_vs_event'));
+  // 이것은 설계대로 자른 것이지 어긋남이 아니다
+  assert.equal(s.coherence.ok, true, JSON.stringify(s.coherence.issues));
+});
+
+test('23. 같은 곳을 가리키면 방향을 그대로 쓴다', () => {
+  const s = composePrepared(mkPrepared({
+    rawEvents: [{ type: 'promotion', label: '승진·보상 조정', score: 0.4 }],
+    direction: 'promotion',
+  }));
+  assert.equal(s.primary.selectionConflict.agreement, true);
+  assert.equal(s.primary.direction.key, 'promotion');
+  assert.ok(s.primary.provenance.direction.length);
+  assert.ok(!s.meta.sanitized.some((x) => x.code === 'cut_conflicting_direction'));
+  assert.ok(!s.primary.conditions.some((c) => c.what === 'direction_vs_event'));
+});
+
+test('24. 갈렸으면 상세의 근거에서 그 방향을 뺀다', () => {
+  const profile = { technical: 0.85, analytical: 0.8, information: 0.7, problemSolving: 0.75,
+    specialist: 0.6, management: 0.1, organization: 0.3, independence: 0.05, commercial: 0.05,
+    creative: 0.05, aesthetic: 0.05, verbal: 0.1, interpersonal: 0.1, public: 0.05,
+    physical: 0.05, care: 0.05, stability: 0.2, change: 0.2, research: 0.3 };
+
+  const clash = composePrepared(mkPrepared({
+    profile, rawEvents: [{ type: 'resignation', label: '퇴사·공백', score: 0.4 }],
+    direction: 'promotion',
+  }));
+  assert.equal(clash.primary.detailProvenanceMode, 'natal_only_due_to_selection_conflict');
+  const voteRefs = new Set(clash.primary.selectionConflict.provenance);
+  const byId = new Map(clash.evidence.map((c) => [c.id, c]));
+  for (const refs of Object.values(clash.primary.provenance.detail)) {
+    for (const r of refs) {
+      for (const from of byId.get(r).derivedFrom ?? []) {
+        assert.ok(!voteRefs.has(from), `상세가 갈린 방향(${from})을 근거로 썼다`);
+      }
+    }
+  }
+  // 상세 자체는 정적 프로필에서 나오므로 살아 있다
+  assert.ok(clash.primary.detail.roleFamily);
+  assert.ok(!clash.coherence.issues.some((x) => x.code === 'detail_uses_conflicting_direction'));
+
+  // 갈리지 않았으면 방향을 근거로 쓸 수 있다
+  const same = composePrepared(mkPrepared({
+    profile, rawEvents: [{ type: 'job_change', label: '이직', score: 0.4 }], direction: 'job_change',
+  }));
+  assert.equal(same.primary.detailProvenanceMode, 'natal_and_direction');
+  const dirRef = same.primary.provenance.direction[0];
+  const sameById = new Map(same.evidence.map((c) => [c.id, c]));
+  const used = Object.values(same.primary.provenance.detail)
+    .flat().flatMap((r) => sameById.get(r).derivedFrom ?? []);
+  assert.ok(used.includes(dirRef), '갈리지 않았는데 방향을 근거로 쓰지 않았다');
+});
+
+test('25. 대안과 가지도 자기 근거를 갖는다', () => {
+  const { scenario: s } = career();
+  const ids = new Set(s.evidence.map((c) => c.id));
+  const byId = new Map(s.evidence.map((c) => [c.id, c]));
+
+  for (const a of s.alternatives) {
+    for (const k of ['timing', 'event', 'direction']) {
+      if (a[k] == null) continue;
+      assert.ok((a.provenance[k] ?? []).length, `대안 ${a.rank} 의 ${k} 에 근거가 없다`);
+    }
+    for (const r of a.sourceRefs) assert.ok(ids.has(r), r);
+    // 다른 국면이면 그 국면의 시기 근거를 쓴다 — 주 시나리오 것을 베끼지 않는다
+    if (a.phaseId !== s.primary.phaseId) {
+      assert.equal(byId.get(a.provenance.timing[0]).phaseId, a.phaseId);
+      assert.notEqual(a.provenance.timing[0], s.primary.provenance.timing[0]);
+      for (const r of [...a.provenance.event, ...a.provenance.direction]) {
+        assert.ok(!s.primary.sourceRefs.includes(r), `주 시나리오 근거 ${r} 를 베꼈다`);
+      }
+    }
+  }
+
+  for (const br of s.branches) {
+    br.steps.forEach((st, i) => {
+      for (const k of ['timing', 'event', 'state']) {
+        assert.ok((st.provenance[k] ?? []).length, `${br.id}${i} 의 ${k} 근거가 없다`);
+      }
+      for (const r of st.sourceRefs) assert.ok(ids.has(r), r);
+      assert.equal(byId.get(st.provenance.timing[0]).phaseId, st.phaseId);
+      if (i === 0) {
+        assert.equal(st.state.sourceType, st.stateBefore.kind === 'observed' ? 'context' : 'derived');
+      } else {
+        // 두 번째부터는 앞 단계를 가정한 예측이다
+        assert.equal(st.state.sourceType, 'derived');
+        assert.equal(st.state.kind, 'predicted');
+        assert.ok(st.state.conditionalOn.length);
+        assert.notEqual(byId.get(st.provenance.state[0]).sourceType, 'context');
+      }
+    });
+  }
+  assert.ok(!s.coherence.issues.some((x) =>
+    ['alternative_without_provenance', 'branch_step_without_provenance',
+      'alternative_copies_primary', 'branch_state_context_leak'].includes(x.code)));
+});
+
+test('26. 없는 근거를 가리키거나 남의 국면 근거를 쓰면 감사가 잡는다', () => {
+  const { prepared, scenario: s } = career();
+  const broken = JSON.parse(JSON.stringify(s));
+  broken.primary.sourceRefs.push('X999');
+  if (broken.alternatives[0]) {
+    broken.alternatives[0].provenance.timing = [s.primary.provenance.timing[0]];
+    broken.alternatives[0].provenance.event = [];
+  }
+  if (broken.branches[0]?.steps?.[1]) {
+    broken.branches[0].steps[1].state = { sourceType: 'context', conditionalOn: [], kind: 'observed' };
+  }
+  // 갈렸는데 같다고 적으면 잡는다
+  if (broken.primary.selectionConflict) {
+    broken.primary.selectionConflict.agreement = true;
+    broken.primary.direction = { key: broken.primary.selectionConflict.lineageVoteWinner, competing: [] };
+  }
+  const a = auditCoherence(broken, prepared);
+  const codes = a.issues.map((x) => x.code);
+  assert.equal(a.ok, false);
+  assert.ok(codes.includes('dangling_source_ref'), codes.join(','));
+  if (s.alternatives.length && s.alternatives[0].phaseId !== s.primary.phaseId) {
+    assert.ok(codes.includes('foreign_phase_ref') || codes.includes('alternative_copies_primary'), codes.join(','));
+  }
+  if (s.primary.selectionConflict) {
+    assert.ok(codes.includes('selection_conflict_mislabeled'), codes.join(','));
+    assert.ok(codes.includes('conflicting_direction_leaked'), codes.join(','));
+  }
+  if (s.branches[0]?.steps?.[1]) {
+    assert.ok(codes.includes('branch_state_source_wrong'), codes.join(','));
+    assert.ok(codes.includes('branch_state_context_leak') || codes.includes('branch_state_kind_wrong'),
+      codes.join(','));
+  }
+});
+
+test('27. 근거 번호는 primary → alternatives → branches 순으로 고정이다', () => {
+  const opts = { birth: BIRTH, question: '2027년부터 2030년 사이에 이직할까?', now: NOW,
+    currentState: { employmentType: 'employed' } };
+  const prepared = prepareScenario(opts);
+  const a = composePrepared(prepared);
+  const b = composePrepared(prepared);
+  assert.deepEqual(a.evidence.map((c) => c.id), b.evidence.map((c) => c.id));
+  assert.deepEqual(a, b);
+
+  // 순서: 주 시나리오 근거가 대안보다, 대안이 가지보다 앞선다
+  const pos = (id) => a.evidence.findIndex((c) => c.id === id);
+  const lastPrimary = Math.max(...a.primary.sourceRefs.map(pos));
+  for (const alt of a.alternatives) {
+    for (const r of alt.sourceRefs) {
+      if (r === a.primary.provenance.timing[0]) continue;   // 같은 국면이면 시기 근거를 함께 쓴다
+      assert.ok(pos(r) > lastPrimary, `대안 근거 ${r} 가 주 시나리오보다 앞에 있다`);
+    }
+  }
+  const lastAlt = a.alternatives.length
+    ? Math.max(...a.alternatives.flatMap((x) => x.sourceRefs.map(pos))) : lastPrimary;
+  for (const br of a.branches) {
+    for (const st of br.steps) {
+      for (const r of st.sourceRefs) assert.ok(pos(r) > lastAlt, `가지 근거 ${r} 가 앞에 있다`);
+    }
+  }
 });

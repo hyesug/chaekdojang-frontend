@@ -34,6 +34,18 @@ export function auditCoherence(scenario, prepared) {
   const cap = gate.allowedLevel ?? 0;
   const grain = gate.timing?.allowed ?? 'year';
   const p = scenario?.primary ?? null;
+  const byId = new Map((scenario?.evidence ?? []).map((c) => [c.id, c]));
+  /** 가리키는 근거가 실제로 있는가 · 그 국면 것인가 */
+  const checkRefs = (refs, where, phaseId) => {
+    for (const r of refs ?? []) {
+      const c = byId.get(r);
+      if (!c) { issues.push(issue('dangling_source_ref', where, `없는 근거 ${r}`)); continue; }
+      if (phaseId && c.phaseId && c.phaseId !== phaseId) {
+        issues.push(issue('foreign_phase_ref', where,
+          `${phaseId} 자리인데 ${c.phaseId} 국면의 근거 ${r} 를 썼다`));
+      }
+    }
+  };
 
   // 1. 허용 단계를 넘지 않았는가
   if ((scenario?.meta?.maxSpecificityUsed ?? 0) > cap) {
@@ -100,6 +112,32 @@ export function auditCoherence(scenario, prepared) {
       }
     }
 
+    // 13~15. 사건 점수와 계보 표결이 갈린 자리
+    const sc = p.selectionConflict;
+    if (sc) {
+      const realAgree = sc.eventScoreWinner === sc.lineageVoteWinner;
+      if (sc.agreement !== realAgree) {
+        issues.push(issue('selection_conflict_mislabeled', 'primary.selectionConflict',
+          `${sc.eventScoreWinner} vs ${sc.lineageVoteWinner} 인데 agreement 를 ${sc.agreement} 로 적었다`));
+      }
+      if (!realAgree && p.direction != null) {
+        issues.push(issue('conflicting_direction_leaked', 'primary.direction',
+          '사건과 갈린 방향이 정상 방향처럼 남아 있다'));
+      }
+      if (!realAgree) {
+        const voteRefs = new Set(sc.provenance ?? []);
+        for (const [k, refs] of Object.entries(p.provenance?.detail ?? {})) {
+          for (const r of refs ?? []) {
+            const c = byId.get(r);
+            if ((c?.derivedFrom ?? []).some((x) => voteRefs.has(x))) {
+              issues.push(issue('detail_uses_conflicting_direction', `primary.detail.${k}`,
+                '갈린 방향을 상세의 근거로 썼다'));
+            }
+          }
+        }
+      }
+    }
+
     // 12. 분야별 금지어
     const text = JSON.stringify({ event: p.event, detail: p.detail, conditions: p.conditions });
     if (prepared?.domain === 'health' && HEALTH_FORBIDDEN.test(text)) {
@@ -123,7 +161,42 @@ export function auditCoherence(scenario, prepared) {
     issues.push(issue('question_mismatch_hidden', 'questionAnswer', '물은 것과 다른 답인데 그렇게 적지 않았다'));
   }
 
-  // 10. 가지의 예측 상태가 사실로 올라가지 않았는가
+  // 16. primary 의 근거가 실제로 있고 그 국면 것인가
+  if (p) {
+    checkRefs(p.provenance?.timing, 'primary.provenance.timing', p.phaseId);
+    checkRefs(p.provenance?.event, 'primary.provenance.event', p.phaseId);
+    checkRefs(p.provenance?.direction, 'primary.provenance.direction', p.phaseId);
+    checkRefs(p.sourceRefs, 'primary.sourceRefs', null);
+    for (const [k, refs] of Object.entries(p.provenance?.detail ?? {})) {
+      checkRefs(refs, `primary.provenance.detail.${k}`, null);
+    }
+  }
+
+  // 17. 대안도 자기 근거를 가져야 하고, 남의 국면 근거를 베끼면 안 된다
+  for (const a of scenario?.alternatives ?? []) {
+    for (const k of ['timing', 'event', 'direction']) {
+      if (a[k] == null) continue;
+      if (!(a.provenance?.[k] ?? []).length) {
+        issues.push(issue('alternative_without_provenance', `alternatives[${a.rank}].${k}`, '근거가 없다'));
+      }
+    }
+    checkRefs(a.provenance?.timing, `alternatives[${a.rank}].timing`, a.phaseId);
+    checkRefs(a.provenance?.event, `alternatives[${a.rank}].event`, a.phaseId);
+    checkRefs(a.provenance?.direction, `alternatives[${a.rank}].direction`, a.phaseId);
+    checkRefs(a.sourceRefs, `alternatives[${a.rank}].sourceRefs`, null);
+    // 다른 국면인데 주 시나리오의 사건·방향 근거를 그대로 쓰면 베낀 것이다
+    if (p && a.phaseId !== p.phaseId) {
+      const mine = new Set([...(a.provenance?.event ?? []), ...(a.provenance?.direction ?? [])]);
+      for (const r of [...(p.provenance?.event ?? []), ...(p.provenance?.direction ?? [])]) {
+        if (mine.has(r)) {
+          issues.push(issue('alternative_copies_primary', `alternatives[${a.rank}]`,
+            `다른 국면인데 주 시나리오의 근거 ${r} 를 그대로 썼다`));
+        }
+      }
+    }
+  }
+
+  // 10·18. 가지의 예측 상태가 사실로 올라가지 않았는가 · 근거가 있는가
   for (const br of scenario?.branches ?? []) {
     for (let i = 0; i < (br.steps ?? []).length; i++) {
       const st = br.steps[i];
@@ -134,6 +207,33 @@ export function auditCoherence(scenario, prepared) {
       if (st.stateAfter?.kind !== 'predicted') {
         issues.push(issue('branch_state_promoted', `branches.${br.id}.steps[${i}]`,
           '가지의 상태가 predicted 가 아니다'));
+      }
+      for (const k of ['timing', 'event', 'state']) {
+        if (!(st.provenance?.[k] ?? []).length) {
+          issues.push(issue('branch_step_without_provenance', `branches.${br.id}.steps[${i}].${k}`,
+            '근거가 없다'));
+        }
+      }
+      checkRefs(st.provenance?.timing, `branches.${br.id}.steps[${i}].timing`, st.phaseId);
+      checkRefs(st.provenance?.event, `branches.${br.id}.steps[${i}].event`, st.phaseId);
+      checkRefs(st.provenance?.state, `branches.${br.id}.steps[${i}].state`, st.phaseId);
+      checkRefs(st.sourceRefs, `branches.${br.id}.steps[${i}].sourceRefs`, null);
+      // 두 번째 단계부터의 상태는 가정 위의 예측이다 — 사용자가 말해 준 것이 아니다
+      if (i > 0) {
+        if (st.state?.sourceType !== 'derived') {
+          issues.push(issue('branch_state_source_wrong', `branches.${br.id}.steps[${i}].state`,
+            `${st.state?.sourceType} 로 적혔다 — 조건부 예측은 derived 여야 한다`));
+        }
+        if (st.state?.kind !== 'predicted') {
+          issues.push(issue('branch_state_kind_wrong', `branches.${br.id}.steps[${i}].state`,
+            '조건부 상태가 predicted 가 아니다'));
+        }
+        for (const r of st.provenance?.state ?? []) {
+          if (byId.get(r)?.sourceType === 'context') {
+            issues.push(issue('branch_state_context_leak', `branches.${br.id}.steps[${i}].state`,
+              '예측 상태를 사용자가 말해 준 것처럼 적었다'));
+          }
+        }
       }
     }
   }

@@ -24,7 +24,7 @@ import { monthNo } from '../timing/schema.js';
 import { interpretQuestion } from './question.js';
 import { resolveConflict } from './conflict.js';
 import { timingPhases, asPhaseShape } from './phase.js';
-import { snapshotFromState, contextFor, buildBranches } from './snapshot.js';
+import { snapshotFromState, contextFor, buildBranches, conditionalStateAt } from './snapshot.js';
 import { stateOf, possibleTransitions, filterByState } from './graph.js';
 import { specificityGate } from './specificity.js';
 import { claim, evidenceFrom, auditProvenance, resetIds } from './provenance.js';
@@ -99,6 +99,8 @@ export function prepareScenario(o = {}) {
   const directions = lead
     ? [lead.conflict.primaryDirection, ...lead.conflict.competingDirections].filter(Boolean)
     : [];
+  // `phases` 는 봉우리 높은 순이다. 가지는 시간 순서로 이어져야 하므로
+  // `buildBranches` 가 안에서 날짜순으로 다시 세운다
   const branching = buildBranches({ domain, snapshot, phases, directions });
 
   // ── 어디까지 내려가도 되는가 ──
@@ -266,6 +268,6 @@ function buildScenarioInput(o) {
 
 export {
   interpretQuestion, resolveConflict, timingPhases, specificityGate,
-  buildBranches, snapshotFromState, contextFor, stateOf, possibleTransitions,
+  buildBranches, conditionalStateAt, snapshotFromState, contextFor, stateOf, possibleTransitions,
   filterByState, claim, evidenceFrom, auditProvenance, scoreEvents, monthNo,
 };

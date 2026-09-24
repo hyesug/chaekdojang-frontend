@@ -89,47 +89,84 @@ const ASK = [
   { key: 'industry', patterns: [/업종/, /분야/, /어떤 ?업계/, /산업/] },
 ];
 
-/** 시기를 얼마나 잘게 물었나 */
+/**
+ * 시기를 얼마나 잘게 물었나.
+ *
+ * **반기를 분기로 읽지 않는다.** "상반기에 될까"는 여섯 달을 묻는 말이고
+ * 석 달을 묻는 말이 아니다. 좁은 눈금부터 본다 — "2028 상반기 몇 월"이면
+ * 달을 물은 것이다.
+ */
 const TIMING_ASK = [
   { grain: 'month', patterns: [/몇 ?월/, /어느 ?달/, /며칠/, /언제쯤.*월/] },
+  { grain: 'quarter', patterns: [/분기/] },
+  { grain: 'halfyear', patterns: [/상반기/, /하반기/, /반기/] },
   { grain: 'year', patterns: [/몇 ?년/, /어느 ?해/, /몇 ?살/] },
-  { grain: 'quarter', patterns: [/언제/, /시기/, /타이밍/, /반기/] },
+  { grain: 'quarter', patterns: [/언제/, /시기/, /타이밍/] },
 ];
 
-const YEAR_WORD = [
-  { re: /올해|금년/, off: [0, 0] },
-  { re: /내년|다음 ?해/, off: [1, 1] },
-  { re: /내후년/, off: [2, 2] },
-  { re: /(\d+)년 ?(안|이내|내에)/, span: true },
-  { re: /(\d+)년 ?(뒤|후)/, later: true },
+/** 연도를 가리키는 상대말 — 좁은 것을 먼저 본다 */
+const REL_YEAR = [
+  { re: /내후년/, off: 2 },
+  { re: /내년|다음 ?해/, off: 1 },
+  { re: /올해|금년|이번 ?해/, off: 0 },
 ];
+const HALF = [
+  { re: /상반기/, months: [1, 6], label: '상반기' },
+  { re: /하반기/, months: [7, 12], label: '하반기' },
+];
+const QUARTER_N = /([1-4])\s*분기/;
 
 const pad2 = (n) => String(n).padStart(2, '0');
 
 /**
  * 질문에서 볼 기간을 읽는다. **못 읽으면 지어내지 않고 기본 창을 쓴다.**
+ *
+ * ── 연도와 반기를 **같이** 읽는다 ──────────────────────────
+ * 전에는 절대연도를 먼저 잡아 버려서 "2028년 상반기"가 2028년 열두 달이
+ * 됐고, 상·하반기는 올해로만 읽혀 "내년 하반기"가 올해가 됐다. 연도
+ * 부분(절대·상대)과 반기·분기 부분을 먼저 각각 뽑아 **조합한 뒤**에야
+ * 단순 연도로 물러선다.
+ *
  * @returns {{from, to, source}}
  */
 export function readHorizon(text, now = new Date(), defaultYears = 3) {
   const y = now.getFullYear();
   const t = String(text ?? '');
 
+  // ① 연도 부분 — 절대가 상대보다 세다
   const abs = [...t.matchAll(/(20\d{2})\s*년/g)].map((m) => Number(m[1]));
+  const rel = REL_YEAR.find((r) => r.re.test(t));
+  const baseYear = abs.length ? Math.min(...abs) : rel ? y + rel.off : null;
+  const yearLabel = abs.length ? `${Math.min(...abs)}년` : rel ? t.match(rel.re)[0] : null;
+
+  // ② 반기·분기를 연도와 **조합해서** 먼저 읽는다
+  const half = HALF.find((h) => h.re.test(t));
+  if (half) {
+    const yy = baseYear ?? y;
+    return {
+      from: `${yy}-${pad2(half.months[0])}`, to: `${yy}-${pad2(half.months[1])}`,
+      source: [yearLabel, half.label].filter(Boolean).join(' '),
+    };
+  }
+  const q = t.match(QUARTER_N);
+  if (q) {
+    const yy = baseYear ?? y;
+    const n = Number(q[1]);
+    return {
+      from: `${yy}-${pad2(n * 3 - 2)}`, to: `${yy}-${pad2(n * 3)}`,
+      source: [yearLabel, `${n}분기`].filter(Boolean).join(' '),
+    };
+  }
+
+  // ③ 연도만
   if (abs.length) {
     return { from: `${Math.min(...abs)}-01`, to: `${Math.max(...abs)}-12`, source: '질문에 적힌 연도' };
   }
-  for (const w of YEAR_WORD) {
-    const m = t.match(w.re);
-    if (!m) continue;
-    if (w.off) return { from: `${y + w.off[0]}-01`, to: `${y + w.off[1]}-12`, source: m[0] };
-    const n = Number(m[1]);
-    if (!Number.isFinite(n)) continue;
-    if (w.span) return { from: `${y}-01`, to: `${y + n}-12`, source: m[0] };
-    return { from: `${y + n}-01`, to: `${y + n}-12`, source: m[0] };
-  }
-  // 상·하반기는 올해 기준으로만 읽는다
-  if (/상반기/.test(t)) return { from: `${y}-01`, to: `${y}-06`, source: '상반기' };
-  if (/하반기/.test(t)) return { from: `${y}-07`, to: `${y}-12`, source: '하반기' };
+  const span = t.match(/(\d+)\s*년\s*(안|이내|내에)/);
+  if (span) return { from: `${y}-01`, to: `${y + Number(span[1])}-12`, source: span[0] };
+  const later = t.match(/(\d+)\s*년\s*(뒤|후)/);
+  if (later) return { from: `${y + Number(later[1])}-01`, to: `${y + Number(later[1])}-12`, source: later[0] };
+  if (rel) return { from: `${y + rel.off}-01`, to: `${y + rel.off}-12`, source: t.match(rel.re)[0] };
 
   return { from: `${y}-01`, to: `${y + defaultYears - 1}-12`, source: '기본 창 (질문에 기간이 없다)' };
 }

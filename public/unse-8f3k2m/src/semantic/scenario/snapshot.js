@@ -74,6 +74,20 @@ export function contextFor(snapshot, { includePlanned = true } = {}) {
  * 한 국면에서 갈 수 있는 전이가 여럿이면 **하나로 좁히지 않고** 가지를
  * 벌린다. 각 가지의 상태 변화는 전부 `predicted` 로만 적힌다.
  *
+ * ── 두 가지 순서를 가른다 ──────────────────────────────────
+ * `timingPhases()` 는 **좋은 국면 순서**(봉우리 높은 순)로 준다. 가지는
+ * **시간 순서**로 이어져야 한다. 둘을 같은 배열로 쓰면
+ * "2029 창업 → 2028 공백" 같은 역행이 나온다. 그래서 여기서 **날짜순으로
+ * 다시 세우고**, 다음 단계는 앞 단계보다 **뒤에 오는 국면만** 쓴다.
+ * 뒤에 국면이 없으면 **다음 사건을 만들지 않고 끝낸다.** 한 국면을 두
+ * 단계에 겹쳐 쓰지도 않는다.
+ *
+ * ── 조건부 시뮬레이션 ──────────────────────────────────────
+ * 앞 단계가 일어났다고 **가정하면** 상태는 X 다. 그 X 에서 갈 수 있는
+ * 길을 다음 후보로 본다. 이것은 가지 안에서만 성립하는 가정이고,
+ * `snapshot.observed` 를 덮어쓰지 않는다. 가지 A 의 가정이 가지 B 로
+ * 새지도 않는다 — 가지마다 상태를 따로 들고 간다.
+ *
  * @param {object} o
  *   domain, snapshot, phases, directions  (conflict 가 고른 방향들)
  *   maxBranches  기본 3
@@ -86,15 +100,20 @@ export function buildBranches(o) {
   const graph = STATE_GRAPH[domain];
   if (!graph) return { domain, startState: start, stateKnown: false, branches: [], note: '이 분야에는 상태 기계가 없다' };
 
+  // **날짜순**으로 다시 세운다. 들어온 순서(봉우리 높은 순)를 믿지 않는다
+  const ordered = phases
+    .filter((x) => x && x.start)
+    .slice()
+    .sort((a, b) => String(a.start).localeCompare(String(b.start)));
+
   // 방향이 지목한 전이를 앞에 둔다. 방향이 없으면 갈 수 있는 순서대로
   const order = new Map(directions.map((d, i) => [d, i]));
-  const first = p.transitions.slice()
-    .sort((a, b) => (order.get(a.event) ?? 99) - (order.get(b.event) ?? 99));
+  const byOrder = (a, b) => (order.get(a.event) ?? 99) - (order.get(b.event) ?? 99);
 
   // 같은 사건으로 가는 전이가 여럿이면 하나만
   const seen = new Set();
   const heads = [];
-  for (const tr of first) {
+  for (const tr of p.transitions.slice().sort(byOrder)) {
     if (seen.has(tr.event)) continue;
     seen.add(tr.event); heads.push(tr);
     if (heads.length >= maxBranches) break;
@@ -102,27 +121,49 @@ export function buildBranches(o) {
 
   const branches = heads.map((head, i) => {
     const steps = [];
+    // **이 가지 안에서만** 굴러가는 상태. 다른 가지와 공유하지 않는다
     let state = head.from === 'unknown' ? start : head.from;
-    let cursor = 0;
+    let phaseIdx = -1;                    // 마지막으로 쓴 국면
+    const usedEvents = new Set();
+
     const push = (tr) => {
-      const ph = phases[Math.min(cursor, Math.max(0, phases.length - 1))] ?? null;
+      phaseIdx += 1;                      // 앞 단계보다 **뒤** 국면만 쓴다
+      const ph = ordered[phaseIdx] ?? null;
+      const before = state;
+      const assumedSoFar = steps.map((s) => s.event);
       steps.push({
-        event: tr.event, from: state, to: tr.to,
+        event: tr.event, from: before, to: tr.to,
         // 국면이 있으면 그 구간에 얹는다. 없으면 시점을 지어내지 않는다
         window: ph ? { from: ph.start, to: ph.end, peak: ph.peak } : null,
         sourceType: 'derived',
+        stateBefore: {
+          value: before,
+          kind: steps.length === 0 ? (p.stateKnown ? 'observed' : 'unknown') : 'predicted',
+        },
         stateAfter: { value: tr.to, kind: 'predicted' },
+        /** 이 단계가 성립하려면 앞의 어떤 단계가 먼저 일어나야 하는가 */
+        conditionalOn: assumedSoFar,
+        assumption: assumedSoFar.length
+          ? `${assumedSoFar.join(' → ')} 가 실제로 일어난다는 가정`
+          : (p.stateKnown ? `현재 상태가 '${before}' 라는 사실` : '현재 상태를 모른다 — 가정한 출발점'),
         note: tr.note ?? null,
       });
-      state = tr.to; cursor++;
+      state = tr.to;
+      usedEvents.add(tr.event);
     };
+
     push(head);
     for (let d = 1; d < depth; d++) {
-      const next = (graph.transitions.filter((x) => x.from === state)
-        .sort((a, b) => (order.get(a.event) ?? 99) - (order.get(b.event) ?? 99)))[0];
-      if (!next || steps.some((s) => s.event === next.event && s.from === next.from)) break;
+      // 뒤에 쓸 국면이 없으면 다음 사건을 억지로 만들지 않는다
+      if (phaseIdx + 1 >= ordered.length) break;
+      // **앞 단계가 일어났다고 가정한 상태**에서 갈 수 있는 길
+      const next = graph.transitions
+        .filter((x) => x.from === state && !usedEvents.has(x.event))
+        .sort(byOrder)[0];
+      if (!next) break;
       push(next);
     }
+
     return {
       id: String.fromCharCode(65 + i),
       label: steps.map((s) => s.event).join(' → '),
@@ -134,6 +175,7 @@ export function buildBranches(o) {
         : '현재 상태를 듣지 못했다 — 이 가지는 상태를 가정한 것이다',
       // 두 번째 단계부터는 앞 단계가 일어났다는 가정 위에 선다
       conditionalFrom: steps.length > 1 ? steps[0].event : null,
+      endState: { value: state, kind: 'predicted' },
       note: '이 가지의 상태 변화는 전부 predicted 다. 사실로 쓰지 않는다',
     };
   });
@@ -141,9 +183,30 @@ export function buildBranches(o) {
   return {
     domain, startState: start, stateKnown: p.stateKnown,
     branches,
+    phaseOrder: ordered.map((x) => x.start),
     note: branches.length > 1
       ? '가지를 하나로 좁히지 않았다 — 갈린 채로 다음 층에 넘긴다'
       : (p.stateKnown ? '이 상태에서 갈 수 있는 길이 하나다' : p.note),
+  };
+}
+
+/**
+ * 가지의 n 번째 단계 **직전** 상태.
+ *
+ * 다음 층(Scenario Composer)이 "이 단계는 무엇을 전제하는가"를 물을 때
+ * 쓴다. 관측이 아닌 것은 반드시 `predicted` 로 표시되어 나간다.
+ */
+export function conditionalStateAt(branch, stepIndex) {
+  const s = branch?.steps?.[stepIndex];
+  if (!s) return null;
+  return {
+    value: s.stateBefore.value,
+    kind: s.stateBefore.kind,
+    assumedEvents: s.conditionalOn,
+    assumption: s.assumption,
+    note: s.stateBefore.kind === 'predicted'
+      ? '가정 위의 상태다 — 사실로 쓰지 않는다'
+      : null,
   };
 }
 

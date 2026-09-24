@@ -179,3 +179,59 @@ export function bandOf(table, value) {
   for (const row of table) if (value >= row.at) hit = row;
   return hit?.features ?? null;
 }
+
+/** 일간·십성 — 기질. 명리가 사람됨을 읽는 자리 */
+export const PERSONALITY = {
+  비견: { independentMind: 0.8, steady: 0.55, competitive: 0.5 },
+  겁재: { competitive: 0.85, independentMind: 0.7, outward: 0.5 },
+  식신: { caring: 0.7, expressive: 0.65, steady: 0.6, adaptive: 0.5 },
+  상관: { expressive: 0.85, independentMind: 0.65, intuitive: 0.55, competitive: 0.5 },
+  정재: { steady: 0.8, disciplined: 0.65, caring: 0.45 },
+  편재: { outward: 0.8, adaptive: 0.7, competitive: 0.5 },
+  정관: { disciplined: 0.85, steady: 0.7, lead: 0.5 },
+  편관: { lead: 0.75, competitive: 0.75, disciplined: 0.5 },
+  정인: { analytic: 0.75, caring: 0.6, steady: 0.6, intuitive: 0.5 },
+  편인: { analytic: 0.8, intuitive: 0.7, independentMind: 0.6, sensitive: 0.5 },
+};
+
+/** 배우자 십성 — 결혼. 여자는 관성, 남자는 재성을 배우자로 본다 */
+export const MARRIAGE = {
+  비견: { lateUnion: 0.55, spouseVolatile: 0.4 },
+  겁재: { lateUnion: 0.6, spouseVolatile: 0.6 },
+  식신: { marriageOrientation: 0.6, spouseStable: 0.55, earlyUnion: 0.4 },
+  상관: { spouseVolatile: 0.65, lateUnion: 0.45 },
+  정재: { marriageOrientation: 0.8, spouseStable: 0.75, earlyUnion: 0.5 },
+  편재: { earlyUnion: 0.6, spouseVolatile: 0.5, marriageOrientation: 0.55 },
+  정관: { marriageOrientation: 0.85, spouseStable: 0.75, earlyUnion: 0.5, partnerElder: 0.4 },
+  편관: { spouseVolatile: 0.6, marriageOrientation: 0.5, earlyUnion: 0.45 },
+  정인: { lateUnion: 0.6, spouseStable: 0.5, partnerElder: 0.55 },
+  편인: { lateUnion: 0.7, spouseVolatile: 0.4, partnerElder: 0.5 },
+};
+
+/** 큰 전환 — 비겁·식상이 판을 바꾸고, 관성·인성이 한 우물을 판다 */
+export const MAJOR_CHANGE = {
+  겁재: { turningPoint: 0.75, selfDriven: 0.7 },
+  상관: { turningPoint: 0.75, selfDriven: 0.65 },
+  비견: { turningPoint: 0.55, selfDriven: 0.6 },
+  편재: { turningPoint: 0.6, selfDriven: 0.5 },
+  편관: { turningPoint: 0.6, externallyDriven: 0.6 },
+  식신: { continuity: 0.5 },
+  편인: { turningPoint: 0.5, selfDriven: 0.4 },
+  정재: { continuity: 0.7 },
+  정관: { continuity: 0.8 },
+  정인: { continuity: 0.75 },
+};
+
+/** 이동 — 역마와 십성 */
+export const MOVEMENT = {
+  편재: { mobile: 0.75, longDistance: 0.55, abroad: 0.4 },
+  상관: { mobile: 0.65, longDistance: 0.45 },
+  겁재: { mobile: 0.6 },
+  편관: { mobile: 0.6, longDistance: 0.45 },
+  편인: { mobile: 0.5, abroad: 0.4 },
+  비견: { mobile: 0.45 },
+  식신: { localBound: 0.5 },
+  정재: { localBound: 0.6 },
+  정관: { localBound: 0.65 },
+  정인: { localBound: 0.7 },
+};

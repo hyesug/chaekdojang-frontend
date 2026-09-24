@@ -188,3 +188,62 @@ export function ensemble(interpreted, featureWeights = null) {
   const reads = interpreted.byDomain?.career ?? interpreted;
   return { domains: { career: poolCareer(reads, featureWeights) } };
 }
+
+/**
+ * 분야 하나를 합친다 — 직업과 같은 방식을 열두 분야로 쓴다.
+ *
+ * 직업은 `poolCareer` 가 속성별 보정까지 받지만, 나머지 분야는 아직
+ * 실측 보정이 없으므로 전통 무게만으로 합친다. 구조는 같다 —
+ * 표의 평균에서 벗어난 만큼을 등급별 몫으로 더한다.
+ */
+export function poolDomain(reads, domain) {
+  if (domain === 'career') return poolCareer(reads, null);
+
+  const spoke = reads.filter((r) => r.status === 'ok' && r.features);
+  const silent = reads.filter((r) => r.status !== 'ok');
+  const axes = AXES[domain] ?? [];
+  if (!spoke.length || !axes.length) {
+    return { features: null, profile: null, spokeCount: 0, silent: silent.map(sil), contributors: [] };
+  }
+
+  const indep = independenceFactors(spoke.map((r) => r.system));
+  const directCount = spoke.filter((r) => r.evidenceType === 'direct').length;
+  const aux = auxScale(directCount);
+
+  const raw = Object.fromEntries(axes.map((ax) => [ax, 0]));
+  const contributors = [];
+  for (const r of spoke) {
+    const ev = r.evidence ?? [];
+    const st = ev.length ? ev.reduce((a, e) => a + e.traditionalStrength, 0) / ev.length : 0.7;
+    const sp = ev.length ? ev.reduce((a, e) => a + e.specificity, 0) / ev.length : 0.5;
+    const et = r.evidenceType ?? 'indirect';
+    const scale = et === 'direct' ? 1 : ET_SCALE[et] * aux;
+
+    // **그 체계가 한 말 안에서** 어느 축이 솟았는지로 센다.
+    //
+    // 처음엔 원시 표의 평균과 견줬는데, 체계 출력은 묶음 포화(1/√G)를
+    // 거친 뒤라 표 값보다 훨씬 작다. 그래서 **모든 축이 평균 아래**로
+    // 나와 profile 이 통째로 음수가 됐다. 잣대가 서로 달랐던 것이다.
+    // 자기 출력의 평균으로 중심을 잡으면 눈금에 상관없이 성립한다.
+    const vals = axes.map((ax) => r.features[ax] ?? 0);
+    const selfMean = vals.reduce((a, b) => a + b, 0) / (vals.length || 1);
+    for (const ax of axes) {
+      const dev = (r.features[ax] ?? 0) - selfMean;
+      raw[ax] += dev * st * (0.55 + 0.45 * sp) * indep[r.system] * scale;
+    }
+    contributors.push({ system: r.system, name: r.systemName, lineage: r.lineage, evidenceType: et });
+  }
+
+  const s = Math.max(1e-6, Math.max(...Object.values(raw).map(Math.abs)));
+  const profile = round3(Object.fromEntries(axes.map((ax) => [ax, raw[ax] / s])));
+  const vals = Object.values(raw);
+  const lo = Math.min(...vals), hi = Math.max(...vals);
+  const features = round3(Object.fromEntries(axes.map((ax) =>
+    [ax, hi > lo ? (raw[ax] - lo) / (hi - lo) : 0])));
+
+  return {
+    features: isEmpty(features) ? null : features, profile,
+    spokeCount: spoke.length, directCount, auxScale: round3({ v: aux }).v,
+    silent: silent.map(sil), contributors, weak: spoke.length < 2,
+  };
+}

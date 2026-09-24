@@ -14,6 +14,7 @@ import { buildDictionary, toMarkdown } from '../public/unse-8f3k2m/src/semantic/
 import { measure, ruleSupportFrom } from '../public/unse-8f3k2m/src/semantic/calibration.js';
 import { applyEmpirical } from '../public/unse-8f3k2m/src/semantic/rules.js';
 import { labelFor } from '../public/unse-8f3k2m/src/semantic/tables/occupations.js';
+import { DOMAINS, DOMAIN_LABEL } from '../public/unse-8f3k2m/src/semantic/domains.js';
 
 const file = process.argv[2] ?? null;
 let measurement = null;
@@ -38,10 +39,15 @@ if (file && existsSync(file)) {
   console.error(`${file} 이 없어 전통 표만으로 뽑습니다.`);
 }
 
-const dict = buildDictionary('career');
-const md = toMarkdown(dict, measurement);
 mkdirSync('docs/unse', { recursive: true });
-writeFileSync('docs/unse/career-dictionary-v1.md', md + '\n', 'utf8');
-
-const count = Object.values(dict).reduce((a, s) => a + Object.values(s.places).reduce((b, e) => b + e.length, 0), 0);
-console.error(`docs/unse/career-dictionary-v1.md — ${Object.keys(dict).length}개 체계 · 규칙 ${count}개`);
+let total = 0;
+for (const domain of DOMAINS) {
+  const dict = buildDictionary(domain);
+  const md = toMarkdown(dict, domain === 'career' ? measurement : null, domain);
+  const name = domain === 'career' ? 'career-dictionary-v1.md' : `dictionary-${domain}.md`;
+  writeFileSync(`docs/unse/${name}`, md + '\n', 'utf8');
+  const count = Object.values(dict).reduce((a, s) => a + Object.values(s.places).reduce((b, e) => b + e.length, 0), 0);
+  total += count;
+  console.error(`  ${DOMAIN_LABEL[domain].padEnd(5)} ${String(count).padStart(4)}개 → docs/unse/${name}`);
+}
+console.error(`해석 사전 — 열두 분야 · 규칙 ${total}개`);

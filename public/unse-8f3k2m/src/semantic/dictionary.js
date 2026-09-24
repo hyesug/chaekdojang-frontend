@@ -17,6 +17,7 @@
  */
 
 import { RULES, TABLE_MEAN } from './rules.js';
+import { DOMAIN_RULES, DOMAIN_LABEL } from './domains.js';
 import { SYSTEM_NAME, SYSTEM_IDS } from './extract.js';
 import { AXIS_LABEL, AXES } from './axes.js';
 import { lineageOf } from './lineage.js';
@@ -42,14 +43,20 @@ export function entryOf(rule, topN = 6) {
     empiricalSupport: rule.empiricalSupport,
     sampleSize: rule.sampleSize,
     provisional: rule.provisional,
+    nature: rule.note ?? null,
   };
 }
 
+/** 분야를 가리지 않고 규칙을 찾는다 — 직업은 rules.js, 나머지는 domains.js */
+const rulesOfDomain = (domain) =>
+  (domain === 'career' ? RULES : DOMAIN_RULES).filter((r) => r.domain === domain);
+
 /** 체계별로 묶은 사전 전체 */
 export function buildDictionary(domain = 'career') {
+  const all = rulesOfDomain(domain);
   const out = {};
   for (const id of SYSTEM_IDS) {
-    const rules = RULES.filter((r) => r.system === id && r.domain === domain);
+    const rules = all.filter((r) => r.system === id);
     if (!rules.length) continue;
     // 같은 자리끼리 모은다 (관록궁 주성 / 보조성 / 사화 …)
     const byWhere = {};
@@ -67,7 +74,7 @@ export function buildDictionary(domain = 'career') {
 
 /** 축 하나를 어느 기호들이 가리키는가 — 거꾸로 찾기 */
 export function byAxis(axis, domain = 'career', floor = 0.6) {
-  return RULES
+  return rulesOfDomain(domain)
     .filter((r) => r.domain === domain && (r.features[axis] ?? 0) >= floor)
     .sort((a, b) => b.features[axis] - a.features[axis])
     .map((r) => ({
@@ -77,18 +84,19 @@ export function byAxis(axis, domain = 'career', floor = 0.6) {
 }
 
 /** 마크다운으로 편다 */
-export function toMarkdown(dict, measurement = null) {
+export function toMarkdown(dict, measurement = null, domain = 'career') {
   const out = [];
-  out.push('# 직업 해석 사전 v1');
+  out.push(`# ${DOMAIN_LABEL[domain] ?? domain} 해석 사전 v1`);
   out.push('');
   out.push('열다섯 체계의 기호 하나하나가 **현실의 어떤 속성**을 뜻하는지 적은 표입니다.');
-  out.push('`src/semantic/rules.js` 에 등록된 규칙을 그대로 펼친 것이라, 이 문서와');
-  out.push('엔진이 갈라질 수 없습니다.');
+  out.push('규칙 등록소(`src/semantic/rules.js` · `src/semantic/domains.js`)를 그대로');
+  out.push('펼친 것이라, 이 문서와 엔진이 갈라질 수 없습니다.');
   out.push('');
   out.push('- **전통강도** — 그 전통이 그 자리를 그 뜻으로 지정한 정도');
   out.push('- **좁기** — 몇 축을 세게 가리키는가 (넓게 말하는 규칙은 저절로 무게가 깎입니다)');
   out.push('- **증거등급** — `직접` 그 전통에 이 질문을 보는 자리가 있다 / `간접` 역할·재능으로 말한다 / `약함` 상징 하나로 성향만');
   out.push('- **실측** — 실제 사례에서 그 규칙이 실린 사람들의 속성 유사도 평균. 없으면 `—`');
+  out.push('- **물상** — 전용 자리가 없어 기호의 전통 물상으로 옮긴 규칙. `기호 → 물상 → 축` 사슬이 남습니다');
   out.push('');
 
   for (const sys of Object.values(dict)) {
@@ -114,7 +122,7 @@ export function toMarkdown(dict, measurement = null) {
         const emp = e.empiricalSupport == null ? '—'
           : `${e.empiricalSupport} (${e.sampleSize}명${e.provisional ? ' · 잠정' : ''})`;
         const et = { direct: '직접', indirect: '간접', weak: '약함' }[e.evidenceType] ?? e.evidenceType;
-        out.push(`| ${e.symbol} | ${f} | ${e.traditionalStrength} | ${e.specificity} | ${et} | ${emp} |`);
+        out.push(`| ${e.symbol}${e.nature ? ` <br><sub>${e.nature}</sub>` : ''} | ${f} | ${e.traditionalStrength} | ${e.specificity} | ${et} | ${emp} |`);
       }
       out.push('');
     }

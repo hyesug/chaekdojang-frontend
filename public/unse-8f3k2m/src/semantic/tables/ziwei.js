@@ -215,3 +215,81 @@ export const DOMAIN_PALACE = {
   residence: ['주거', '전택궁'], wealth: ['재물', '재백궁'], education: ['학업', '관록궁'],
   health: ['건강', '질액궁'],
 };
+
+/**
+ * 명궁 — 기질. 두수에서 명궁 주성이 곧 그 사람이다.
+ * 관록궁이 '무슨 일'이라면 명궁은 '어떤 사람'이다.
+ */
+export const PERSONALITY = {
+  자미: { lead: 0.85, disciplined: 0.6, steady: 0.55 },
+  천기: { analytic: 0.85, intuitive: 0.6, adaptive: 0.6 },
+  태양: { outward: 0.85, expressive: 0.65, lead: 0.6 },
+  무곡: { disciplined: 0.75, independentMind: 0.6, competitive: 0.55, steady: 0.5 },
+  천동: { caring: 0.75, adaptive: 0.65, sensitive: 0.55 },
+  염정: { competitive: 0.65, independentMind: 0.6, expressive: 0.5, intuitive: 0.45 },
+  천부: { steady: 0.8, disciplined: 0.6, caring: 0.5 },
+  태음: { sensitive: 0.8, intuitive: 0.65, caring: 0.6, analytic: 0.45 },
+  탐랑: { expressive: 0.8, outward: 0.75, adaptive: 0.6, intuitive: 0.5 },
+  거문: { analytic: 0.75, expressive: 0.7, independentMind: 0.6 },
+  천상: { caring: 0.7, disciplined: 0.6, steady: 0.6, adaptive: 0.5 },
+  천량: { caring: 0.8, disciplined: 0.6, analytic: 0.5, steady: 0.55 },
+  칠살: { competitive: 0.85, independentMind: 0.7, lead: 0.6 },
+  파군: { independentMind: 0.85, competitive: 0.6, adaptive: 0.55, expressive: 0.45 },
+};
+
+/**
+ * 부처궁 — 결혼. 관계(끌림)와 결혼(제도)은 두수에서도 다른 층이다.
+ * 정성은 늦더라도 오래가고, 동성은 이르되 흔들린다고 본다.
+ */
+export const MARRIAGE = {
+  자미: { marriageOrientation: 0.7, spouseStable: 0.7, lateUnion: 0.45, partnerElder: 0.4 },
+  천기: { lateUnion: 0.6, spouseVolatile: 0.45, marriageOrientation: 0.4 },
+  태양: { marriageOrientation: 0.7, earlyUnion: 0.5, spouseStable: 0.5 },
+  무곡: { lateUnion: 0.65, spouseStable: 0.55, marriageOrientation: 0.45 },
+  천동: { marriageOrientation: 0.65, earlyUnion: 0.55, spouseStable: 0.6 },
+  염정: { spouseVolatile: 0.7, earlyUnion: 0.45 },
+  천부: { spouseStable: 0.8, marriageOrientation: 0.7, partnerElder: 0.4 },
+  태음: { spouseStable: 0.65, marriageOrientation: 0.6, partnerElder: 0.45 },
+  탐랑: { earlyUnion: 0.6, spouseVolatile: 0.6, marriageOrientation: 0.5 },
+  거문: { lateUnion: 0.65, spouseVolatile: 0.55 },
+  천상: { marriageOrientation: 0.8, spouseStable: 0.7 },
+  천량: { lateUnion: 0.6, spouseStable: 0.6, partnerElder: 0.55 },
+  칠살: { lateUnion: 0.7, spouseVolatile: 0.65 },
+  파군: { spouseVolatile: 0.8, lateUnion: 0.55 },
+};
+
+/** 명궁·천이궁 — 인생의 큰 전환. 살파랑(칠살·파군·탐랑)이 변동 격국이다 */
+export const MAJOR_CHANGE = {
+  파군: { turningPoint: 0.85, selfDriven: 0.6 },
+  칠살: { turningPoint: 0.8, selfDriven: 0.7 },
+  탐랑: { turningPoint: 0.65, selfDriven: 0.5 },
+  염정: { turningPoint: 0.6, externallyDriven: 0.45 },
+  천기: { turningPoint: 0.6, selfDriven: 0.4 },
+  거문: { turningPoint: 0.5, externallyDriven: 0.4 },
+  태양: { continuity: 0.45, selfDriven: 0.45 },
+  무곡: { continuity: 0.55, selfDriven: 0.45 },
+  자미: { continuity: 0.65 },
+  천부: { continuity: 0.8 },
+  천상: { continuity: 0.7 },
+  천량: { continuity: 0.7 },
+  천동: { continuity: 0.65 },
+  태음: { continuity: 0.6 },
+};
+
+/** 천이궁 — 이동. 밖에 나가서 어떻게 사는가 */
+export const MOVEMENT = {
+  천기: { mobile: 0.8, longDistance: 0.5 },
+  파군: { mobile: 0.8, longDistance: 0.6, abroad: 0.45 },
+  칠살: { mobile: 0.75, longDistance: 0.55 },
+  탐랑: { mobile: 0.6, longDistance: 0.4 },
+  태양: { mobile: 0.6, abroad: 0.45, longDistance: 0.45 },
+  거문: { mobile: 0.55, abroad: 0.4 },
+  염정: { mobile: 0.55 },
+  무곡: { localBound: 0.45, mobile: 0.4 },
+  천상: { localBound: 0.55 },
+  천량: { localBound: 0.5 },
+  천동: { localBound: 0.6 },
+  태음: { localBound: 0.6 },
+  자미: { localBound: 0.55 },
+  천부: { localBound: 0.75 },
+};

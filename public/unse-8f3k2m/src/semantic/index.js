@@ -26,6 +26,8 @@ import { categorizeCareer } from './categories.js';
 import { AXES, AXIS_LABEL } from './axes.js';
 import { SYSTEM_NAME } from './extract.js';
 import { INDEPENDENT_LINEAGES } from './lineage.js';
+import { interpretDomain, gather, DOMAINS, DOMAIN_LABEL } from './domains.js';
+import { poolDomain } from './ensemble.js';
 
 const safe = (fn) => { try { return fn(); } catch { return null; } };
 
@@ -137,7 +139,59 @@ export function readCareer(birth, opts = {}) {
   };
 }
 
+/**
+ * 한 사람의 **열두 분야**를 모두 읽는다.
+ *
+ * 직업만 깊고 나머지는 빈약한 상태로 끝내지 않으려고 만든 입구다.
+ * 분야마다 열다섯 체계가 각자 말하고, 합치는 방식은 직업과 같다.
+ *
+ * @param {object} birth `readFortune` 과 같은 입력
+ * @param {object} opts { domains?: string[] — 고르면 그것만 }
+ */
+export function readPerson(birth, opts = {}) {
+  const { fortune, stack } = natalFortune(birth);
+  const raw = gather(fortune, stack);
+  const want = opts.domains ?? DOMAINS;
+  const out = {};
+  for (const d of want) {
+    const reads = d === 'career' ? interpretCareer(fortune, stack) : interpretDomain(raw, d);
+    const spoke = reads.filter((r) => r.status === 'ok');
+    const pool = poolDomain(reads, d);
+    out[d] = {
+      label: DOMAIN_LABEL[d],
+      features: pool.features,
+      profile: pool.profile,
+      leading: leadingAxes(pool.profile, 4, 0.25),
+      spokeCount: spoke.length,
+      directCount: spoke.filter((r) => r.evidenceType === 'direct').length,
+      systems: reads.map((r) => ({
+        system: r.system, name: r.systemName, status: r.status, why: r.why ?? null,
+        evidenceType: r.evidenceType ?? null, groupCount: r.groupCount ?? null,
+        features: r.features, evidence: r.evidence ?? [],
+      })),
+      ...(d === 'career' ? { categories: pool.features ? categorizeCareer(pool.features, pool.profile) : null } : {}),
+      ...(d === 'health' ? {
+        notMedical: true,
+        caution: '질환명·수술 여부를 말하지 않는다. 전통이 말하는 몸의 부담 신호까지다.',
+      } : {}),
+      ...(d === 'timing' ? {
+        note: '여기서 연도를 말하지 않는다. 시기를 보는 장치가 있는지와 기운이 앞뒤 어디에 실리는지까지다.',
+      } : {}),
+    };
+  }
+  return {
+    domains: out,
+    meta: {
+      timeKnown: fortune.input.timeKnown,
+      asOfDate: opts.asOfDate ?? null,
+      principles: PRINCIPLES,
+      notFromNatal: '지금 이직 준비 중인지, 올해 합격할지 같은 것은 출생명반에 들어 있지 않다.',
+    },
+  };
+}
+
 export { interpretCareer } from './systems.js';
+export { interpretDomain, gather, coverage, DOMAINS, DOMAIN_LABEL } from './domains.js';
 export { poolCareer } from './ensemble.js';
 export { categorizeCareer, CAREER_CATEGORIES, LEVEL_A, LEVEL_B } from './categories.js';
 export { measure, weightsFrom, compareOne } from './calibration.js';

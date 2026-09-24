@@ -42,15 +42,43 @@ export const AXES = {
     'management', 'physical', 'care', 'public', 'competitive',
     'specialist', 'independence', 'organization', 'stability', 'change',
   ],
+  /**
+   * 기질 — 열다섯 체계가 **거의 다** 말하는 유일한 분야.
+   * 직업 전용 궁이 없는 전통도 "이 사람이 어떤 사람인가"는 말한다.
+   */
+  personality: [
+    'lead', 'outward', 'intuitive', 'sensitive', 'steady', 'adaptive',
+    'analytic', 'expressive', 'caring', 'competitive', 'independentMind', 'disciplined',
+  ],
+
   // 관계 — 양극은 두 축으로 나눈다 (위 '눈금' 참조)
-  relationship: ['bonding', 'commitment', 'autonomy', 'earlyUnion', 'lateUnion', 'stability', 'volatility'],
-  children: ['childThick', 'childThin', 'caregiving'],
-  education: ['formalContinuity', 'credential', 'detour', 'repeatChallenge'],
-  residence: ['settled', 'mobile', 'ownership'],
-  wealth: ['incomeStability', 'accumulation', 'speculation', 'enterprise', 'volatility'],
+  relationship: ['bonding', 'commitment', 'autonomy', 'passion', 'stability', 'volatility'],
+
+  /**
+   * 결혼 — 관계와 가른다. 사람을 좋아하는 것과 제도로 묶는 것은
+   * 전통에서도 다른 자리로 본다 (명리의 재·관 vs 배우자궁).
+   */
+  marriage: ['marriageOrientation', 'earlyUnion', 'lateUnion', 'spouseStable', 'spouseVolatile', 'partnerElder'],
+
+  children: ['childThick', 'childThin', 'caregiving', 'childLate'],
+  education: ['formalContinuity', 'credential', 'detour', 'repeatChallenge', 'selfTaught'],
+  wealth: ['incomeStability', 'accumulation', 'speculation', 'enterprise', 'wealthVolatility', 'inheritance'],
+  residence: ['settled', 'ownership', 'homeExpand', 'homeShrink'],
+  movement: ['mobile', 'longDistance', 'abroad', 'localBound'],
+
   // 건강은 **질환명·수술 여부를 만들지 않는다.** 전통이 말하는 '몸에 실리는
   // 부담'까지만 적고, 의료 판단처럼 쓰지 못하게 분야 자체에 표시를 단다.
-  health: ['physicalLoad', 'vulnerability'],
+  health: ['physicalLoad', 'vulnerability', 'recovery', 'chronicTendency'],
+
+  /** 인생의 큰 전환 — 한 우물이냐 판을 여러 번 바꾸느냐 */
+  majorChange: ['turningPoint', 'continuity', 'selfDriven', 'externallyDriven'],
+
+  /**
+   * 시기 — **여기서 연도를 말하지 않는다.**
+   * 각 전통이 "언제 켜지는가"를 보는 장치가 있는지, 그 해상도가
+   * 어느 정도인지를 적는 자리다. 실제 연도 계산은 LEVEL 7 이 한다.
+   */
+  timing: ['cycleResolution', 'earlyPeak', 'midPeak', 'latePeak'],
 };
 
 export const DOMAINS = Object.keys(AXES);
@@ -64,17 +92,36 @@ export const AXIS_LABEL = {
   competitive: '경쟁·성과', specialist: '전문성', independence: '독립·자영',
   organization: '조직 적응', stability: '안정 추구', change: '변화·변동',
 
-  bonding: '관계 형성', commitment: '결혼 지향', autonomy: '관계 안의 자율',
-  earlyUnion: '이른 결합', lateUnion: '늦은 결합',
-  volatility: '변동성',
+  lead: '주도', outward: '외향', intuitive: '직관', sensitive: '감수성',
+  steady: '꾸준함', adaptive: '적응', analytic: '분석 기질', expressive: '표현',
+  caring: '돌봄 기질', competitive: '경쟁심', independentMind: '독립심', disciplined: '절제',
 
-  childThick: '자녀 자리 두터움', childThin: '자녀 자리 얇음', caregiving: '돌봄 책임',
+  bonding: '관계 형성', commitment: '관계 지속', autonomy: '관계 안의 자율',
+  passion: '끌림의 세기', volatility: '변동성',
+
+  marriageOrientation: '결혼 지향', earlyUnion: '이른 결합', lateUnion: '늦은 결합',
+  spouseStable: '배우자 안정', spouseVolatile: '배우자 변동', partnerElder: '연상 쪽',
+
+  childThick: '자녀 자리 두터움', childThin: '자녀 자리 얇음',
+  caregiving: '돌봄 책임', childLate: '늦은 자녀',
+
   formalContinuity: '정규 과정 지속', credential: '자격·시험', detour: '중단·우회',
-  repeatChallenge: '반복 도전',
-  settled: '정착성', mobile: '이동성', ownership: '소유 지향',
+  repeatChallenge: '반복 도전', selfTaught: '독학·현장학습',
+
   incomeStability: '소득 안정성', accumulation: '자산 축적',
   speculation: '투기·변동', enterprise: '사업성',
+  wealthVolatility: '재물 기복', inheritance: '물려받는 몫',
+
+  settled: '정착성', ownership: '소유 지향', homeExpand: '넓혀 감', homeShrink: '줄여 감',
+  mobile: '이동성', longDistance: '원거리', abroad: '해외', localBound: '생활권 고정',
+
   physicalLoad: '신체 부담', vulnerability: '취약 신호',
+  recovery: '회복력', chronicTendency: '만성 경향',
+
+  turningPoint: '전환점', continuity: '한 우물', selfDriven: '스스로 바꿈',
+  externallyDriven: '떠밀려 바뀜',
+
+  cycleResolution: '시기 해상도', earlyPeak: '초년 고조', midPeak: '중년 고조', latePeak: '말년 고조',
 };
 
 /** 전부 0 인 벡터 */

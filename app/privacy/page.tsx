@@ -71,8 +71,9 @@ export default function PrivacyPage() {
             </li>
           </ul>
           <p className="mt-3">
-            궁합에 입력한 상대방 정보는 브라우저 안에서만 계산하며 서버로 보내거나 저장하지 않습니다.
-            타인의 정보를 입력할 때는 당사자의 동의를 받아 주세요.
+            궁합에 입력한 상대방 정보는 저장하지 않습니다. 다만 궁합 화면에서 AI에게 물으면 두 사람의
+            입력 정보와 계산 결과가 함께 AI 서비스(Anthropic)로 전송됩니다. 타인의 정보를 입력할 때는
+            당사자의 동의를 받아 주세요.
           </p>
         </section>
 
@@ -125,7 +126,7 @@ export default function PrivacyPage() {
           </p>
           <ul className="mt-2 list-disc pl-5 space-y-1">
             <li>이전받는 자: Anthropic, PBC (미국)</li>
-            <li>이전 항목: 질문 내용, 이름, 성별, 생년월일, 태어난 시각, 태어난 곳, 사는 곳, 명반 계산 결과</li>
+            <li>이전 항목: 질문 내용, 이름, 성별, 생년월일, 태어난 시각, 태어난 곳, 사는 곳, 명반 계산 결과 (궁합은 두 사람 모두)</li>
             <li>이전 시기와 방법: AI에게 물을 때마다 암호화된 네트워크로 전송</li>
             <li>이용 목적: AI 운세 풀이 답변 생성</li>
             <li>보유 기간: Anthropic의 API 데이터 보관 정책에 따른 기간</li>

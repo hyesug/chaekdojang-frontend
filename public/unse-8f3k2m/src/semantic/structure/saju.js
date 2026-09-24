@@ -291,6 +291,35 @@ const STRUCTURES = [
       + '"부잣집의 가난한 사람"이라 부르는 자리로, 돈이 오가는 자리에 있으면서도 '
       + '내 것이 되지 않는 쪽입니다.',
   },
+  // ── 재(財) — 쌓이는 쪽 ──
+  // **한쪽 방향만 있으면 그 칸은 한 가지 답밖에 못 낸다.** 위의 군겁쟁재·
+  // 재성충·겁재탈재는 전부 "샌다"는 말이라, 새지 않는 사람에게는 아무 말도
+  // 못 하고 칸이 빈다(열한 명 중 다섯). 고전에 있는 반대쪽을 함께 둔다.
+  // `hires/events.js` 가 '안 된 쪽' 후보 없이 판정했다가 틀린 것과 같은 함정이다.
+  {
+    id: 'jeongjae_present', name: '정재유기', hanja: '正財有氣', domain: 'wealth',
+    source: '자평진전 「논재」 — 正財는 常이라 꾸준히 들어오고 쌓이는 재물이다',
+    test: (f) => f.has('정재').length && !f.wealthClash.length,
+    says: (f) => `정재가 ${f.has('정재').map((x) => `${x.pos}${x.where === '천간' ? '간' : '지'}`).join('·')}에 있고 충을 맞지 않습니다. `
+      + '정재는 달마다 같은 날 들어오는 고정 수입이자 쌓여서 남는 것입니다. '
+      + '크게 벌어들이는 자리는 아니어도 **손에 남는 자리**입니다.',
+  },
+  {
+    id: 'jaego_closed', name: '재고폐장', hanja: '財庫閉藏', domain: 'wealth',
+    source: '적천수 — 庫는 沖하지 않으면 닫혀 있다',
+    test: (f) => f.storage.length > 0 && f.wealthClash.length === 0,
+    says: (f) => `재물 창고(辰戌丑未)가 ${f.storage.length}개인데 충을 맞지 않아 닫혀 있습니다. `
+      + '닫힌 창고는 드나들지 않는 대신 쌓입니다. 큰돈이 오가는 모양은 아니지만 '
+      + '모으기 시작하면 남는 쪽입니다.',
+  },
+  {
+    id: 'sinwang_jaewang', name: '신왕재왕', hanja: '身旺財旺', domain: 'wealth',
+    source: '적천수 — 身旺하고 財旺하면 富格이라',
+    test: (f) => f.strength.level === '신강' && f.group('재성').length >= 2,
+    says: () => '일간이 튼튼하고 재성도 있습니다. 벌이는 일의 크기를 감당할 힘이 '
+      + '함께 있는 자리라, 규모를 키워도 몸이 먼저 무너지지 않는 쪽입니다.',
+  },
+
   {
     id: 'siksang_saengjae', name: '식상생재', hanja: '食傷生財', domain: 'wealth',
     source: '자평진전 — 食傷이 財를 生하면 재물의 길이 열린다',
@@ -333,9 +362,58 @@ const STRUCTURES = [
     },
   },
   {
+    // 여자 명식만 있으면 남자에게는 이 칸이 통째로 빈다(열한 명 중 넷).
+    // 전통은 남명을 財星으로 본다 — 같은 규칙의 짝이다.
+    id: 'jae_scattered', name: '재성분산', hanja: '財星分散', domain: 'relationship',
+    source: '연해자평 — 男命은 財星으로 妻를 본다',
+    // 하나(전일) / 둘 이상(분산) / 없음(무재) 로 빈틈없이 나눈다.
+    // 처음에 1개와 3개 이상만 다뤄서 2개인 사람에게 칸이 통째로 비었다.
+    test: (f, chart) => chart.gender === 'male' && f.group('재성').length >= 2,
+    says: (f) => {
+      const gs = f.group('재성');
+      const open = gs.filter((x) => x.where === '천간');
+      const hid = gs.filter((x) => x.where === '지지');
+      return `남자 명식에서 재성은 여자 자리인데 ${gs.length}개로 흩어져 있습니다`
+        + `(드러난 것 ${open.length} · 숨은 것 ${hid.length}). `
+        + '드러난 것은 겉으로 보이는 관계, 숨은 것은 나중에 오거나 잘 드러나지 않는 관계로 봅니다.';
+    },
+  },
+  {
+    id: 'jae_single', name: '재성전일', hanja: '財星專一', domain: 'relationship',
+    source: '자평진전 「논재」 — 財가 하나로 맑으면 淸이라 한다',
+    test: (f, chart) => chart.gender === 'male' && f.group('재성').length === 1,
+    says: () => '남자 명식에서 재성이 하나뿐입니다. 관계가 여럿으로 갈라지기보다 '
+      + '한 줄기로 이어지는 쪽이고, 그만큼 그 하나에 무게가 실립니다.',
+  },
+  {
+    id: 'no_spouse_star', name: '짝별 없음', hanja: '無配偶星', domain: 'relationship',
+    source: '연해자평 — 女命은 官星, 男命은 財星으로 짝을 본다. 그 별이 없으면 자리가 비었다',
+    test: (f, chart) => (chart.gender === 'female'
+      ? f.group('관성').length === 0 : f.group('재성').length === 0),
+    says: (f, chart) => `${chart.gender === 'female' ? '여자 명식의 관성' : '남자 명식의 재성'}이 `
+      + '하나도 없습니다. 짝을 가리키는 별이 원국에 없는 자리입니다. '
+      + '인연이 없다는 뜻이 아니라 **명식이 그 자리를 말해 주지 않는다**는 뜻이라, '
+      + '관계의 모양은 대운으로 들어오는 때에 따라 달라집니다.',
+  },
+  {
+    id: 'no_wealth', name: '무재', hanja: '無財', domain: 'wealth',
+    source: '연해자평 — 財星이 없으면 財의 자리가 비었다',
+    test: (f) => f.group('재성').length === 0,
+    says: () => '재성이 없습니다. 돈을 가리키는 별이 원국에 없어, '
+      + '버는 힘·쌓이는 힘을 명식만으로는 말할 수 없는 자리입니다. '
+      + '가난하다는 뜻이 아니라 **이 자리는 대운이 들어와야 켜진다**는 뜻입니다.',
+  },
+  {
+    id: 'gwan_single', name: '관성전일', hanja: '官星專一', domain: 'relationship',
+    source: '자평진전 「논관」 — 官이 하나면 貴하다',
+    test: (f, chart) => chart.gender === 'female' && f.group('관성').length === 1,
+    says: () => '여자 명식에서 관성이 하나뿐입니다. 관계가 여럿으로 갈라지기보다 '
+      + '한 줄기로 이어지는 쪽이고, 그만큼 그 하나에 무게가 실립니다.',
+  },
+  {
     id: 'gwan_scattered', name: '관성분산', hanja: '官星分散', domain: 'relationship',
     source: '연해자평 — 女命은 官星으로 夫를 본다',
-    test: (f, chart) => chart.gender === 'female' && f.group('관성').length >= 3,
+    test: (f, chart) => chart.gender === 'female' && f.group('관성').length >= 2,
     says: (f) => {
       const gs = f.group('관성');
       const open = gs.filter((x) => x.where === '천간');

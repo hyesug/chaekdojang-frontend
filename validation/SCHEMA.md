@@ -99,3 +99,37 @@ node scripts/analyze-career.mjs --loo   # 체계 × 속성 성능 + 사람 단�
 예측력을 증명하는 자료가 아닙니다. 검증이 얇은 자리는 `provisional` 로
 표시하고, 규칙은 `한 사람 때문에 고치지 않는다`는 원칙으로 다룹니다
 (`src/semantic/README.md`).
+
+
+---
+
+## 시나리오 층을 채점하려면 (`scripts/validate-scenario.mjs`)
+
+`{domain, year, month, what}` 만으로는 **시기와 국면까지만** 잴 수 있습니다.
+사건 종류·방향·지역은 정답 라벨이 없으면 잴 수 없고, `what` 문장을 읽어
+짐작해 채우면 그건 채점이 아니라 답을 베끼는 일입니다.
+
+재고 싶으면 사건마다 아래를 적으세요. **모르면 비워 두세요.**
+
+```json
+{
+  "domain": "직업",
+  "year": 2021, "month": 10,
+  "what": "다른 회사로 옮김",
+
+  "eventType": "job_change",
+  "direction": "job_change",
+  "location": { "metro": "대전", "district": "유성구" }
+}
+```
+
+- `eventType` 은 `src/semantic/timing/events.js` 의 `EVENT_CANDIDATES` 키입니다.
+  직업이면 `first_job · job_change · role_change · promotion · resignation ·
+  freelance · business_start · career_break · return_to_work` 중 하나입니다.
+- 사람마다 `currentState` 를 적으면 상태 기계가 갈 수 없는 후보를 지웁니다.
+  ```json
+  { "id": "P01", "birth": {...}, "currentState": { "employmentType": "employed" } }
+  ```
+  적지 않으면 아무것도 지우지 않습니다 — 그게 맞습니다. 모르는 것을
+  추측해 지우면 없는 근거로 후보를 깎게 됩니다.
+- 라벨을 나중에 붙여도 됩니다. 붙은 사건만 그 지표에서 채점됩니다.

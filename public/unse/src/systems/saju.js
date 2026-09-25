@@ -248,7 +248,7 @@ export function analyze(input) {
   const balance = [];
   if (dist.pct[strong] >= 35) balance.push(ELEMENT_EXCESS[strong]);
   if (dist.missing.length) {
-    balance.push(`사주에 ${dist.missing.map((i) => ELEMENTS[i]).join('·')}이(가) 거의 없습니다. ` + ELEMENT_LACK[dist.missing[0]]);
+    balance.push(`사주에 ${j(dist.missing.map((i) => ELEMENTS[i]).join('·'), '이')} 거의 없습니다. ` + ELEMENT_LACK[dist.missing[0]]);
   } else if (dist.pct[weak] <= 12) {
     balance.push(ELEMENT_LACK[weak]);
   }
@@ -608,7 +608,7 @@ export function forecast(input, chart, period) {
   }
 
   const relText = rel.length
-    ? ` 일지와 ${rel.map((x) => x.kind).join('·')}이(가) 걸려 ${rel.some((x) => x.good) ? '일이 풀리는' : '흔들리는'} 결이 더해집니다.`
+    ? ` 일지와 ${j(rel.map((x) => x.kind).join('·'), '이')} 걸려 ${rel.some((x) => x.good) ? '일이 풀리는' : '흔들리는'} 결이 더해집니다.`
     : '';
 
   return {

@@ -14,6 +14,7 @@
 
 import { AXIS_LABEL } from './axes.js';
 import { INDEPENDENT_LINEAGES } from './lineage.js';
+import { j } from '../core/josa.js';
 
 const pct = (p) => `${Math.round(p * 100)}%`;
 
@@ -40,7 +41,7 @@ export function narrateCareer(r) {
     .slice(0, 3);
   if (agreed.length) {
     out.push(`계산 재료가 서로 다른 ${agreed[0][1].independent}개 계보에서 ` +
-      `${agreed.map(([k]) => AXIS_LABEL[k]).join('·')}이(가) 되풀이됩니다.`);
+      `${j(agreed.map(([k]) => AXIS_LABEL[k]).join('·'), '이')} 되풀이됩니다.`);
   } else {
     out.push('서로 독립인 계보끼리 겹치는 축은 없습니다 — 한 체계의 말에 기대고 있다는 뜻입니다.');
   }

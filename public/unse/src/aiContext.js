@@ -311,7 +311,9 @@ export function buildContext(form, r, f = null) {
     : '';
 
   out.push('## 기본');
-  out.push(`${form.name} · ${form.gender === 'male' ? '남성' : '여성'} · 만 ${input.age}세`);
+  // 이름은 선택 입력이다. 비워 두면 'undefined · 여성 · 만 34세' 가 문맥에 실렸다
+  out.push([form.name?.trim(), form.gender === 'male' ? '남성' : '여성', `만 ${input.age}세`]
+    .filter(Boolean).join(' · '));
   out.push(`양력 ${when}${tst}`);
   out.push(`음력 ${lunar.year}.${lunar.isLeap ? '윤' : ''}${lunar.month}.${lunar.day}`);
   out.push(`출생 ${form.birthPlace} · 거주 ${form.homePlace} (${input.moveDirection}쪽으로 이동)`);
@@ -602,7 +604,7 @@ export const READING_PROMPT =
 export function buildCompatContext(formA, formB, c, forecastA = null, forecastB = null) {
   const out = [];
   const s = c.synthesis;
-  const who = (f) => `${f.name} · ${f.gender === 'male' ? '남성' : '여성'} · ` +
+  const who = (f) => `${f.name?.trim() ? `${f.name.trim()} · ` : ''}${f.gender === 'male' ? '남성' : '여성'} · ` +
     `양력 ${f.year}년 ${f.month}월 ${f.day}일` +
     (f.hour == null ? ' (시각 미상)' : ` ${p2(f.hour)}시 ${p2(f.minute)}분`) +
     ` · ${f.birthPlace} 출생`;

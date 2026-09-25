@@ -207,7 +207,7 @@ export function compare(a, b) {
   ];
   if (risky.length) {
     readings.push({
-      title: `${risky.map((x) => x.house.name).join('과 ')}이(가) 걸려 있습니다`,
+      title: `${j(risky.map((x) => x.house.name).join('과 '), '이')} 걸려 있습니다`,
       text: '마하보테에서 마라나는 잃는 자리, 라후는 예측이 어려운 자리입니다. 관계가 나쁘다는 뜻이 아니라, 이 사람의 삶 자체에 변동이 크다는 뜻입니다. 곁에 있는 쪽이 그 변동을 함께 겪게 되니 미리 알고 있는 편이 낫습니다.',
     });
   }

@@ -211,7 +211,7 @@ export function analyze(input) {
     readings.push({
       title: `명궁 주성 — ${lead}(${STARS[lead].hanja})`,
       text: STARS[lead].text + (mainStars.length > 1
-        ? ` 명궁에 ${mainStars.filter((s) => s !== lead).join('·')}이(가) 함께 들어 성격이 겹쳐 나타납니다.`
+        ? ` 명궁에 ${j(mainStars.filter((s) => s !== lead).join('·'), '이')} 함께 들어 성격이 겹쳐 나타납니다.`
         : ''),
     });
   } else {
@@ -273,7 +273,7 @@ export function analyze(input) {
   readings.push({
     title: '질액궁 — 몸의 리듬을 보는 자리',
     text: healthStars.length
-      ? `몸의 자리에 ${healthStars.join('·')}이(가) 들었습니다. ` +
+      ? `몸의 자리에 ${j(healthStars.join('·'), '이')} 들었습니다. ` +
         (healthStars.some((s) => s === '칠살' || s === '파군')
           ? '한 번 무리한 뒤에 회복 시간을 놓치지 않는 것이 특히 중요합니다. 바쁠수록 수면과 식사 시간을 먼저 지키는 쪽이 맞습니다.'
           : healthStars.some((s) => s === '천동' || s === '천량' || s === '천부')
@@ -477,8 +477,8 @@ export function compare(a, b) {
       {
         title: '부처궁과 상대의 명궁',
         text: (matchAB.length || matchBA.length)
-          ? `${matchAB.length ? `${a.name}의 부처궁에 든 ${matchAB.join('·')}이(가) ${b.name}의 명궁에도 있습니다. ` : ''}` +
-            `${matchBA.length ? `${b.name}의 부처궁에 든 ${matchBA.join('·')}이(가) ${a.name}의 명궁에도 있습니다. ` : ''}` +
+          ? `${matchAB.length ? `${a.name}의 부처궁에 든 ${j(matchAB.join('·'), '이')} ${b.name}의 명궁에도 있습니다. ` : ''}` +
+            `${matchBA.length ? `${b.name}의 부처궁에 든 ${j(matchBA.join('·'), '이')} ${a.name}의 명궁에도 있습니다. ` : ''}` +
             '자미두수에서 이 겹침을 중요하게 봅니다. 마음속에 그리던 상(像)과 상대의 실제 모습이 포개진다는 뜻이라, 처음부터 "이 사람이구나" 하는 느낌이 옵니다.'
           : '두 사람의 부처궁 별과 상대의 명궁 별이 겹치지 않습니다. 첫인상에서 확 끌리는 조합은 아니라는 뜻입니다. 다만 자미두수에서 부처궁은 평생 바뀌지 않는 이상형에 가깝고, 실제 인연은 겪으면서 만들어지는 쪽이 더 많습니다.',
       },
@@ -559,7 +559,7 @@ export function forecast(input, chart, period) {
     headline: `${palace}에 얹힘${stars.length ? ' · ' + stars.join('·') : ' · 공궁'}`,
     text: `이 시기의 기운이 원국의 ${palace}에 떨어집니다. ` +
       (stars.length
-        ? `${stars.join('·')}이(가) 든 자리라 그 별의 성질이 이 시기에 드러납니다.`
+        ? `${j(stars.join('·'), '이')} 든 자리라 그 별의 성질이 이 시기에 드러납니다.`
         : '주성이 없는 자리라 큰 사건 없이 지나갈 가능성이 높습니다.'),
     areas,
   };

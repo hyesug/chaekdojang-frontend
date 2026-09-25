@@ -174,6 +174,44 @@ function spanFromQuestion(q, thisYear) {
  * @param {string} question
  * @param {number} thisYear 사주 연도 기준 올해
  */
+/**
+ * 사용자가 **체계·기법·배치를 콕 집어** 물었는가.
+ *
+ * "태양과 MC로 보면 직업이 뭐야"는 서양점성술을 지정한 질문이다. 여기에
+ * 자미두수·베딕을 얹으면 묻지 않은 것을 답하는 것이고, 무엇보다 **어느 체계가
+ * 한 말인지 묻는 사람이 이미 정해 놓은 것을 무시하는 것**이다.
+ *
+ * 분야 라우팅(직업·재물…)과는 다른 축이다. 분야는 "무엇을 묻는가",
+ * 이건 "무엇으로 보라고 하는가"다. **지정이 있으면 지정이 이긴다.**
+ */
+const SCOPE = [
+  ['서양점성술', /태양|MC|엠씨|미드헤븐|어센던트|상승궁|하우스|점성술|별자리|행성|금성|화성|목성|토성|수성|천왕성|해왕성/],
+  ['자미두수', /자미|두수|관록궁|재백궁|명궁|부처궁|자녀궁|전택궁|질액궁|복덕궁|천이궁|노복궁|형제궁|부모궁|사화|대한/],
+  ['사주', /사주|대운|세운|십성|일간|원국|팔자|천간|지지|용신|격국|재성|관성|인성|식상|비겁/],
+  ['베딕', /베딕|다샤|나밤샤|라그나|D1|D9|D10|분할도|아야남사|나크샤트라/],
+  ['주역', /주역|괘|효|점괘|점시/],
+  ['구성학', /구성학|구성|방위반|본명성|오황|세파/],
+  ['숙요', /숙요|숙|나크샤트라/],
+  ['토정비결', /토정/],
+  ['카발라', /카발라|생명나무|세피라|라이프 ?패스|수비학/],
+  ['육임', /육임|사과삼전/],
+  ['홍국기문', /홍국|기문|팔문/],
+  ['태을신수', /태을/],
+  ['마하보테', /마하보테/],
+  ['태국 점성술', /태국/],
+  ['타로', /타로/],
+];
+
+/** "종합해서 봐줘" 처럼 **일부러 여러 체계를 부른** 말 */
+const ASK_ALL = /종합|합쳐|다 ?봐|전부|모든 체계|여러 체계|열다섯|15개|전체 ?풀이/;
+
+export function scopeLockOf(question) {
+  const q = String(question ?? '');
+  if (ASK_ALL.test(q)) return null;                 // 본인이 전부를 불렀다
+  const named = SCOPE.filter(([, re]) => re.test(q)).map(([name]) => name);
+  return named.length ? [...new Set(named)] : null;
+}
+
 export function routeQuestion(question, thisYear) {
   const q = String(question ?? '');
   // 먼저 나온 낱말이 그 사람이 정말로 묻는 것이다. "이직할까요? 이사도
@@ -261,6 +299,8 @@ export function routeQuestion(question, thisYear) {
     // "지금 이걸 해도 될까" 처럼 **현재 의사결정**을 묻는 질문이다.
     // 이때만 질문시각으로 괘를 세운다 — 평생·시기 질문은 명반이 답할 자리다
     needsHorary: isHoraryQuestion(q),
+    // 사용자가 체계를 지정했으면 그 지정이 분야 라우팅보다 앞선다
+    scopeLock: scopeLockOf(q),
     // 그 분야에 '안 된 쪽' 후보가 있는가. 없으면 점수가 높아도 "된다"가 아니다
     hasNegativeCandidate: NEGATIVE_CANDIDATES[domains[0]] ?? false,
     needsPlace: PLACE_WORDS.some((w) => q.includes(w)) || cities.length > 0,

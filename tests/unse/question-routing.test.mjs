@@ -18,7 +18,9 @@ import { readFileSync } from 'node:fs';
 import { readFortune } from '../../public/unse/src/engine.js';
 import { readForecast } from '../../public/unse/src/forecast.js';
 import { buildContext } from '../../public/unse/src/aiContext.js';
-import { routeQuestion } from '../../public/unse/src/hires/router.js';
+import { routeQuestion, scopeLockOf } from '../../public/unse/src/hires/router.js';
+import { buildHiRes } from '../../public/unse/src/hires/context.js';
+import { modernHouse } from '../../public/unse/src/semantic/structure/western.js';
 import { horaryCast, isHoraryQuestion, formatHorary } from '../../public/unse/src/systems/horary.js';
 import juyeok from '../../public/unse/src/systems/juyeok.js';
 import { yearDirections } from '../../public/unse/src/systems/gujeong.js';
@@ -201,6 +203,18 @@ test('지괘는 동효 하나만 뒤집은 괘다', () => {
 
 const PROMPT = readFileSync('app/fortune-ai/route.ts', 'utf8');
 
+test('프롬프트 안에 백틱이나 ${ 가 없다 (있으면 빌드가 깨진다)', () => {
+  // SYSTEM 프롬프트는 템플릿 리터럴이라 본문에 백틱을 쓰면 문자열이 거기서
+  // 끊기고, ${ 는 보간으로 읽힌다. 실제로 한 번 빌드를 깼다.
+  const open = PROMPT.indexOf('const SYSTEM = `');
+  const body = PROMPT.slice(open + 'const SYSTEM = `'.length);
+  const end = body.indexOf('`;');          // 닫는 백틱은 줄 끝에 붙어 있다
+  assert.ok(end > 0, 'SYSTEM 리터럴의 끝을 찾아야 한다');
+  const inner = body.slice(0, end);
+  assert.ok(!inner.includes('`'), '프롬프트 본문에 백틱이 있으면 안 된다');
+  assert.ok(!inner.includes('${'), '프롬프트 본문에 ${ 가 있으면 안 된다');
+});
+
 test('지어내기 금지가 프롬프트에 남아 있다', () => {
   assert.match(PROMPT, /계산에 없는 사실·확률·고유명사·사건은 단정이 아니라 창작/);
   assert.match(PROMPT, /퍼센트를 만들지 말고/);
@@ -226,6 +240,87 @@ test('근거가 모이면 단정하라는 규칙이 있다', () => {
   assert.match(PROMPT, /Tier S 또는 A/);
   assert.match(PROMPT, /가장 강한 시기는 2028년이다/);
   assert.match(PROMPT, /직업 변화가 먼저이고 주거 이동이 뒤따르는 흐름이다/);
+});
+
+/* ── 질문 범위 잠금 ─────────────────────────────────────────── */
+
+test('체계를 지정하면 그 체계가 잠긴다', () => {
+  assert.deepEqual(scopeLockOf('태양과 MC를 볼 때 직업은?'), ['서양점성술']);
+  assert.deepEqual(scopeLockOf('재백궁과 관록궁으로 보면?'), ['자미두수']);
+  assert.deepEqual(scopeLockOf('대운으로 보면 언제 이직해?'), ['사주']);
+  assert.deepEqual(scopeLockOf('다샤로는 지금 어떤 시기야?'), ['베딕']);
+});
+
+test('체계를 안 대면 잠그지 않는다', () => {
+  for (const q of ['올해 어때요', '자녀운 어때', '이직할 수 있을까']) {
+    assert.equal(scopeLockOf(q), null, `잠기면 안 된다: ${q}`);
+  }
+});
+
+test('"종합해서"라고 하면 잠그지 않는다', () => {
+  assert.equal(scopeLockOf('대운이랑 자미 다 종합해서 봐줘'), null);
+  assert.equal(scopeLockOf('열다섯 체계 전부로 봐줘'), null);
+});
+
+test('여럿을 대면 그만큼만 잠근다', () => {
+  const s = scopeLockOf('사주 대운이랑 자미 관록궁으로 보면?');
+  assert.deepEqual(s.sort(), ['사주', '자미두수']);
+});
+
+test('잠금이 걸리면 문맥 맨 앞에 적힌다', () => {
+  const r = readFortune(BIRTH, { now: NOW });
+  const plan = route('태양과 MC로 볼 때 직업은?');
+  const text = buildHiRes(r, readForecast(BIRTH, NOW), plan).text;
+  const head = text.slice(0, 700);
+  assert.match(head, /※ 질문 범위 잠금/, '맨 앞에 와야 한다');
+  assert.match(head, /서양점성술/);
+  assert.match(head, /끌어다 쓰지 않는다/);
+  assert.match(head, /분야 라우팅보다 이 지정이 앞선다/);
+});
+
+test('잠금이 없으면 그 구획을 넣지 않는다', () => {
+  const r = readFortune(BIRTH, { now: NOW });
+  const text = buildHiRes(r, readForecast(BIRTH, NOW), route('올해 어때요')).text;
+  assert.ok(!text.includes('질문 범위 잠금'), '잠금이 없으면 조용해야 한다');
+});
+
+test('범위 잠금 규칙이 프롬프트에 있다', () => {
+  assert.match(PROMPT, /## 질문 범위 잠금 — 부른 것만 씁니다/);
+  assert.match(PROMPT, /분야 라우팅보다\s*\n?앞섭니다|분야 라우팅보다 앞섭니다/);
+  assert.match(PROMPT, /그 체계로는 여기까지/);
+  assert.match(PROMPT, /### 묻지 않은 축으로 넓히지 마세요/);
+  for (const s of ['이직 시기·재물·창업·방위·건강', '시기 예측을 하지 않습니다',
+    '수입 유형을 분석하지 않습니다', '창업 가능성을 판정하지 않습니다']) {
+    assert.ok(PROMPT.includes(s), `빠진 규칙: ${s}`);
+  }
+});
+
+test('배치를 직업 하나로 바로 좁히지 말라는 규칙이 있다', () => {
+  assert.match(PROMPT, /### 배치 하나를 직업 하나로 바로 좁히지 마세요/);
+  assert.match(PROMPT, /7하우스 → 고객·파트너·계약·대인관계/);
+  assert.match(PROMPT, /7하우스 → 상담사·심사역/);
+  assert.match(PROMPT, /공통 기능을 먼저 뽑고/);
+});
+
+test('빈 하우스를 약한 하우스로 읽지 않는다 — 프롬프트와 엔진 양쪽', () => {
+  assert.match(PROMPT, /### 빈 하우스는 약한 하우스가 아닙니다/);
+  // 엔진 쪽 문구도 같이 고정한다. 프롬프트만 고치면 문맥이 반대로 말한다
+  const empty = modernHouse(
+    { results: { astro: { name: '점성술', facts: [] } } }, 5, '자녀');
+  assert.match(empty.text, /빈 하우스는 약한 하우스가 아닙니다/);
+  assert.match(empty.text, /그 하우스의 주인이 어디서 무엇을 하는지/);
+  assert.ok(!empty.text.includes('삶의 앞자리로 나오지 않는다'),
+    '옛 문구가 남아 있으면 안 된다');
+});
+
+test('D1/D9/D10 혼용 금지와 계산 충돌 처리 규칙이 있다', () => {
+  assert.match(PROMPT, /D1 · D9 · D10의 하우스와 궁주를 섞지 마세요/);
+  assert.match(PROMPT, /계산값끼리 어긋나면 해석하지 말고 계산 오류로 다루세요/);
+});
+
+test('강하게 말하는 범위를 질문 범위로 묶는다', () => {
+  assert.match(PROMPT, /강하게 말하는 것은 질문 범위 안에서입니다/);
+  assert.match(PROMPT, /핵심 배치가 실제로 지지하는 범위까지만/);
 });
 
 test('강한 답변과 과도한 구체화를 가르는 규칙이 있다', () => {

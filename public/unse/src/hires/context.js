@@ -520,6 +520,16 @@ const cap = (arr, n) => arr.slice(0, n);
 export function formatHiRes(j, plan) {
   const out = [];
   out.push('## 고해상도 계산 (기간 ' + j.period + ')');
+  // **질문 범위 잠금은 맨 앞에 온다.** 뒤에 적으면 이미 다 읽고 난 다음이라
+  // 늦는다. 분야 라우팅보다 앞선다는 것도 여기서 못박는다
+  if (plan?.scopeLock?.length) {
+    out.push('');
+    out.push(`### ※ 질문 범위 잠금 — 사용자가 **${plan.scopeLock.join(' · ')}**를 지정했다`);
+    out.push('이 체계(와 그 안의 지정된 배치)로만 답한다. 아래에 다른 체계 계산이 함께'
+      + ' 실려 있어도 **끌어다 쓰지 않는다.** 분야 라우팅보다 이 지정이 앞선다.');
+    out.push('지정한 체계에 답이 없으면 "그 체계로는 여기까지"라고 밝히고 멈춘다 —'
+      + ' 다른 체계로 메우지 않는다. 사용자가 "종합해서"라고 할 때만 나머지를 켠다.');
+  }
   out.push(`신뢰도 표기 — ${CONFIDENCE_LEGEND}`);
   if (j.matchedQuestion === false) {
     out.push('※ 질문에서 분야를 가려내지 못해 기본 분야(직업·재물·관계)로 계산했다. 분야가 다르면 그렇다고 밝힐 것.');

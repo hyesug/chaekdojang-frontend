@@ -92,6 +92,56 @@ const PAIR_QUICK = [
 /** 지금 화면에 걸린 빠른 질문 목록 */
 let quick = SOLO_BASE;
 
+/**
+ * 글자를 클립보드에 넣는다.
+ *
+ * `navigator.clipboard` 는 https(또는 localhost)에서만 돌고, 권한이 막히면
+ * 예외를 던진다. 그럴 때를 위해 옛 방식(`execCommand`)을 남겨 둔다.
+ * **성공 여부를 돌려준다** — 실패했는데 "복사됨"이라고 적으면 안 된다.
+ */
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch { /* 아래 옛 방식으로 */ }
+
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  // 화면 밖에 두되 focus 가 가야 하므로 display:none 은 쓸 수 없다
+  ta.setAttribute('readonly', '');
+  ta.style.cssText = 'position:fixed;top:0;left:-9999px;opacity:0';
+  document.body.appendChild(ta);
+  ta.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch { ok = false; }
+  ta.remove();
+  return ok;
+}
+
+/**
+ * 답 하나에 복사 단추를 단다.
+ *
+ * 복사하는 것은 화면에 그려진 HTML 이 아니라 **모델이 보낸 원문**이다.
+ * 붙여 넣었을 때 태그가 딸려 가면 쓸 수가 없다.
+ *
+ * 스트리밍 도중에는 `bubble.innerHTML` 이 계속 다시 그려지므로, 단추는
+ * 다 받은 뒤에만 붙인다.
+ */
+function addCopy(bubble, text) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'ai-copy';
+  b.textContent = '복사';
+  b.title = '이 답을 그대로 복사합니다';
+  b.addEventListener('click', async () => {
+    const ok = await copyText(text);
+    b.textContent = ok ? '복사됨' : '복사 실패';
+    b.classList.toggle('done', ok);
+    setTimeout(() => { b.textContent = '복사'; b.classList.remove('done'); }, 1500);
+  });
+  bubble.appendChild(b);
+}
+
 export function aiSection(mode = 'solo', view = null) {
   quick = mode === 'pair' ? PAIR_QUICK : suggestedQuick(view);
   return `
@@ -243,13 +293,17 @@ function wire(context, calc = null, compat = null) {
           } else if (ev.error) {
             throw new Error(ev.error);
           } else if (ev.done) {
-            showUsage(ev.usage);
+            // 비용 표시가 터져도 답은 살아야 한다. 이 호출이 바깥 try 로
+            // 새면 **이미 다 받아 그려 놓은 답이 오류 메시지로 덮인다**
+            // (usage 모양이 조금만 달라져도 그렇게 됐다).
+            try { showUsage(ev.usage); } catch { /* 값만 못 적을 뿐이다 */ }
           }
         }
       }
 
       if (!acc) throw new Error('빈 응답이 돌아왔습니다.');
       session.messages.push({ role: 'assistant', content: acc });
+      addCopy(bubble, acc);
     } catch (err) {
       bubble.innerHTML = `<p class="ai-err">${esc(err.message)}</p>`;
       // 실패한 질문은 기록에서 빼둔다. 다음 질문에 딸려 올라가지 않도록.

@@ -20,6 +20,7 @@ import { readSpouse, spousePalaceStars, spouseVerdict }
 import { readStructures } from '../public/unse/src/semantic/structure/saju.js';
 import { lifeChapters, chaptersAt } from '../public/unse/src/semantic/compose/life.js';
 import { childrenPack, marriagePack } from '../public/unse/src/hires/vedicExt.js';
+import { merge } from '../public/unse/src/semantic/compose/consensus.js';
 
 const ALL = ['사주', '자미두수', '점성술', '베딕', '주역', '육임', '홍국기문', '태을신수',
   '구성학', '숙요', '토정비결', '카발라', '마하보테', '태국 점성술', '타로'];
@@ -93,11 +94,27 @@ console.log(`# ${who}`);
   const teR = (te?.readings ?? []).find((x) => /주산|객산/.test(x.title));
   if (teR) reads.push({ system: '태을신수', what: teR.title, text: teR.text });
 
+  // 상충하지 않는 면들을 **합친다.** 따로 두고 각각 물러서면 아무 말도 안 된다
+  const facets = [];
+  const has = (n) => st.some((x) => x.name === n);
+  if (has('상관견관')) facets.push({ system: '사주 상관견관', facet: '제도가 정해 준 길보다 자기 기술로 가는 쪽' });
+  if (has('관살혼잡')) facets.push({ system: '사주 관살혼잡', facet: '한 곳에 오래 있기보다 여러 군데를 거치는 쪽' });
+  if (has('관유인무')) facets.push({ system: '사주 관유인무', facet: '자격·학위로 들어가는 길은 문턱에서 막히는 쪽' });
+  const careerStar = (zw?.readings ?? []).find((x) => x.title.startsWith('관록궁'));
+  if (/고정되지 않습니다/.test(careerStar?.text ?? '')) {
+    facets.push({ system: '자미 관록궁', facet: '일의 성격이 한 갈래로 고정되지 않는 쪽' });
+  }
+  if (/주산이 크다/.test(teR?.text ?? '')) {
+    facets.push({ system: '태을 주산', facet: '급히 판을 바꾸기보다 자리를 지키며 옮기는 쪽' });
+  }
+
   section('① 나는 직업 전환이 있을까?', reads, [
-    '**이 축은 저희가 재 봤더니 졌습니다.** 열다섯을 다 재도 순열검정 p=0.423 —'
-      + ' 1위(토정 8/10)가 우연과 구별되지 않았습니다. 위 전통 읽기를 그대로 옮기되'
-      + ' "이직할 사람인지 한 우물 팔 사람인지"는 단정하지 않습니다.',
-  ]);
+    merge(facets) ? `**${merge(facets)}** — 이 다섯은 서로 반대말이 아니라 다른 면입니다.`
+      + ' 상충이 없어 합쳐서 봅니다.' : null,
+    '**다만 이 축은 저희가 재 봤더니 졌습니다.** 열다섯을 다 재도 순열검정 p=0.423 —'
+      + ' 1위(토정 8/10)가 우연과 구별되지 않았습니다. 전통이 뭐라 하는지는 위와 같고,'
+      + ' 그것이 맞는다고는 말하지 않습니다.',
+  ].filter(Boolean));
 }
 
 // ── ② 배우자 ──

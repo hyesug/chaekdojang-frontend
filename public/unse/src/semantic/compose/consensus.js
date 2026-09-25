@@ -73,10 +73,41 @@ export function consensusOf(claims) {
     };
   }
 
+  // 반대가 아닌 다른 말이 함께 있으면 **보완**이다 — 서로 다른 면을 말하는 것이지
+  // 다투는 것이 아니다. 이걸 '하나뿐'으로 다루면 전부 물러서게 된다.
+  //
+  //   상관견관 "자기 기술로" + 관살혼잡 "여러 군데" + 태을 "자리를 지킬 때 유리"
+  //   → 셋은 상충하지 않는다. 합치면 한 사람의 모양이 나온다.
+  const others = said.filter((c) => c.stance !== stance);
+  if (others.length) {
+    return {
+      verdict: '보완', stance, agree, against: [], others, all: claims,
+      say: `${said.map((c) => c.system).join('·')}가 서로 다른 면을 말합니다. 반대말은 없어 합쳐서 봅니다.`,
+    };
+  }
+
   return {
     verdict: '하나', stance, agree, against: [], all: claims,
     say: `${agree[0].system} 한 곳에서만 나옵니다. 반대로 보는 곳은 없지만 받쳐 주는 곳도 없습니다.`,
   };
+}
+
+/**
+ * 상충하지 않는 여러 면을 **한 문장으로 합친다.**
+ *
+ * 이게 "종합해서 구체적으로"의 실체다. 상충만 빼고 나머지는 이어 붙이면
+ * 한 사람의 모양이 나온다 — 하나씩 따로 두고 각각 "한 곳에서만 나온
+ * 말입니다"를 붙이면 아무 말도 아니게 된다.
+ *
+ * @param {{system:string, facet:string}[]} facets 상충 검사를 통과한 면들
+ */
+export function merge(facets) {
+  const fs = facets.filter((f) => f?.facet);
+  if (!fs.length) return null;
+  if (fs.length === 1) return `${fs[0].facet} (${fs[0].system})`;
+  const head = fs.slice(0, -1).map((f) => `${f.facet}(${f.system})`).join(', ');
+  const tail = fs[fs.length - 1];
+  return `${head}, 그리고 ${tail.facet}(${tail.system})`;
 }
 
 /**

@@ -23,6 +23,7 @@ import { j } from '../../core/josa.js';
 import { buildBoard } from '../../hires/ziwei.js';
 import { PALACES } from '../../systems/jamidusu.js';
 import { consensusOf, consensusRange, phrase } from '../compose/consensus.js';
+import { genderOf, CHILD_GENDER } from './school.js';
 
 /**
  * 자녀궁에 든 주성을 판에서 직접 꺼낸다.
@@ -114,9 +115,9 @@ function sajuGender(chart) {
       + (both
         ? ` ${pair[0]}과 ${pair[1]}이 섞여 있어 아들·딸이 함께 있는 쪽으로 봅니다.`
         : ` ${kinds[0]} 한 종류입니다.`)
-      + ` **성별은 여기서 갈립니다** — 같은 ${j(kinds[0], '을')} 두고 딸이라 적은 책과`
-      + ` 아들이라 적은 책이 둘 다 있습니다. 한쪽을 골라 말하면 그 순간 근거가 사라지므로`
-      + ` 갈린다는 것까지만 말합니다.`,
+      + ` 성별은 **${kinds.map((k) => `${k}=${genderOf(gender, k) ?? '—'}`).join(' · ')}**`
+      + ` 로 봅니다(${CHILD_GENDER.school}). ${CHILD_GENDER.other}.`,
+    genders: [...new Set(kinds.map((k) => genderOf(gender, k)).filter(Boolean))],
   };
 }
 
@@ -175,6 +176,7 @@ export function readChildren(chart, ziweiChildStars = [], vedic = null) {
     // 자미의 수 표와 같은 축에 놓으면 있지도 않은 상충이 만들어진다.
     topicKey: '열림',
     stance: g.count >= 1 ? '많음' : '적음',
+    genders: g.genders ?? [],
   });
 
   // ── 베딕 — D7(삽탐샤)이 자녀 전용 분할도다 ──
@@ -239,9 +241,13 @@ export function childrenVerdict(reads) {
     lines.push(r.say);
   }
 
-  // 성별은 한 체계 안에서 유파가 갈린다 — 규칙대로 뺀다
-  lines.push('성별은 말하지 않습니다. 같은 십성을 딸로 적은 책과 아들로 적은 책이 둘 다 있어,'
-    + ' 한쪽을 고르면 근거가 사라집니다.');
+  // 유파를 골랐으므로 성별도 말한다. 고른 것을 밝히는 것이 조건이다
+  const gs = [...new Set(reads.flatMap((x) => x.genders ?? []))];
+  if (gs.length === 1) {
+    lines.push(`성별은 **${gs[0]}** 쪽입니다(${CHILD_GENDER.school}). ${CHILD_GENDER.other}.`);
+  } else if (gs.length > 1) {
+    lines.push(`성별은 **${gs.join('과 ')}이 함께** 있는 쪽입니다(${CHILD_GENDER.school}).`);
+  }
 
   return { consensus: c, range: r, lines: lines.filter(Boolean) };
 }

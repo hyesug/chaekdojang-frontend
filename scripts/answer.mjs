@@ -20,9 +20,10 @@ import { readSpouse, spousePalaceStars, spouseVerdict }
 import { readStructures } from '../public/unse/src/semantic/structure/saju.js';
 import { lifeChapters, chaptersAt } from '../public/unse/src/semantic/compose/life.js';
 import { childrenPack, marriagePack } from '../public/unse/src/hires/vedicExt.js';
-import { merge } from '../public/unse/src/semantic/compose/consensus.js';
+import { merge, consensusOf } from '../public/unse/src/semantic/compose/consensus.js';
+import { westernPair } from '../public/unse/src/semantic/structure/western.js';
 
-const ALL = ['사주', '자미두수', '점성술', '베딕', '주역', '육임', '홍국기문', '태을신수',
+const ALL = ['사주', '자미두수', '점성술(현대)', '고전 서양', '베딕', '주역', '육임', '홍국기문', '태을신수',
   '구성학', '숙요', '토정비결', '카발라', '마하보테', '태국 점성술', '타로'];
 
 const args = process.argv.slice(2);
@@ -56,7 +57,8 @@ function section(title, reads, verdictLines) {
   console.log('━'.repeat(78));
   console.log(`  ${title}`);
   console.log('━'.repeat(78));
-  const said = new Set(reads.map((x) => x.system.replace(/\(.*\)/, '').trim()));
+  // '사주(격)' 은 사주로 접되 '점성술(현대)' 는 그대로 둔다 — 고전과 다른 체계다
+  const said = new Set(reads.map((x) => x.system.replace(/\(격\)/, '').trim()));
   for (const x of reads) {
     console.log(`  [${x.system}] ${x.what ?? ''}`);
     console.log(`      ${wrap(x.text)}`);
@@ -93,6 +95,7 @@ console.log(`# ${who}`);
   const te = r.results.find((x) => x.name === '태을신수');
   const teR = (te?.readings ?? []).find((x) => /주산|객산/.test(x.title));
   if (teR) reads.push({ system: '태을신수', what: teR.title, text: teR.text });
+  reads.push(...westernPair(r.input, r, 10, '직업'));
 
   // 상충하지 않는 면들을 **합친다.** 따로 두고 각각 물러서면 아무 말도 안 된다
   const facets = [];
@@ -119,21 +122,27 @@ console.log(`# ${who}`);
 
 // ── ② 배우자 ──
 {
-  const reads = readSpouse(chart, spousePalaceStars(r.input), marriagePack(r.input));
+  const reads = [...readSpouse(chart, spousePalaceStars(r.input), marriagePack(r.input)),
+    ...westernPair(r.input, r, 7, '결')];
   const v = spouseVerdict(reads);
   const ch = lifeChapters(r.input, r.chart, r.input.isMale);
   const here = chaptersAt(ch, r.input.currentYear).map((c) => `${c.system} ${c.label}`).join(' · ');
+  const west = consensusOf(reads.filter((x) => x.topicKey === '결' && x.stance));
   section('② 배우자는 무슨 직업이고 몇 살이고 언제 결혼할까?', reads, [
     ...v.lines,
+    west.verdict === '겹침'
+      ? `관계 자리 자체는 **${west.stance === '많음' ? '받쳐지는 쪽' : '눌리는 쪽'}**입니다. ${west.say}`
+      : west.verdict === '갈림' ? west.say : null,
     `시기 — 지금 걸린 구간은 ${here}. **다만 결혼 시기는 이 사이트가 두 번 재서 두 번 다`
       + ` 신호를 못 찾았습니다**(달 단위 p=0.868, 해 단위 p=0.196). 구간 경계는 확정 계산이지만`
       + ` 거기서 결혼을 끌어내는 것은 검증되지 않았습니다.`,
-  ]);
+  ].filter(Boolean));
 }
 
 // ── ③ 자녀 ──
 {
-  const reads = readChildren(chart, childPalaceStars(r.input), childrenPack(r.input));
+  const reads = [...readChildren(chart, childPalaceStars(r.input), childrenPack(r.input)),
+    ...westernPair(r.input, r, 5, '열림')];
   section('③ 자녀운은 어떻게 돼?', reads, childrenVerdict(reads).lines);
 }
 

@@ -70,7 +70,7 @@ test('개인 화면은 명반 · 오늘/이달 두 탭 · 프로필 저장 · AI
   }
 });
 
-test('앞일 묻기는 탭을 늘리지 않고, 누를 때만 무거운 층을 받는다', async () => {
+test('두 패널은 화면에서 내렸고, 붙이더라도 첫 화면을 무겁게 하지 않는다', async () => {
   const ui = await readFile(
     new URL('../../public/unse-8f3k2m/src/ui.js', import.meta.url), 'utf8');
 
@@ -78,16 +78,23 @@ test('앞일 묻기는 탭을 늘리지 않고, 누를 때만 무거운 층을 �
   const tabs = [...ui.matchAll(/<button type="button"[^>]*data-tab="([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(tabs, ['today', 'month']);
 
-  // 자리는 AI 옆이고, 누르기 전에는 아무것도 받지 않는다
-  assert.match(ui, /id="scenPanel"/);
-  assert.match(ui, /id="scen-open"/);
-  assert.match(ui, /import\('\.\/scenarioPanel\.js'\)/, '동적 import 가 아니면 첫 화면이 무거워진다');
-  assert.equal(/^import .*scenarioPanel/m.test(ui), false, 'scenarioPanel 을 정적으로 import 하면 안 된다');
+  // '칸으로 펼쳐 보기'와 '앞일 묻기'는 화면에서 내렸다.
+  // 모듈은 남아 있으므로 여기서 고정하는 것은 **화면에 없다**는 사실이다.
+  assert.equal(/id="scenPanel"|id="cmpPanel"/.test(ui), false, '두 패널은 화면에 걸지 않는다');
 
-  // 패널은 모델을 부르지 않는다 — 계산 결과를 그대로 옮긴다
+  // 되살릴 때를 위한 못 — 정적 import 로 붙이면 첫 화면이 통째로 무거워진다
+  assert.equal(/^import .*(scenarioPanel|composePanel)/m.test(ui), false,
+    '패널을 정적으로 import 하면 안 된다 — 되살릴 때도 동적 import 로 붙인다');
+
+  // 패널 자체는 그대로 살아 있고, 모델을 부르지 않는다
   const panel = await readFile(
     new URL('../../public/unse-8f3k2m/src/scenarioPanel.js', import.meta.url), 'utf8');
   assert.match(panel, /import\('\.\/semantic\/scenario\/index\.js'\)/);
   assert.equal(/fetch\(|fortune-ai/.test(panel), false, '패널이 바깥을 부르면 안 된다');
   assert.match(panel, /모델이 쓴 글이 아니라/);
+
+  const compose = await readFile(
+    new URL('../../public/unse-8f3k2m/src/composePanel.js', import.meta.url), 'utf8');
+  assert.match(compose, /import\('\.\/semantic\/compose\/slots\.js'\)/);
+  assert.equal(/fetch\(|fortune-ai/.test(compose), false, '패널이 바깥을 부르면 안 된다');
 });

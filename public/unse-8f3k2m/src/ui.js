@@ -313,26 +313,6 @@ function render(form, r, f) {
       <p class="agree-note" style="margin:0">프로필 저장 여부를 확인하는 중…</p>
     </div>
 
-    <div class="section-label">칸으로 펼쳐 보기</div>
-    <div id="cmpPanel">
-      <div class="card">
-        <p class="agree-note" style="margin:0">
-          열다섯 체계의 말을 <b>합치지 않고</b> 일·돈·관계의 칸마다 나란히 놓습니다.
-          <button type="button" id="cmp-open" class="linklike">열기</button>
-        </p>
-      </div>
-    </div>
-
-    <div class="section-label">앞일 묻기</div>
-    <div id="scenPanel">
-      <div class="card">
-        <p class="agree-note" style="margin:0">
-          «언제 이직해?» 처럼 물으면 <b>모델을 거치지 않고</b> 계산 결과로 답합니다.
-          <button type="button" id="scen-open" class="linklike">열기</button>
-        </p>
-      </div>
-    </div>
-
     ${aiSection('solo', v)}
   `;
 }
@@ -405,59 +385,10 @@ $('#result').addEventListener('click', (e) => {
   document.querySelector('.tabs').scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 
-// 무거운 두 층은 누를 때 받는다
-$('#result').addEventListener('click', (e) => {
-  if (e.target.closest('#scen-open')) openAsk();
-  if (e.target.closest('#cmp-open')) openCompose();
-});
-
-/**
- * '칸으로 펼쳐 보기' 를 누를 때만 조립 층을 받는다.
- *
- * 열다섯을 다시 세우므로 무겁다. `scenarioPanel.js` 와 같은 이유로
- * 여기서 `import()` 한다.
- */
-let cmpLoaded = false;
-async function openCompose() {
-  if (cmpLoaded || !last || last.mode !== 'solo') return;
-  cmpLoaded = true;
-  const root = $('#cmpPanel');
-  if (!root) return;
-  root.innerHTML = '<div class="card"><p class="agree-note" style="margin:0">조립 층을 받는 중입니다…</p></div>';
-  try {
-    const P = await import('./composePanel.js');
-    root.innerHTML = P.panelHtml();
-    await P.initCompose(root, last.formA);
-  } catch (err) {
-    cmpLoaded = false;
-    root.innerHTML = '<p class="agree-note" style="margin:0">조립 층을 받지 못했습니다. 새로고침 후 다시 시도해 주세요.</p>';
-    void err;
-  }
-}
-
-/**
- * '앞일 묻기' 를 누를 때만 시나리오 층을 받는다.
- *
- * 이 층은 명반을 여러 해치 다시 세워서 무겁다. 첫 화면에 끼우면 안 되고,
- * 여기 `import()` 한 줄이 번들을 가르는 지점이다.
- */
-let askLoaded = false;
-async function openAsk() {
-  if (askLoaded || !last || last.mode !== 'solo') return;
-  askLoaded = true;
-  const root = $('#scenPanel');
-  if (!root) return;
-  root.innerHTML = '<div class="card"><p class="agree-note" style="margin:0">계산 층을 받는 중입니다…</p></div>';
-  try {
-    const P = await import('./scenarioPanel.js');
-    root.innerHTML = P.panelHtml();
-    await P.initScenario(root, last.formA);
-  } catch (err) {
-    askLoaded = false;
-    root.innerHTML = '<p class="agree-note" style="margin:0">계산 층을 받지 못했습니다. 새로고침 후 다시 시도해 주세요.</p>';
-    void err;
-  }
-}
+// '칸으로 펼쳐 보기'(`composePanel.js`)와 '앞일 묻기'(`scenarioPanel.js`)는
+// 화면에서 내렸다. 모듈과 그 아래 층(`semantic/compose`·`semantic/scenario`)은
+// 그대로 남아 있고 테스트도 돈다 — 다시 붙이려면 여기서 `import()` 로 부르는
+// 칸과 `renderSolo` 의 자리 두 군데만 되살리면 된다.
 
 $('#result').addEventListener('click', async (e) => {
   const btn = e.target.closest('[data-act]');

@@ -30,6 +30,8 @@ import { westernPair } from './semantic/structure/western.js';
 import { readClassical } from './semantic/structure/yukchin.js';
 import { SCHOOLS } from './semantic/structure/school.js';
 import { readStructures } from './semantic/structure/saju.js';
+import { palaceStars, natureOf } from './semantic/structure/stars.js';
+import { timingFor, sequenceOf, MEASURED } from './semantic/compose/timing.js';
 
 const p2 = (n) => String(n).padStart(2, '0');
 
@@ -61,20 +63,71 @@ function formatDomain(title, reads, verdictLines) {
   return L.join('\n');
 }
 
+/**
+ * 한 분야의 **시기**를 창으로 낸다.
+ *
+ * 여태 시기는 분야마다 한 줄("2028년이 가장 강합니다")뿐이라 "첫째는 언제,
+ * 둘째는 언제"에 답할 자리가 없었다. 세 체계가 짚는 해를 한 축에 놓고
+ * 붙은 해끼리 묶어 창으로 낸다.
+ *
+ * @param {string[]} [labels] 되풀이되는 일이면 창마다 이름을 준다 (첫째·둘째)
+ */
+function formatTiming(input, chart, domain, labels = null) {
+  let t = { rows: [], windows: [] };
+  try { t = timingFor(input, { ...chart, gender: input.gender }, domain); } catch { return ''; }
+  if (!t.windows.length && !t.rows.length) return '';
+
+  const L = [`### ${domain} — 어느 해가 켜지는가`];
+  if (t.background?.length) {
+    // 대한은 십 년짜리 배경이라 해를 고르지 못한다. 그래도 어느 십 년인지는 말이 된다
+    L.push('배경 (십 년 단위라 해를 고르지는 못한다):');
+    for (const b of t.background) L.push(`  ${b}`);
+  }
+  if (t.windows.length) {
+    const named = labels ? sequenceOf(t.windows, labels) : null;
+    L.push('창 (붙은 해를 묶은 것. 둘 이상 체계가 짚은 해만 남긴다):');
+    (named ?? t.windows).forEach((w, i) => {
+      L.push(`  ${named ? `${w.label} — ` : `${i + 1}순위 `}${w.span}`
+        + `${w.ageLabel ? ` (${w.ageLabel})` : ''} · ${w.systems.join('+')} ${w.systems.length}갈래`);
+    });
+    if (named) {
+      L.push('  ※ 창 이름은 **창 목록을 시간 순으로 읽은 것**이다 (먼저 오는 창이 첫째).'
+        + ' 별도의 계산이 아니라 규칙이고, 그 규칙을 밝혀서 쓸 것.');
+    }
+  } else {
+    L.push('둘 이상이 함께 짚는 해가 없다. 창을 만들지 않는다.');
+  }
+
+  // 왜 그 해인지 — 근거에 **날짜가 있으면 날짜까지** 적는다
+  const top = t.rows.slice(0, 5);
+  if (top.length) {
+    L.push('센 해와 그 근거:');
+    for (const r of top) {
+      L.push(`  ${r.year}년(${r.age}세) ${r.systems.join('+')} — ${r.why.join(' / ')}`);
+    }
+  }
+  L.push(`※ ${MEASURED} **이 문장은 답 전체에서 한 번만 쓸 것.**`);
+  return L.join('\n');
+}
+
 /** 배우자 — 자미 부처궁 · 사주 일지 · 베딕 7궁/D9 · 고전·현대 7하우스 · 육친 */
 function formatSpouse(input, chart, fortune) {
   let reads = [];
   try {
     reads = [
       ...readSpouse({ ...chart, gender: input.gender },
-        spousePalaceStars(input), marriagePack(input)),
+        spousePalaceStars(input), marriagePack(input),
+        palaceStars(input, '부처궁')),
       ...westernPair(input, fortune, 7, '결'),
       ...readClassical(fortune, chart.dayStem, '관계'),
     ];
   } catch { return ''; }
   let v = { lines: [] };
   try { v = spouseVerdict(reads); } catch { /* 종합만 건너뛴다 */ }
-  return formatDomain('배우자 — 체계마다 무엇이라 하는가', reads, v.lines);
+  return [
+    formatDomain('배우자 — 체계마다 무엇이라 하는가', reads, v.lines),
+    formatTiming(input, chart, '결혼'),
+  ].filter(Boolean).join('\n\n');
 }
 
 /** 직업 — 사주 격 · 자미 관록궁 · 태을 · 고전·현대 10하우스 · 육친 */
@@ -85,14 +138,62 @@ function formatCareer(input, chart, fortune, structures) {
     if (st) reads.push({ system: '사주(격)', what: `${st.name} ${st.hanja}`, text: st.text, source: st.source });
   }
   try {
+    // 관록궁·명궁은 **본인**의 상이다 — 같은 성정표를 궁만 바꿔 읽는다
+    for (const [pal, who] of [['관록궁', '일할 때의 본인'], ['명궁', '본인']]) {
+      const nat = natureOf(palaceStars(input, pal), who);
+      if (nat) {
+        reads.push({
+          system: '자미두수', what: `${pal} ${nat.stars.join('·')}`, text: nat.text,
+          source: `자미두수전서 성계 각론 — ${pal}`,
+        });
+      }
+    }
     reads.push(...westernPair(input, fortune, 10, '직업'));
     reads.push(...readClassical(fortune, chart.dayStem, '직업'));
   } catch { /* 넘어간다 */ }
-  return formatDomain('직업 — 체계마다 무엇이라 하는가', reads, [
-    '**이 축은 이 사이트가 재 봤더니 졌다.** 열다섯을 다 재도 순열검정 p=0.423 이라'
-      + ' 1위가 우연과 구별되지 않았다. 위 전통 읽기를 그대로 전하되'
-      + ' "이직할 사람인지 한 우물 팔 사람인지"는 단정하지 말 것.',
-  ]);
+  return [
+    formatDomain('직업 — 체계마다 무엇이라 하는가', reads, [
+      '**이 축은 이 사이트가 재 봤더니 졌다.** 열다섯을 다 재도 순열검정 p=0.423 이라'
+        + ' 1위가 우연과 구별되지 않았다. 위 전통 읽기를 그대로 전하되'
+        + ' "이직할 사람인지 한 우물 팔 사람인지"는 단정하지 말 것.',
+    ]),
+    formatTiming(input, chart, '직업'),
+  ].filter(Boolean).join('\n\n');
+}
+
+/**
+ * 나머지 분야도 같은 모양으로 — **자녀만 고치면 또 자녀만 나아진다.**
+ *
+ * 재물·주거·학업은 여태 육친과 하우스만 나가고 성향도 시기도 없었다.
+ * 같은 세 가지(체계별 읽기 · 성향 · 시기 창)를 똑같이 붙인다.
+ */
+function formatOthers(input, chart, fortune) {
+  const BY_DOMAIN = [
+    ['재물', 5, '재백궁', '돈을 다루는 결'],
+    ['주거', 4, '전택궁', '사는 자리의 결'],
+    ['학업', 9, '자녀궁', '배우는 결'],
+    ['건강', 6, '질액궁', '몸의 결'],
+  ];
+  const out = [];
+  for (const [domain, house, palace, who] of BY_DOMAIN) {
+    const reads = [];
+    try {
+      const nat = natureOf(palaceStars(input, palace), who);
+      if (nat) {
+        reads.push({
+          system: '자미두수', what: `${palace} ${nat.stars.join('·')}`, text: nat.text,
+          source: `자미두수전서 성계 각론 — ${palace}`,
+        });
+      }
+      reads.push(...westernPair(input, fortune, house, domain));
+      reads.push(...readClassical(fortune, chart.dayStem, domain));
+    } catch { continue; }
+    const body = formatDomain(`${domain} — 체계마다 무엇이라 하는가`, reads, null);
+    // 건강은 시기 십성 배정이 없다(DOMAIN_GOD 주석 참고) — 창이 비면 그냥 빠진다
+    const when = formatTiming(input, chart, domain);
+    if (body || when) out.push([body, when].filter(Boolean).join('\n\n'));
+  }
+  return out.join('\n\n');
 }
 
 /** 이 사이트가 고른 유파 — 물으면 이 표를 보여 준다 */
@@ -119,6 +220,7 @@ function formatChildren(input, chart) {
       { ...chart, gender: input.gender },
       childPalaceStars(input),
       childrenPack(input),
+      palaceStars(input, '자녀궁'),
     );
   } catch { return ''; }
   if (!reads.length) return '';
@@ -134,7 +236,10 @@ function formatChildren(input, chart) {
   L.push('');
   L.push('위 종합은 이미 규칙대로 정리한 것이다. **다시 종합하지 말고 그대로 쓸 것.**');
   L.push('갈린다고 적힌 자리는 답에서 빼고, 겹친 자리는 단정해서 말할 것.');
-  return L.join('\n');
+
+  // 자녀는 되풀이되는 일이라 창에 이름을 준다 — 첫째·둘째·셋째
+  const when = formatTiming(input, chart, '자녀', ['첫째', '둘째', '셋째']);
+  return [L.join('\n'), when].filter(Boolean).join('\n\n');
 }
 
 /**
@@ -375,7 +480,9 @@ export function buildContext(form, r, f = null) {
     out.push('## 연도별 (지난 해는 맞춰보는 자리, 앞으로는 준비하는 자리)');
     for (const x of tl) {
       out.push(`${x.year}(${x.age}세) ${x.gz.hanja} [${x.tag}]` +
-        `${x.bond ? ' 인연' : ''}${x.daeunFrom ? ' 대운시작' : ''} — ${x.text}`);
+        `${x.bond ? ' 인연' : ''}${x.daeunFrom ? ' 대운시작' : ''} — ${x.text}` +
+        // 어느 지지끼리 부딪쳤는지 — 근거를 댈 수 있게 괄호로 짧게 붙인다
+        `${x.hit?.pair ? ` (${x.hit.pair})` : ''}`);
     }
     out.push('특정 연도를 물으면 위 줄을 근거로 답할 것. 지난 해는 단정해서 말하고, 앞날은 경향으로 말할 것.');
     out.push('');
@@ -453,6 +560,8 @@ export function buildContext(form, r, f = null) {
   out.push(formatCareer(input, r.chart, r, (() => {
     try { return readStructures({ ...r.chart, gender: input.gender }).structures; } catch { return []; }
   })()));
+  out.push('');
+  out.push(formatOthers(input, r.chart, r));
   out.push('');
   out.push(formatSchools());
   out.push('');

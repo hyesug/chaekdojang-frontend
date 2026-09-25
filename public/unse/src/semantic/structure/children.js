@@ -22,8 +22,9 @@ import { MAIN_HIDDEN, tenGod, TEN_GOD_GROUP } from '../../core/ganzhi.js';
 import { j } from '../../core/josa.js';
 import { buildBoard } from '../../hires/ziwei.js';
 import { PALACES } from '../../systems/jamidusu.js';
-import { consensusOf, consensusRange, phrase } from '../compose/consensus.js';
+import { consensusOf, consensusRange, rankRange, phrase } from '../compose/consensus.js';
 import { genderOf, CHILD_GENDER } from './school.js';
+import { natureOf } from './stars.js';
 
 /**
  * 자녀궁에 든 주성을 판에서 직접 꺼낸다.
@@ -127,9 +128,24 @@ function sajuGender(chart) {
  * @param {object} chart   `readFortune(...).chart` + `gender`
  * @param {string[]} [ziweiChildStars] 자미 자녀궁 주성
  * @param {object} [vedic] `childrenPack(input)` 결과
+ * @param {string[]} [allStars] 자녀궁의 **모든** 별 (보조 넷 포함) — 성향을 읽는 데 쓴다
  */
-export function readChildren(chart, ziweiChildStars = [], vedic = null) {
+export function readChildren(chart, ziweiChildStars = [], vedic = null, allStars = []) {
   const out = [];
+
+  // ── 자미 — **아이가 어떤 아이인가.** 궁이 대상을 정하므로 자녀궁의
+  //    별을 읽으면 그것이 곧 아이의 결이다. 표는 여태 있었고 안 꺼냈을 뿐이다
+  const nat = natureOf(allStars.length ? allStars : ziweiChildStars, '아이');
+  if (nat) {
+    out.push({
+      system: '자미두수', what: `자녀궁 ${nat.stars.join('·')}`, topic: '성향',
+      text: nat.text,
+      source: '자미두수전서 성계 각론 — 궁이 대상을 정한다(자녀궁=자녀의 상)',
+      topicKey: '성향',
+      traits: nat.traits,
+      toward: nat.toward,
+    });
+  }
 
   // ── 자미두수 — 수를 세는 표가 실제로 있다 ──
   if (ziweiChildStars.length) {
@@ -149,6 +165,8 @@ export function readChildren(chart, ziweiChildStars = [], vedic = null) {
         source: '자미두수전서 자녀궁 — 주성별 자녀 수',
         topicKey: '수',
         range: [lo, hi],
+        // 별마다의 범위를 그대로 남긴다 — 종합에서 **범위가 아니라 순위**로 펼친다
+        rows: rows.map((r) => ({ system: '자미두수', star: r.star, n: r.n })),
       });
     } else {
       out.push({
@@ -232,11 +250,15 @@ export function childrenVerdict(reads) {
       + ` ${c.agree[0].system} 한 곳에서만 나온 말이라 세게 말하지 않겠습니다.`);
   }
 
-  if (r.verdict === '겹침') {
+  // **범위가 아니라 순위로 낸다.** "2~5명"은 답이 아니다 — 범위는 넓어질수록
+  // 뜻이 없어지지만 순위는 넓어져도 1위가 남는다
+  const rank = rankRange(reads.flatMap((x) => x.rows ?? []), '명');
+  if (rank.top) {
+    lines.push(`수는 **${rank.top.label}이 가장 유력**합니다 — ${rank.say}.`
+      + ` (별마다의 표를 겹쳐 득표로 줄 세운 것이고, 확률이 아닙니다.`
+      + ` 이 사이트는 별의 밝기를 계산하지 않아 표 그대로 셉니다.)`);
+  } else if (r.verdict === '겹침') {
     lines.push(`수는 **${r.n[0] === r.n[1] ? `${r.n[0]}명` : `${r.n[0]}~${r.n[1]}명`}** — ${r.say}`);
-  } else if (r.verdict === '하나') {
-    lines.push(`수는 **${r.n[0] === r.n[1] ? `${r.n[0]}명` : `${r.n[0]}~${r.n[1]}명`}**`
-      + ` — ${r.from[0]}의 표에서만 나온 값입니다.`);
   } else if (r.verdict === '갈림') {
     lines.push(r.say);
   }

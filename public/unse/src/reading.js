@@ -16,7 +16,7 @@
 
 import { elementDistribution, tenGodDistribution, computeDaeun, currentDaeun, branchRelations, tenGod,
          TEN_GOD_GROUP, MAIN_HIDDEN, HIDDEN_STEMS, ganzhiName, yearPillar,
-         ELEMENTS, ELEMENT_HANJA } from './core/ganzhi.js';
+         ELEMENTS, ELEMENT_HANJA, BRANCHES } from './core/ganzhi.js';
 import { j } from './core/josa.js';
 
 /* ── 확신도 ─────────────────────────────────────────────────
@@ -741,7 +741,9 @@ const MARRY_GOD = { male: '재성', female: '관성' };
 /** 그 해의 지지가 내 어느 기둥을 건드렸나. 이쪽도 '…는 때'로 끝맺는다 */
 const YEAR_HIT = {
   day: {
-    충: '생활의 축이 함께 흔들리는 때. 머무는 자리와 맡은 역할, 몸의 리듬이 한꺼번에 움직이는 쪽으로 일이 몰리기 쉽습니다',
+    // 조각 끝에 시제 꼬리('였습니다'/'입니다')가 붙으므로 **'때' 꼴로 끝내야 한다.**
+    // '쉽습니다'로 끝내면 '쉽습니다입니다'가 나간다
+    충: '생활의 축이 함께 흔들리는 때. 머무는 자리와 맡은 역할, 몸의 리듬이 한꺼번에 움직이는 쪽으로 일이 몰리기 쉬운 때',
     육합: '사람과 엮이는 일이 늘고 약속이 구체화되기 쉬운 때',
     반합: '주변이 밀어주어 혼자 애쓰지 않아도 풀리는 때',
     삼형: '같은 문제로 두 번 말이 오가는 때',
@@ -751,7 +753,7 @@ const YEAR_HIT = {
     파: '정해둔 것이 틀어져 계획을 다시 짜는 때',
   },
   month: {
-    충: '직장과 집안 쪽에 변동이 걸리는 때. 자리나 역할이 움직이기 쉽습니다',
+    충: '직장과 집안 쪽에 변동이 걸리는 때. 자리나 역할이 움직이기 쉬운 때',
     육합: '일자리나 집안 쪽에서 도움이 붙는 때',
     반합: '일자리나 집안 쪽에서 도움이 붙는 때',
     삼형: '직장이나 집안 일로 같은 말이 오가는 때',
@@ -804,7 +806,15 @@ export function yearTimeline(input, chart, from, to) {
       if (!p) continue;
       const rel = branchRelations(p.branch, gz.branch)[0];
       if (!rel || !YEAR_HIT[key][rel.kind]) continue;
-      hit = { at: key, kind: rel.kind, text: YEAR_HIT[key][rel.kind], good: rel.good };
+      // 어느 지지끼리 부딪쳤는지 이름을 남긴다 — "원국 丑과 未가 충" 처럼
+      // 근거를 댈 수 있어야 한다. 효과만 적으면 확인할 방법이 없다
+      const seat = { day: '일지', month: '월지', year: '년지', hour: '시지' }[key];
+      hit = {
+        at: key, kind: rel.kind, text: YEAR_HIT[key][rel.kind], good: rel.good,
+        // 한자로 적는다 — 간지 칸이 이미 한자라 표기를 맞추고, 덤으로
+        // 조사를 붙일 일이 없어진다 ('축와'·'신가' 같은 것이 안 생긴다)
+        pair: `원국 ${seat} ${BRANCHES[p.branch]} · 세운 ${BRANCHES[gz.branch]} → ${rel.kind}`,
+      };
       break;
     }
 

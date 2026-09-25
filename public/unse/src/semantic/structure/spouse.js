@@ -18,6 +18,7 @@ import { j } from '../../core/josa.js';
 import { buildBoard } from '../../hires/ziwei.js';
 import { PALACES } from '../../systems/jamidusu.js';
 import { consensusOf } from '../compose/consensus.js';
+import { natureOf } from './stars.js';
 
 /**
  * 자미 부처궁 주성이 그리는 배우자.
@@ -76,9 +77,21 @@ function spouseSeat(chart) {
  * @param {object} chart  `readFortune(...).chart` + `gender`
  * @param {string[]} stars 부처궁 주성
  * @param {object} [vedic] `marriagePack(input)` 결과
+ * @param {string[]} [allStars] 부처궁의 **모든** 별 — 성격을 읽는 데 쓴다
  */
-export function readSpouse(chart, stars = [], vedic = null) {
+export function readSpouse(chart, stars = [], vedic = null, allStars = []) {
   const out = [];
+
+  // ── 배우자가 **어떤 사람인가.** 직업(trade)만 내고 성격을 버리고 있었다
+  const nat = natureOf(allStars.length ? allStars : stars, '배우자');
+  if (nat) {
+    out.push({
+      system: '자미두수', topicKey: '성향', what: `부처궁 ${nat.stars.join('·')}`,
+      text: nat.text,
+      source: '자미두수전서 성계 각론 — 궁이 대상을 정한다(부처궁=배우자의 상)',
+      traits: nat.traits,
+    });
+  }
 
   // ── 자미 부처궁 — 직업·나이차 표가 실제로 있다 ──
   if (stars.length) {

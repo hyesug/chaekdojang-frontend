@@ -1142,7 +1142,17 @@ export default function AdminPage() {
       const response = await authFetch(`${API_BASE}/api/admin/lotto-future-validations/generate-next`, {
         method: "POST", headers: { Authorization: `Bearer ${token}` },
       });
-      if (response.ok) setLottoRounds(await fetchAdmin<LottoPredictionRound[]>("/api/admin/lotto-future-validations") ?? []);
+      if (response.ok) {
+        setLottoRounds(await fetchAdmin<LottoPredictionRound[]>("/api/admin/lotto-future-validations") ?? []);
+        return;
+      }
+      // 실패를 삼키면 화면에서는 "눌러도 아무 일이 없는 버튼"이 된다.
+      // 실제로 계산 엔드포인트 설정이 비어 서버가 500을 내고 있었는데
+      // 여기서 조용히 넘겨서 원인을 볼 방법이 없었다.
+      const detail = await response.text().catch(() => "");
+      let message = detail;
+      try { message = (JSON.parse(detail)?.message as string) ?? detail; } catch { /* 본문이 JSON 이 아니면 그대로 */ }
+      window.alert(`회차 생성에 실패했습니다 (HTTP ${response.status})\n\n${message || "서버가 이유를 보내지 않았습니다."}`);
     } finally {
       setLottoGenerating(false);
     }

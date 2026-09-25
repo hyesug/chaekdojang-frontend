@@ -140,6 +140,57 @@ export function consensusRange(ranges) {
 }
 
 /**
+ * **범위 대신 순위.**
+ *
+ * `consensusRange` 는 겹치는 구간을 내는데, 그게 넓으면("2~5명") 답이 아니다.
+ * 범위는 넓어질수록 뜻이 없어지지만 **순위는 넓어져도 1위가 남는다.**
+ * 불확실한 것과 말하지 못하는 것은 다르다 — 불확실해도 순서는 매길 수 있다.
+ *
+ * 득표 수로만 줄을 세운다. 없는 가중치를 만들지 않는다.
+ *
+ * @param {{label:string, votes:{system:string, why?:string}[]}[]} options
+ * @returns {{rows:object[], top:object|null, say:string|null}}
+ */
+export function rankOf(options) {
+  const rows = (options ?? [])
+    .filter((o) => o?.votes?.length)
+    .map((o) => ({ ...o, n: o.votes.length }))
+    .sort((a, b) => b.n - a.n);
+  if (!rows.length) return { rows: [], top: null, say: null };
+
+  const max = rows[0].n;
+  for (const r of rows) {
+    // 1위와 같으면 유력, 절반 위면 가능, 그 아래는 낮음. 확률이 아니라 득표다
+    r.tier = r.n === max ? '유력' : r.n * 2 >= max ? '가능' : '낮음';
+  }
+  return {
+    rows,
+    top: rows[0],
+    say: rows.map((r) => `${r.label} ${r.tier}(${r.n}표)`).join(' > '),
+  };
+}
+
+/**
+ * 여러 범위를 **순위로** 편다.
+ *
+ * 자미 자녀궁에 자미(2~3)·천부(3~5)가 들면 3이 두 표, 2·4·5가 한 표씩이다.
+ * "2~5명"이라고 내는 것보다 "3명 유력, 2·4·5명 가능"이 훨씬 쓸모 있다.
+ *
+ * @param {{system:string, star?:string, n:[number,number]}[]} rows
+ */
+export function rankRange(rows, unit = '명') {
+  const byValue = new Map();
+  for (const r of rows ?? []) {
+    if (!Array.isArray(r?.n)) continue;
+    for (let v = r.n[0]; v <= r.n[1]; v++) {
+      if (!byValue.has(v)) byValue.set(v, { label: `${v}${unit}`, value: v, votes: [] });
+      byValue.get(v).votes.push({ system: r.system, why: r.star ?? '' });
+    }
+  }
+  return rankOf([...byValue.values()].sort((a, b) => a.value - b.value));
+}
+
+/**
  * 종합 결과를 한 문장으로.
  *
  * **애매하지 않으면 구체적으로, 애매하면 보수적으로.** 말투를 바꾸는 것이지

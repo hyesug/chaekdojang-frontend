@@ -9,7 +9,7 @@
  * 양력 1~2월 초 출생자는 입춘 전이면 전년도 별이 된다.
  */
 
-import { ELEMENTS as ELEM } from '../core/ganzhi.js';
+import { ELEMENTS as ELEM, BRANCHES } from '../core/ganzhi.js';
 import { j } from '../core/josa.js';
 import { result } from './_base.js';
 
@@ -75,6 +75,13 @@ const DIRECTIONS = [
 ];
 const OPPOSITE = { 북: '남', 남: '북', 동: '서', 서: '동', 북동: '남서', 남서: '북동', 남동: '북서', 북서: '남동' };
 
+/**
+ * 십이지가 앉는 방위 — 세파를 구하려면 그 해 태세가 어디인지 알아야 한다.
+ * 24방위를 여덟으로 접은 것이라 寅·丑이 함께 북동에 든다.
+ */
+const BRANCH_DIR = ['북', '북동', '북동', '동', '남동', '남동',
+  '남', '남서', '남서', '서', '북서', '북서'];
+
 /** 그 해(입춘 기준)의 중궁성 — 본명성과 같은 공식이다 */
 export function starOfYear(year) {
   let s = String(year).split('').reduce((a, c) => a + Number(c), 0);
@@ -117,6 +124,19 @@ export function yearDirections(sajuYear, year) {
     bad.push({ dir: myDir, kind: '본명살' });
     if (OPPOSITE[myDir]) bad.push({ dir: OPPOSITE[myDir], kind: '본명적살' });
   }
+
+  // 세파(歳破) — 그 해 태세(년지)와 정면으로 부딪치는 방위.
+  // 오황살 계열이 구성(九星) 배치에서 나오는 것과 달리 이쪽은 **간지**에서
+  // 나온다. 근거가 다른 흉방이라 겹칠 수 있고, 겹치면 겹쳤다고만 적는다 —
+  // 두 개니까 두 배로 나쁘다는 식으로 세지 않는다.
+  const taesePos = BRANCH_DIR[((year - 4) % 12 + 12) % 12];
+  const sepa = OPPOSITE[taesePos];
+  if (sepa) bad.push({ dir: sepa, kind: '세파', from: `태세 ${BRANCHES[((year - 4) % 12 + 12) % 12]}(${taesePos})의 정반대` });
+
+  // 같은 방위에 흉방이 둘 이상이면 그 사실만 표시한다
+  const count = {};
+  for (const b of bad) count[b.dir] = (count[b.dir] ?? 0) + 1;
+  for (const b of bad) if (count[b.dir] > 1) b.overlap = count[b.dir];
 
   const el = STARS[honmei].element;
   const good = DIRECTIONS
@@ -191,7 +211,11 @@ export function analyze(input) {
     {
       title: '올해 피할 방위',
       text: bad.size
-        ? `${[...bad].join(', ')}. 이 방향으로 거처를 옮기거나 큰돈이 걸린 일을 벌이는 것은 미루는 편이 좋습니다. 구성학에서 가장 무겁게 보는 금기입니다.`
+        // 세파는 구성 배치가 아니라 간지에서 나온다. 한 줄로 묶어 놓고
+        // "구성학의 금기"라고만 적으면 출처가 틀린 말이 된다
+        ? `${[...bad].join(', ')}. 이 방향으로 거처를 옮기거나 큰돈이 걸린 일을 벌이는 것은 미루는 편이 좋습니다.`
+          + ' 오황살·암검살·본명살은 구성학에서 가장 무겁게 보는 금기이고,'
+          + ' 세파는 그 해 태세와 정면으로 부딪치는 자리라 간지 쪽에서 봅니다.'
         : '올해는 크게 막힌 방위가 없습니다.',
     },
   ];

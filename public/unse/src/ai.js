@@ -14,6 +14,7 @@ import { readForecast } from './forecast.js';
 import { routeQuestion } from './hires/router.js';
 import { buildHiRes } from './hires/context.js';
 import * as PAIR from './hires/pair.js';
+import { horaryCast, formatHorary } from './systems/horary.js';
 
 const ENDPOINT = '/fortune-ai';
 
@@ -182,7 +183,11 @@ function focusFor(question, calc) {
   if (!calc?.fortune) return null;
   try {
     const plan = routeQuestion(question, calc.fortune.input.currentYear);
-    return buildHiRes(calc.fortune, calc.forecast, plan).text;
+    const hires = buildHiRes(calc.fortune, calc.forecast, plan).text;
+    // 점시는 **묻는 순간**에 세우는 것이라 캐시되는 명반 문맥이 아니라
+    // 질문마다 새로 붙는 이 자리에 온다. 출생괘와 섞이지 않는 이유이기도 하다
+    if (!plan.needsHorary) return hires;
+    return [hires, formatHorary(horaryCast(new Date()), question)].filter(Boolean).join('\n\n');
   } catch (e) {
     console.warn('[운세] 고해상도 계산을 건너뜁니다:', e.message);
     return null;

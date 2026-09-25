@@ -465,7 +465,13 @@ export function buildContext(form, r, f = null) {
           return `- 열린 방위 ${x.dir}: ${near.length ? near.map((c) => `${c.name}(${c.km}km)`).join(', ') : '목록에 해당 도시 없음'}`;
         }).join('\n')
       : '- 열린 방위 없음 — 큰 이동보다 자리를 지키는 해');
-    if (d.bad.length) out.push(`- 피할 방위: ${d.bad.map((x) => `${x.dir}(${x.kind})`).join(', ')}`);
+    if (d.bad.length) {
+      out.push(`- 피할 방위: ${d.bad.map((x) =>
+        `${x.dir}(${x.kind}${x.overlap ? ` · 흉방 ${x.overlap}개 겹침` : ''})`).join(', ')}`);
+      out.push('  ※ 세파는 구성 배치가 아니라 그 해 간지에서 나온다 — 근거가 다른 흉방이라'
+        + ' 겹칠 수 있다. **겹쳤다는 사실만 말하고 "두 배로 나쁘다"로 세지 말 것.**'
+        + ' 그리고 방위는 계산값이지만 **도시 이름은 그 방위를 지도에 대 본 추정**이다.');
+    }
   }
   out.push('도시는 방위에 맞는 후보일 뿐 운세가 특정 도시를 고른 것이 아니다. 동네·회사까지 단정하지 말 것.');
   out.push('');

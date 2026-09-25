@@ -26,7 +26,9 @@ export const meta = {
 };
 
 // 선천팔괘 순서. 숫자 1~8이 그대로 이 순서다.
-const TRIGRAMS = [
+// 아래 세 표와 LINE_ROLE 은 질문시각 점시(systems/horary.js)도 그대로 쓴다.
+// 같은 표를 두 벌 두면 한쪽만 고쳐질 수 있어 공개만 하고 계산은 옮기지 않았다.
+export const TRIGRAMS = [
   { name: '건', hanja: '乾', symbol: '☰', nature: '하늘', element: 3, bits: [1, 1, 1], tags: ['주도', '책임'] },
   { name: '태', hanja: '兌', symbol: '☱', nature: '못', element: 3, bits: [1, 1, 0], tags: ['표현', '사교'] },
   { name: '리', hanja: '離', symbol: '☲', nature: '불', element: 1, bits: [1, 0, 1], tags: ['명예', '직관'] },
@@ -38,7 +40,7 @@ const TRIGRAMS = [
 ];
 
 /** [상괘][하괘] → 주역 64괘 번호 (문왕 순서) */
-const HEXAGRAM_TABLE = [
+export const HEXAGRAM_TABLE = [
   [1, 10, 13, 25, 44, 6, 33, 12],   // 상 건
   [43, 58, 49, 17, 28, 47, 31, 45], // 상 태
   [14, 38, 30, 21, 50, 64, 56, 35], // 상 리
@@ -49,7 +51,7 @@ const HEXAGRAM_TABLE = [
   [11, 19, 36, 24, 46, 7, 15, 2],   // 상 곤
 ];
 
-const HEXAGRAMS = [
+export const HEXAGRAMS = [
   null,
   ['乾爲天', '건위천', '하늘이 거듭됩니다. 힘이 가장 왕성한 자리라 나아가면 통합니다. 다만 끝까지 오른 용은 후회한다고 했습니다. 자만이 유일한 적입니다.'],
   ['坤爲地', '곤위지', '땅이 거듭됩니다. 앞서지 말고 따라가야 이롭습니다. 받아들이고 실어 나르는 힘으로 이루는 자리입니다.'],
@@ -117,7 +119,7 @@ const HEXAGRAMS = [
   ['火水未濟', '화수미제', '아직 건너지 못했습니다. 마지막 고비입니다. 거의 다 왔으니 끝까지 가야 합니다.'],
 ];
 
-const LINE_ROLE = [
+export const LINE_ROLE = [
   '초효 — 이제 막 시작한 자리입니다. 아직 힘이 없으니 서두르지 마세요.',
   '이효 — 아랫자리에서 중심을 잡은 자리입니다. 안정적이고 도움을 받습니다.',
   '삼효 — 아래와 위의 경계입니다. 가장 불안정하고 선택이 많은 자리입니다.',

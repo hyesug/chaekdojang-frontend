@@ -12,6 +12,7 @@
  */
 
 import { CITIES } from '../core/place.js';
+import { isHoraryQuestion } from '../systems/horary.js';
 
 const RULES = [
   // 해외·여행이 어느 낱말 규칙에도 없어서 "해외여행 몇 번 가봤을까"가
@@ -257,6 +258,9 @@ export function routeQuestion(question, thisYear) {
     asksCount: COUNT_WORDS.test(q),
     // 되는가 안 되는가를 묻는 질문이다. 이 엔진은 시기를 줄 세울 뿐 판정하지 못한다
     asksOutcome: asksOutcomeOf(q),
+    // "지금 이걸 해도 될까" 처럼 **현재 의사결정**을 묻는 질문이다.
+    // 이때만 질문시각으로 괘를 세운다 — 평생·시기 질문은 명반이 답할 자리다
+    needsHorary: isHoraryQuestion(q),
     // 그 분야에 '안 된 쪽' 후보가 있는가. 없으면 점수가 높아도 "된다"가 아니다
     hasNegativeCandidate: NEGATIVE_CANDIDATES[domains[0]] ?? false,
     needsPlace: PLACE_WORDS.some((w) => q.includes(w)) || cities.length > 0,

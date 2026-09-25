@@ -92,10 +92,24 @@ export function analyze(input) {
     { label: '생일수', value: String(birthday), note: '타고난 재능의 결' },
     { label: `${currentYear} 개인년`, value: String(personalYear), note: '9년 주기 안의 위치' },
     { label: '원소', value: sephira.element, note: '오행 환산 시 근사 적용' },
+    // 물어보는 사람이 가장 헷갈리는 자리라 계산하지 않았다는 것을 값으로 낸다.
+    // 비워 두면 "안 적혀 있으니 알아서 채워도 되겠지"가 된다.
+    { label: '22경로 (נתיבות)', value: '미구현',
+      note: '세피라 열 개를 잇는 22경로는 계산하지 않는다. 히브리 문자·타로 대응이 '
+        + '황금새벽회 계열과 전통 카발라 계열에서 서로 다르고, 이 저장소에 어느 쪽을 '
+        + '고를 근거가 없다. 근거 없이 한쪽을 고르면 계산을 자처하는 창작이 된다' },
   ];
 
   const readings = [
     { title: `${sephira.name} — 라이프 패스 ${lifePath}`, text: sephira.text },
+    {
+      title: '이 풀이가 무엇이고 무엇이 아닌가',
+      text: '여기서 쓰는 것은 **생년월일 수비학(라이프 패스·생일수·개인년)** 이고, '
+        + '그 수를 세피라 하나에 잇는 것은 현대 수비학 쪽 대응입니다. '
+        + '**생명나무의 22경로를 짚는 전통 카발라 계산이 아닙니다** — 그쪽은 계산하지 '
+        + '않습니다. 경로 대응은 유파마다 갈리는데 어느 쪽을 고를 근거가 없어서, '
+        + '있는 척하기보다 없다고 적습니다.',
+    },
     {
       title: `${currentYear}년은 개인년 ${personalYear}`,
       text: PERSONAL_YEAR[personalYear],

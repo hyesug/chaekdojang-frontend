@@ -25,6 +25,8 @@ import { buildMultilayer, formatMultilayer } from './multilayerInterpretation.js
 import { lifeChapters, chaptersAt, chapterTurns } from './semantic/compose/life.js';
 import { readChildren, childPalaceStars, childrenVerdict } from './semantic/structure/children.js';
 import { childrenPack, marriagePack } from './hires/vedicExt.js';
+import { monthlyTrack } from './hires/bazi.js';
+import { j } from './core/josa.js';
 import { readSpouse, spousePalaceStars, spouseVerdict } from './semantic/structure/spouse.js';
 import { westernPair } from './semantic/structure/western.js';
 import { readClassical } from './semantic/structure/yukchin.js';
@@ -107,6 +109,38 @@ function formatTiming(input, chart, domain, labels = null) {
     }
   }
   L.push(`※ ${MEASURED} **이 문장은 답 전체에서 한 번만 쓸 것.**`);
+  return L.join('\n');
+}
+
+/**
+ * 열두 절기월 — **간지·십성·합충은 계산값이다.**
+ *
+ * "9월 丁酉, 원국 巳·丑과 酉가 만나 巳酉丑 금국" 같은 말을 하려면 달마다의
+ * 간지와 그 달이 만든 합충이 있어야 하는데, 여태 문맥에 '시기 교집합'(순위)만
+ * 실리고 **달의 간지 자체가 없었다.**
+ *
+ * 순위와 계산을 섞지 않는 것이 여기서 중요하다. 달 단위 **순위**는 검증에서
+ * 기준선보다 나빴지만(p=0.868), 그 달의 **간지와 충·합**은 역법으로 정해지는
+ * 사실이다. 사실은 싣고, 순위로 읽지 말라고 적는다.
+ */
+function formatMonths(input, chart, sajuYear) {
+  let rows = [];
+  try { rows = monthlyTrack(input, chart, sajuYear); } catch { return ''; }
+  if (!rows.length) return '';
+
+  const L = [`## ${sajuYear}년 열두 절기월 (간지·십성·합충은 계산값)`];
+  for (const m of rows) {
+    const gods = [`천간 ${m.god}`, `지지 ${m.branchGod}`].join(' · ');
+    const rel = (m.hits ?? []).map((h) => `${j(h.with, '와')} ${h.kind}`).join(' / ');
+    const combo = (m.combos ?? []).map((c) => `${c.kind}(${ELEMENTS[c.element]})`).join(' · ');
+    L.push(`${m.label} ${m.gz.hanja} ${gods}`
+      + (rel ? ` — ${rel}` : '')
+      + (combo ? ` · ${combo}` : ''));
+  }
+  L.push('위 간지·십성·합충은 역법으로 정해지는 **계산 사실**이라 그대로 말해도 된다.'
+    + ' 다만 **어느 달이 더 좋다는 순위로 읽지 말 것** — 달 단위 순위는 이 사이트가'
+    + ' 독립된 두 표본으로 재서 둘 다 기준선보다 나빴다(p=0.868).'
+    + ' "이 달에 무엇이 맞물린다"까지가 할 수 있는 말이다.');
   return L.join('\n');
 }
 
@@ -564,6 +598,8 @@ export function buildContext(form, r, f = null) {
   })()));
   out.push('');
   out.push(formatOthers(input, r.chart, r));
+  out.push('');
+  out.push(formatMonths(input, r.chart, input.currentYear));
   out.push('');
   out.push(formatSchools());
   out.push('');

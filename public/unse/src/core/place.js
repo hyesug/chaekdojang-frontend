@@ -213,8 +213,26 @@ export const CITIES = [
 
 const BY_NAME = new Map(CITIES.map((c) => [c.name, c]));
 
+/**
+ * 줄여 부르는 이름 → 목록의 정식 이름.
+ *
+ * 목록에는 '광주광역시'와 '광주(경기)'가 있는데 **맨 '광주'가 없어서**,
+ * 광역시 이름을 그대로 넣으면 계산이 아예 안 됐다. 두 곳을 가리킬 수 있는
+ * 이름은 인구가 훨씬 많은 쪽으로 보낸다. 경기 광주는 목록에서 '광주(경기)'를
+ * 고르면 된다 — 두 곳은 경도가 0.4도 벌어져 진태양시가 약 1.6분 다르다.
+ * 시주 경계에 바짝 붙어 태어난 경우가 아니면 결과가 갈리지 않는다.
+ */
+const ALIAS = { 광주: '광주광역시' };
+
 export function findCity(name) {
-  return BY_NAME.get(name) ?? null;
+  const raw = String(name ?? '').trim();
+  if (!raw) return null;
+  // **정식 이름을 먼저 본다.** 접미사를 먼저 떼면 '대구'가 '대'가 된다
+  const exact = BY_NAME.get(raw);
+  if (exact) return exact;
+  // '광주광역시'·'서울특별시'처럼 붙여 적는 경우. 한 글자 시/군/구는 떼지 않는다
+  const norm = raw.replace(/(특별자치시|특별자치도|특별시|광역시|자치시)$/, '');
+  return BY_NAME.get(norm) ?? BY_NAME.get(ALIAS[norm] ?? ALIAS[raw]) ?? null;
 }
 
 /**

@@ -4,7 +4,9 @@ import AuthButtons from "./AuthButtons";
 import NotificationBell from "./NotificationBell";
 import AdminNavLink from "./AdminNavLink";
 
-const navLinks = [
+// external 은 지금 쓰는 항목이 없지만(운세를 메뉴에서 뺐다) 타입에는 남겨 둔다.
+// 빼면 되살릴 때 타입 오류부터 나고, MobileMenu 도 이 모양을 받는다.
+const navLinks: { href: string; label: string; external?: boolean }[] = [
   { href: "/", label: "피드" },
   { href: "/search?tab=books", label: "검색" },
   { href: "/library", label: "서재" },
@@ -13,9 +15,11 @@ const navLinks = [
   { href: "/contests", label: "공모전" },
   { href: "/groups", label: "독서모임" },
   { href: "/stats", label: "독서 인생지도" },
-  // 운세는 Next 라우트가 아니라 public/unse 의 정적 사이트다.
-  // next/link 로 걸면 클라이언트 라우팅이 잡아채 404 가 나므로 일반 링크로 나간다.
-  { href: "/unse", label: "운세", external: true },
+  // 운세는 메뉴에서 뺐다. 페이지(/unse)는 그대로 살아 있고 주소로 들어가면
+  // 열린다 — AI 질문 한 번에 수백 원이 들어 아직 일반 공개할 단계가 아니다.
+  // 되살릴 때는 아래 한 줄의 주석만 풀면 되고, public/unse/index.html 의
+  // 헤더에서도 같이 빼 두었으니 그쪽도 함께 풀 것.
+  // { href: "/unse", label: "운세", external: true },
   { href: "/cs", label: "고객센터" },
 ];
 

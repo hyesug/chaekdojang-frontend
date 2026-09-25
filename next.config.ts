@@ -55,8 +55,11 @@ const nextConfig: NextConfig = {
         source: "/:path*",
         headers: securityHeaders,
       },
-      // 운세 사이트의 색인 차단(X-Robots-Tag noindex)은 걷어냈다.
-      // 메뉴에 걸어 공개하기로 했으므로 막을 이유가 없어졌다.
+      // 운세는 다시 색인에서 뺀다. 메뉴에서만 감추면 구글로 들어온 사람이
+      // 그대로 쓸 수 있어 감춘 뜻이 없어진다 — AI 질문 한 번에 수백 원이 든다.
+      // 공개할 때 이 블록을 지우면 원래대로 돌아온다.
+      { source: "/unse", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
+      { source: "/unse/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
     ];
   },
   async rewrites() {

@@ -204,15 +204,17 @@ function formatCareer(input, chart, fortune, structures) {
  * 재물·주거·학업은 여태 육친과 하우스만 나가고 성향도 시기도 없었다.
  * 같은 세 가지(체계별 읽기 · 성향 · 시기 창)를 똑같이 붙인다.
  */
-function formatOthers(input, chart, fortune) {
+function formatOthers(input, chart, fortune, only = null) {
   const BY_DOMAIN = [
     ['재물', 5, '재백궁', '돈을 다루는 결'],
     ['주거', 4, '전택궁', '사는 자리의 결'],
-    ['학업', 9, '자녀궁', '배우는 결'],
+    // 학업은 본인이 배우는 결이라 명궁에서 읽는다. 자녀궁은 자녀의 자리다
+    ['학업', 9, '명궁', '배우는 결'],
     ['건강', 6, '질액궁', '몸의 결'],
   ];
   const out = [];
   for (const [domain, house, palace, who] of BY_DOMAIN) {
+    if (only && !only.includes(domain)) continue;
     const reads = [];
     try {
       const nat = natureOf(palaceStars(input, palace), who);
@@ -329,6 +331,47 @@ function yearNote(days) {
   return first.y === last.y
     ? `아래 날짜는 모두 ${first.y}년이다.`
     : `아래 날짜 가운데 ${first.m}월~12월은 ${first.y}년, 1월 이후는 ${last.y}년이다.`;
+}
+
+/**
+ * **질문에 걸린 분야만** 펼친다 — 캐시에 태우지 않고 물을 때마다 만든다.
+ *
+ * 예전에는 일곱 분야를 전부 명반 문맥에 넣어 캐시에 태웠다. 그런데 분야
+ * 구획이 문맥의 35%(16,855자)라, 자녀를 물어도 재물·주거·건강·학업이 통째로
+ * 따라갔다. 캐시는 5분이면 만료되므로 그만큼을 계속 다시 써야 했다.
+ *
+ * 질문마다 다른 것을 캐시에 넣으면 캐시가 아예 안 맞으므로, **고정인 것만
+ * 캐시에 두고 달라지는 것은 이쪽으로 뺀다.** 값이 줄어드는 김에 답도
+ * 좋아진다 — 묻지 않은 분야가 섞이지 않는다.
+ *
+ * @param {object} r        readFortune 결과
+ * @param {string[]} domains `routeQuestion(...).domains`
+ */
+export function domainSections(r, domains = []) {
+  const { chart, input } = r;
+  const want = new Set(domains);
+  const out = [];
+  const add = (t) => { if (t) { out.push(t); out.push(''); } };
+
+  try {
+    if (want.has('자녀')) add(formatChildren(input, chart));
+    if (want.has('결혼') || want.has('관계')) add(formatSpouse(input, chart, r));
+    if (want.has('직업')) {
+      add(formatCareer(input, chart, r, (() => {
+        try { return readStructures({ ...chart, gender: input.gender }).structures; } catch { return []; }
+      })()));
+    }
+    // 재물·주거·학업·건강은 한 함수가 만드므로 걸린 것만 골라 넘긴다
+    const others = ['재물', '주거', '학업', '건강'].filter((d) => want.has(d));
+    if (others.length) add(formatOthers(input, chart, r, others));
+  } catch { /* 한 분야가 터져도 나머지는 간다 */ }
+
+  return out.join('\n').trim();
+}
+
+/** 열두 절기월 — 달을 물었을 때만 만든다 (달 단위는 검증에서 진 값이다) */
+export function monthSection(r) {
+  return formatMonths(r.input, r.chart, r.input.currentYear);
 }
 
 /**
@@ -598,18 +641,11 @@ export function buildContext(form, r, f = null) {
   // 말할 수 있다. 사람마다 고정이라 캐시에 함께 태워도 값이 붙지 않는다.
   out.push(formatLife(input, r.chart));
   out.push('');
-  out.push(formatChildren(input, r.chart));
-  out.push('');
-  out.push(formatSpouse(input, r.chart, r));
-  out.push('');
-  out.push(formatCareer(input, r.chart, r, (() => {
-    try { return readStructures({ ...r.chart, gender: input.gender }).structures; } catch { return []; }
-  })()));
-  out.push('');
-  out.push(formatOthers(input, r.chart, r));
-  out.push('');
-  out.push(formatMonths(input, r.chart, input.currentYear));
-  out.push('');
+  // **분야 구획(자녀·배우자·직업·재물·주거·학업·건강)과 절기월 표는 여기 없다.**
+  // 이 덩이는 캐시에 태우는 자리인데, 일곱 분야를 다 실으니 자녀를 물어도
+  // 재물·건강까지 매번 따라가 캐시 덩어리가 47,600자까지 불었다. 캐시가
+  // 만료될 때마다(5분) 그만큼을 다시 쓰느라 질문 한 번에 944원이 나갔다.
+  // 지금은 `domainSections()` 가 질문에 걸린 분야만 만들어 focus 로 보낸다.
   out.push(formatSchools());
   out.push('');
 

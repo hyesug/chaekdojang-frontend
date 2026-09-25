@@ -17,7 +17,7 @@ import { readFileSync } from 'node:fs';
 
 import { readFortune } from '../../public/unse/src/engine.js';
 import { readForecast } from '../../public/unse/src/forecast.js';
-import { buildContext } from '../../public/unse/src/aiContext.js';
+import { buildContext, domainSections, monthSection } from '../../public/unse/src/aiContext.js';
 import { routeQuestion, scopeLockOf } from '../../public/unse/src/hires/router.js';
 import { buildHiRes } from '../../public/unse/src/hires/context.js';
 import { modernHouse } from '../../public/unse/src/semantic/structure/western.js';
@@ -39,6 +39,25 @@ const context = () => (ctxCache ??= buildContext(
 
 const route = (q) => routeQuestion(q, 2026);
 
+/**
+ * 모델이 실제로 받는 전부 — 캐시에 태우는 명반 문맥 + 그 질문에만 붙는 focus.
+ *
+ * 분야 구획·절기월은 **질문에 걸릴 때만** 온다(캐시 덩어리를 줄이려고 뺐다).
+ * 그래서 "문맥에 있는가"가 아니라 **"그 질문에서 모델이 받는가"** 를 봐야 한다.
+ */
+function payload(q) {
+  const r = readFortune(BIRTH, { now: NOW });
+  const fc = readForecast(BIRTH, NOW);
+  const plan = route(q);
+  const parts = [
+    buildContext(BIRTH, r, fc),
+    buildHiRes(r, fc, plan).text,
+    domainSections(r, plan.domains),
+  ];
+  if (plan.needsDay || /몇 ?월|달별|월별/.test(q)) parts.push(monthSection(r));
+  return parts.filter(Boolean).join('\n\n');
+}
+
 /* ── 1. 질문 유형마다 맞는 계산이 켜지는가 ──────────────────── */
 
 test('대운으로 이직·재물 시기를 물으면 직업·재물이 켜진다', () => {
@@ -48,15 +67,46 @@ test('대운으로 이직·재물 시기를 물으면 직업·재물이 켜진�
   assert.equal(r.needsHorary, false, '시기 질문은 점시가 아니다');
 });
 
-test('태양·MC 직업 적성 — 문맥에 10하우스 고전·현대 읽기가 함께 실린다', () => {
-  const c = context();
+test('"직업"·"적성"이 낱말로 걸린다 — 폴백에 기대지 않는다', () => {
+  // 예전에는 규칙에 '직업'이 없어서 "직업 어때"가 폴백(마침 직업)으로 갔고,
+  // 그래서 "직업이랑 재물 어때"는 재물만 잡히고 직업이 통째로 빠졌다
+  for (const q of ['직업 어때?', '내 직업 적성이 뭐야?']) {
+    const r = route(q);
+    assert.ok(r.domains.includes('직업'), q);
+    assert.equal(r.fallback, false, `폴백이 아니라 낱말로 걸려야 한다: ${q}`);
+  }
+  assert.deepEqual(route('직업이랑 재물 어때?').domains.slice(0, 2).sort(), ['재물', '직업']);
+});
+
+test('분야 구획은 걸린 분야만 온다 (캐시 덩어리를 줄인 자리)', () => {
+  const r = readFortune(BIRTH, { now: NOW });
+  const only자녀 = domainSections(r, ['자녀']);
+  assert.match(only자녀, /## 자녀 — 체계마다/);
+  for (const other of ['재물', '주거', '건강', '학업', '배우자']) {
+    assert.ok(!only자녀.includes(`## ${other} — 체계마다`), `${other}가 따라오면 안 된다`);
+  }
+  // 명반 문맥(캐시에 태우는 덩이)에는 분야 구획이 없어야 한다
+  assert.ok(!context().includes('## 자녀 — 체계마다'), '캐시 덩이에 분야가 남아 있으면 안 된다');
+});
+
+test('절기월 표는 달을 물었을 때만 온다', () => {
+  // '시기 교집합 — 올해 열두 절기월 가운데…' 라는 다른 줄이 있으므로
+  // 새 표의 제목(## 2026년 열두 절기월)만 가리켜 본다
+  const TABLE = /## \d{4}년 열두 절기월/;
+  assert.ok(!TABLE.test(context()), '캐시 덩이에 있으면 안 된다');
+  assert.ok(!TABLE.test(payload('자녀운 어때?')), '안 물으면 안 온다');
+  assert.ok(TABLE.test(payload('올해 몇 월이 좋아?')), '물으면 와야 한다');
+});
+
+test('태양·MC 직업 적성 — 직업을 물으면 10하우스 고전·현대 읽기가 함께 온다', () => {
+  const c = payload('내 직업 적성이 뭐야?');
   assert.match(c, /## 직업 — 체계마다 무엇이라 하는가/);
   assert.match(c, /고전 서양.*10하우스/s, '고전 10하우스 룰러 읽기');
   assert.match(c, /점성술\(현대\).*10하우스/s, '현대 10하우스 거주 행성');
 });
 
 test('자미 관록궁·재백궁이 성향까지 함께 나온다', () => {
-  const c = context();
+  const c = payload('직업이랑 재물 어때?');
   assert.match(c, /관록궁 [^)]*\): 일할 때의 본인의 결은/, '관록궁 = 본인');
   assert.match(c, /## 재물 — 체계마다 무엇이라 하는가/);
   assert.match(c, /재백궁/, '재백궁을 읽어야 한다');
@@ -86,7 +136,7 @@ test('숙요 관계가 문맥에 실린다', () => {
 });
 
 test('현재 다샤가 날짜와 함께 실린다', () => {
-  const c = context();
+  const c = payload('언제 이직해?');
   assert.match(c, /다샤|MD |Mahadasha/i);
   assert.match(c, /(MD|AD) \S+ 시작 \(\d{4}년 \d{1,2}월/, '다샤 전환에 날짜가 붙어야 한다');
 });
@@ -107,8 +157,8 @@ test('태국 요일·색·방위가 문맥에 실린다', () => {
   assert.match(context(), /### 태국 점성술/);
 });
 
-test('월별 강약 — 열두 절기월이 간지와 함께 실린다', () => {
-  const c = context();
+test('월별 강약 — 달을 물으면 열두 절기월이 간지와 함께 온다', () => {
+  const c = payload('올해 몇 월이 좋아?');
   assert.match(c, /## \d{4}년 열두 절기월/);
   // 달마다 간지가 붙어야 "9월 丁酉" 같은 말을 할 수 있다
   const months = c.match(/^\d{4}\.\d{1,2}\/\d{1,2}~ [甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥] /gm) ?? [];
@@ -539,7 +589,7 @@ test('조심하는 말은 한 번만 붙이라는 규칙이 있다', () => {
 });
 
 test('시기 순위에는 측정 결과가 한 번만 붙는다', () => {
-  const c = context();
+  const c = payload('자녀운 어때?');
   const n = (c.match(/이 문장은 답 전체에서 한 번만 쓸 것/g) ?? []).length;
   assert.ok(n >= 1, '측정 문구가 있어야 한다');
   assert.match(c, /p=0\.868/, '달 단위 측정값을 함께 싣는다');

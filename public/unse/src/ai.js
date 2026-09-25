@@ -9,7 +9,8 @@
  *  넘어가기 때문이다.)
  */
 
-import { buildContext, READING_PROMPT, buildCompatContext, COMPAT_PROMPT } from './aiContext.js';
+import { buildContext, READING_PROMPT, buildCompatContext, COMPAT_PROMPT,
+         domainSections, monthSection } from './aiContext.js';
 import { readForecast } from './forecast.js';
 import { routeQuestion } from './hires/router.js';
 import { buildHiRes } from './hires/context.js';
@@ -183,11 +184,23 @@ function focusFor(question, calc) {
   if (!calc?.fortune) return null;
   try {
     const plan = routeQuestion(question, calc.fortune.input.currentYear);
-    const hires = buildHiRes(calc.fortune, calc.forecast, plan).text;
+    const parts = [buildHiRes(calc.fortune, calc.forecast, plan).text];
+
+    // 분야 구획은 **걸린 분야만** 온다. 일곱을 다 캐시에 넣어 두었더니
+    // 자녀를 물어도 재물·건강이 따라가 캐시 덩어리가 47,600자였다
+    parts.push(domainSections(calc.fortune, plan.domains));
+
+    // 달 표는 달을 물었을 때만. 달 단위는 검증에서 진 값이라 안 물었는데
+    // 실어 보내면 돈만 쓰고 답에는 잡음을 더한다
+    if (plan.needsDay || /몇 ?월|달별|월별|이번 달|다음 달/.test(question)) {
+      parts.push(monthSection(calc.fortune));
+    }
+
     // 점시는 **묻는 순간**에 세우는 것이라 캐시되는 명반 문맥이 아니라
     // 질문마다 새로 붙는 이 자리에 온다. 출생괘와 섞이지 않는 이유이기도 하다
-    if (!plan.needsHorary) return hires;
-    return [hires, formatHorary(horaryCast(new Date()), question)].filter(Boolean).join('\n\n');
+    if (plan.needsHorary) parts.push(formatHorary(horaryCast(new Date()), question));
+
+    return parts.filter(Boolean).join('\n\n');
   } catch (e) {
     console.warn('[운세] 고해상도 계산을 건너뜁니다:', e.message);
     return null;

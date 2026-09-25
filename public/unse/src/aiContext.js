@@ -23,7 +23,7 @@ import { dayRange, rankSurgeryDays, structureReading, patternReading,
          yearTimeline, innerReading, tabooReading } from './reading.js';
 import { buildMultilayer, formatMultilayer } from './multilayerInterpretation.js';
 import { lifeChapters, chaptersAt, chapterTurns } from './semantic/compose/life.js';
-import { readChildren, childPalaceStars, childrenDisagreement } from './semantic/structure/children.js';
+import { readChildren, childPalaceStars, childrenVerdict } from './semantic/structure/children.js';
 import { childrenPack } from './hires/vedicExt.js';
 
 const p2 = (n) => String(n).padStart(2, '0');
@@ -59,12 +59,15 @@ function formatChildren(input, chart) {
 
   const L = ['## 자녀 — 체계마다 무엇이라 하는가', ''];
   for (const r of reads) L.push(`- **${r.system}** (${r.what}): ${r.text}  [출전: ${r.source}]`);
-  const dis = childrenDisagreement(reads);
-  if (dis) { L.push(''); L.push(`※ ${dis}`); }
+
+  // 규칙대로 종합한 결과. 갈린 자리는 여기서 이미 빠져 있다
+  const v = childrenVerdict(reads);
   L.push('');
-  L.push('이 줄들은 **각 전통의 규칙을 그대로 옮긴 것**이다. 맞는다고 검증된 것이 아니다.');
-  L.push('자녀를 물으면 체계 이름을 붙여 그대로 전하고, 갈리면 갈린다고 말할 것.');
-  L.push('**하나로 좁히지 말 것** — 좁히는 순간 어느 전통의 말도 아니게 된다.');
+  L.push('**종합 (겹치면 단정 · 갈리면 뺌 · 하나뿐이면 보수적):**');
+  for (const line of v.lines) L.push(`  ${line}`);
+  L.push('');
+  L.push('위 종합은 이미 규칙대로 정리한 것이다. **다시 종합하지 말고 그대로 쓸 것.**');
+  L.push('갈린다고 적힌 자리는 답에서 빼고, 겹친 자리는 단정해서 말할 것.');
   return L.join('\n');
 }
 

@@ -22,6 +22,7 @@ import { MAIN_HIDDEN, tenGod, TEN_GOD_GROUP } from '../../core/ganzhi.js';
 import { j } from '../../core/josa.js';
 import { buildBoard } from '../../hires/ziwei.js';
 import { PALACES } from '../../systems/jamidusu.js';
+import { consensusOf, consensusRange, phrase } from '../compose/consensus.js';
 
 /**
  * 자녀궁에 든 주성을 판에서 직접 꺼낸다.
@@ -145,6 +146,8 @@ export function readChildren(chart, ziweiChildStars = [], vedic = null) {
           + ` 판본마다 한둘씩 다르게 적고, 이 사이트는 별의 밝기(묘왕함)를 계산하지 않아`
           + ` 범위를 그대로 냅니다.`,
         source: '자미두수전서 자녀궁 — 주성별 자녀 수',
+        topicKey: '수',
+        range: [lo, hi],
       });
     } else {
       out.push({
@@ -168,6 +171,10 @@ export function readChildren(chart, ziweiChildStars = [], vedic = null) {
     system: '사주', what: g.count ? `${g.kinds.join('·')}` : '자녀별 없음',
     topic: '성별·수', text: g.text,
     source: '연해자평 — 女命은 食傷, 男命은 官星으로 자녀를 본다',
+    // **수가 아니라 자리가 열렸는지**를 말한다. 십성 개수는 자녀 수가 아니다 —
+    // 자미의 수 표와 같은 축에 놓으면 있지도 않은 상충이 만들어진다.
+    topicKey: '열림',
+    stance: g.count >= 1 ? '많음' : '적음',
   });
 
   // ── 베딕 — D7(삽탐샤)이 자녀 전용 분할도다 ──
@@ -179,16 +186,64 @@ export function readChildren(chart, ziweiChildStars = [], vedic = null) {
     if (vedic.d7_5?.occupants?.length) bits.push(`D7 5하우스에 ${vedic.d7_5.occupants.join('·')}`);
     if (vedic.maleficsOn5?.length) bits.push(`5하우스에 흉성 ${vedic.maleficsOn5.join('·')}`);
 
+    // 5하우스가 받쳐지는가 눌리는가 — 수를 세지는 못해도 방향은 낸다.
+    // 목성이 보거나 들면 받쳐지고(BPHS 의 자녀 카라카), 흉성이 들면 눌린다.
+    const lift = ((vedic.d1_5?.aspects ?? []).includes('목성') ? 1 : 0)
+      + ((vedic.d1_5?.occupants ?? []).includes('목성') ? 1 : 0)
+      - (vedic.maleficsOn5?.length ?? 0);
+
     out.push({
       system: '베딕', what: 'D7 삽탐샤', topic: '수·시기',
       text: `베딕에서 자녀를 보는 자리는 D7(삽탐샤)입니다. ${bits.join(' · ')}.`
         + ` 삽탐샤는 **수를 직접 세는 분할도가 아니라** 자녀와의 인연이 어떤 결인지를 보는 자리라,`
-        + ` 몇 명인지는 여기서 나오지 않습니다.`,
+        + ` 몇 명인지는 여기서 나오지 않습니다.`
+        + (lift > 0 ? ' 다만 5하우스가 목성에 받쳐져 **열리는 쪽**으로 봅니다.'
+          : lift < 0 ? ' 다만 5하우스에 흉성이 들어 **눌리는 쪽**으로 봅니다.' : ''),
       source: 'BPHS — 자녀는 5하우스와 D7(삽탐샤)로 본다',
+      topicKey: '열림',
+      stance: lift > 0 ? '많음' : lift < 0 ? '적음' : null,
     });
   }
 
   return out;
+}
+
+/**
+ * 셋을 종합한다 — **겹치면 단정, 갈리면 빼고, 하나뿐이면 보수적으로.**
+ *
+ * 평균을 내지 않는다. 자미가 2~5 라 하고 사주가 하나라 하면 그 사이 어딘가를
+ * 만드는 것이 아니라 **갈렸다고 적고 수를 말하지 않는다.** 2명과 5명의 평균
+ * 3.5명은 어느 전통의 말도 아니다.
+ */
+export function childrenVerdict(reads) {
+  const c = consensusOf(reads.filter((x) => x.topicKey === '열림'));
+  const r = consensusRange(reads.filter((x) => x.range).map((x) => ({ system: x.system, n: x.range })));
+
+  const lines = [];
+  if (c.verdict === '갈림') {
+    lines.push(c.say);
+  } else if (c.verdict === '겹침') {
+    lines.push(`자녀 자리는 **${c.stance === '많음' ? '열리는 쪽' : '눌리는 쪽'}**입니다. ${c.say}`);
+  } else if (c.verdict === '하나') {
+    // `c.say` 가 이미 "한 곳에서만" 을 말하므로 phrase 의 꼬리를 또 붙이지 않는다
+    lines.push(`자녀 자리는 ${c.stance === '많음' ? '열리는 쪽' : '눌리는 쪽'}으로 나옵니다.`
+      + ` ${c.agree[0].system} 한 곳에서만 나온 말이라 세게 말하지 않겠습니다.`);
+  }
+
+  if (r.verdict === '겹침') {
+    lines.push(`수는 **${r.n[0] === r.n[1] ? `${r.n[0]}명` : `${r.n[0]}~${r.n[1]}명`}** — ${r.say}`);
+  } else if (r.verdict === '하나') {
+    lines.push(`수는 **${r.n[0] === r.n[1] ? `${r.n[0]}명` : `${r.n[0]}~${r.n[1]}명`}**`
+      + ` — ${r.from[0]}의 표에서만 나온 값입니다.`);
+  } else if (r.verdict === '갈림') {
+    lines.push(r.say);
+  }
+
+  // 성별은 한 체계 안에서 유파가 갈린다 — 규칙대로 뺀다
+  lines.push('성별은 말하지 않습니다. 같은 십성을 딸로 적은 책과 아들로 적은 책이 둘 다 있어,'
+    + ' 한쪽을 고르면 근거가 사라집니다.');
+
+  return { consensus: c, range: r, lines: lines.filter(Boolean) };
 }
 
 /** 체계끼리 어긋나는가 — 수를 말한 것들만 견준다 */

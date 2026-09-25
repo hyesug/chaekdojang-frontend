@@ -371,6 +371,48 @@ test('체계를 지정하면 그 체계가 잠긴다', () => {
   assert.deepEqual(scopeLockOf('다샤로는 지금 어떤 시기야?'), ['베딕']);
 });
 
+test('요일을 물으면 요일을 보는 두 체계만 잠긴다', () => {
+  const s = scopeLockOf('타고난 요일 기운으로 보면 어때?');
+  assert.deepEqual(s.sort(), ['마하보테', '태국 점성술']);
+  // 요일을 쓰는 체계는 이 둘뿐이라 다른 것이 섞이면 안 된다
+  for (const bad of ['사주', '자미두수', '베딕', '숙요', '타로', '토정비결']) {
+    assert.ok(!s.includes(bad), `${bad}이 끼면 안 된다`);
+  }
+});
+
+test('연도 기운은 그 해 판을 세우는 체계로 잠긴다', () => {
+  assert.deepEqual(scopeLockOf('음력 연도 기운은 어때?'), ['구성학']);
+});
+
+test('요일과 연도를 함께 물으면 셋이 잠긴다', () => {
+  const s = scopeLockOf('타고난 요일과 음력 연도 기운을 볼 때 올해 주의할 것은?');
+  assert.deepEqual(s.sort(), ['구성학', '마하보테', '태국 점성술']);
+});
+
+test('택일의 "요일"은 잠그지 않는다', () => {
+  // "계약은 무슨 요일에" 는 태국 점성술이 아니라 택일 질문이다
+  for (const q of ['계약은 무슨 요일에 하면 좋아?', '이사 요일 골라줘', '무슨 요일이 좋아']) {
+    assert.equal(scopeLockOf(q), null, `택일인데 잠기면 안 된다: ${q}`);
+  }
+});
+
+test('요일·연도 규칙이 프롬프트에 있다', () => {
+  assert.match(PROMPT, /### 요일·연도를 물을 때/);
+  assert.match(PROMPT, /요일을 보는 체계는 이 둘뿐입니다/);
+  assert.match(PROMPT, /사주·자미두수·베딕·숙요·타로·토정비결을 임의로 끌어와 종합하지 마세요/);
+  assert.match(PROMPT, /주의점 → 성취 분야 → 한 줄 요약/);
+});
+
+test('결론의 주근거가 지정 체계에서 나와야 한다는 규칙이 있다', () => {
+  assert.match(PROMPT, /### 결론의 주근거가 지정한 체계에서 나와야 합니다/);
+  assert.match(PROMPT, /다른 체계의 결론을 지정 체계의 결과처럼 말하지 마세요/);
+});
+
+test('달은 직접 물었을 때만 낸다는 규칙이 있다', () => {
+  assert.match(PROMPT, /### 달은 직접 물었을 때만/);
+  assert.match(PROMPT, /"몇 월"을 직접 묻지 않으면 월 단위 시기를 답에 꺼내지 마세요/);
+});
+
 test('체계를 안 대면 잠그지 않는다', () => {
   for (const q of ['올해 어때요', '자녀운 어때', '이직할 수 있을까']) {
     assert.equal(scopeLockOf(q), null, `잠기면 안 된다: ${q}`);

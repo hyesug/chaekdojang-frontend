@@ -335,8 +335,8 @@ export function analyze(input) {
     readings.push({
       title: '삼방사정 — 함께 보는 세 자리',
       text: `명궁만 보지 않고 삼합 두 자리와 마주 보는 대궁까지 넷을 한 묶음으로 읽습니다. `
-        + others.map((x) => `${BRANCHES[x.b]}궁 ${x.stars.join('·')}`).join(' · ')
-        + `이(가) 명궁을 함께 받칩니다. 명궁 주성이 밑그림이라면 이 별들은 그 밑그림이 실제로 어떻게 굴러가는지를 정합니다.`,
+        + j(others.map((x) => `${BRANCHES[x.b]}궁 ${x.stars.join('·')}`).join(' · '), '이')
+        + ` 명궁을 함께 받칩니다. 명궁 주성이 밑그림이라면 이 별들은 그 밑그림이 실제로 어떻게 굴러가는지를 정합니다.`,
     });
   }
 

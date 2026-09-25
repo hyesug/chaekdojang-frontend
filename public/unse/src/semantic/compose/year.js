@@ -113,7 +113,7 @@ export function yearSlots(input, chart, year, chapters = []) {
       tone.push({
         system: '고전 서양', what: `연간 프로펙션 — ${p.house}하우스`,
         text: `그 해의 무대는 ${p.house}하우스(${p.topic})이고, 주인은 ${p.timeLord}입니다.`
-          + ` 그 ${p.timeLord}은(는) 원국의 ${p.lordNatalHouse}하우스 ${p.lordNatalSign}에 있습니다`
+          + ` 그 ${j(p.timeLord, '은')} 원국의 ${p.lordNatalHouse}하우스 ${p.lordNatalSign}에 있습니다`
           + ` — 사건이 터지는 자리는 거기입니다.`,
       });
     }

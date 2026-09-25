@@ -250,6 +250,13 @@ function wire(context, calc = null, compat = null) {
     session.busy = true;
     send.disabled = true;
 
+    // 휴대폰은 화면을 벗어나면(탭 전환·홈 버튼·화면 꺼짐) 브라우저가 연결을
+    // 끊는다. 그 자체는 막을 수 없으니, **끊겼을 때 무슨 일이 있었는지**를
+    // 알 수 있게 기록해 둔다. 안 그러면 정체 모를 네트워크 오류로만 보인다.
+    let leftPage = false;
+    const watchLeave = () => { if (document.hidden) leftPage = true; };
+    document.addEventListener('visibilitychange', watchLeave);
+
     log.insertAdjacentHTML('beforeend',
       `<div class="ai-turn me"><p>${esc(question)}</p></div>`);
     const bubble = document.createElement('div');
@@ -274,7 +281,9 @@ function wire(context, calc = null, compat = null) {
       if (!res.ok || !res.body) {
         let msg = `서버가 ${res.status} 를 돌려주었습니다.`;
         try { msg = (await res.json()).error ?? msg; } catch { /* 본문이 JSON 이 아닐 수 있다 */ }
-        throw new Error(msg);
+        // 서버가 이유를 말해 준 오류다. 마침 탭을 옮겼더라도 이 말을 그대로
+        // 보여줘야 한다 — "화면을 벗어나서"로 덮으면 진짜 원인이 가려진다
+        throw Object.assign(new Error(msg), { fromServer: true });
       }
 
       // 줄 단위 JSON 을 흘려 받는다
@@ -296,7 +305,7 @@ function wire(context, calc = null, compat = null) {
             bubble.innerHTML = `<p>${renderText(acc)}</p>`;
             bubble.scrollIntoView({ block: 'nearest' });
           } else if (ev.error) {
-            throw new Error(ev.error);
+            throw Object.assign(new Error(ev.error), { fromServer: true });
           } else if (ev.done) {
             // 비용 표시가 터져도 답은 살아야 한다. 이 호출이 바깥 try 로
             // 새면 **이미 다 받아 그려 놓은 답이 오류 메시지로 덮인다**
@@ -310,10 +319,29 @@ function wire(context, calc = null, compat = null) {
       session.messages.push({ role: 'assistant', content: acc });
       addCopy(bubble, acc);
     } catch (err) {
-      bubble.innerHTML = `<p class="ai-err">${esc(err.message)}</p>`;
-      // 실패한 질문은 기록에서 빼둔다. 다음 질문에 딸려 올라가지 않도록.
+      // **받아 둔 답을 버리지 않는다.** 여기서 bubble 을 통째로 덮어쓰고
+      // 있었는데, 휴대폰에서 화면을 벗어나면 연결이 끊겨 이 자리로 오므로
+      // 그때까지 흘러온 답이 통째로 사라졌다. 끊긴 것은 연결이지 답이 아니다.
+      const why = (leftPage && !err.fromServer)
+        ? '화면을 벗어나 있는 동안 연결이 끊겼습니다.'
+        : esc(err.message);
+      bubble.innerHTML = acc
+        ? `<p>${renderText(acc)}</p><p class="ai-err">${why} 여기까지 받았습니다.</p>`
+        : `<p class="ai-err">${why}</p>`;
+
+      // 다시 묻기 — 끊긴 뒤에 질문을 손으로 다시 치게 하지 않는다
+      const again = document.createElement('button');
+      again.type = 'button';
+      again.className = 'ai-retry';
+      again.textContent = '다시 묻기';
+      again.addEventListener('click', () => { again.remove(); ask(question); });
+      bubble.appendChild(again);
+
+      // 끊긴 답은 기록에 넣지 않는다. 반쪽짜리가 다음 질문에 딸려 올라가면
+      // 모델이 이어 쓴 것처럼 굴어 더 헷갈린다. 화면에는 남기고 기록만 뺀다.
       session.messages.pop();
     } finally {
+      document.removeEventListener('visibilitychange', watchLeave);
       session.busy = false;
       send.disabled = false;
     }

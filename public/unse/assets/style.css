@@ -513,6 +513,17 @@ details.pool[open] > summary::before { content: '▾ '; }
 .ai-turn:hover .ai-copy, .ai-turn .ai-copy:focus-visible { opacity: 1; }
 .ai-turn .ai-copy.done { opacity: 1; color: var(--gold); border-color: var(--gold); }
 
+/* 연결이 끊겼을 때 뜨는 단추. 복사 단추와 달리 **늘 또렷하게** 보인다 —
+   눌러 달라고 있는 것이라 hover 로 숨기면 안 된다. 손가락으로 누르는
+   자리라 44px 을 확보한다 */
+.ai-turn .ai-retry {
+  display: block; margin: 12px 0 0; padding: 9px 16px; min-height: 44px;
+  font: inherit; font-size: 13px;
+  color: var(--gold); background: transparent;
+  border: 1px solid var(--gold-soft); border-radius: 11px; cursor: pointer;
+}
+.ai-turn .ai-retry:hover { background: var(--bg); }
+
 .ai-input { display: flex; gap: 8px; align-items: stretch; }
 .ai-input textarea {
   flex: 1; padding: 11px 13px; background: var(--bg-soft);

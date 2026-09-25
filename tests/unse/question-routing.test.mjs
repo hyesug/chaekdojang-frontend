@@ -243,6 +243,58 @@ test('근거가 모이면 단정하라는 규칙이 있다', () => {
   assert.match(PROMPT, /직업 변화가 먼저이고 주거 이동이 뒤따르는 흐름이다/);
 });
 
+/* ── 잘못 읽기 쉬운 계산값 ──────────────────────────────────── */
+
+test('申궁과 身宮이 한 줄에서 구분된다', () => {
+  // 1990년생 명반은 身宮이 亥, 질액궁이 申 — 한글로는 둘 다 "신궁"이다
+  const f = { ...BIRTH, year: 1990, month: 6, day: 10, hour: 10, minute: 0 };
+  const z = jamidusu.analyze(readFortune(f, { now: NOW }).input);
+  const line = z.facts.map((x) => `${x.label} ${x.value}`).join(' · ');
+  assert.match(line, /신궁\(身宮\)/, '身宮은 라벨에 한자를 달아야 한다');
+  assert.match(line, /신궁\(申\)/, '申궁은 한자를 떼면 안 된다');
+});
+
+test('申궁은 같은 지지가 다시 나와도 한자를 떼지 않는다', () => {
+  // 다른 지지는 두 번째부터 한글만 쓰지만 申만은 예외다
+  for (const y of [1988, 1990, 1993, 1996, 2001]) {
+    const f = { ...BIRTH, year: y, month: 6, day: 10, hour: 10, minute: 0 };
+    const z = jamidusu.analyze(readFortune(f, { now: NOW }).input);
+    const line = z.facts.map((x) => `${x.label} ${x.value}`).join(' · ');
+    const bare = line.match(/신궁(?!\()/g) ?? [];
+    // 라벨 '신궁(身宮)' 과 값 '신궁(申)' 외에 맨 '신궁' 이 있으면 안 된다
+    assert.equal(bare.length, 0, `${y}: 한자 없는 맨 '신궁'이 있으면 身宮과 섞인다`);
+  }
+});
+
+test('지장간을 문맥에 실어 "인성 0"을 오독하지 않게 한다', () => {
+  const c = context();
+  assert.match(c, /지장간 년지 [子丑寅卯辰巳午未申酉戌亥] → /);
+  assert.match(c, /십신이 0이라고 그 기운이 아예 없다고 읽으면 안 된다/);
+  // 이 명반은 십신 인성 0 인데 월지 지장간에 편인이 있다 — 딱 그 경우다
+  assert.match(c, /인성 0/);
+  assert.match(c, /지장간[^\n]*편인/);
+});
+
+test('프로젝트·의사결정 규칙이 프롬프트에 있다', () => {
+  assert.match(PROMPT, /## 프로젝트·의사결정을 물을 때/);
+  assert.match(PROMPT, /점시 괘를 중심에 놓고 답하세요/);
+  assert.match(PROMPT, /같은 결론을 받쳐 줄 때만 짧게/);
+  assert.match(PROMPT, /묻지 않은 월별 시기·재물·방위를\s*\n?\s*얹지 마세요/);
+  assert.match(PROMPT, /### 알 수 없는 것을 없다고 하지 마세요/);
+  assert.match(PROMPT, /외부 요인은 아닙니다/);
+  assert.match(PROMPT, /가장 먼저 손볼 것은 내부 방식입니다/);
+  assert.match(PROMPT, /장애물 → 왜 그런가 → 무엇을 할 것인가/);
+});
+
+test('오독하기 쉬운 계산값 규칙이 프롬프트에 있다', () => {
+  assert.match(PROMPT, /## 계산값을 잘못 읽기 쉬운 자리/);
+  assert.match(PROMPT, /申궁과 身宮\(신궁\)은 다릅니다/);
+  assert.match(PROMPT, /"인성 0"을 "인성이 전혀 없다"로 읽지 마세요/);
+  assert.match(PROMPT, /타로의 카드 역할을 바꾸지 마세요/);
+  assert.match(PROMPT, /오행 수치 하나에서 성격·습관을 바로 만들지 마세요/);
+  assert.match(PROMPT, /근거 이상으로 배타적이거나 구체적으로 단정하지 마세요/);
+});
+
 /* ── 자미두수 표기 ──────────────────────────────────────────── */
 
 test('궁 이름은 한글이 먼저고 한자는 처음 한 번만 붙는다', () => {

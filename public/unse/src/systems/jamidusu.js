@@ -205,7 +205,10 @@ export function analyze(input) {
   const shown = new Set();
   const gung = (pos) => {
     const kr = `${BRANCHES_KR[pos]}궁`;
-    if (shown.has(pos)) return kr;
+    // **申궁은 한자를 절대 빼지 않는다.** 한글로만 적으면 '신궁'이 되어
+    // 身宮(신궁)과 글자가 같아진다. 실제로 한 줄에 "신궁 해궁(亥)"(身宮)과
+    // "질액궁 신궁(申)"이 함께 나온 명반이 있었다.
+    if (shown.has(pos) && pos !== 8) return kr;
     shown.add(pos);
     return `${kr}(${BRANCHES[pos]})`;
   };
@@ -217,7 +220,8 @@ export function analyze(input) {
 
   const facts = [
     { label: '명궁', value: gung(myeong), note: mainStars.length ? mainStars.join('·') : '공궁 (대궁을 빌려 본다)' },
-    { label: '신궁', value: gung(sin), note: '후천적으로 드러나는 자리' },
+    // 라벨에 한자를 박아 둔다 — 申궁과 헷갈리면 해석이 통째로 어긋난다
+    { label: '신궁(身宮)', value: gung(sin), note: '후천적으로 드러나는 자리' },
     { label: '오행국', value: guk.name, note: `명궁 ${STEMS[myeongStem]}${BRANCHES[myeong]}의 납음` },
     { label: '자미성', value: gung(ziwei), note: `음력 ${ld}일 ÷ ${guk.n} → 상수 ${mok}, 여수 ${remainder}` },
     { label: '천부성', value: gung(tianfu), note: '자미와 인신축으로 마주 본다' },

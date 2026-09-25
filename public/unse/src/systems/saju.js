@@ -11,7 +11,7 @@ import {
   computeDaeun, currentDaeun, yearPillar, tenGod,
   STEMS, STEMS_KR, BRANCHES, BRANCHES_KR, ELEMENTS, ELEMENT_HANJA,
   STEM_ELEMENT, TEN_GOD_GROUP, isClash, SIX_HARMONY,
-  isStemCombine, isStemClash, branchRelations,
+  isStemCombine, isStemClash, branchRelations, HIDDEN_STEMS,
 } from '../core/ganzhi.js';
 import { result } from './_base.js';
 import { j } from '../core/josa.js';
@@ -229,6 +229,21 @@ export function analyze(input) {
     { label: '띠', value: chart.zodiac, note: `${chart.sajuYear}년생 (입춘 기준)` },
     { label: '오행', value: ELEMENTS.map((e, i) => `${e} ${dist.count[i]}`).join(' · '), note: `가장 강한 기운 ${ELEMENTS[strong]}, 가장 약한 기운 ${ELEMENTS[weak]}` },
     { label: '십신', value: Object.entries(gods.groups).map(([k, v]) => `${k} ${v}`).join(' · '), note: `우세: ${gods.dominant}` },
+    // **십신 개수가 0이라고 그 기운이 없는 것이 아니다.** 위 셈은 천간과
+    // 지지의 대표 지장간만 센 것이라, 지지 속에 숨은 나머지 천간은 빠져 있다.
+    // 그걸 안 실어 주면 "인성 0"을 보고 "인성이 전혀 없다"고 읽게 된다.
+    {
+      label: '지장간',
+      value: ['year', 'month', 'day', 'hour']
+        .filter((k) => chart.pillars[k])
+        .map((k) => {
+          const b = chart.pillars[k].branch;
+          const seat = { year: '년', month: '월', day: '일', hour: '시' }[k];
+          return `${seat}지 ${BRANCHES[b]} → ${HIDDEN_STEMS[b].map((s) => `${STEMS[s]}(${tenGod(dayStem, s)})`).join('·')}`;
+        }).join(' / '),
+      note: '지지 속에 숨은 천간이다. 위 십신 셈에는 대표 지장간만 들어가 있으므로, '
+        + '십신이 0이라고 그 기운이 아예 없다고 읽으면 안 된다',
+    },
     // 지금 대운이 언제 끝나는지가 실제로 쓸모 있는 정보다. 나이만 적으면
     // 사람이 다시 세어야 한다. 대운은 태어난 날에서 startAgeExact 년 뒤부터
     // 열 해씩 가므로 달까지 환산할 수 있다.

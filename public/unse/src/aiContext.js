@@ -42,7 +42,10 @@ function foldFacts(facts, max = 10) {
   return facts
     .slice(0, max)
     .filter((f) => f.value && f.value !== '—')
-    .map((f) => `${f.label} ${f.value}${f.note ? `(${f.note})` : ''}`)
+    // 값이 이미 괄호로 끝나면(한자 병기 등) 주석을 또 괄호로 싸지 않는다 —
+    // '사궁(巳)(거문)' 처럼 겹쳐서 읽기가 나빠진다
+    .map((f) => `${f.label} ${f.value}`
+      + (f.note ? (/\)$/.test(String(f.value)) ? ` · ${f.note}` : `(${f.note})`) : ''))
     .join(' · ');
 }
 

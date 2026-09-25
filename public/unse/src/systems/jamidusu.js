@@ -118,6 +118,20 @@ export const SIHWA_LABEL = ['화록 (재물과 기회가 붙는다)', '화권 (�
                      '화과 (명예와 평판이 오른다)', '화기 (막히고 집착하게 된다)'];
 
 /**
+ * **사화는 천간마다 유파가 갈린다.** 위 표는 중주파 계열 하나를 고른 것이고,
+ * 아래 세 천간은 판본 차이가 커서 다른 별을 적은 책이 흔하다.
+ *
+ * 고른 것을 밝히지 않고 쓰면 유파 하나의 견해가 정답처럼 나간다. 갈리는
+ * 자리에서는 "일부 유파에서는 …"을 함께 적는다 — 고르는 것이 문제가 아니라
+ * 고르고 안 밝히는 것이 문제다.
+ */
+export const SIHWA_SCHOOL = {
+  무: '화과를 우필로 보았습니다. 일부 유파에서는 태양을 화과로 적습니다',
+  경: '화과를 태음으로 보았습니다. 일부 유파에서는 천부를 화과로, 천상을 화기로 적습니다',
+  임: '화과를 좌보로 보았습니다. 일부 유파에서는 천부를 화과로 적습니다',
+};
+
+/**
  * 재백궁에 든 별이 말하는 **돈의 결**.
  *
  * 위 `STARS` 의 설명과 같은 성질을 돈 쪽으로 옮긴 것이다. 새 뜻을 만들지
@@ -185,18 +199,28 @@ export function analyze(input) {
   const mainStars = palaceAt['명궁'].stars;
   const lead = mainStars.find((s) => STARS[s]) ?? null;
 
+  // 읽는 사람 기준으로 **한글이 먼저**다. 한자는 그 지지가 처음 나올 때만
+  // 괄호로 한 번 붙이고 그다음부터는 한글만 쓴다 — 지지를 한자로만 적으면
+  // 명반을 아는 사람만 읽을 수 있는 글이 되고, 매번 병기하면 괄호가 겹친다.
+  const shown = new Set();
+  const gung = (pos) => {
+    const kr = `${BRANCHES_KR[pos]}궁`;
+    if (shown.has(pos)) return kr;
+    shown.add(pos);
+    return `${kr}(${BRANCHES[pos]})`;
+  };
   const showPalace = (kr) => {
     const p = palaceAt[kr];
     const s = p.stars.length ? p.stars.join('·') : '공궁';
-    return `${BRANCHES[p.pos]}(${BRANCHES_KR[p.pos]}) — ${s}`;
+    return `${gung(p.pos)} — ${s}`;
   };
 
   const facts = [
-    { label: '명궁', value: `${BRANCHES[myeong]}궁`, note: mainStars.length ? mainStars.join('·') : '공궁 (대궁을 빌려 본다)' },
-    { label: '신궁', value: `${BRANCHES[sin]}궁`, note: '후천적으로 드러나는 자리' },
-    { label: '오행국', value: guk.hanja, note: `${guk.name} · 명궁 ${STEMS[myeongStem]}${BRANCHES[myeong]}의 납음` },
-    { label: '자미성', value: `${BRANCHES[ziwei]}궁`, note: `음력 ${ld}일 ÷ ${guk.n} → 상수 ${mok}, 여수 ${remainder}` },
-    { label: '천부성', value: `${BRANCHES[tianfu]}궁`, note: '자미와 인신축으로 마주 본다' },
+    { label: '명궁', value: gung(myeong), note: mainStars.length ? mainStars.join('·') : '공궁 (대궁을 빌려 본다)' },
+    { label: '신궁', value: gung(sin), note: '후천적으로 드러나는 자리' },
+    { label: '오행국', value: guk.name, note: `명궁 ${STEMS[myeongStem]}${BRANCHES[myeong]}의 납음` },
+    { label: '자미성', value: gung(ziwei), note: `음력 ${ld}일 ÷ ${guk.n} → 상수 ${mok}, 여수 ${remainder}` },
+    { label: '천부성', value: gung(tianfu), note: '자미와 인신축으로 마주 본다' },
     { label: '부처궁', value: showPalace('부처궁'), note: '' },
     { label: '재백궁', value: showPalace('재백궁'), note: '' },
     { label: '관록궁', value: showPalace('관록궁'), note: '' },
@@ -307,7 +331,10 @@ export function analyze(input) {
   readings.push({
     title: `사화 — ${stemKr}년생`,
     text: sihwa.map((x) => `${x.star} ${x.label}`).join('\n') +
-      '\n사화는 태어난 해의 천간이 네 별에 표시를 다는 것입니다. 화기가 붙은 별이 든 궁이 그 사람이 가장 애를 먹는 영역이 됩니다.',
+      '\n사화는 태어난 해의 천간이 네 별에 표시를 다는 것입니다. 화기가 붙은 별이 든 궁이 그 사람이 가장 애를 먹는 영역이 됩니다.'
+      // 갈리는 천간이면 고른 것을 밝힌다. 밝히지 않으면 한 유파의 견해가
+      // 정답처럼 나간다
+      + (SIHWA_SCHOOL[stemKr] ? `\n※ ${stemKr}간 사화는 판본이 갈립니다 — ${SIHWA_SCHOOL[stemKr]}.` : ''),
   });
 
   if (sihwaWhere.length) {
@@ -394,7 +421,7 @@ export function analyze(input) {
     id: meta.id,
     name: meta.name,
     hanja: meta.hanja,
-    headline: `명궁 ${BRANCHES[myeong]} · ${mainStars.join('·') || '공궁'} · ${guk.name}`,
+    headline: `명궁 ${BRANCHES_KR[myeong]}궁 · ${mainStars.join('·') || '공궁'} · ${guk.name}`,
     facts,
     readings,
     signals: {

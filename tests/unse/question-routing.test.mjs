@@ -23,6 +23,7 @@ import { buildHiRes } from '../../public/unse/src/hires/context.js';
 import { modernHouse } from '../../public/unse/src/semantic/structure/western.js';
 import { horaryCast, isHoraryQuestion, formatHorary } from '../../public/unse/src/systems/horary.js';
 import juyeok from '../../public/unse/src/systems/juyeok.js';
+import jamidusu from '../../public/unse/src/systems/jamidusu.js';
 import { yearDirections } from '../../public/unse/src/systems/gujeong.js';
 import kabbalah from '../../public/unse/src/systems/kabbalah.js';
 
@@ -240,6 +241,73 @@ test('근거가 모이면 단정하라는 규칙이 있다', () => {
   assert.match(PROMPT, /Tier S 또는 A/);
   assert.match(PROMPT, /가장 강한 시기는 2028년이다/);
   assert.match(PROMPT, /직업 변화가 먼저이고 주거 이동이 뒤따르는 흐름이다/);
+});
+
+/* ── 자미두수 표기 ──────────────────────────────────────────── */
+
+test('궁 이름은 한글이 먼저고 한자는 처음 한 번만 붙는다', () => {
+  const z = jamidusu.analyze(readFortune(BIRTH, { now: NOW }).input);
+  const line = z.facts.map((f) => `${f.label} ${f.value}`).join(' · ');
+  assert.match(line, /명궁 [자축인묘진사오미신유술해]궁\(/, '한글궁(한자) 꼴이어야 한다');
+  assert.ok(!/명궁 [子丑寅卯辰巳午未申酉戌亥]/.test(line), '한자가 앞에 오면 안 된다');
+  // 같은 지지가 두 번 나오면 두 번째는 한자를 붙이지 않는다
+  for (const b of ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']) {
+    const n = (line.match(new RegExp(`\\(${b}\\)`, 'g')) ?? []).length;
+    assert.ok(n <= 1, `${b} 병기는 한 번까지다 (실제 ${n})`);
+  }
+  assert.match(z.headline, /명궁 [자축인묘진사오미신유술해]궁/, '헤드라인도 한글');
+});
+
+test('유파가 갈리는 천간이면 사화에 그 사실을 적는다', () => {
+  // 1990 庚午 · 1992 壬申 — 둘 다 판본이 갈리는 천간
+  for (const y of [1990, 1992]) {
+    const f = { ...BIRTH, year: y, month: 6, day: 10, hour: 10, minute: 0 };
+    const z = jamidusu.analyze(readFortune(f, { now: NOW }).input);
+    const s = z.readings.find((r) => r.title.startsWith('사화'));
+    assert.match(s.text, /판본이 갈립니다/, `${y}년생은 유파 표시가 있어야 한다`);
+    assert.match(s.text, /일부 유파에서는/);
+  }
+});
+
+test('갈리지 않는 천간에는 유파 표시를 붙이지 않는다', () => {
+  // BIRTH 는 辛未년생 — 신간 사화는 판본이 거의 일치한다
+  const z = jamidusu.analyze(readFortune(BIRTH, { now: NOW }).input);
+  const s = z.readings.find((r) => r.title.startsWith('사화'));
+  assert.ok(!s.text.includes('판본이 갈립니다'), '안 갈리는 자리에 경고를 달지 않는다');
+});
+
+test('명궁 직접 별과 삼방 별을 문맥이 나눠 적는다', () => {
+  const c = context();
+  assert.match(c, /명궁 주성 —/);
+  assert.match(c, /삼방사정 — 함께 보는 세 자리/);
+  assert.match(c, /명궁 주성이 밑그림이라면/, '둘의 구실이 다르다고 적어야 한다');
+});
+
+test('자미두수 표기·해석 규칙이 프롬프트에 있다', () => {
+  assert.match(PROMPT, /## 자미두수를 쓸 때/);
+  assert.match(PROMPT, /### 한글로 쓰세요/);
+  assert.match(PROMPT, /최초 한 번만\*\* 괄호로 병기/);
+  assert.match(PROMPT, /복덕궁과 부모궁/);
+  assert.match(PROMPT, /삼방의 별을 명궁에\s*\n?\s*있는 것처럼 쓰지 마세요/);
+  assert.match(PROMPT, /### 한 궁만 보고 크기를 재지 마세요/);
+  assert.match(PROMPT, /큰 재성이 재백궁에 없으니 큰돈은 못 번다/);
+  assert.match(PROMPT, /재백궁 자체 \+ 삼방사정 \+ 사화 \+ 대한/);
+  assert.match(PROMPT, /정적 축재형/);
+  assert.match(PROMPT, /확장형/);
+});
+
+test('사화를 현실 의미로 한 번에 좁히지 말라는 규칙이 있다', () => {
+  assert.match(PROMPT, /### 사화를 현실 의미로 한 번에 좁히지 마세요/);
+  assert.match(PROMPT, /화과가 질액궁/);
+  assert.match(PROMPT, /업계 전문가로 이름이 난다/);
+  assert.match(PROMPT, /판본이 갈립니다 — 일부 유파에서는/);
+});
+
+test('"평생 최고·정점"을 아껴 쓰라는 규칙과 결론 예시가 있다', () => {
+  assert.match(PROMPT, /### "평생 최고", "정점"은 아껴 쓰세요/);
+  assert.match(PROMPT, /여러 강한 근거가 겹칠 때만/);
+  assert.match(PROMPT, /가장 크게 확장되는 핵심 구간/);
+  assert.match(PROMPT, /명예는 중상~상, 재물은 중상이며 후반 확장형입니다/);
 });
 
 /* ── 질문 범위 잠금 ─────────────────────────────────────────── */

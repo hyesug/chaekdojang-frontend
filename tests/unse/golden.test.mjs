@@ -28,7 +28,9 @@ const CASES = [
       birthPlace: '여주', homePlace: '대전', gender: 'female',
     },
     pillars: '辛未 辛丑 乙巳 甲申',
-    ziweiMing: '巳궁',
+    // 표기를 한글 우선으로 바꿨다(한자는 처음 한 번만 병기). 떨어지는
+    // 지지는 그대로 巳 라 **계산은 변하지 않았다** — 라벨만 바뀐 것이다
+    ziweiMing: '사궁(巳)',
     asc: '게자리 23.9°',
     mc: '양자리 9.2°',
     vedicLagna: '카르카 (게)',
@@ -44,7 +46,7 @@ const CASES = [
       birthPlace: '대전', homePlace: '대전', gender: 'male',
     },
     pillars: '己卯 戊辰 庚戌 辛巳',
-    ziweiMing: '亥궁',
+    ziweiMing: '해궁(亥)',
     asc: '게자리 17.8°',
     mc: '양자리 1.9°',
     vedicLagna: '미투나 (쌍둥이)',

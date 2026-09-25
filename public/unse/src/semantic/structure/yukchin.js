@@ -24,6 +24,7 @@
  */
 import { MAIN_HIDDEN, tenGod, TEN_GOD_GROUP, BRANCHES_KR, BRANCHES } from '../../core/ganzhi.js';
 import { j } from '../../core/josa.js';
+import { hexagramLines, seLine } from '../../core/nabgap.js';
 
 /** 십성 묶음 → 육친. 같은 오행 관계에 붙은 다른 이름이다 */
 const GROUP_TO_YUKCHIN = {
@@ -150,35 +151,121 @@ export function readHongguk(fortune, domain = null) {
 }
 
 /**
- * 주역 — 괘가 무엇에 대한 말인가.
+ * 주역 — **납갑으로 효마다 육친을 붙여 분야를 가린다.**
  *
- * 육효에 지지를 붙이는 납갑(納甲)은 이 사이트가 계산하지 않으므로 **효별
- * 육친은 내지 않는다.** 없는 계산을 지어내지 않는다. 대신 본괘와 지괘가
- * 그리는 흐름만 전하고, 그것이 분야를 가리지 않는다는 사실을 밝힌다.
+ * 괘사만으로는 "앞이 막혔다"까지는 말해도 그것이 돈 이야기인지 관계
+ * 이야기인지 가릴 수 없었다. 이제 `core/nabgap.js` 가 효마다 지지와 육친을
+ * 붙이므로, **물은 분야의 육친이 어느 효에 있는지**를 보고 답한다.
+ *
+ * 동효(動爻)에 그 육친이 있으면 그 자리가 실제로 움직이는 것이고,
+ * 세효(世爻)에 있으면 나 자신에게 붙은 일이다.
  */
 export function readJuyeok(fortune, domain = null) {
   const y = Object.values(fortune?.results ?? {}).find((v) => v.name === '주역');
   if (!y) return [];
   const base = (y.readings ?? []).find((r) => r.title.startsWith('본괘'));
-  const to = (y.readings ?? []).find((r) => r.title.startsWith('지괘'));
   if (!base) return [];
 
+  const upper = (y.facts ?? []).find((f) => f.label === '상괘')?.value;
+  const lower = (y.facts ?? []).find((f) => f.label === '하괘')?.value;
+  const moving = Number(((y.facts ?? []).find((f) => f.label === '동효')?.value ?? '')
+    .replace(/[^0-9]/g, '')) || null;
+  // facts 의 value 는 한자('坎'), note 에 한글('감 · 물')이 들어 있다.
+  // 한쪽만 맞추면 조용히 못 찾고 육친이 통째로 빠진다 — 실제로 그랬다.
+  const TRI = ['건', '태', '리', '진', '손', '감', '간', '곤'];
+  const TRI_H = ['乾', '兌', '離', '震', '巽', '坎', '艮', '坤'];
+  const triOf = (label) => {
+    const f = (y.facts ?? []).find((x) => x.label === label);
+    const v = `${f?.value ?? ''} ${f?.note ?? ''}`;
+    const i = TRI_H.findIndex((t) => v.includes(t));
+    return i >= 0 ? i : TRI.findIndex((t) => v.includes(t));
+  };
+  const ui = triOf('상괘');
+  const li = triOf('하괘');
+
+  const hex = (ui >= 0 && li >= 0) ? hexagramLines(ui, li) : null;
+  if (!hex) {
+    return [{
+      system: '주역', topicKey: domain, what: base.title.replace('본괘 — ', ''),
+      text: `${base.text} 다만 이 괘의 팔궁 배속을 찾지 못해 효별 육친을 붙이지 못했습니다.`,
+      source: '주역 — 본괘',
+      stance: null,
+    }];
+  }
+
+  const se = seLine(hex.rank);
+  const want = domain
+    ? Object.entries(YUKCHIN).filter(([, v]) => v.domains.includes(domain)).map(([k]) => k)
+    : Object.keys(YUKCHIN);
+  const hits = hex.lines.filter((l) => want.includes(l.yukchin));
+
+  if (!hits.length) {
+    return [{
+      system: '주역', topicKey: domain, what: base.title.replace('본괘 — ', ''),
+      text: `${base.text} 다만 이 괘 여섯 효에 **${j(domain, '을')} 보는 육친(${want.join('·')})이 없어**`
+        + ` 이 질문에는 말할 것이 없습니다. (효별 육친: `
+        + `${hex.lines.map((l) => `${l.n}효 ${l.yukchin}`).join(' · ')})`,
+      source: '주역 — 납갑으로 붙인 효별 육친',
+      stance: null,
+    }];
+  }
+
+  const onMoving = moving && hits.some((l) => l.n === moving);
+  const onSe = hits.some((l) => l.n === se);
   return [{
     system: '주역', topicKey: domain, what: base.title.replace('본괘 — ', ''),
-    text: `${base.text}${to ? ` ${to.text}` : ''}`
-      + ` 다만 주역은 **효마다 육친을 붙여야 분야를 가릅니다**(납갑). 이 사이트는 납갑을`
-      + ` 계산하지 않으므로, 이 괘가 ${domain ?? '그 질문'}에 대한 말인지 다른 일에 대한 말인지`
-      + ` 가리지 못합니다. 흐름의 모양으로만 읽어 주세요.`,
-    source: '주역 — 본괘·동효·지괘 (납갑 미구현)',
+    text: `${base.text} 이 괘에서 ${j(domain, '을')} 보는 자리는`
+      + ` ${hits.map((l) => `${l.n}효(${l.yukchin})`).join(' · ')}입니다.`
+      + (onMoving ? ` **동효(${moving}효)에 그 육친이 있어 이 자리가 실제로 움직입니다.**`
+        : moving ? ` 동효는 ${moving}효라 이 자리는 직접 움직이지 않습니다.` : '')
+      + (onSe ? ` 세효(${se}효)에도 있어 남의 일이 아니라 나에게 붙은 일로 봅니다.` : ''),
+    source: `주역 — 납갑 효별 육친 (경방 팔궁, ${['건', '태', '리', '진', '손', '감', '간', '곤'][hex.palace]}궁)`,
     stance: null,
   }];
 }
 
+
+/**
+ * 그 해를 보는 체계들 — **시기를 묶어 물을 때만 말한다.**
+ *
+ * 태을·구성·토정은 사람의 타고난 결이 아니라 **그 해가 어떤 해인가**를 보는
+ * 자리다. "자녀운 어때"에는 할 말이 없지만 "올해 자녀운 어때"에는 있다.
+ * 분야를 가리지는 못하므로 **그 해의 결**로만 붙이고, 분야를 맞혔다고
+ * 말하지 않는다.
+ */
+export function readYearly(fortune, domain = null) {
+  const out = [];
+  const pick = (name, re) => {
+    const v = Object.values(fortune?.results ?? {}).find((x) => x.name === name);
+    return { v, r: (v?.readings ?? []).find((x) => !x.mono && re.test(x.title)) };
+  };
+
+  for (const [name, re, note] of [
+    ['토정비결', /^\d{4}년 —/, '그 해 한 괘로 본다'],
+    ['구성학', /9년 주기/, '아홉 해 주기 안에서 올해가 몇 번째인가'],
+    ['태을신수', /주산|객산/, '스물네 해 주기에서 지금이 지킬 때인가 움직일 때인가'],
+  ]) {
+    const { r } = pick(name, re);
+    if (!r) continue;
+    out.push({
+      system: name, topicKey: '시기', what: r.title,
+      text: `${r.text} 이건 **그 해가 어떤 해인가**를 보는 자리라`
+        + `${domain ? ` ${j(domain, '을')} 따로 가리지는 못합니다.` : ' 분야를 따로 가리지는 못합니다.'}`
+        + ` ${note}.`,
+      source: `${name} — 그 해의 결`,
+      stance: null,
+    });
+  }
+  return out;
+}
+
 /** 세 체계를 한 분야에 대해 한꺼번에 */
-export function readClassical(fortune, dayStem, domain) {
+export function readClassical(fortune, dayStem, domain, { yearly = false } = {}) {
   return [
     ...readYukim(fortune, dayStem, domain),
     ...readHongguk(fortune, domain),
     ...readJuyeok(fortune, domain),
+    // 시기를 묶어 물을 때만 그 해를 보는 체계를 붙인다
+    ...(yearly ? readYearly(fortune, domain) : []),
   ];
 }

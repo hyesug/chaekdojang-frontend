@@ -24,7 +24,12 @@ import { dayRange, rankSurgeryDays, structureReading, patternReading,
 import { buildMultilayer, formatMultilayer } from './multilayerInterpretation.js';
 import { lifeChapters, chaptersAt, chapterTurns } from './semantic/compose/life.js';
 import { readChildren, childPalaceStars, childrenVerdict } from './semantic/structure/children.js';
-import { childrenPack } from './hires/vedicExt.js';
+import { childrenPack, marriagePack } from './hires/vedicExt.js';
+import { readSpouse, spousePalaceStars, spouseVerdict } from './semantic/structure/spouse.js';
+import { westernPair } from './semantic/structure/western.js';
+import { readClassical } from './semantic/structure/yukchin.js';
+import { SCHOOLS } from './semantic/structure/school.js';
+import { readStructures } from './semantic/structure/saju.js';
 
 const p2 = (n) => String(n).padStart(2, '0');
 
@@ -37,6 +42,67 @@ function foldFacts(facts, max = 10) {
     .join(' · ');
 }
 
+
+
+/** 한 분야를 체계마다 펼친다 — 자녀·배우자와 같은 모양 */
+function formatDomain(title, reads, verdictLines) {
+  if (!reads.length) return '';
+  const L = [`## ${title}`, ''];
+  for (const x of reads) {
+    L.push(`- **${x.system}** (${x.what ?? ''}): ${String(x.text).replace(/\n+/g, ' ')}`
+      + (x.source ? `  [출전: ${x.source}]` : ''));
+  }
+  if (verdictLines?.length) {
+    L.push('');
+    L.push('**종합 (겹치면 단정 · 갈리면 뺌 · 하나뿐이면 보수적):**');
+    for (const l of verdictLines) L.push(`  ${l}`);
+    L.push('위 종합은 이미 규칙대로 정리한 것이다. 다시 종합하지 말고 그대로 쓸 것.');
+  }
+  return L.join('\n');
+}
+
+/** 배우자 — 자미 부처궁 · 사주 일지 · 베딕 7궁/D9 · 고전·현대 7하우스 · 육친 */
+function formatSpouse(input, chart, fortune) {
+  let reads = [];
+  try {
+    reads = [
+      ...readSpouse({ ...chart, gender: input.gender },
+        spousePalaceStars(input), marriagePack(input)),
+      ...westernPair(input, fortune, 7, '결'),
+      ...readClassical(fortune, chart.dayStem, '관계'),
+    ];
+  } catch { return ''; }
+  let v = { lines: [] };
+  try { v = spouseVerdict(reads); } catch { /* 종합만 건너뛴다 */ }
+  return formatDomain('배우자 — 체계마다 무엇이라 하는가', reads, v.lines);
+}
+
+/** 직업 — 사주 격 · 자미 관록궁 · 태을 · 고전·현대 10하우스 · 육친 */
+function formatCareer(input, chart, fortune, structures) {
+  const reads = [];
+  for (const n of ['상관견관', '관살혼잡', '관유인무', '무관', '관인상생']) {
+    const st = structures.find((x) => x.name === n);
+    if (st) reads.push({ system: '사주(격)', what: `${st.name} ${st.hanja}`, text: st.text, source: st.source });
+  }
+  try {
+    reads.push(...westernPair(input, fortune, 10, '직업'));
+    reads.push(...readClassical(fortune, chart.dayStem, '직업'));
+  } catch { /* 넘어간다 */ }
+  return formatDomain('직업 — 체계마다 무엇이라 하는가', reads, [
+    '**이 축은 이 사이트가 재 봤더니 졌다.** 열다섯을 다 재도 순열검정 p=0.423 이라'
+      + ' 1위가 우연과 구별되지 않았다. 위 전통 읽기를 그대로 전하되'
+      + ' "이직할 사람인지 한 우물 팔 사람인지"는 단정하지 말 것.',
+  ]);
+}
+
+/** 이 사이트가 고른 유파 — 물으면 이 표를 보여 준다 */
+function formatSchools() {
+  return ['## 이 사이트가 고른 유파', '',
+    ...SCHOOLS.map(([k, v]) => `- ${k}: ${v}`),
+    '',
+    '유파가 갈리는 자리는 **고른 것을 밝히고** 쓴다. 고르는 것이 문제가 아니라 고르고 안 밝히는 것이 문제다.',
+  ].join('\n');
+}
 
 /**
  * 자녀 — 체계마다 따로. **수와 성별을 포함한다.**
@@ -381,6 +447,14 @@ export function buildContext(form, r, f = null) {
   out.push(formatLife(input, r.chart));
   out.push('');
   out.push(formatChildren(input, r.chart));
+  out.push('');
+  out.push(formatSpouse(input, r.chart, r));
+  out.push('');
+  out.push(formatCareer(input, r.chart, r, (() => {
+    try { return readStructures({ ...r.chart, gender: input.gender }).structures; } catch { return []; }
+  })()));
+  out.push('');
+  out.push(formatSchools());
   out.push('');
 
   out.push('## 읽는 법');

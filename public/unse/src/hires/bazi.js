@@ -20,6 +20,7 @@
  */
 
 import { toJD } from '../core/astro.js';
+import { j } from '../core/josa.js';
 import {
   yearPillar, computeDaeun, tenGod, MAIN_HIDDEN,
   TEN_GOD_GROUP, STEMS, BRANCHES, ELEMENTS,
@@ -166,7 +167,8 @@ export function annualTrack(input, chart, fromYear, toYear) {
       // 원국 어느 기둥과 부딪치는가 — 이동·전환 신호의 핵심
       hits: s.cross.branchHits
         .filter((h) => h.to === '세운' || h.from === '세운')
-        .map((h) => `${h.from === '세운' ? h.to : h.from}와 ${h.kind}`),
+        // 받침에 따라 '와/과' 가 갈린다 — 하드코딩하면 '대운와' 가 된다
+        .map((h) => `${j(h.from === '세운' ? h.to : h.from, '와')} ${h.kind}`),
       combos: s.cross.combos.map((c) => `${c.kind}(${ELEMENTS[c.element]})`),
     });
   }

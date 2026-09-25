@@ -10,10 +10,10 @@ import assert from 'node:assert/strict';
 
 import {
   matchReality, matchScenarioReality, auditRealityMatch, composePrepared,
-} from '../../public/unse-8f3k2m/src/semantic/scenario/index.js';
+} from '../../public/unse/src/semantic/scenario/index.js';
 import {
   eligibilityOf, timeRelationOf, COMPARABLE_FIELDS,
-} from '../../public/unse-8f3k2m/src/semantic/scenario/reality.js';
+} from '../../public/unse/src/semantic/scenario/reality.js';
 
 /** 손으로 만든 시나리오 — 사건·시기·상세를 원하는 모양으로 놓고 맞물림만 본다 */
 const mkPrepared = (o = {}) => {

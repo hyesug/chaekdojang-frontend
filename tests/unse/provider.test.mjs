@@ -11,10 +11,10 @@ import assert from 'node:assert/strict';
 import {
   fetchCandidates, fixtureProvider, normalizeJobPosting, normalizeCompany,
   lexiconPick, parseLocation, answerWithReality, composeScenario, matchReality,
-} from '../../public/unse-8f3k2m/src/semantic/scenario/index.js';
+} from '../../public/unse/src/semantic/scenario/index.js';
 import {
   ROLE_LEXICON, POSTING_EVENTS, EMPLOYMENT_MAP,
-} from '../../public/unse-8f3k2m/src/semantic/scenario/provider.js';
+} from '../../public/unse/src/semantic/scenario/provider.js';
 
 const BIRTH = {
   name: 'x', gender: 'female', year: 1992, month: 1, day: 30,

@@ -9,14 +9,14 @@ import assert from 'node:assert/strict';
 
 import {
   midRank, topK, windowSlice, seededRandom, RESOLUTION, WINDOW_MONTHS, DOMAINS,
-} from '../../public/unse-8f3k2m/src/semantic/timing/schema.js';
+} from '../../public/unse/src/semantic/timing/schema.js';
 import {
   scoreEvent, scoreEventYearly, toYearly, permutationBaseline, personWeighted, personBootstrap,
   aggregateNull, prepareNullDraws, nullPosition, NULL_METRICS, scoreAtResolution, poolFor,
-} from '../../public/unse-8f3k2m/src/validation/timingMetrics.js';
-import { predictTimeline } from '../../public/unse-8f3k2m/src/semantic/timing/timeline.js';
-import { scoreEvents } from '../../public/unse-8f3k2m/src/semantic/timing/events.js';
-import { SYSTEM_IDS } from '../../public/unse-8f3k2m/src/semantic/extract.js';
+} from '../../public/unse/src/validation/timingMetrics.js';
+import { predictTimeline } from '../../public/unse/src/semantic/timing/timeline.js';
+import { scoreEvents } from '../../public/unse/src/semantic/timing/events.js';
+import { SYSTEM_IDS } from '../../public/unse/src/semantic/extract.js';
 
 const BIRTH = {
   name: 'x', gender: 'female', year: 1992, month: 1, day: 30,

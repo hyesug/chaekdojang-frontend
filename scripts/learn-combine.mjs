@@ -22,12 +22,12 @@
  * 사라지는 것을 이미 두 번 봤다(p=0.688, p=0.423).
  */
 import { readFileSync, existsSync } from 'node:fs';
-import { natalFortune } from '../public/unse-8f3k2m/src/semantic/index.js';
-import { interpretCareer } from '../public/unse-8f3k2m/src/semantic/systems.js';
-import { poolCareer } from '../public/unse-8f3k2m/src/semantic/ensemble.js';
-import { measure, unitize, cosineOf } from '../public/unse-8f3k2m/src/semantic/calibration.js';
-import { AXES } from '../public/unse-8f3k2m/src/semantic/axes.js';
-import { seededRandom } from '../public/unse-8f3k2m/src/semantic/timing/schema.js';
+import { natalFortune } from '../public/unse/src/semantic/index.js';
+import { interpretCareer } from '../public/unse/src/semantic/systems.js';
+import { poolCareer } from '../public/unse/src/semantic/ensemble.js';
+import { measure, unitize, cosineOf } from '../public/unse/src/semantic/calibration.js';
+import { AXES } from '../public/unse/src/semantic/axes.js';
+import { seededRandom } from '../public/unse/src/semantic/timing/schema.js';
 
 const file = process.argv[2] ?? 'validation/people.json';
 if (!existsSync(file)) { console.error(`${file} 이 없습니다.`); process.exit(1); }

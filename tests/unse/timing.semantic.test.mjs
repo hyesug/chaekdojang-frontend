@@ -9,16 +9,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { predictTimeline, peakWindows } from '../../public/unse-8f3k2m/src/semantic/timing/timeline.js';
+import { predictTimeline, peakWindows } from '../../public/unse/src/semantic/timing/timeline.js';
 import {
   DOMAINS, DOMAIN_LABEL, RESOLUTION, WINDOW_MONTHS, signal, unavailable, monthNo,
-} from '../../public/unse-8f3k2m/src/semantic/timing/schema.js';
-import { EVENT_CANDIDATES, scoreEvents, candidatesOf } from '../../public/unse-8f3k2m/src/semantic/timing/events.js';
+} from '../../public/unse/src/semantic/timing/schema.js';
+import { EVENT_CANDIDATES, scoreEvents, candidatesOf } from '../../public/unse/src/semantic/timing/events.js';
 import {
   evidenceOr, SIHWA_ACT, SIHWA_DIR, VEDIC_VARGA,
-} from '../../public/unse-8f3k2m/src/semantic/timing/adapters.js';
-import { SYSTEM_IDS } from '../../public/unse-8f3k2m/src/semantic/extract.js';
-import { AXES } from '../../public/unse-8f3k2m/src/semantic/axes.js';
+} from '../../public/unse/src/semantic/timing/adapters.js';
+import { SYSTEM_IDS } from '../../public/unse/src/semantic/extract.js';
+import { AXES } from '../../public/unse/src/semantic/axes.js';
 
 const BIRTH = {
   name: 'x', gender: 'female', year: 1992, month: 1, day: 30,

@@ -15,8 +15,8 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { readFortune } from '../public/unse-8f3k2m/src/engine.js';
-import { makePeriod, monthsOfYear } from '../public/unse-8f3k2m/src/forecast.js';
+import { readFortune } from '../public/unse/src/engine.js';
+import { makePeriod, monthsOfYear } from '../public/unse/src/forecast.js';
 
 const ROUNDS = 300;
 const CASES = JSON.parse(readFileSync('validation/cases.json', 'utf8'));
@@ -33,7 +33,7 @@ const NAMES = ['kabbalah', 'sukyo', 'tojeong', 'yukim', 'hongguk',
 
 const MODS = {};
 for (const n of NAMES) {
-  MODS[n] = (await import(`../public/unse-8f3k2m/src/systems/${n}.js`)).default;
+  MODS[n] = (await import(`../public/unse/src/systems/${n}.js`)).default;
 }
 
 const years = CASES.flatMap((c) => c.events.map((e) => e.year));

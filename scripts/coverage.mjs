@@ -8,14 +8,14 @@
  * 깊게 읽고 있는지**를 먼저 본다. 깊이가 다르면 성능 비교가 공정하지 않다.
  */
 import { writeFileSync, mkdirSync } from 'node:fs';
-import { natalFortune } from '../public/unse-8f3k2m/src/semantic/index.js';
+import { natalFortune } from '../public/unse/src/semantic/index.js';
 import {
   DOMAINS, DOMAIN_LABEL, coverage, gather, interpretDomain, DOMAIN_RULES, NATURE_FILLED,
-} from '../public/unse-8f3k2m/src/semantic/domains.js';
-import { RULES } from '../public/unse-8f3k2m/src/semantic/rules.js';
-import { SYSTEM_IDS, SYSTEM_NAME } from '../public/unse-8f3k2m/src/semantic/extract.js';
-import { interpretCareer } from '../public/unse-8f3k2m/src/semantic/systems.js';
-import { AXIS_LABEL } from '../public/unse-8f3k2m/src/semantic/axes.js';
+} from '../public/unse/src/semantic/domains.js';
+import { RULES } from '../public/unse/src/semantic/rules.js';
+import { SYSTEM_IDS, SYSTEM_NAME } from '../public/unse/src/semantic/extract.js';
+import { interpretCareer } from '../public/unse/src/semantic/systems.js';
+import { AXIS_LABEL } from '../public/unse/src/semantic/axes.js';
 
 const withSample = process.argv.includes('--sample');
 const cov = coverage();

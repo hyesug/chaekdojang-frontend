@@ -8,13 +8,13 @@
  * 둘이 갈라질 수 없다. 규칙을 고치면 사전을 다시 뽑는다.
  */
 import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
-import { natalFortune } from '../public/unse-8f3k2m/src/semantic/index.js';
-import { interpretCareer } from '../public/unse-8f3k2m/src/semantic/systems.js';
-import { buildDictionary, toMarkdown } from '../public/unse-8f3k2m/src/semantic/dictionary.js';
-import { measure, ruleSupportFrom } from '../public/unse-8f3k2m/src/semantic/calibration.js';
-import { applyEmpirical } from '../public/unse-8f3k2m/src/semantic/rules.js';
-import { labelFor } from '../public/unse-8f3k2m/src/semantic/tables/occupations.js';
-import { DOMAINS, DOMAIN_LABEL } from '../public/unse-8f3k2m/src/semantic/domains.js';
+import { natalFortune } from '../public/unse/src/semantic/index.js';
+import { interpretCareer } from '../public/unse/src/semantic/systems.js';
+import { buildDictionary, toMarkdown } from '../public/unse/src/semantic/dictionary.js';
+import { measure, ruleSupportFrom } from '../public/unse/src/semantic/calibration.js';
+import { applyEmpirical } from '../public/unse/src/semantic/rules.js';
+import { labelFor } from '../public/unse/src/semantic/tables/occupations.js';
+import { DOMAINS, DOMAIN_LABEL } from '../public/unse/src/semantic/domains.js';
 
 const file = process.argv[2] ?? null;
 let measurement = null;

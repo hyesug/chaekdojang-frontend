@@ -11,13 +11,13 @@ import {
   interpretQuestion, composeScenario, selectEvidence, questionTypeOf,
   checkTemporalConsistency, chainOf, attributesOf, stateOf, possibleTransitions,
   supportingReads, answerScenario, locationEvidenceFor, asGateEvidence,
-} from '../../public/unse-8f3k2m/src/semantic/scenario/index.js';
+} from '../../public/unse/src/semantic/scenario/index.js';
 import {
   STATE_GRAPH, CROSS_DOMAIN, MOVE_REASONS, crossDomainOf, canTransition,
-} from '../../public/unse-8f3k2m/src/semantic/scenario/graph.js';
-import { EVENT_DURATION, PHASE_ROLE } from '../../public/unse-8f3k2m/src/semantic/scenario/attributes.js';
-import { QUESTION_TYPES } from '../../public/unse-8f3k2m/src/semantic/scenario/evidence.js';
-import { confidenceOf } from '../../public/unse-8f3k2m/src/semantic/scenario/composer.js';
+} from '../../public/unse/src/semantic/scenario/graph.js';
+import { EVENT_DURATION, PHASE_ROLE } from '../../public/unse/src/semantic/scenario/attributes.js';
+import { QUESTION_TYPES } from '../../public/unse/src/semantic/scenario/evidence.js';
+import { confidenceOf } from '../../public/unse/src/semantic/scenario/composer.js';
 
 const BIRTH = {
   name: 'x', gender: 'female', year: 1992, month: 1, day: 30,

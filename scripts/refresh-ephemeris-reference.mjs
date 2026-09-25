@@ -28,7 +28,7 @@
 import { writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { toJD } from '../public/unse-8f3k2m/src/core/astro.js';
+import { toJD } from '../public/unse/src/core/astro.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'tests', 'unse', 'fixtures', 'ephemeris-reference.json');

@@ -16,14 +16,14 @@
  * 그 사람을 빼고도 나아졌는지 확인한다.
  */
 import { readFileSync, existsSync } from 'node:fs';
-import { natalFortune } from '../public/unse-8f3k2m/src/semantic/index.js';
-import { interpretCareer } from '../public/unse-8f3k2m/src/semantic/systems.js';
-import { poolCareer } from '../public/unse-8f3k2m/src/semantic/ensemble.js';
-import { measure, weightsFrom, compareOne, unitize, cosineOf } from '../public/unse-8f3k2m/src/semantic/calibration.js';
-import { categorizeCareer } from '../public/unse-8f3k2m/src/semantic/categories.js';
-import { labelFor, centered, OCCUPATION_MEAN } from '../public/unse-8f3k2m/src/semantic/tables/occupations.js';
-import { SYSTEM_NAME, SYSTEM_IDS } from '../public/unse-8f3k2m/src/semantic/extract.js';
-import { AXES, AXIS_LABEL } from '../public/unse-8f3k2m/src/semantic/axes.js';
+import { natalFortune } from '../public/unse/src/semantic/index.js';
+import { interpretCareer } from '../public/unse/src/semantic/systems.js';
+import { poolCareer } from '../public/unse/src/semantic/ensemble.js';
+import { measure, weightsFrom, compareOne, unitize, cosineOf } from '../public/unse/src/semantic/calibration.js';
+import { categorizeCareer } from '../public/unse/src/semantic/categories.js';
+import { labelFor, centered, OCCUPATION_MEAN } from '../public/unse/src/semantic/tables/occupations.js';
+import { SYSTEM_NAME, SYSTEM_IDS } from '../public/unse/src/semantic/extract.js';
+import { AXES, AXIS_LABEL } from '../public/unse/src/semantic/axes.js';
 
 const args = process.argv.slice(2);
 const doLoo = args.includes('--loo');

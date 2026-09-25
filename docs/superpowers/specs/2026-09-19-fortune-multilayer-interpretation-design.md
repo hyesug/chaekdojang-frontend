@@ -82,8 +82,8 @@ AI 문맥에는 다음 새 구획을 추가한다.
 
 ## 변경 파일
 
-- `public/unse-8f3k2m/src/multilayerInterpretation.js` 신규: 계산 결과를 해석 근거 패킷으로 변환
-- `public/unse-8f3k2m/src/aiContext.js`: 새 패킷을 AI 문맥에 삽입
+- `public/unse/src/multilayerInterpretation.js` 신규: 계산 결과를 해석 근거 패킷으로 변환
+- `public/unse/src/aiContext.js`: 새 패킷을 AI 문맥에 삽입
 - `app/fortune-ai/route.ts`: 다층 해석 출력 계약과 사실·추론 분리 규칙 추가
 - `tests/unse/multilayer-interpretation.test.mjs` 신규: 신호 강도, 상충, 핵심/보조 우선순위, 시기 유보를 테스트
 

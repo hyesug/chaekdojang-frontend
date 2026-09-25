@@ -27,21 +27,21 @@
 
 ### Task 1: Pure ranking metrics
 
-**Files:** Create `public/unse-8f3k2m/src/validation/metrics.js`; Test `tests/unse/benchmark-metrics.test.mjs`.
+**Files:** Create `public/unse/src/validation/metrics.js`; Test `tests/unse/benchmark-metrics.test.mjs`.
 
 - [ ] Write failing tests for peak Hit@1, tolerance hit, percentile, tied ranks, and insufficient samples; run `node --test tests/unse/benchmark-metrics.test.mjs` and observe missing-module failure.
 - [ ] Implement minimal pure ranking, baseline, and aggregate functions; rerun the focused test and then `npm test`.
 
 ### Task 2: Score collection and result runner
 
-**Files:** Create `public/unse-8f3k2m/src/validation/benchmark.js`, `public/unse-8f3k2m/src/validation/runner.js`; Test `tests/unse/benchmark-runner.test.mjs`.
+**Files:** Create `public/unse/src/validation/benchmark.js`, `public/unse/src/validation/runner.js`; Test `tests/unse/benchmark-runner.test.mjs`.
 
 - [ ] Write failing tests for new input validation, missing time skip, and isolated system failure; run the focused test and observe failure.
 - [ ] Implement the smallest adapter around existing core score functions and runner aggregation; rerun focused tests then `npm test`.
 
 ### Task 3: CLI, sample data, and documentation
 
-**Files:** Create `scripts/fortune-benchmark.mjs`, `public/unse-8f3k2m/src/validation/README.md`, `public/unse-8f3k2m/validation-data/sample.json`; modify `package.json` only to add a script if useful.
+**Files:** Create `scripts/fortune-benchmark.mjs`, `public/unse/src/validation/README.md`, `public/unse/validation-data/sample.json`; modify `package.json` only to add a script if useful.
 
 - [ ] Write a failing CLI integration test for console and JSON output; run it and observe failure.
 - [ ] Implement CLI and docs, execute sample CLI with `--json`, then run `npm test` and `npm run build`.

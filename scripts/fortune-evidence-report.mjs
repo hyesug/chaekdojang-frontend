@@ -1,8 +1,8 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { readProfileInterpretation } from '../public/unse-8f3k2m/src/engine.js';
-import { assessCasebookBias } from '../public/unse-8f3k2m/src/validation/casebook.js';
-import { normalizeProfile } from '../public/unse-8f3k2m/src/validation/profileInput.js';
+import { readProfileInterpretation } from '../public/unse/src/engine.js';
+import { assessCasebookBias } from '../public/unse/src/validation/casebook.js';
+import { normalizeProfile } from '../public/unse/src/validation/profileInput.js';
 
 const [input, ...args] = process.argv.slice(2);
 if (!input) {

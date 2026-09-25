@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import AdminNavLink from "./AdminNavLink";
 import { isAuthenticated, logout as logoutSession } from "../lib/auth";
 
-type NavLink = { href: string; label: string };
+type NavLink = { href: string; label: string; external?: boolean };
 
 export default function MobileMenu({ links }: { links: NavLink[] }) {
   const router = useRouter();
@@ -44,16 +44,20 @@ export default function MobileMenu({ links }: { links: NavLink[] }) {
 
       {open && (
         <div className="absolute right-0 top-10 w-52 bg-white rounded-2xl shadow-lg border border-cream-200 p-4 flex flex-col gap-2">
-          {links.map(({ href, label }) => (
-            <Link
-              key={href}
-              href={href}
-              onClick={() => setOpen(false)}
-              className="text-sm text-brown-700 font-medium hover:text-brown-500 py-1.5 px-2 rounded-lg hover:bg-cream-50 transition-colors"
-            >
-              {label}
-            </Link>
-          ))}
+          {links.map(({ href, label, external }) => {
+            const cls =
+              "text-sm text-brown-700 font-medium hover:text-brown-500 py-1.5 px-2 rounded-lg hover:bg-cream-50 transition-colors";
+            // 운세는 Next 라우트가 아니라 정적 사이트라 일반 링크로 나간다
+            return external ? (
+              <a key={href} href={href} onClick={() => setOpen(false)} className={cls}>
+                {label}
+              </a>
+            ) : (
+              <Link key={href} href={href} onClick={() => setOpen(false)} className={cls}>
+                {label}
+              </Link>
+            );
+          })}
           <Link
             href="/install"
             onClick={() => setOpen(false)}

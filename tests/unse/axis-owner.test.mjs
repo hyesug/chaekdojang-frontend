@@ -8,11 +8,11 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFortune } from '../../public/unse-8f3k2m/src/engine.js';
-import { routeQuestion } from '../../public/unse-8f3k2m/src/hires/router.js';
-import { buildHiRes } from '../../public/unse-8f3k2m/src/hires/context.js';
-import * as IN from '../../public/unse-8f3k2m/src/hires/interpret.js';
-import * as ZW from '../../public/unse-8f3k2m/src/hires/ziwei.js';
+import { readFortune } from '../../public/unse/src/engine.js';
+import { routeQuestion } from '../../public/unse/src/hires/router.js';
+import { buildHiRes } from '../../public/unse/src/hires/context.js';
+import * as IN from '../../public/unse/src/hires/interpret.js';
+import * as ZW from '../../public/unse/src/hires/ziwei.js';
 
 const person = (over = {}) => readFortune({
   name: '테스트', gender: 'female', year: 1992, month: 1, day: 30,

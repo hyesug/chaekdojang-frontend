@@ -26,10 +26,10 @@
  * 고른 것이다. 어느 체계가 몇 번 1등이었는지 함께 센다.
  */
 import { readFileSync, existsSync } from 'node:fs';
-import { predictTimeline } from '../public/unse-8f3k2m/src/semantic/timing/timeline.js';
-import { SYSTEM_IDS, SYSTEM_NAME } from '../public/unse-8f3k2m/src/semantic/extract.js';
-import { DOMAIN_LABEL } from '../public/unse-8f3k2m/src/semantic/timing/schema.js';
-import { midRank, seededRandom } from '../public/unse-8f3k2m/src/semantic/timing/schema.js';
+import { predictTimeline } from '../public/unse/src/semantic/timing/timeline.js';
+import { SYSTEM_IDS, SYSTEM_NAME } from '../public/unse/src/semantic/extract.js';
+import { DOMAIN_LABEL } from '../public/unse/src/semantic/timing/schema.js';
+import { midRank, seededRandom } from '../public/unse/src/semantic/timing/schema.js';
 
 const file = process.argv[2] ?? 'validation/cases.json';
 if (!existsSync(file)) { console.error(`${file} 이 없습니다.`); process.exit(1); }

@@ -11,26 +11,26 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { readFortune } from '../../public/unse-8f3k2m/src/engine.js';
-import { readForecast } from '../../public/unse-8f3k2m/src/forecast.js';
-import { toJD } from '../../public/unse-8f3k2m/src/core/astro.js';
-import { planetPositions } from '../../public/unse-8f3k2m/src/core/planets.js';
+import { readFortune } from '../../public/unse/src/engine.js';
+import { readForecast } from '../../public/unse/src/forecast.js';
+import { toJD } from '../../public/unse/src/core/astro.js';
+import { planetPositions } from '../../public/unse/src/core/planets.js';
 
-import * as VD from '../../public/unse-8f3k2m/src/hires/vedic.js';
-import * as VE from '../../public/unse-8f3k2m/src/hires/vedicExt.js';
-import * as WS from '../../public/unse-8f3k2m/src/hires/western.js';
-import * as WE from '../../public/unse-8f3k2m/src/hires/westernExt.js';
-import * as ZW from '../../public/unse-8f3k2m/src/hires/ziwei.js';
-import * as ZE from '../../public/unse-8f3k2m/src/hires/ziweiExt.js';
-import * as LOC from '../../public/unse-8f3k2m/src/hires/location.js';
-import * as PAIR from '../../public/unse-8f3k2m/src/hires/pair.js';
-import * as BD from '../../public/unse-8f3k2m/src/hires/body.js';
-import * as BR from '../../public/unse-8f3k2m/src/hires/baserate.js';
-import { buildGrid } from '../../public/unse-8f3k2m/src/hires/grid.js';
-import { elementDistribution } from '../../public/unse-8f3k2m/src/core/ganzhi.js';
-import { profileFor, tierOf } from '../../public/unse-8f3k2m/src/hires/profile.js';
-import { routeQuestion } from '../../public/unse-8f3k2m/src/hires/router.js';
-import { buildHiRes } from '../../public/unse-8f3k2m/src/hires/context.js';
+import * as VD from '../../public/unse/src/hires/vedic.js';
+import * as VE from '../../public/unse/src/hires/vedicExt.js';
+import * as WS from '../../public/unse/src/hires/western.js';
+import * as WE from '../../public/unse/src/hires/westernExt.js';
+import * as ZW from '../../public/unse/src/hires/ziwei.js';
+import * as ZE from '../../public/unse/src/hires/ziweiExt.js';
+import * as LOC from '../../public/unse/src/hires/location.js';
+import * as PAIR from '../../public/unse/src/hires/pair.js';
+import * as BD from '../../public/unse/src/hires/body.js';
+import * as BR from '../../public/unse/src/hires/baserate.js';
+import { buildGrid } from '../../public/unse/src/hires/grid.js';
+import { elementDistribution } from '../../public/unse/src/core/ganzhi.js';
+import { profileFor, tierOf } from '../../public/unse/src/hires/profile.js';
+import { routeQuestion } from '../../public/unse/src/hires/router.js';
+import { buildHiRes } from '../../public/unse/src/hires/context.js';
 
 const NOW = new Date('2026-09-20T00:00:00Z');
 const FORM = { name: '확장 A', gender: 'female', year: 1992, month: 1, day: 30, hour: 16, minute: 28, birthPlace: '여주', homePlace: '대전' };
@@ -595,7 +595,7 @@ test('체계마다 자기 어휘로 읽고, 섞지 않는다', async () => {
   // profile.js 의 융합이 신호를 뭉갰다. 지인 여덟의 자미 원국 관록궁은
   // 천동·염정파군·탐랑·무곡·파군으로 전부 달랐는데 융합 결과는 다섯 명
   // 모두 "교육·법률·금융"이었다 — 베딕 목성 쪽 지표가 표를 덮었다.
-  const IN = await import('../../public/unse-8f3k2m/src/hires/interpret.js');
+  const IN = await import('../../public/unse/src/hires/interpret.js');
   const st = ZW.stackAt(R.input, 2026, null);
   const reads = IN.readAll(R.input, R.chart, st);
 
@@ -617,7 +617,7 @@ test('담당 체계가 침묵하면 같이 침묵한다', async () => {
   // 자영/월급에서 자미는 넷에게만 답하고 그 넷을 다 맞혔다(4/4).
   // 사주로 빈칸을 채우면 40%가 되어 영점(55%)보다 나빠진다.
   // **채우지 않는 것이 정확도를 올린다.**
-  const IN = await import('../../public/unse-8f3k2m/src/hires/interpret.js');
+  const IN = await import('../../public/unse/src/hires/interpret.js');
   const st = ZW.stackAt(R.input, 2026, null);
   const best = IN.bestRead(IN.readAll(R.input, R.chart, st));
 

@@ -11,21 +11,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { readFortune } from '../../public/unse-8f3k2m/src/engine.js';
-import { readForecast, monthsOfYear } from '../../public/unse-8f3k2m/src/forecast.js';
-import { planetPositions, houses } from '../../public/unse-8f3k2m/src/core/planets.js';
-import { toJD } from '../../public/unse-8f3k2m/src/core/astro.js';
+import { readFortune } from '../../public/unse/src/engine.js';
+import { readForecast, monthsOfYear } from '../../public/unse/src/forecast.js';
+import { planetPositions, houses } from '../../public/unse/src/core/planets.js';
+import { toJD } from '../../public/unse/src/core/astro.js';
 
-import { monthlyTrack, annualTrack, daeunAt, dayLayer } from '../../public/unse-8f3k2m/src/hires/bazi.js';
-import * as ZW from '../../public/unse-8f3k2m/src/hires/ziwei.js';
-import * as WS from '../../public/unse-8f3k2m/src/hires/western.js';
-import * as VD from '../../public/unse-8f3k2m/src/hires/vedic.js';
-import * as LOC from '../../public/unse-8f3k2m/src/hires/location.js';
-import { buildGrid } from '../../public/unse-8f3k2m/src/hires/grid.js';
-import { inferEvents, chainOf, fitFor, EVENT_CANDIDATES, EVENT_GROUPS } from '../../public/unse-8f3k2m/src/hires/events.js';
-import { routeQuestion, defaultPlan } from '../../public/unse-8f3k2m/src/hires/router.js';
-import { buildHiRes } from '../../public/unse-8f3k2m/src/hires/context.js';
-import { branchPair, fullCombos } from '../../public/unse-8f3k2m/src/hires/relations.js';
+import { monthlyTrack, annualTrack, daeunAt, dayLayer } from '../../public/unse/src/hires/bazi.js';
+import * as ZW from '../../public/unse/src/hires/ziwei.js';
+import * as WS from '../../public/unse/src/hires/western.js';
+import * as VD from '../../public/unse/src/hires/vedic.js';
+import * as LOC from '../../public/unse/src/hires/location.js';
+import { buildGrid } from '../../public/unse/src/hires/grid.js';
+import { inferEvents, chainOf, fitFor, EVENT_CANDIDATES, EVENT_GROUPS } from '../../public/unse/src/hires/events.js';
+import { routeQuestion, defaultPlan } from '../../public/unse/src/hires/router.js';
+import { buildHiRes } from '../../public/unse/src/hires/context.js';
+import { branchPair, fullCombos } from '../../public/unse/src/hires/relations.js';
 
 const NOW = new Date('2026-09-19T00:00:00Z');
 

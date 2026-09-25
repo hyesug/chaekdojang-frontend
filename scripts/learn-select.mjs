@@ -26,13 +26,13 @@
  * 오른다. **LOO 와 라벨 섞기로만 읽는다.**
  */
 import { readFileSync, existsSync } from 'node:fs';
-import { natalFortune } from '../public/unse-8f3k2m/src/semantic/index.js';
-import { interpretCareer } from '../public/unse-8f3k2m/src/semantic/systems.js';
-import { poolCareer } from '../public/unse-8f3k2m/src/semantic/ensemble.js';
-import { unitize, cosineOf } from '../public/unse-8f3k2m/src/semantic/calibration.js';
-import { AXES, AXIS_LABEL } from '../public/unse-8f3k2m/src/semantic/axes.js';
-import { SYSTEM_NAME } from '../public/unse-8f3k2m/src/semantic/extract.js';
-import { seededRandom } from '../public/unse-8f3k2m/src/semantic/timing/schema.js';
+import { natalFortune } from '../public/unse/src/semantic/index.js';
+import { interpretCareer } from '../public/unse/src/semantic/systems.js';
+import { poolCareer } from '../public/unse/src/semantic/ensemble.js';
+import { unitize, cosineOf } from '../public/unse/src/semantic/calibration.js';
+import { AXES, AXIS_LABEL } from '../public/unse/src/semantic/axes.js';
+import { SYSTEM_NAME } from '../public/unse/src/semantic/extract.js';
+import { seededRandom } from '../public/unse/src/semantic/timing/schema.js';
 
 const AX = AXES.career;
 const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);

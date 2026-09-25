@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 
 import {
   narrateScenario, auditNarration, answerScenario, composePrepared, composeScenario,
-} from '../../public/unse-8f3k2m/src/semantic/scenario/index.js';
+} from '../../public/unse/src/semantic/scenario/index.js';
 
 const BIRTH = {
   name: 'x', gender: 'female', year: 1992, month: 1, day: 30,

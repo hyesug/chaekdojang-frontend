@@ -1,9 +1,9 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { runBenchmark } from '../public/unse-8f3k2m/src/validation/runner.js';
-import { collectBenchmarkMonths } from '../public/unse-8f3k2m/src/validation/benchmark.js';
-import { assessCasebookBias } from '../public/unse-8f3k2m/src/validation/casebook.js';
-import { normalizeProfile } from '../public/unse-8f3k2m/src/validation/profileInput.js';
+import { runBenchmark } from '../public/unse/src/validation/runner.js';
+import { collectBenchmarkMonths } from '../public/unse/src/validation/benchmark.js';
+import { assessCasebookBias } from '../public/unse/src/validation/casebook.js';
+import { normalizeProfile } from '../public/unse/src/validation/profileInput.js';
 
 const [input, ...args] = process.argv.slice(2);
 if (!input) {

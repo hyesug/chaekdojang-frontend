@@ -21,13 +21,13 @@
  *   · 창 지표(Top3Within·BestPercentileWithin)에 기준선이 없던 것 → 같이 잰다
  */
 import { readFileSync, existsSync } from 'node:fs';
-import { predictTimeline } from '../public/unse-8f3k2m/src/semantic/timing/timeline.js';
-import { DOMAIN_LABEL } from '../public/unse-8f3k2m/src/semantic/timing/schema.js';
-import { SYSTEM_NAME, SYSTEM_IDS } from '../public/unse-8f3k2m/src/semantic/extract.js';
+import { predictTimeline } from '../public/unse/src/semantic/timing/timeline.js';
+import { DOMAIN_LABEL } from '../public/unse/src/semantic/timing/schema.js';
+import { SYSTEM_NAME, SYSTEM_IDS } from '../public/unse/src/semantic/extract.js';
 import {
   scoreEvent, scoreEventYearly, scoreAtResolution, aggregateNull, nullPosition,
   personWeighted, personBootstrap,
-} from '../public/unse-8f3k2m/src/validation/timingMetrics.js';
+} from '../public/unse/src/validation/timingMetrics.js';
 
 const file = process.argv[2] ?? 'validation/cases.json';
 if (!existsSync(file)) {

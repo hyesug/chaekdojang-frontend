@@ -25,7 +25,7 @@
  * 사람 자료는 validation/attribution.json 에 있고 .gitignore 에 걸려 있다.
  */
 import { readFileSync } from 'node:fs';
-const B = '../public/unse-8f3k2m/src/';
+const B = '../public/unse/src/';
 const { readFortune } = await import(B + 'engine.js');
 const IN = await import(B + 'hires/interpret.js');
 const ZW = await import(B + 'hires/ziwei.js');

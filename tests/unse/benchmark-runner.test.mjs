@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { runBenchmark } from '../../public/unse-8f3k2m/src/validation/runner.js';
+import { runBenchmark } from '../../public/unse/src/validation/runner.js';
 
 test('출생 시각이 없으면 시간 필수 체계를 건너뛴다', () => {
   const result = runBenchmark([{ id: 'P001', profile: { gender: 'female', year: 1992, month: 1, day: 1, birthPlace: '대전', homePlace: '대전' }, events: [{ domain: '직업', type: '이직', date: '2024-11' }] }], { collect: () => ({ saju: [{ key: '2024-11', score: 1 }] }) });

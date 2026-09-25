@@ -6,15 +6,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { natalFortune, readPerson } from '../../public/unse-8f3k2m/src/semantic/index.js';
+import { natalFortune, readPerson } from '../../public/unse/src/semantic/index.js';
 import {
   DOMAINS, DOMAIN_LABEL, coverage, gather, interpretDomain,
   DOMAIN_RULES, domainRuleFor, NATURE_FILLED,
-} from '../../public/unse-8f3k2m/src/semantic/domains.js';
-import { RULES } from '../../public/unse-8f3k2m/src/semantic/rules.js';
-import { SYSTEM_IDS } from '../../public/unse-8f3k2m/src/semantic/extract.js';
-import { AXES } from '../../public/unse-8f3k2m/src/semantic/axes.js';
-import { PROJECTION, TRAIT_LABEL, projectNature, TRIGRAM_NATURE } from '../../public/unse-8f3k2m/src/semantic/tables/nature.js';
+} from '../../public/unse/src/semantic/domains.js';
+import { RULES } from '../../public/unse/src/semantic/rules.js';
+import { SYSTEM_IDS } from '../../public/unse/src/semantic/extract.js';
+import { AXES } from '../../public/unse/src/semantic/axes.js';
+import { PROJECTION, TRAIT_LABEL, projectNature, TRIGRAM_NATURE } from '../../public/unse/src/semantic/tables/nature.js';
 
 const BIRTH = {
   gender: 'female', year: 1992, month: 1, day: 30,

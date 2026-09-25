@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { readFortune } from '../../public/unse-8f3k2m/src/engine.js';
-import { readForecast } from '../../public/unse-8f3k2m/src/forecast.js';
-import { buildContext } from '../../public/unse-8f3k2m/src/aiContext.js';
+import { readFortune } from '../../public/unse/src/engine.js';
+import { readForecast } from '../../public/unse/src/forecast.js';
+import { buildContext } from '../../public/unse/src/aiContext.js';
 import {
   buildMultilayer, formatMultilayer, CORE_IDS, THEMES,
-} from '../../public/unse-8f3k2m/src/multilayerInterpretation.js';
+} from '../../public/unse/src/multilayerInterpretation.js';
 
 const FORM = {
   name: '다층 테스트',

@@ -19,8 +19,8 @@
  */
 
 import { readFileSync, readdirSync } from 'node:fs';
-import { readFortune } from '../public/unse-8f3k2m/src/engine.js';
-import { makePeriod } from '../public/unse-8f3k2m/src/forecast.js';
+import { readFortune } from '../public/unse/src/engine.js';
+import { makePeriod } from '../public/unse/src/forecast.js';
 
 const ROUNDS = 500;
 const CASES = JSON.parse(readFileSync('validation/cases.json', 'utf8'));
@@ -30,11 +30,11 @@ const AREA_OF = {
   주거: '총운', 이사: '총운', 건강: '건강운', 학업: '학업운', 자녀: '애정운',
 };
 
-const FILES = readdirSync('public/unse-8f3k2m/src/systems')
+const FILES = readdirSync('public/unse/src/systems')
   .filter((f) => f.endsWith('.js') && !f.startsWith('_'));
 const MODS = {};
 for (const f of FILES) {
-  const m = (await import(`../public/unse-8f3k2m/src/systems/${f}`)).default;
+  const m = (await import(`../public/unse/src/systems/${f}`)).default;
   if (typeof m?.forecast === 'function') MODS[f.replace('.js', '')] = m;
 }
 const NAMES = Object.keys(MODS);

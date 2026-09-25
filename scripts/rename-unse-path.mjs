@@ -10,8 +10,12 @@
  *   옛 주소가 그대로 열린다 — 바꾼 의미가 없어진다. 그래서 폴더 이름을
  *   실제로 바꾸고, 그 이름을 적어 둔 곳을 전부 같이 고친다.
  *
- * 고치는 곳: public/<폴더> · next.config.ts · index.html 의 <base> ·
- *            tests/unse/*.mjs 의 import 경로 · GitHub 워크플로 · 문서.
+ * 고치는 곳: public/<폴더> 와 **저장소 안에서 옛 이름을 적어 둔 모든 글 파일.**
+ *
+ * 처음에는 고칠 파일을 손으로 적어 두었는데(설정 넷 + tests/unse + 문서),
+ * 실제로 돌려 보니 **55곳이 남았다** — scripts/ · lib/ · validation/ ·
+ * docs/plans/ 가 목록에 없었다. 목록으로 관리하면 새 파일이 생길 때마다
+ * 조용히 빠진다. 그래서 훑는다.
  *
  * 바꾼 뒤에는 `npm run test:unse` 와 `npm run build` 가 그대로 통과해야 한다.
  */
@@ -51,9 +55,41 @@ function validate(slug) {
   }
 }
 
+/** 들어가지 않을 곳 — 만들어지는 것과 남의 것 */
+const SKIP_DIR = new Set([
+  'node_modules', '.git', '.next', '.vercel', '.turbo',
+  'dist', 'build', 'coverage', 'out',
+]);
+
+/** 글로 된 것만 연다. 이미지·폰트를 utf8 로 읽으면 깨진 채로 다시 쓰게 된다 */
+const TEXT_EXT = new Set([
+  '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
+  '.json', '.md', '.yml', '.yaml', '.html', '.css', '.txt', '.log',
+]);
+
+/** 저장소를 훑어 고칠 만한 파일을 모은다 */
+function walk(dir, out = []) {
+  for (const name of readdirSync(dir)) {
+    if (SKIP_DIR.has(name)) continue;
+    const full = join(dir, name);
+    let st;
+    try { st = statSync(full); } catch { continue; }
+    if (st.isDirectory()) { walk(full, out); continue; }
+    const dot = name.lastIndexOf('.');
+    if (dot < 0 || !TEXT_EXT.has(name.slice(dot))) continue;
+    // 아주 큰 로그까지 열지는 않는다
+    if (st.size > 8 * 1024 * 1024) continue;
+    out.push(full);
+  }
+  return out;
+}
+
 /** 텍스트에서 옛 이름을 새 이름으로 바꾼다. 바뀐 개수를 돌려준다 */
 function swap(file, from, to) {
   if (!existsSync(file)) return 0;
+  // 목록에 디렉터리가 섞여 들어오면 readFileSync 가 EISDIR 로 죽는다 —
+  // tests/unse/fixtures/ 에서 실제로 그렇게 멈췄다.
+  if (statSync(file).isDirectory()) return 0;
   const before = readFileSync(file, 'utf8');
   const after = before.split(from).join(to);
   if (before === after) return 0;
@@ -86,18 +122,8 @@ try {
   renameSync(join(ROOT, oldDir), join(ROOT, newDir));
 }
 
-const targets = [
-  join(ROOT, 'next.config.ts'),
-  join(ROOT, 'CLAUDE.md'),
-  join(ROOT, 'app', 'fortune-ai', 'route.ts'),
-  join(ROOT, 'public', to, 'index.html'),
-  join(ROOT, '.github', 'workflows', 'unse-tests.yml'),
-  ...readdirSync(join(ROOT, 'tests', 'unse')).map((f) => join(ROOT, 'tests', 'unse', f)),
-  ...(existsSync(join(ROOT, 'docs', 'superpowers', 'specs'))
-    ? readdirSync(join(ROOT, 'docs', 'superpowers', 'specs')).map((f) =>
-        join(ROOT, 'docs', 'superpowers', 'specs', f))
-    : []),
-];
+// 목록을 손으로 적지 않고 훑는다 — 적어 두면 새 파일이 생길 때 빠진다
+const targets = walk(ROOT);
 
 let total = 0;
 for (const file of targets) {

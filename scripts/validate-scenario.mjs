@@ -22,11 +22,11 @@
  * development-set 값이고 새 사례로 옮겨 간다는 보장이 없다.
  */
 import { readFileSync, existsSync } from 'node:fs';
-import { prepareScenario } from '../public/unse-8f3k2m/src/semantic/scenario/index.js';
-import { composePrepared } from '../public/unse-8f3k2m/src/semantic/scenario/composer.js';
-import { DOMAIN_LABEL } from '../public/unse-8f3k2m/src/semantic/domains.js';
-import { EVENT_CANDIDATES } from '../public/unse-8f3k2m/src/semantic/timing/events.js';
-import { personWeighted } from '../public/unse-8f3k2m/src/validation/timingMetrics.js';
+import { prepareScenario } from '../public/unse/src/semantic/scenario/index.js';
+import { composePrepared } from '../public/unse/src/semantic/scenario/composer.js';
+import { DOMAIN_LABEL } from '../public/unse/src/semantic/domains.js';
+import { EVENT_CANDIDATES } from '../public/unse/src/semantic/timing/events.js';
+import { personWeighted } from '../public/unse/src/validation/timingMetrics.js';
 
 const file = process.argv[2] ?? 'validation/cases.json';
 if (!existsSync(file)) {

@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { prepareInput } from '../../public/unse-8f3k2m/src/engine.js';
-import { dayRange, rankSurgeryDays } from '../../public/unse-8f3k2m/src/reading.js';
+import { prepareInput } from '../../public/unse/src/engine.js';
+import { dayRange, rankSurgeryDays } from '../../public/unse/src/reading.js';
 
 const FORM = {
   name: '이대희',

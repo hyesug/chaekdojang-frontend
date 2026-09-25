@@ -12,10 +12,10 @@ import {
   specificityGate, buildBranches, snapshotFromState, contextFor,
   stateOf, possibleTransitions, filterByState, claim, auditProvenance,
   conditionalStateAt,
-} from '../../public/unse-8f3k2m/src/semantic/scenario/index.js';
-import { STATE_GRAPH, canTransition } from '../../public/unse-8f3k2m/src/semantic/scenario/graph.js';
-import { LEVELS } from '../../public/unse-8f3k2m/src/semantic/scenario/specificity.js';
-import { predictTimeline } from '../../public/unse-8f3k2m/src/semantic/timing/timeline.js';
+} from '../../public/unse/src/semantic/scenario/index.js';
+import { STATE_GRAPH, canTransition } from '../../public/unse/src/semantic/scenario/graph.js';
+import { LEVELS } from '../../public/unse/src/semantic/scenario/specificity.js';
+import { predictTimeline } from '../../public/unse/src/semantic/timing/timeline.js';
 
 const BIRTH = {
   name: 'x', gender: 'female', year: 1992, month: 1, day: 30,

@@ -36,9 +36,9 @@ import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { readFortune } from '../public/unse-8f3k2m/src/engine.js';
-import { buildGrid } from '../public/unse-8f3k2m/src/hires/grid.js';
-import { inferEvents } from '../public/unse-8f3k2m/src/hires/events.js';
+import { readFortune } from '../public/unse/src/engine.js';
+import { buildGrid } from '../public/unse/src/hires/grid.js';
+import { inferEvents } from '../public/unse/src/hires/events.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DIR = join(ROOT, 'validation');

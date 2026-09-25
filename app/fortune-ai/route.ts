@@ -3,7 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 /**
  * 종합 운세 — Claude 프록시
  *
- * public/unse-8f3k2m 의 정적 사이트가 부르는 엔드포인트다.
+ * public/unse 의 정적 사이트가 부르는 엔드포인트다.
  * API 키를 브라우저에 내려보낼 수 없으므로 서버를 한 번 거친다.
  *
  * 경로를 /api 아래에 두지 않은 이유: next.config.ts 의 rewrite 가

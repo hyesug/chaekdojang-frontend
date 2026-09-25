@@ -8,10 +8,10 @@
  * 깊이가 다르면 성능 비교가 공정하지 않다.
  */
 import { writeFileSync, mkdirSync } from 'node:fs';
-import { predictTimeline } from '../public/unse-8f3k2m/src/semantic/timing/timeline.js';
-import { DOMAINS, DOMAIN_LABEL, RESOLUTION } from '../public/unse-8f3k2m/src/semantic/timing/schema.js';
-import { SYSTEM_IDS, SYSTEM_NAME } from '../public/unse-8f3k2m/src/semantic/extract.js';
-import { lineageOf } from '../public/unse-8f3k2m/src/semantic/lineage.js';
+import { predictTimeline } from '../public/unse/src/semantic/timing/timeline.js';
+import { DOMAINS, DOMAIN_LABEL, RESOLUTION } from '../public/unse/src/semantic/timing/schema.js';
+import { SYSTEM_IDS, SYSTEM_NAME } from '../public/unse/src/semantic/extract.js';
+import { lineageOf } from '../public/unse/src/semantic/lineage.js';
 
 /** 체계가 실제로 쓰는 시기 요소 — 어댑터가 읽는 자리를 그대로 적는다 */
 const ELEMENTS = {

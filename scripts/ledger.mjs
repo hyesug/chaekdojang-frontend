@@ -38,8 +38,8 @@
  * 열다섯의 말 옆에 그 사람의 실제 삶이 적히는 판이라 더 민감하다.
  */
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
-import { natalFortune } from '../public/unse-8f3k2m/src/semantic/index.js';
-import { readStructures } from '../public/unse-8f3k2m/src/semantic/structure/saju.js';
+import { natalFortune } from '../public/unse/src/semantic/index.js';
+import { readStructures } from '../public/unse/src/semantic/structure/saju.js';
 
 const args = process.argv.slice(2);
 

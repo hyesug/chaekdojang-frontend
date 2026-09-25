@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { readFortune } from '../../public/unse-8f3k2m/src/engine.js';
+import { readFortune } from '../../public/unse/src/engine.js';
 
 const NOW = new Date('2026-09-15T00:00:00Z');
 

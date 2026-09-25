@@ -3,14 +3,14 @@ name: Unse Tests
 on:
   push:
     paths:
-      - 'public/unse-8f3k2m/**'
+      - 'public/unse/**'
       - 'tests/unse/**'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/unse-tests.yml'
   pull_request:
     paths:
-      - 'public/unse-8f3k2m/**'
+      - 'public/unse/**'
       - 'tests/unse/**'
       - 'package.json'
       - 'package-lock.json'

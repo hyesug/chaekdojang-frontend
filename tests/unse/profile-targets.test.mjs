@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { deriveProfileTargets } from '../../public/unse-8f3k2m/src/interpretation/targets.js';
+import { deriveProfileTargets } from '../../public/unse/src/interpretation/targets.js';
 
 test('관계·자녀·직업의 구체 후보는 근거와 반증 조건을 함께 낸다', () => {
   const r = deriveProfileTargets([

@@ -11,12 +11,12 @@
  * 여기서 값을 고치지 않는다. 보여 주기만 한다.
  */
 import { readFileSync, existsSync } from 'node:fs';
-import { natalFortune } from '../public/unse-8f3k2m/src/semantic/index.js';
-import { interpretCareer } from '../public/unse-8f3k2m/src/semantic/systems.js';
-import { poolCareer } from '../public/unse-8f3k2m/src/semantic/ensemble.js';
-import { unitize } from '../public/unse-8f3k2m/src/semantic/calibration.js';
-import { AXES, AXIS_LABEL } from '../public/unse-8f3k2m/src/semantic/axes.js';
-import { SYSTEM_NAME } from '../public/unse-8f3k2m/src/semantic/extract.js';
+import { natalFortune } from '../public/unse/src/semantic/index.js';
+import { interpretCareer } from '../public/unse/src/semantic/systems.js';
+import { poolCareer } from '../public/unse/src/semantic/ensemble.js';
+import { unitize } from '../public/unse/src/semantic/calibration.js';
+import { AXES, AXIS_LABEL } from '../public/unse/src/semantic/axes.js';
+import { SYSTEM_NAME } from '../public/unse/src/semantic/extract.js';
 
 const AX = AXES.career;
 const args = process.argv.slice(2);

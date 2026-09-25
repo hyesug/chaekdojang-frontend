@@ -2,9 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-import { readFortune } from '../../public/unse-8f3k2m/src/engine.js';
-import { readForecast } from '../../public/unse-8f3k2m/src/forecast.js';
-import { buildView } from '../../public/unse-8f3k2m/src/viewmodel.js';
+import { readFortune } from '../../public/unse/src/engine.js';
+import { readForecast } from '../../public/unse/src/forecast.js';
+import { buildView } from '../../public/unse/src/viewmodel.js';
 
 const FORM = {
   name: '구조 테스트',
@@ -51,7 +51,7 @@ test('상세 성향은 여러 체계에서 실제로 반복된 것만 남긴다'
 
 test('개인 화면은 명반 · 오늘/이달 두 탭 · 프로필 저장 · AI 만, 궁합은 문장과 AI 만 둔다', async () => {
   const ui = await readFile(
-    new URL('../../public/unse-8f3k2m/src/ui.js', import.meta.url),
+    new URL('../../public/unse/src/ui.js', import.meta.url),
     'utf8',
   );
 
@@ -72,7 +72,7 @@ test('개인 화면은 명반 · 오늘/이달 두 탭 · 프로필 저장 · AI
 
 test('두 패널은 화면에서 내렸고, 붙이더라도 첫 화면을 무겁게 하지 않는다', async () => {
   const ui = await readFile(
-    new URL('../../public/unse-8f3k2m/src/ui.js', import.meta.url), 'utf8');
+    new URL('../../public/unse/src/ui.js', import.meta.url), 'utf8');
 
   // 두 탭 구조는 그대로다
   const tabs = [...ui.matchAll(/<button type="button"[^>]*data-tab="([^"]+)"/g)].map((m) => m[1]);
@@ -88,13 +88,13 @@ test('두 패널은 화면에서 내렸고, 붙이더라도 첫 화면을 무겁
 
   // 패널 자체는 그대로 살아 있고, 모델을 부르지 않는다
   const panel = await readFile(
-    new URL('../../public/unse-8f3k2m/src/scenarioPanel.js', import.meta.url), 'utf8');
+    new URL('../../public/unse/src/scenarioPanel.js', import.meta.url), 'utf8');
   assert.match(panel, /import\('\.\/semantic\/scenario\/index\.js'\)/);
   assert.equal(/fetch\(|fortune-ai/.test(panel), false, '패널이 바깥을 부르면 안 된다');
   assert.match(panel, /모델이 쓴 글이 아니라/);
 
   const compose = await readFile(
-    new URL('../../public/unse-8f3k2m/src/composePanel.js', import.meta.url), 'utf8');
+    new URL('../../public/unse/src/composePanel.js', import.meta.url), 'utf8');
   assert.match(compose, /import\('\.\/semantic\/compose\/slots\.js'\)/);
   assert.equal(/fetch\(|fortune-ai/.test(compose), false, '패널이 바깥을 부르면 안 된다');
 });

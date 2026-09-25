@@ -13,6 +13,9 @@ const navLinks = [
   { href: "/contests", label: "공모전" },
   { href: "/groups", label: "독서모임" },
   { href: "/stats", label: "독서 인생지도" },
+  // 운세는 Next 라우트가 아니라 public/unse 의 정적 사이트다.
+  // next/link 로 걸면 클라이언트 라우팅이 잡아채 404 가 나므로 일반 링크로 나간다.
+  { href: "/unse", label: "운세", external: true },
   { href: "/cs", label: "고객센터" },
 ];
 
@@ -30,15 +33,19 @@ export default function Header() {
         </Link>
 
         <nav className="hidden md:flex flex-1 items-center justify-center gap-4">
-          {navLinks.map(({ href, label }) => (
-            <Link
-              key={href}
-              href={href}
-              className="text-sm text-brown-500 hover:text-brown-800 transition-colors font-medium whitespace-nowrap"
-            >
-              {label}
-            </Link>
-          ))}
+          {navLinks.map(({ href, label, external }) => {
+            const cls =
+              "text-sm text-brown-500 hover:text-brown-800 transition-colors font-medium whitespace-nowrap";
+            return external ? (
+              <a key={href} href={href} className={cls}>
+                {label}
+              </a>
+            ) : (
+              <Link key={href} href={href} className={cls}>
+                {label}
+              </Link>
+            );
+          })}
         </nav>
 
         <div className="hidden md:flex items-center gap-3 flex-none ml-auto">

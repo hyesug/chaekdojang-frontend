@@ -23,9 +23,9 @@
  * 둘 다 맞을 수 있으므로 하나로 줄이지 않는다.
  */
 import { readFileSync, existsSync } from 'node:fs';
-import { natalFortune } from '../public/unse-8f3k2m/src/semantic/index.js';
-import { readStructures } from '../public/unse-8f3k2m/src/semantic/structure/saju.js';
-import { SLOTS, fillSlots } from '../public/unse-8f3k2m/src/semantic/compose/slots.js';
+import { natalFortune } from '../public/unse/src/semantic/index.js';
+import { readStructures } from '../public/unse/src/semantic/structure/saju.js';
+import { SLOTS, fillSlots } from '../public/unse/src/semantic/compose/slots.js';
 
 const args = process.argv.slice(2);
 const DOMAINS = ['career', 'wealth', 'relationship'];

@@ -20,10 +20,10 @@
  * '결혼 안 함'이 아니라 `censored`(그 나이까지 관측 없음)다.
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
-import { labelFor } from '../public/unse-8f3k2m/src/semantic/tables/occupations.js';
-import { childrenBand } from '../public/unse-8f3k2m/src/validation/labels.js';
-import { solarToLunar } from '../public/unse-8f3k2m/src/core/lunar.js';
-import { FIRST_MARRIAGE_AGE } from '../public/unse-8f3k2m/src/hires/baserate.js';
+import { labelFor } from '../public/unse/src/semantic/tables/occupations.js';
+import { childrenBand } from '../public/unse/src/validation/labels.js';
+import { solarToLunar } from '../public/unse/src/core/lunar.js';
+import { FIRST_MARRIAGE_AGE } from '../public/unse/src/hires/baserate.js';
 
 const AS_OF = process.env.AS_OF ?? new Date().toISOString().slice(0, 10);
 const thisYear = Number(AS_OF.slice(0, 4));

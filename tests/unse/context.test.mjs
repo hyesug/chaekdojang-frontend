@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { readFortune } from '../../public/unse-8f3k2m/src/engine.js';
-import { readForecast } from '../../public/unse-8f3k2m/src/forecast.js';
-import { buildContext } from '../../public/unse-8f3k2m/src/aiContext.js';
-import { analyze as gujeongAnalyze, yearDirections } from '../../public/unse-8f3k2m/src/systems/gujeong.js';
+import { readFortune } from '../../public/unse/src/engine.js';
+import { readForecast } from '../../public/unse/src/forecast.js';
+import { buildContext } from '../../public/unse/src/aiContext.js';
+import { analyze as gujeongAnalyze, yearDirections } from '../../public/unse/src/systems/gujeong.js';
 
 const NOW = new Date('2026-09-24T03:00:00Z');
 const A = { name: '가', gender: 'female', year: 1992, month: 1, day: 30, hour: 16, minute: 28, birthPlace: '여주', homePlace: '서울' };

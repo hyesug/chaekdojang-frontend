@@ -11,20 +11,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { readFortune } from '../../public/unse-8f3k2m/src/engine.js';
-import { readForecast } from '../../public/unse-8f3k2m/src/forecast.js';
-import { planetPositions, houses } from '../../public/unse-8f3k2m/src/core/planets.js';
-import { norm360 } from '../../public/unse-8f3k2m/src/core/astro.js';
-import { signOf } from '../../public/unse-8f3k2m/src/systems/astrology.js';
+import { readFortune } from '../../public/unse/src/engine.js';
+import { readForecast } from '../../public/unse/src/forecast.js';
+import { planetPositions, houses } from '../../public/unse/src/core/planets.js';
+import { norm360 } from '../../public/unse/src/core/astro.js';
+import { signOf } from '../../public/unse/src/systems/astrology.js';
 
-import * as CL from '../../public/unse-8f3k2m/src/hires/classical.js';
-import * as ZR from '../../public/unse-8f3k2m/src/hires/zr.js';
-import * as W from '../../public/unse-8f3k2m/src/hires/wealth.js';
-import * as WS from '../../public/unse-8f3k2m/src/hires/western.js';
-import * as VD from '../../public/unse-8f3k2m/src/hires/vedic.js';
-import * as ZW from '../../public/unse-8f3k2m/src/hires/ziwei.js';
-import { routeQuestion } from '../../public/unse-8f3k2m/src/hires/router.js';
-import { buildHiRes } from '../../public/unse-8f3k2m/src/hires/context.js';
+import * as CL from '../../public/unse/src/hires/classical.js';
+import * as ZR from '../../public/unse/src/hires/zr.js';
+import * as W from '../../public/unse/src/hires/wealth.js';
+import * as WS from '../../public/unse/src/hires/western.js';
+import * as VD from '../../public/unse/src/hires/vedic.js';
+import * as ZW from '../../public/unse/src/hires/ziwei.js';
+import { routeQuestion } from '../../public/unse/src/hires/router.js';
+import { buildHiRes } from '../../public/unse/src/hires/context.js';
 
 const NOW = new Date('2026-09-20T00:00:00Z');
 const FORM = { name: '재물 A', gender: 'female', year: 1992, month: 1, day: 30, hour: 16, minute: 28, birthPlace: '여주', homePlace: '대전' };

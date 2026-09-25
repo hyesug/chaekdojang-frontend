@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { evaluateMonths, summarize } from '../../public/unse-8f3k2m/src/validation/metrics.js';
+import { evaluateMonths, summarize } from '../../public/unse/src/validation/metrics.js';
 
 test('실제 사건 월이 최고점이면 Hit@1이다', () => {
   const r = evaluateMonths([{ key: '2024-10', score: 2 }, { key: '2024-11', score: 9 }, { key: '2024-12', score: 1 }], '2024-11');

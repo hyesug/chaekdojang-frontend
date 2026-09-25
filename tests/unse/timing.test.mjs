@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { prepareInput } from '../../public/unse-8f3k2m/src/engine.js';
-import { currentDaeun } from '../../public/unse-8f3k2m/src/core/ganzhi.js';
-import { analyze as kabbalahAnalyze } from '../../public/unse-8f3k2m/src/systems/kabbalah.js';
-import { analyze as tarotAnalyze } from '../../public/unse-8f3k2m/src/systems/tarot.js';
-import { analyze as vedicAnalyze } from '../../public/unse-8f3k2m/src/systems/vedic.js';
+import { prepareInput } from '../../public/unse/src/engine.js';
+import { currentDaeun } from '../../public/unse/src/core/ganzhi.js';
+import { analyze as kabbalahAnalyze } from '../../public/unse/src/systems/kabbalah.js';
+import { analyze as tarotAnalyze } from '../../public/unse/src/systems/tarot.js';
+import { analyze as vedicAnalyze } from '../../public/unse/src/systems/vedic.js';
 
 const FORM = {
   name: '경계값 테스트',

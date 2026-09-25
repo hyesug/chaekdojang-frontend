@@ -9,20 +9,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { readFortune } from '../../public/unse-8f3k2m/src/engine.js';
-import * as ZW from '../../public/unse-8f3k2m/src/hires/ziwei.js';
-import { readCareer, leadingAxes } from '../../public/unse-8f3k2m/src/semantic/index.js';
-import { interpretCareer, noisyOr } from '../../public/unse-8f3k2m/src/semantic/systems.js';
-import { poolCareer, auxScale, ET_SCALE } from '../../public/unse-8f3k2m/src/semantic/ensemble.js';
-import { SYSTEM_IDS, SYSTEM_NAME } from '../../public/unse-8f3k2m/src/semantic/extract.js';
-import { RULES, ruleFor, specificityOf, TABLE_MEAN, deviationOf, applyEmpirical } from '../../public/unse-8f3k2m/src/semantic/rules.js';
-import { AXES } from '../../public/unse-8f3k2m/src/semantic/axes.js';
-import { LINEAGE, independenceFactors } from '../../public/unse-8f3k2m/src/semantic/lineage.js';
-import { categorizeCareer, CAREER_CATEGORIES, LEVEL_B } from '../../public/unse-8f3k2m/src/semantic/categories.js';
-import { OCCUPATIONS, OCCUPATION_MEAN, centered, labelFor } from '../../public/unse-8f3k2m/src/semantic/tables/occupations.js';
-import { measure, weightsFrom, driftCap, pearson, cosineOf, unitize, compareOne } from '../../public/unse-8f3k2m/src/semantic/calibration.js';
-import { buildDictionary, byAxis } from '../../public/unse-8f3k2m/src/semantic/dictionary.js';
-import { narrate, narrateCareer } from '../../public/unse-8f3k2m/src/semantic/narrate.js';
+import { readFortune } from '../../public/unse/src/engine.js';
+import * as ZW from '../../public/unse/src/hires/ziwei.js';
+import { readCareer, leadingAxes } from '../../public/unse/src/semantic/index.js';
+import { interpretCareer, noisyOr } from '../../public/unse/src/semantic/systems.js';
+import { poolCareer, auxScale, ET_SCALE } from '../../public/unse/src/semantic/ensemble.js';
+import { SYSTEM_IDS, SYSTEM_NAME } from '../../public/unse/src/semantic/extract.js';
+import { RULES, ruleFor, specificityOf, TABLE_MEAN, deviationOf, applyEmpirical } from '../../public/unse/src/semantic/rules.js';
+import { AXES } from '../../public/unse/src/semantic/axes.js';
+import { LINEAGE, independenceFactors } from '../../public/unse/src/semantic/lineage.js';
+import { categorizeCareer, CAREER_CATEGORIES, LEVEL_B } from '../../public/unse/src/semantic/categories.js';
+import { OCCUPATIONS, OCCUPATION_MEAN, centered, labelFor } from '../../public/unse/src/semantic/tables/occupations.js';
+import { measure, weightsFrom, driftCap, pearson, cosineOf, unitize, compareOne } from '../../public/unse/src/semantic/calibration.js';
+import { buildDictionary, byAxis } from '../../public/unse/src/semantic/dictionary.js';
+import { narrate, narrateCareer } from '../../public/unse/src/semantic/narrate.js';
 
 const BIRTH = {
   gender: 'female', year: 1992, month: 1, day: 30,

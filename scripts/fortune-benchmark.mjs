@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { runBenchmark } from '../public/unse-8f3k2m/src/validation/runner.js';
-import { collectBenchmarkMonths } from '../public/unse-8f3k2m/src/validation/benchmark.js';
+import { runBenchmark } from '../public/unse/src/validation/runner.js';
+import { collectBenchmarkMonths } from '../public/unse/src/validation/benchmark.js';
 
 const [input, ...args] = process.argv.slice(2);
 if (!input) { console.error('사용법: node scripts/fortune-benchmark.mjs validation-data/cases.json [--json result.json]'); process.exit(1); }

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { interpretProfile } from '../../public/unse-8f3k2m/src/interpretation/profile.js';
+import { interpretProfile } from '../../public/unse/src/interpretation/profile.js';
 
 test('서로 다른 체계의 근거가 있어야 직업 후보를 낸다', () => {
   const r = interpretProfile([{ id: 'saju', name: '사주', signals: { domains: { 직업: 80 }, tags: ['독립', '학습'] } }, { id: 'jamidusu', name: '자미', signals: { domains: { 직업: 75 }, tags: ['독립', '실행'] } }]);

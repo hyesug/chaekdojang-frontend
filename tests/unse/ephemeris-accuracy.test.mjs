@@ -38,8 +38,8 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { toJD, solarTermJD } from '../../public/unse-8f3k2m/src/core/astro.js';
-import { planetPositions } from '../../public/unse-8f3k2m/src/core/planets.js';
+import { toJD, solarTermJD } from '../../public/unse/src/core/astro.js';
+import { planetPositions } from '../../public/unse/src/core/planets.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REF = JSON.parse(readFileSync(join(HERE, 'fixtures', 'ephemeris-reference.json'), 'utf8'));
@@ -131,8 +131,8 @@ test('절기 순간에 독립 구현도 같은 태양 황경을 말한다', () =
 test('오차가 실제로 결론을 바꾸는 자리에는 가드가 있다', async () => {
   // 카라카는 도수 순서로만 정해진다. 오차로 순서가 뒤집히면 다라카라카가
   // 바뀌고 배우자 해석이 통째로 달라진다. 그 위험을 스스로 신고해야 한다.
-  const { charaKarakas } = await import('../../public/unse-8f3k2m/src/hires/vedicExt.js');
-  const { readFortune } = await import('../../public/unse-8f3k2m/src/engine.js');
+  const { charaKarakas } = await import('../../public/unse/src/hires/vedicExt.js');
+  const { readFortune } = await import('../../public/unse/src/engine.js');
   const r = readFortune({
     name: '오차', gender: 'female', year: 1992, month: 1, day: 30,
     hour: 16, minute: 28, birthPlace: '여주', homePlace: '대전',

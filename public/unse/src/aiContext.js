@@ -23,6 +23,8 @@ import { dayRange, rankSurgeryDays, structureReading, patternReading,
          yearTimeline, innerReading, tabooReading } from './reading.js';
 import { buildMultilayer, formatMultilayer } from './multilayerInterpretation.js';
 import { lifeChapters, chaptersAt, chapterTurns } from './semantic/compose/life.js';
+import { readChildren, childPalaceStars, childrenDisagreement } from './semantic/structure/children.js';
+import { childrenPack } from './hires/vedicExt.js';
 
 const p2 = (n) => String(n).padStart(2, '0');
 
@@ -35,6 +37,36 @@ function foldFacts(facts, max = 10) {
     .join(' · ');
 }
 
+
+/**
+ * 자녀 — 체계마다 따로. **수와 성별을 포함한다.**
+ *
+ * 오래도록 "자녀 수·성별은 만들지 않는다"로 막아 두었는데, 그 결정은 열다섯을
+ * 하나로 합쳐 단정하던 때에 나온 것이다. 지금은 체계마다 따로 말하고 갈리면
+ * 갈린다고 적으므로 막을 이유가 없다 — "자미 전서의 수 표로는 둘"은 예언이
+ * 아니라 그 전통의 규칙이 무엇인지를 옮긴 것이다.
+ */
+function formatChildren(input, chart) {
+  let reads = [];
+  try {
+    reads = readChildren(
+      { ...chart, gender: input.gender },
+      childPalaceStars(input),
+      childrenPack(input),
+    );
+  } catch { return ''; }
+  if (!reads.length) return '';
+
+  const L = ['## 자녀 — 체계마다 무엇이라 하는가', ''];
+  for (const r of reads) L.push(`- **${r.system}** (${r.what}): ${r.text}  [출전: ${r.source}]`);
+  const dis = childrenDisagreement(reads);
+  if (dis) { L.push(''); L.push(`※ ${dis}`); }
+  L.push('');
+  L.push('이 줄들은 **각 전통의 규칙을 그대로 옮긴 것**이다. 맞는다고 검증된 것이 아니다.');
+  L.push('자녀를 물으면 체계 이름을 붙여 그대로 전하고, 갈리면 갈린다고 말할 것.');
+  L.push('**하나로 좁히지 말 것** — 좁히는 순간 어느 전통의 말도 아니게 된다.');
+  return L.join('\n');
+}
 
 /**
  * 평생 구간을 문맥에 싣는 모양으로.
@@ -344,6 +376,8 @@ export function buildContext(form, r, f = null) {
   // **경계가 확정 계산인** 구간을 그대로 실어 주면, 지어내지 않고도 연도를
   // 말할 수 있다. 사람마다 고정이라 캐시에 함께 태워도 값이 붙지 않는다.
   out.push(formatLife(input, r.chart));
+  out.push('');
+  out.push(formatChildren(input, r.chart));
   out.push('');
 
   out.push('## 읽는 법');

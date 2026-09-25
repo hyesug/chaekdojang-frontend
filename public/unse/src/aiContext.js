@@ -22,6 +22,7 @@ import { yearDirections } from './systems/gujeong.js';
 import { dayRange, rankSurgeryDays, structureReading, patternReading,
          yearTimeline, innerReading, tabooReading } from './reading.js';
 import { buildMultilayer, formatMultilayer } from './multilayerInterpretation.js';
+import { lifeChapters, chaptersAt, chapterTurns } from './semantic/compose/life.js';
 
 const p2 = (n) => String(n).padStart(2, '0');
 
@@ -34,6 +35,50 @@ function foldFacts(facts, max = 10) {
     .join(' · ');
 }
 
+
+/**
+ * 평생 구간을 문맥에 싣는 모양으로.
+ *
+ * **경계가 확정 계산인 것만 넣는다.** 대운·대한·다샤·ZR·9년 주기·24년 주기는
+ * 천문과 셈으로 정해지는 값이라 지어낼 여지가 없다. 모델이 "내년 어때요"에
+ * 분위기로 답하던 것은 이 표가 문맥에 없었기 때문이다.
+ *
+ * 사람마다 고정이라 캐시에 함께 태운다 — 질문마다 다시 보내지 않는다.
+ */
+function formatLife(input, chart) {
+  let chapters = [];
+  try { chapters = lifeChapters(input, chart, input.isMale); } catch { return ''; }
+  if (!chapters.length) return '';
+
+  const now = input.currentYear;
+  const L = [];
+  L.push('## 평생 구간 (경계는 확정 계산)');
+  L.push('시간축이 있는 체계의 구간을 한 축에 놓은 것이다. 주기가 저마다 달라(10·9·24년·가변) 시작과 끝이 어긋난다.');
+  L.push('');
+
+  const bySys = {};
+  for (const c of chapters) (bySys[c.system] ??= []).push(c);
+  for (const [sys, list] of Object.entries(bySys)) {
+    const near = list.filter((c) => c.toYear >= now - 10 && c.fromYear <= now + 40);
+    if (!near.length) continue;
+    L.push(`${sys} — ${near.map((c) => `${c.fromYear}~${c.toYear} ${c.label}`).join(' | ')}`);
+  }
+  L.push('');
+
+  const here = chaptersAt(chapters, now);
+  if (here.length) {
+    L.push(`지금(${now}년) 걸려 있는 구간: ` +
+      here.map((c) => `${c.system} ${c.label}(${c.fromYear}~${c.toYear})`).join(' · '));
+  }
+
+  const turns = chapterTurns(chapters, { from: now, to: now + 40, minSystems: 2, birthYear: input.year });
+  if (turns.length) {
+    L.push('');
+    L.push('둘 이상이 함께 바뀌는 해 (주기가 어긋나 있어 드물다):');
+    for (const t of turns) L.push(`  ${t.year}년 (${t.age}세) — ${t.systems.join(' + ')}`);
+  }
+  return L.join('\n');
+}
 
 /** 120일은 해를 넘긴다. 표에 연도를 다 적으면 길어지니 한 줄로 일러둔다 */
 function yearNote(days) {
@@ -294,9 +339,21 @@ export function buildContext(form, r, f = null) {
     out.push('');
   }
 
+  // ── 평생 축 ──
+  // 여기가 없어서 모델이 "내년 어때요"에 분위기로만 답했다. 대운·다샤·ZR 처럼
+  // **경계가 확정 계산인** 구간을 그대로 실어 주면, 지어내지 않고도 연도를
+  // 말할 수 있다. 사람마다 고정이라 캐시에 함께 태워도 값이 붙지 않는다.
+  out.push(formatLife(input, r.chart));
+  out.push('');
+
   out.push('## 읽는 법');
   out.push('위 값은 모두 천문 계산으로 구한 것이다. 간지·절기·음력·행성 위치를 다시 계산하지 말고 그대로 쓸 것.');
   out.push('체계마다 보는 대상이 다르므로 결론이 갈릴 수 있다. 갈리면 갈린다고 말할 것.');
+  out.push('"평생 구간" 표의 시작·끝 연도는 확정 계산이다. **연도를 물으면 이 표에서 골라 답하고, 표에 없는 해를 지어내지 말 것.** 구간이 바뀌는 해를 물으면 "둘 이상이 함께 바뀌는 해"를 쓸 것.');
+  out.push('다만 **구간의 경계가 곧 사건은 아니다.** "2028년에 다샤와 구성 주기가 함께 바뀐다"까지가 계산이고, "그래서 이직한다"는 계산이 아니다. 시기 예측은 이 사이트가 독립된 두 표본으로 재서 두 번 다 신호를 찾지 못했다(달 단위 p=0.868, 해 단위 p=0.196). 구간과 그 구간에 든 것을 말하되 사건을 단정하지 말 것.');
+  out.push('**달을 짚지 말 것.** 달 단위는 위 두 표본에서 모두 기준선보다 나빴다. 해까지만 단정하고, 굳이 달을 물으면 "이 해 안에서 굳이 꼽자면"이라고 밝히고 순위로만 답할 것.');
+  out.push('**양쪽을 다 말하는 문장을 쓰지 말 것.** "정리하면서 동시에 결실이 나오는 해"처럼 쓰면 틀릴 수가 없어서 아무 말도 아니다. 체계끼리 갈리면 누가 어느 쪽인지 밝힐 것.');
+  out.push('**좋은 해·나쁜 해로 말하지 말 것.** \'전성기\'·\'화려한 시기\' 같은 말을 쓰지 않는다. 충이 많으면 나쁘다는 것은 유파가 갈리고 이 사이트가 검증한 적이 없다. 대신 **어디가** 부딪히는지를 말할 것 — 재성이 부딪히는 것과 배우자궁이 흔들리는 것은 전혀 다른 이야기이고 그 구별은 확정 계산이다.');
   out.push('"다층 해석 근거"에 적힌 개수와 구간은 이미 센 것이다. 다시 세지 말고 그대로 쓸 것. 거기에 없는 달·구간을 만들어내지 말 것.');
   out.push('날짜를 물으면 위 일자별 표에서 실제 날짜를 골라 답할 것. 표에 있는 날은 이미 계산된 날이므로 지어내는 것이 아니다. "월 초"처럼 뭉개지 말고 "11월 3일(화)"처럼 날짜와 요일을 적고, 왜 그 날인지 한 줄로 밝힐 것. 두세 개를 우선순위대로 주고, 함께 피할 날도 같이 적을 것.');
   out.push('택일의 기준: 몸에 손대는 일(수술·시술·치료 시작)은 위의 "수술·시술 택일 전용 순위"를 그대로 쓸 것. 일지충·양인을 먼저 제외하고, 천의 → 황도 → 다른 원국 지지·그날 대운의 충 감점 → 형·해·파 감점 → 절기월 건강 → 당일 건강 → 일반 일진 등급 순으로 본다. 년지·월지·시지·대운 충은 후보를 전부 없애지 않도록 차등 감점하고, 일지충만 강하게 제외한다. 일반 등급이 높다는 이유로 흑도 날짜를 황도 날짜보다 앞세우지 말 것. 계약·문서·면접은 황도이면서 등급이 높은 날을 고른다. 이사·출발은 역마, 부탁·지원 요청은 천을을 참고한다.');

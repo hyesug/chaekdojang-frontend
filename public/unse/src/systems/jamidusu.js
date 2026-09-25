@@ -318,7 +318,7 @@ export function analyze(input) {
       // 목록 다음에 마침표를 찍는다 — 안 찍으면 마지막 항목과 뒷문장이 한 덩어리로
       // 붙어 조각을 갈라 낼 수 없다(`compose/slots.js` 의 `pick`).
       text: `${sihwaWhere.map((x) => `${x.star} ${x.label.split(' ')[0]} → ${x.palace}`).join(' · ')}.`
-        + (gi ? ` 화기가 ${gi.palace}에 들었습니다. 그 자리가 이 사람이 가장 애를 먹고, 놓지 못해 되풀이해서 붙드는 영역입니다.` : '')
+        + (gi ? ` 화기가 ${gi.palace}에 들었습니다. 그 자리에서 가장 자주 막히고, 오래 신경 쓰게 됩니다.` : '')
         + (rok ? ` 화록은 ${rok.palace}에 들어 그쪽에서 먹을 것과 기회가 열립니다.` : ''),
     });
   }

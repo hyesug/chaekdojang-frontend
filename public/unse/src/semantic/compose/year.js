@@ -92,7 +92,7 @@ export function yearSlots(input, chart, year, chapters = []) {
       system: '자미두수', what: `유년 ${al.gz} — 원국의 ${al.palaceOfNatal}`,
       text: `그 해의 명궁이 원국의 ${al.palaceOfNatal} 자리에 옵니다.`
         + (rok ? ` 화록은 ${rok.star}.` : '')
-        + (gi ? ` 화기는 ${gi.star} — 그 별이 든 자리가 그 해 가장 애먹는 영역입니다.` : ''),
+        + (gi ? ` 화기는 ${gi.star} — 그 별이 든 자리가 그 해 가장 자주 막힙니다.` : ''),
     });
   } catch { /* 시각을 모르면 판이 안 선다 */ }
 

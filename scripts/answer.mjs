@@ -22,6 +22,7 @@ import { lifeChapters, chaptersAt } from '../public/unse/src/semantic/compose/li
 import { childrenPack, marriagePack } from '../public/unse/src/hires/vedicExt.js';
 import { merge, consensusOf } from '../public/unse/src/semantic/compose/consensus.js';
 import { westernPair } from '../public/unse/src/semantic/structure/western.js';
+import { readClassical } from '../public/unse/src/semantic/structure/yukchin.js';
 
 const ALL = ['사주', '자미두수', '점성술(현대)', '고전 서양', '베딕', '주역', '육임', '홍국기문', '태을신수',
   '구성학', '숙요', '토정비결', '카발라', '마하보테', '태국 점성술', '타로'];
@@ -96,6 +97,7 @@ console.log(`# ${who}`);
   const teR = (te?.readings ?? []).find((x) => /주산|객산/.test(x.title));
   if (teR) reads.push({ system: '태을신수', what: teR.title, text: teR.text });
   reads.push(...westernPair(r.input, r, 10, '직업'));
+  reads.push(...readClassical(r, r.chart.dayStem, '직업'));
 
   // 상충하지 않는 면들을 **합친다.** 따로 두고 각각 물러서면 아무 말도 안 된다
   const facets = [];
@@ -123,7 +125,8 @@ console.log(`# ${who}`);
 // ── ② 배우자 ──
 {
   const reads = [...readSpouse(chart, spousePalaceStars(r.input), marriagePack(r.input)),
-    ...westernPair(r.input, r, 7, '결')];
+    ...westernPair(r.input, r, 7, '결'),
+    ...readClassical(r, r.chart.dayStem, '관계')];
   const v = spouseVerdict(reads);
   const ch = lifeChapters(r.input, r.chart, r.input.isMale);
   const here = chaptersAt(ch, r.input.currentYear).map((c) => `${c.system} ${c.label}`).join(' · ');
@@ -142,7 +145,8 @@ console.log(`# ${who}`);
 // ── ③ 자녀 ──
 {
   const reads = [...readChildren(chart, childPalaceStars(r.input), childrenPack(r.input)),
-    ...westernPair(r.input, r, 5, '열림')];
+    ...westernPair(r.input, r, 5, '열림'),
+    ...readClassical(r, r.chart.dayStem, '자녀')];
   section('③ 자녀운은 어떻게 돼?', reads, childrenVerdict(reads).lines);
 }
 

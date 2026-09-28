@@ -15,7 +15,7 @@ import { lunarToSolar } from './core/lunar.js';
 import { j } from './core/josa.js';
 import { encodeState, decodeState } from './share.js';
 import { readForecast, areaText } from './forecast.js';
-import { aiSection, initAI, initCompatAI } from './ai.js';
+import { renderReport } from './report.js';
 import { buildView, buildCompatView } from './viewmodel.js';
 import { SYSTEM_META, TIER_LABEL, SOURCE_LABEL } from './meta.js';
 import { loadProfile, saveProfile, deleteProfile, loginUrl } from './profile.js';
@@ -55,7 +55,6 @@ export async function run(mode, box, next) {
     await next();
     box.innerHTML = renderCompat(form, formB, c);
     await next();
-    initCompatAI(form, formB, c);
     await next();
   } else {
     prepareInput(form);
@@ -66,7 +65,6 @@ export async function run(mode, box, next) {
     await next();
     box.innerHTML = render(form, r, f);
     await next();
-    initAI(form, r, f);
     fillProfileCard(form);
     await next();
   }
@@ -142,13 +140,38 @@ function renderCompat(formA, formB, r) {
       <h2 class="hero-title">${esc(formA.name)} <span style="color:var(--gold-soft)">×</span> ${esc(formB.name)}</h2>
     </div>
 
+    <div class="card">
+      <div class="scope">${esc(v.verdict ?? '')} · 열다섯 체계</div>
+      ${v.summary ? `<p class="say-text">${esc(v.summary)}</p>` : ''}
+      ${v.counts?.text ? `<p class="say-text">${esc(v.counts.text)}</p>` : ''}
+      ${['좋음', '무난', '어려움'].map((k) => (v.buckets?.[k]?.length
+        ? `<p class="say-text"><strong>${k}</strong> — ${esc(v.buckets[k].join(' · '))}</p>` : '')).join('')}
+    </div>
+
     <div class="card compat-prose">
       ${v.eightAxes.map((a) => `
         <p class="say-text"><strong>${esc(a.label)}</strong> — ${esc([a.conclusion, a.reality, a.good, a.bad].filter(Boolean).join(' '))}</p>
       `).join('')}
     </div>
 
-    ${aiSection('pair')}
+    ${v.strong?.text || v.friction?.text ? `
+    <div class="card">
+      ${v.strong?.text ? `<p class="say-text"><strong>가장 좋게 보는 자리</strong> — ${esc(v.strong.text)}</p>` : ''}
+      ${v.friction?.text ? `<p class="say-text"><strong>가장 어렵게 보는 자리</strong> — ${esc(v.friction.text)}</p>` : ''}
+    </div>` : ''}
+
+    ${v.axes?.length ? `
+    <details class="why" style="margin-top:14px">
+      <summary>항목마다 어느 체계가 무엇을 근거로 그랬는지</summary>
+      <div style="margin-top:12px">
+        ${v.axes.map((a) => `
+          <p class="say-text"><strong>${esc(a.label)}</strong> — ${esc(a.text)}</p>
+          ${a.evidence?.length ? `<p class="say-text" style="color:var(--ink-3);font-size:13px">${
+            esc(a.evidence.map((e) => `${e.name}: ${e.headline}`).join(' / '))}</p>` : ''}
+        `).join('')}
+      </div>
+    </details>` : ''}
+
   `;
 }
 
@@ -313,7 +336,7 @@ function render(form, r, f) {
       <p class="agree-note" style="margin:0">프로필 저장 여부를 확인하는 중…</p>
     </div>
 
-    ${aiSection('solo', v)}
+    ${renderReport(form, r, f, v)}
   `;
 }
 

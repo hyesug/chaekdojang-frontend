@@ -1,27 +1,30 @@
 /**
  * report.js — **AI 없이 쓰는 통합 해석 문서**
  *
- * AI 에게 물어 받던 긴 풀이를 화면이 직접 쓴다. 질문 한 번에 수백 원이
- * 나갔는데, 모델이 하던 일의 대부분은 **엔진이 이미 써 둔 문장을 골라
- * 배열하는 것**이었다. 그 배열을 코드로 옮기면 값이 들지 않는다.
+ * AI 질문 한 번에 수백 원이 나갔는데, 모델이 하던 일의 대부분은 **엔진이
+ * 이미 써 둔 문장 가운데 그 주제에 맞는 것을 골라 배열하는 것**이었다.
+ * 그 고르기와 배열을 코드로 옮기면 값이 들지 않는다.
  *
- * ── 여기서 새 해석을 만들지 않는다 ─────────────────────────
- * 이 파일은 **문장을 짓지 않는다.** 각 체계의 `readings`, `forecast` 의 영역
- * 풀이, `viewmodel` 의 연도·평생 글을 그대로 가져다 문서 모양으로 놓을 뿐이다.
- * 새 문장을 여기서 지으면 어느 계산에서 나온 말인지 추적할 수 없게 된다.
+ * ── 한 번 크게 틀렸던 것 ───────────────────────────────────
+ * 처음에는 각 체계의 `readings` 를 통째로 주제별 제목 아래에 붙였다. 그래서
+ * "1-1. 직장 이동과 재물" 밑에 "하고 싶은 말과 재주가 밖으로 나오는 해"가
+ * 실렸다. **제목이 약속한 주제와 내용이 따로 놀았다.**
  *
- * ── 절 구성은 사용자가 준 문서를 따른다 ────────────────────
- * 번호와 하위 절(1-1, 1-2 …)을 그대로 쓰고, **제목에 그 사람의 실제 명반
- * 값을 넣는다** — "홍국기문: 9궁 離 · 경문" 처럼. 제목만 읽어도 무엇을 보고
- * 한 말인지 알 수 있어야 한다.
+ * 지금은 `semantic/` 의 분야 모듈에서 가져온다 — `timingFor('직업')` 은 그
+ * 해에 관성이 들어오는지를 말하고, `natureOf(관록궁)` 은 일할 때의 결을
+ * 말한다. **제목이 묻는 것에 답하는 값**이라야 그 자리에 놓는다.
  *
- * 문서에 있던 '프로젝트·책도장·로또'와 '질문별 색인'은 넣지 않았다. 그건
- * 그 대화에서 나온 이야기이지 명반에서 나오는 것이 아니다. 없는 것을
- * 만들어 채우면 이 파일이 지키는 선을 스스로 깨는 셈이 된다.
+ * ── 여기서 문장을 새로 짓지 않는다 ─────────────────────────
+ * 고르고 배열만 한다. 새로 지으면 어느 계산에서 나온 말인지 추적할 수 없다.
  */
 import { areaText } from './forecast.js';
-import { yearTimeline } from './reading.js';
 import { yearDirections } from './systems/gujeong.js';
+import { timingFor } from './semantic/compose/timing.js';
+import { palaceStars, natureOf } from './semantic/structure/stars.js';
+import { westernPair } from './semantic/structure/western.js';
+import { readSpouse, spousePalaceStars, spouseVerdict } from './semantic/structure/spouse.js';
+import { readChildren, childPalaceStars, childrenVerdict } from './semantic/structure/children.js';
+import { childrenPack, marriagePack } from './hires/vedicExt.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -29,20 +32,14 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
 const sysOf = (r, name) => Object.values(r.results ?? {}).find((v) => v?.name === name) ?? null;
 const headOf = (r, name) => sysOf(r, name)?.headline ?? '';
 
-/** 그 체계의 풀이 문단들 */
 function readings(r, name, max = 99) {
   const s = sysOf(r, name);
   if (!s?.readings?.length) return '';
   return s.readings.slice(0, max)
-    .map((x) => `<p class="rp-t"><strong>${esc(x.title)}</strong> — ${esc(x.text)}</p>`)
-    .join('');
+    .map((x) => `<p class="rp-t"><strong>${esc(x.title)}</strong> — ${esc(x.text)}</p>`).join('');
 }
 
-/**
- * viewmodel 은 칸마다 모양이 다르다 — 어떤 것은 그냥 글이고 어떤 것은
- * `{text, sources}` 다. 넘겨짚고 쓰면 화면에 `[object Object]` 가 나간다.
- * 출처가 있으면 함께 붙인다 — 몇 갈래가 같은 말을 하는지가 곧 무게다.
- */
+/** viewmodel 은 칸마다 모양이 다르다 — 그냥 글이거나 `{text, sources}` 다 */
 function withSrc(x) {
   if (!x) return null;
   if (typeof x === 'string') return x;
@@ -61,14 +58,47 @@ const para = (t) => t ? `<p class="rp-t">${esc(t)}</p>` : '';
 const sec = (n, title, body) => !body ? '' :
   `<section class="rp-sec"><h3 class="rp-h">${esc(n)}. ${esc(title)}</h3>${body}</section>`;
 const sub = (n, title, body) => !body ? '' :
-  `<div class="rp-sub"><h4 class="rp-h4">${esc(n)}. ${esc(title)}</h4>${body}</div>`;
-/** 번호 없는 작은 묶음 */
-const blk = (title, body) => !body ? '' :
-  `<div class="rp-sub"><h4 class="rp-h4">${esc(title)}</h4>${body}</div>`;
+  `<div class="rp-sub"><h4 class="rp-h4">${esc(n)}${n ? '. ' : ''}${esc(title)}</h4>${body}</div>`;
 
-/* ── 0. 한눈에 보는 통합 결론 ─────────────────────────────── */
+/** 분야 모듈이 낸 읽기 목록을 체계 이름과 함께 */
+const readList = (reads) => (reads ?? [])
+  .filter((x) => x?.text)
+  .map((x) => `<p class="rp-t"><strong>${esc(x.system)}${x.what ? ` (${esc(x.what)})` : ''}</strong> — ${esc(x.text)}</p>`)
+  .join('');
 
-function overview(v, f) {
+/**
+ * 한 분야의 시기 — **그 분야의 근거로만** 만든 연도표.
+ *
+ * 문서의 "2027 丁未 | 丑未冲으로 직장·조직 변화" 가 이 모양이다. 주제와
+ * 무관한 연운 문구를 쓰면 제목과 내용이 따로 논다.
+ */
+function timingOf(r, domain, span = 10) {
+  let t = null;
+  try {
+    const from = r.input.currentYear;
+    t = timingFor(r.input, { ...r.chart, gender: r.input.gender }, domain,
+      { from, to: from + span - 1 });
+  } catch { return ''; }
+  if (!t) return '';
+
+  const bg = (t.background ?? []).map(para).join('');
+  const rows = (t.rows ?? []).slice(0, 8).map((x) => [
+    `${x.year} (${x.age}세)`,
+    `${x.systems.join('+')} — ${x.why.join(' / ')}`,
+  ]);
+  const win = (t.windows ?? []).slice(0, 4).map((w) =>
+    [`${w.span}${w.ageLabel ? ` (${w.ageLabel})` : ''}`, `${w.systems.join('+')} ${w.systems.length}갈래가 짚습니다`]);
+
+  if (!bg && !rows.length && !win.length) return '';
+  return bg
+    + (win.length ? table2(['창', '몇 갈래가 짚는가'], win) : '')
+    + (rows.length ? table2(['시기', '핵심 흐름'], rows) : '')
+    + para(t.measured);
+}
+
+/* ── 0 ──────────────────────────────────────────────────── */
+
+function overview(v, f, r) {
   const rows = [];
   const add = (k, x) => { const t = withSrc(x); if (t) rows.push([k, t]); };
   add('커리어', v.life?.career);
@@ -78,7 +108,6 @@ function overview(v, f) {
   add('자녀', v.life?.child);
   add('몸', v.life?.body);
   add('올해', v.now?.year);
-
   const ag = f.year?.agreement;
   return table2(['영역', '통합 결론'], rows)
     + (ag ? para(`열다섯 가운데 ${ag.good}곳이 올해를 좋게, ${ag.bad}곳이 어렵게 봅니다.`) : '');
@@ -87,37 +116,47 @@ function overview(v, f) {
 /* ── 1. 평생 커리어·명예·재물 ─────────────────────────────── */
 
 function careerLife(v, r) {
-  let rows = [];
-  try {
-    const now = r.input.currentYear;
-    rows = yearTimeline(r.input, r.chart, now, now + 9).map((x) => [
-      `${x.year} ${x.gz?.hanja ?? ''}${x.daeunFrom ? ' · 대운 시작' : ''}${x.bond ? ' · 인연' : ''}`,
-      `[${x.tag}] ${x.text}${x.hit?.pair ? ` (${x.hit.pair})` : ''}`,
-    ]);
-  } catch { /* 표만 건너뛴다 */ }
+  const gwan = natureOf(palaceStars(r.input, '관록궁'), '일할 때의 본인');
+  const jae = natureOf(palaceStars(r.input, '재백궁'), '돈을 다룰 때의 본인');
+  let west = [];
+  try { west = westernPair(r.input, r, 10, '직업'); } catch { /* 넘어간다 */ }
 
-  const life = [v.life?.early, v.life?.middle, v.life?.late]
-    .map(withSrc).filter(Boolean).map(para).join('');
-
-  return sub('1-1', `대운 기준 직장 이동과 재물 — ${headOf(r, '사주')}`,
-      table2(['시기', '핵심 흐름'], rows)
-      + [withSrc(v.life?.career), withSrc(v.work?.job), withSrc(v.work?.money)]
-        .filter(Boolean).map(para).join(''))
-    + sub('1-2', `태양·MC가 보여주는 사회적 잠재력 — ${headOf(r, '점성술')}`,
-      readings(r, '점성술', 6))
-    + sub('1-3', `자미두수 관록궁·재백궁 — ${headOf(r, '자미두수')}`,
-      readings(r, '자미두수', 7))
-    + sub('1-4', '평생의 결', life)
-    + sub('1-5', `사주가 보는 자리 — ${headOf(r, '사주')}`, readings(r, '사주', 6));
+  return sub('1-1', '대운 기준 직장 이동',
+      para(withSrc(v.life?.career)) + timingOf(r, '직업'))
+    + sub('1-2', '재물이 들어오는 자리',
+      para(withSrc(v.work?.money)) + timingOf(r, '재물'))
+    + sub('1-3', `태양·MC가 보여주는 사회적 잠재력 — ${headOf(r, '점성술')}`,
+      readList(west) + readings(r, '점성술', 4))
+    + sub('1-4', `자미두수 관록궁·재백궁 — ${headOf(r, '자미두수')}`,
+      (gwan ? para(gwan.text) : '') + (jae ? para(jae.text) : ''))
+    + sub('1-5', `사주가 보는 자리 — ${headOf(r, '사주')}`, readings(r, '사주', 6))
+    + sub('1-6', '평생의 결',
+      [v.life?.early, v.life?.middle, v.life?.late].map(withSrc).filter(Boolean).map(para).join(''));
 }
 
 /* ── 2. 관계 ────────────────────────────────────────────── */
 
-const relations = (v, r) =>
-  sub('2-1', '배우자의 자리', para(withSrc(v.life?.spouse)) + para(withSrc(v.love?.spouse)))
-  + sub('2-2', '자녀와 아랫사람', para(withSrc(v.life?.child)))
-  + sub('2-3', '형제·또래', para(withSrc(v.life?.sibling)))
-  + sub('2-4', `숙요 — ${headOf(r, '숙요')}`, readings(r, '숙요', 4));
+function relations(v, r) {
+  const chart = { ...r.chart, gender: r.input.gender };
+  let sp = [], spv = { lines: [] }, ch = [], chv = { lines: [] };
+  try {
+    sp = readSpouse(chart, spousePalaceStars(r.input), marriagePack(r.input),
+      palaceStars(r.input, '부처궁'));
+    spv = spouseVerdict(sp);
+  } catch { /* 넘어간다 */ }
+  try {
+    ch = readChildren(chart, childPalaceStars(r.input), childrenPack(r.input),
+      palaceStars(r.input, '자녀궁'));
+    chv = childrenVerdict(ch);
+  } catch { /* 넘어간다 */ }
+
+  return sub('2-1', '배우자 — 어떤 사람이고 언제인가',
+      readList(sp) + (spv.lines ?? []).map(para).join('') + timingOf(r, '결혼'))
+    + sub('2-2', '자녀 — 수·성별·시기·어떤 아이인가',
+      readList(ch) + (chv.lines ?? []).map(para).join('') + timingOf(r, '자녀'))
+    + sub('2-3', `숙요 — ${headOf(r, '숙요')}`, readings(r, '숙요', 4))
+    + sub('2-4', '형제·또래', para(withSrc(v.life?.sibling)));
+}
 
 /* ── 3. 올해 ────────────────────────────────────────────── */
 
@@ -127,7 +166,6 @@ function thisYear(v, f, r) {
       const s = f.year?.areas?.[a]?.score;
       return s == null ? null : [a.replace('운', ''), areaText(a, s, 'year')];
     }).filter(Boolean);
-
   const months = (f.timeline ?? []).map((m) => [
     `${m.from.m}/${m.from.d}~ ${m.gz?.hanja ?? ''}`,
     areaText('총운', m.areas?.총운?.score ?? m.score, 'month'),
@@ -150,18 +188,18 @@ function thisYear(v, f, r) {
 function direction(r, f) {
   let d = null;
   try { d = yearDirections(r.input.sajuYear, f.year?.period?.sajuYear ?? r.input.currentYear); }
-  catch { /* 없으면 풀이만 */ }
-
+  catch { /* 풀이만 */ }
   const rows = [];
   if (d?.good?.length) rows.push(['열린 방위', d.good.map((g) => `${g.dir}(${g.star})`).join(', ')]);
   if (d?.bad?.length) {
     rows.push(['피할 방위', d.bad.map((b) =>
       `${b.dir}(${b.kind}${b.overlap ? ` · 흉방 ${b.overlap}개 겹침` : ''})`).join(', ')]);
   }
-  return blk('올해 방위', table2(['구분', '방위'], rows)
+  return sub('4-1', '올해 방위', table2(['구분', '방위'], rows)
       + (rows.length ? para('방위는 계산값이지만 실제 동네 이름은 그 방향을 지도에 대 본 '
         + '추정입니다. 세파는 구성 배치가 아니라 그 해 간지에서 나옵니다.') : ''))
-    + blk(`구성학 — ${headOf(r, '구성학')}`, readings(r, '구성학', 4));
+    + sub('4-2', `구성학 — ${headOf(r, '구성학')}`, readings(r, '구성학', 4))
+    + sub('4-3', '옮기는 시기', timingOf(r, '이사', 8));
 }
 
 /* ── 5. 기문·수비학 ─────────────────────────────────────── */
@@ -175,28 +213,24 @@ const inner = (r) =>
 
 /* ── 6. 최종 타임라인 ───────────────────────────────────── */
 
-function finale(v, r, f) {
-  let arrow = '';
-  try {
-    const now = r.input.currentYear;
-    arrow = yearTimeline(r.input, r.chart, now, now + 5)
-      .map((x) => `${x.year} ${x.tag}`).join(' → ');
-  } catch { /* 없으면 생략 */ }
-
-  const turn = [];
-  try {
-    const now = r.input.currentYear;
-    for (const x of yearTimeline(r.input, r.chart, now, now + 19)) {
-      if (x.daeunFrom) turn.push([`${x.year} (${x.age}세)`, '대운이 바뀌는 해입니다.']);
-      else if (x.hit?.kind === '충') turn.push([`${x.year} ${x.gz?.hanja ?? ''}`, x.hit.pair]);
-    }
-  } catch { /* 생략 */ }
-
-  return (arrow ? blk('앞으로 여섯 해를 한 줄로', para(arrow)) : '')
-    + blk('크게 움직이는 해', table2(['해', '무엇이 걸리는가'], turn.slice(0, 8)))
-    + blk('읽는 법', para('이 문서의 값은 천문·역법 계산에서 나온 것이고, 풀이는 각 전통의 '
-      + '독법을 옮긴 것입니다. 시기를 짚는 힘은 저희가 재 봤을 때 기준선을 넘지 못했으니, '
-      + '"언제"보다 "무엇이 어떤 결로 흐르는가"를 보시는 편이 이 문서를 제대로 쓰는 길입니다.'));
+function finale(r) {
+  // 분야마다 창을 한 표에 모은다 — "언제 무엇이" 가 한눈에 보여야 한다
+  const rows = [];
+  for (const [domain, label] of [['직업', '일'], ['재물', '돈'], ['결혼', '관계'],
+    ['자녀', '자녀'], ['이사', '옮김']]) {
+    try {
+      const from = r.input.currentYear;
+      const t = timingFor(r.input, { ...r.chart, gender: r.input.gender }, domain,
+        { from, to: from + 14 });
+      const w = (t.windows ?? [])[0];
+      if (w) rows.push([label, `${w.span}${w.ageLabel ? ` (${w.ageLabel})` : ''} · ${w.systems.join('+')} ${w.systems.length}갈래`]);
+    } catch { /* 그 분야만 건너뛴다 */ }
+  }
+  return sub('6-1', '분야마다 가장 센 창', table2(['분야', '시기'], rows))
+    + sub('6-2', '읽는 법', para('이 문서의 값은 천문·역법 계산에서 나온 것이고, 풀이는 각 '
+      + '전통의 독법을 옮긴 것입니다. 시기를 짚는 힘은 저희가 재 봤을 때 기준선을 넘지 '
+      + '못했으니, "언제"보다 "무엇이 어떤 결로 흐르는가"를 보시는 편이 이 문서를 제대로 '
+      + '쓰는 길입니다.'));
 }
 
 /* ── 문서 전체 ──────────────────────────────────────────── */
@@ -205,13 +239,13 @@ export function renderReport(form, r, f, v) {
   const today = `${f.today.y}.${String(f.today.m).padStart(2, '0')}.${String(f.today.d).padStart(2, '0')}`;
   const yr = f.year?.period?.sajuYear ?? r.input.currentYear;
   const body = [
-    sec(0, '한눈에 보는 통합 결론', overview(v, f)),
+    sec(0, '한눈에 보는 통합 결론', overview(v, f, r)),
     sec(1, '평생 커리어·명예·재물 흐름', careerLife(v, r)),
-    sec(2, '관계 — 배우자·자녀·형제·숙요', relations(v, r)),
+    sec(2, '관계 — 배우자·자녀·형제', relations(v, r)),
     sec(3, `${yr}년 흐름 — 요일·다샤·괘·월운`, thisYear(v, f, r)),
     sec(4, '행운 요소·방위 — 이사와 이직', direction(r, f)),
     sec(5, '기문·수비학이 보는 평생 성패와 내적 과제', inner(r)),
-    sec(6, '최종 타임라인과 읽는 법', finale(v, r, f)),
+    sec(6, '최종 타임라인과 읽는 법', finale(r)),
   ].filter(Boolean).join('');
 
   return `

@@ -370,6 +370,11 @@ function sortedLottoNumbers(numbers: number[]) {
   return [...numbers].sort((a, b) => a - b);
 }
 
+function hasLottoDrawPassed(round: Pick<LottoPredictionRound, "drawDate" | "drawTime">) {
+  const drawAt = new Date(`${round.drawDate}T${round.drawTime.length === 5 ? `${round.drawTime}:00` : round.drawTime}+09:00`);
+  return !Number.isNaN(drawAt.getTime()) && drawAt.getTime() <= Date.now();
+}
+
 function formatReviewTime(value: string) {
   const hasTimezone = /(?:Z|[+-]\d{2}:\d{2})$/.test(value);
   const date = new Date(hasTimezone ? value : `${value}Z`);
@@ -1172,6 +1177,7 @@ export default function AdminPage() {
       method: "PATCH", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ numbers }),
     });
     if (response.ok) setLottoRounds(await fetchAdmin<LottoPredictionRound[]>("/api/admin/lotto-future-validations") ?? []);
+    else window.alert("실제번호를 저장하지 못했습니다. 추첨 시각 이후인지와 번호를 다시 확인하세요.");
   }
 
   async function reviseLottoDrawTime(round: number, currentTime: string) {
@@ -1185,6 +1191,7 @@ export default function AdminPage() {
       method: "PATCH", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ drawTime, reason: reason.trim() }),
     });
     if (response.ok) setLottoRounds(await fetchAdmin<LottoPredictionRound[]>("/api/admin/lotto-future-validations") ?? []);
+    else window.alert("추첨시각은 추첨 전에만 변경할 수 있습니다.");
   }
 
   async function reviseLottoModel(round: number) {
@@ -1196,6 +1203,7 @@ export default function AdminPage() {
       method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ reason: reason.trim() }),
     });
     if (response.ok) setLottoRounds(await fetchAdmin<LottoPredictionRound[]>("/api/admin/lotto-future-validations") ?? []);
+    else window.alert("모델 revision은 추첨 전에만 생성할 수 있습니다.");
   }
 
   async function searchAdminUsers(event?: React.FormEvent) {

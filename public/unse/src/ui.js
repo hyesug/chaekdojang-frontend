@@ -12,10 +12,11 @@
 import { readFortune, prepareInput } from './engine.js';
 import { compareFortune } from './compat.js';
 import { lunarToSolar } from './core/lunar.js';
+import { elementDistribution } from './core/ganzhi.js';
 import { j } from './core/josa.js';
 import { encodeState, decodeState } from './share.js';
 import { readForecast, areaText } from './forecast.js';
-import { renderReport } from './report.js';
+import { renderReport, renderPairReport } from './report.js';
 import { buildView, buildCompatView } from './viewmodel.js';
 import { SYSTEM_META, TIER_LABEL, SOURCE_LABEL } from './meta.js';
 import { loadProfile, saveProfile, deleteProfile, loginUrl } from './profile.js';
@@ -160,17 +161,10 @@ function renderCompat(formA, formB, r) {
       ${v.friction?.text ? `<p class="say-text"><strong>가장 어렵게 보는 자리</strong> — ${esc(v.friction.text)}</p>` : ''}
     </div>` : ''}
 
-    ${v.axes?.length ? `
-    <details class="why" style="margin-top:14px">
-      <summary>항목마다 어느 체계가 무엇을 근거로 그랬는지</summary>
-      <div style="margin-top:12px">
-        ${v.axes.map((a) => `
-          <p class="say-text"><strong>${esc(a.label)}</strong> — ${esc(a.text)}</p>
-          ${a.evidence?.length ? `<p class="say-text" style="color:var(--ink-3);font-size:13px">${
-            esc(a.evidence.map((e) => `${e.name}: ${e.headline}`).join(' / '))}</p>` : ''}
-        `).join('')}
-      </div>
-    </details>` : ''}
+    ${renderPairReport(formA, formB, r, v, {
+      a: elementDistribution(r.A?.chart?.pillars ?? {}).count,
+      b: elementDistribution(r.B?.chart?.pillars ?? {}).count,
+    })}
 
   `;
 }

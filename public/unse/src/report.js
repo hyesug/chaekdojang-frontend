@@ -264,3 +264,132 @@ export function renderReport(form, r, f, v) {
       </div>
     </details>`;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   궁합 — 통합 관계 해석 보고서
+   개인 문서와 같은 원칙이다. 여기서 문장을 짓지 않고, 각 체계가 두 사람을
+   맞대 보고 이미 써 둔 말을 절마다 골라 놓는다.
+   ═══════════════════════════════════════════════════════════ */
+
+/** 궁합 결과에서 체계 하나 */
+const pSys = (c, name) => (c.results ?? []).find((x) => x?.name === name) ?? null;
+const pHead = (c, name) => pSys(c, name)?.headline ?? '';
+
+/** 그 체계의 facts 를 `라벨=값` 표로 */
+function pFacts(c, name) {
+  const s = pSys(c, name);
+  if (!s?.facts?.length) return '';
+  return table2(['항목', '값'], s.facts.filter((f) => f.value).map((f) => [f.label, f.value]));
+}
+
+/** 그 체계의 풀이 */
+function pRead(c, name, max = 99) {
+  const s = pSys(c, name);
+  if (!s?.readings?.length) return '';
+  return s.readings.slice(0, max).map((x) =>
+    `<p class="rp-t">${x.title ? `<strong>${esc(x.title)}</strong> — ` : ''}${esc(x.text)}</p>`).join('');
+}
+
+/** 한 체계 절 — 계산값 표 + 풀이 */
+const pBlock = (c, n, title, name, max = 99) =>
+  sub(n, `${title} — ${pHead(c, name)}`, pFacts(c, name) + pRead(c, name, max));
+
+export function renderPairReport(formA, formB, c, v, elementDist) {
+  const A = c.A?.input?.name ?? formA.name;
+  const B = c.B?.input?.name ?? formB.name;
+  const s = c.synthesis ?? {};
+  const today = new Date();
+  const stamp = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
+
+  // 1. 핵심 결론 — 체계마다 한 줄씩. 문서의 "명리: … / 시나스트리: …" 모양
+  const lines = (c.results ?? [])
+    .filter((x) => x?.headline)
+    .map((x) => [`${x.name} (${x.verdict ?? ''})`, x.headline]);
+
+  // 2. 핵심 계산값 — 두 사람을 나란히
+  const pillarsOf = (p) => ['year', 'month', 'day', 'hour']
+    .map((k) => p?.[k]?.hanja).filter(Boolean).join(' ');
+  const who = (name, side, sysName) => {
+    const f = pSys(c, sysName)?.facts ?? [];
+    return f.map((x) => `${x.label}: ${x.value}`).join(' / ');
+  };
+  const calc = [
+    [A, `${c.A?.input?.year}.${c.A?.input?.month}.${c.A?.input?.day}`
+      + ` · 일간 ${c.A?.chart?.pillars?.day?.hanja ?? ''}`
+      + ` · 사주 ${pillarsOf(c.A?.chart?.pillars)}`],
+    [B, `${c.B?.input?.year}.${c.B?.input?.month}.${c.B?.input?.day}`
+      + ` · 일간 ${c.B?.chart?.pillars?.day?.hanja ?? ''}`
+      + ` · 사주 ${pillarsOf(c.B?.chart?.pillars)}`],
+  ];
+
+  // 3.2 오행 보완성 — 두 사람 수치를 나란히 놓고 적은 쪽을 짚는다
+  const ELEM = ['목', '화', '토', '금', '수'];
+  const ea = elementDist?.a, eb = elementDist?.b;
+  const elemRows = (ea && eb) ? ELEM.map((e, i) => {
+    const x = Math.round(ea[i] * 10) / 10, y = Math.round(eb[i] * 10) / 10;
+    // 0.8 이상 벌어지면 한쪽으로 기운 것으로 본다. 오행 수치는 지장간까지
+    // 가중해 더한 값이라 1.0 을 문턱으로 잡으면 눈에 띄는 차이도 '비슷함'이 된다
+    const note = (x < 1 && y < 1) ? '둘 다 부족 — 서로 채워주지 못하는 자리'
+      : x - y >= 0.8 ? `${A} 쪽이 많음` : y - x >= 0.8 ? `${B} 쪽이 많음` : '비슷함';
+    return [e, `${A} ${x} / ${B} ${y} — ${note}`];
+  }) : [];
+
+  const body = [
+    sec(1, '핵심 결론',
+      (s.summary ? para(s.summary) : '')
+      + table2(['체계', '한 줄 결론'], lines)),
+    sec(2, '해석에 사용한 핵심 계산값', table2(['사람', '값'], calc)),
+    sec(3, '사주 — 일간·오행·합충',
+      sub('3-1', `일간 관계 — ${pHead(c, '사주')}`, pFacts(c, '사주') + pRead(c, '사주'))
+      + sub('3-2', '오행 보완성', table2(['오행', '두 사람'], elemRows)
+        + (elemRows.length ? para('두 사람 모두 옅은 오행이 있으면 상대가 그 자리를 채워주지 '
+          + '못합니다. 그럴 때는 관계 바깥에서 의식적으로 메워야 합니다.') : ''))),
+    sec(4, '서양 시나스트리 — 감정·끌림·지속성',
+      pFacts(c, '점성술') + pRead(c, '점성술')),
+    sec(5, '자미두수 — 부처궁 교차와 상호 영향',
+      pFacts(c, '자미두수') + pRead(c, '자미두수')),
+    sec(6, '27숙(숙요) — 위성 관계', pFacts(c, '숙요') + pRead(c, '숙요')),
+    sec(7, '요일·수호행성',
+      pBlock(c, '7-1', '태국 점성술', '태국 점성술')
+      + pBlock(c, '7-2', '마하보테', '마하보테')),
+    sec(8, '베딕 아스타쿠타', pFacts(c, '베딕') + pRead(c, '베딕')),
+    sec(9, '구성학 본명성', pFacts(c, '구성학') + pRead(c, '구성학')),
+    sec(10, '생명의 나무 — 수비학', pFacts(c, '카발라') + pRead(c, '카발라')),
+    sec(11, '그 밖의 체계',
+      pBlock(c, '11-1', '주역', '주역')
+      + pBlock(c, '11-2', '육임', '육임')
+      + pBlock(c, '11-3', '홍국기문', '홍국기문')
+      + pBlock(c, '11-4', '태을신수', '태을신수')
+      + pBlock(c, '11-5', '토정비결', '토정비결')
+      + pBlock(c, '11-6', '타로', '타로')),
+    sec(12, '여러 체계에서 반복되는 것',
+      table2(['판정', '체계'], ['좋음', '무난', '어려움']
+        .filter((k) => s.buckets?.[k]?.length)
+        .map((k) => [k, s.buckets[k].join(' · ')]))
+      + (s.coreBuckets ? para(`명반을 통째로 세우는 넷만 보면 — `
+        + ['좋음', '무난', '어려움'].filter((k) => s.coreBuckets[k]?.length)
+          .map((k) => `${k}: ${s.coreBuckets[k].join('·')}`).join(' / ')) : '')
+      + (s.split ? para('명반을 세우는 체계 안에서도 판단이 갈립니다. '
+        + '한쪽 결론만 들고 가지 마세요.') : '')),
+    sec(13, '최종 통합 판단',
+      para(`열다섯을 모두 놓고 보면 ${s.verdict ?? ''} 쪽입니다.`)
+      + (s.best?.length ? para(`가장 후하게 본 곳: ${s.best.map((x) => x.name).join(' · ')}`) : '')
+      + (s.worst?.length ? para(`가장 어렵게 본 곳: ${s.worst.map((x) => x.name).join(' · ')}`) : '')),
+  ].filter(Boolean).join('');
+
+  return `
+    <details class="rp" open>
+      <summary class="rp-sum">통합 관계 해석 보고서 — 열다섯 체계로 맞대어 본 것</summary>
+      <div class="rp-doc">
+        <div class="rp-cover">
+          <h2 class="rp-title">${esc(A)} · ${esc(B)}</h2>
+          <p class="rp-sub-t">통합 관계 해석 보고서 · 기준일 ${esc(stamp)}</p>
+          <p class="rp-sub-t">명리 · 자미두수 · 시나스트리 · 베딕 · 숙요 · 구성학 · 요일행성 · 주역 · 수리</p>
+          <p class="rp-note">두 사람의 명반을 열다섯 체계로 각각 맞대어 본 기록입니다.
+            점술·점성 체계는 상징적 해석 도구이며 실제 미래를 확정하지 않습니다.
+            유파가 갈리는 값은 이 사이트가 고른 기준으로 적었습니다.</p>
+        </div>
+        ${body}
+      </div>
+    </details>`;
+}

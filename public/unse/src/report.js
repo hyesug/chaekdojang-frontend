@@ -18,6 +18,11 @@
  * 고르고 배열만 한다. 새로 지으면 어느 계산에서 나온 말인지 추적할 수 없다.
  */
 import { areaText } from './forecast.js';
+import { currentDaeun, computeDaeun, TEN_GOD_GROUP, BRANCHES } from './core/ganzhi.js';
+import { buildBoard, decadeLimits, palaceBranch } from './hires/ziwei.js';
+import { classicalChart, readHouse } from './hires/classical.js';
+import { yearTimeline } from './reading.js';
+import { j } from './core/josa.js';
 import { yearDirections } from './systems/gujeong.js';
 import { timingFor } from './semantic/compose/timing.js';
 import { palaceStars, natureOf } from './semantic/structure/stars.js';
@@ -96,41 +101,193 @@ function timingOf(r, domain, span = 10) {
     + para(t.measured);
 }
 
-/* ── 0 ──────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════
+   개인 문서 — 받은 docx 를 그대로 옮긴 틀
+
+   문장 **틀**은 문서에서 가져오고, 그 안의 값만 명반에서 채운다.
+   "관록궁 {지지}의 {별}, 재백궁 {지지}의 {별}을 핵심으로 보았습니다" 처럼
+   뼈대는 고정이고 중괄호만 사람마다 달라진다. 이렇게 해야 사람이 달라져도
+   **같은 문서를 읽는 느낌**이 난다.
+
+   틀 문장은 해석이 아니라 형식이다. 해석은 여전히 각 체계의 readings 에서
+   가져오고, 여기서 새 뜻을 만들지 않는다.
+   ═══════════════════════════════════════════════════════════ */
+
+/** 그 체계 풀이 가운데 제목에 낱말이 든 것 하나 */
+function readingText(r, sysName, contains) {
+  const s = sysOf(r, sysName);
+  return s?.readings?.find((x) => String(x.title).includes(contains))?.text ?? '';
+}
+
+/** `라벨: 내용` 한 줄 — 문서가 쓰는 모양 */
+const labeled = (k, t) => t ? `<p class="rp-t"><strong>${esc(k)}:</strong> ${esc(t)}</p>` : '';
+
+/** 십성이 그 해에 무엇을 건드리는가 — 분야 이름으로 옮기는 고정표 */
+/** 지지끼리 부딪친 꼴마다 그 해가 어떤 해인가 — 고정표 */
+const HIT_LINE = {
+  충: '자리가 흔들리는 해', 육합: '사람과 일이 맞물리는 해', 반합: '주변이 밀어주는 해',
+  삼형: '같은 문제로 말이 오가는 해', 상형: '같은 문제로 말이 오가는 해',
+  자형: '혼자 떠안고 지치기 쉬운 해', 해: '겉은 조용한데 속이 상하는 해',
+  파: '정해둔 것이 틀어져 다시 짜는 해',
+};
+
+const GOD_FIELD = {
+  관성: '자리와 역할', 재성: '돈과 조건', 식상: '드러냄과 표현',
+  인성: '배움과 문서', 비겁: '경쟁과 동료',
+};
+
+/* ── 0. 한눈에 보는 통합 결론 ─────────────────────────────── */
 
 function overview(v, f, r) {
   const rows = [];
   const add = (k, x) => { const t = withSrc(x); if (t) rows.push([k, t]); };
   add('커리어', v.life?.career);
   add('재물', v.work?.money);
-  add('직업의 결', v.work?.job);
+  add('직업 적성', v.work?.job);
   add('관계', v.life?.spouse);
   add('자녀', v.life?.child);
-  add('몸', v.life?.body);
-  add('올해', v.now?.year);
+  add('건강', v.life?.body);
+  add(`${f.year?.period?.sajuYear ?? ''}`, v.now?.year);
+
   const ag = f.year?.agreement;
+  const kw = v.hero?.keywords?.length ? v.hero.keywords.join(' · ') : '';
   return table2(['영역', '통합 결론'], rows)
+    + (kw ? para(`통합 키워드: "${kw}"`) : '')
     + (ag ? para(`열다섯 가운데 ${ag.good}곳이 올해를 좋게, ${ag.bad}곳이 어렵게 봅니다.`) : '');
 }
 
-/* ── 1. 평생 커리어·명예·재물 ─────────────────────────────── */
+/* ── 1. 평생 커리어·명예·재물 흐름 ────────────────────────── */
+
+/** 1-1. 대운 기준 직장 이동과 재물 */
+function s11(v, r) {
+  let dae = null;
+  try { dae = currentDaeun(computeDaeun(r.chart, r.input.isMale, r.input.jdUT), r.input.age); }
+  catch { /* 문단만 건너뛴다 */ }
+
+  const head = dae
+    ? `현재는 ${dae.hanja} 대운(${dae.fromAge}~${dae.toAge}세)으로, 일간에게 `
+      + `${dae.god}이 드는 구간입니다. ${GOD_FIELD[TEN_GOD_GROUP[dae.god]]
+        ? `${GOD_FIELD[TEN_GOD_GROUP[dae.god]]}가 이 십 년의 주제가 됩니다.` : ''}`
+    : '';
+
+  // 표: 시기 | 핵심 흐름 — 직업·재물 근거만 모아 한 줄씩
+  const rows = [];
+  try {
+    const from = r.input.currentYear;
+    const chart = { ...r.chart, gender: r.input.gender };
+    const byYear = new Map();
+    for (const domain of ['직업', '재물']) {
+      const t = timingFor(r.input, chart, domain, { from, to: from + 9 });
+      for (const x of t.rows ?? []) {
+        if (!byYear.has(x.year)) byYear.set(x.year, { year: x.year, age: x.age, why: [] });
+        byYear.get(x.year).why.push(...x.why);
+      }
+    }
+    const tl = yearTimeline(r.input, r.chart, from, from + 9);
+    for (const y of tl) {
+      const hit = byYear.get(y.year);
+      const bits = [];
+      if (hit) {
+        // 십성 이름만 뽑아 분야 말로 옮긴다
+        for (const w of hit.why) {
+          const m = w.match(/(정관|편관|정재|편재|식신|상관|정인|편인|비견|겁재)/);
+          if (m) { bits.push(`${m[1]} — ${GOD_FIELD[TEN_GOD_GROUP[m[1]]] ?? ''}이 움직이는 해`); break; }
+        }
+        if (!bits.length) {
+          const m2 = hit.why.find((w) => w.includes('사화'));
+          if (m2) bits.push(m2.replace(/^자미두수: /, ''));
+        }
+      }
+      if (y.hit?.pair) bits.push(`${y.hit.pair} — ${HIT_LINE[y.hit.kind] ?? '자리가 움직이는 해'}`);
+      if (y.daeunFrom) bits.push('대운이 바뀌는 해');
+      if (!bits.length) continue;
+      rows.push([`${y.year} ${y.gz?.hanja ?? ''}`, bits.join('. ') + '.']);
+    }
+  } catch { /* 표만 건너뛴다 */ }
+
+  return para(head)
+    + table2(['시기', '핵심 흐름'], rows)
+    + para(withSrc(v.life?.career));
+}
+
+/** 1-2. 태양·MC가 보여주는 사회적 잠재력 */
+function s12(r) {
+  const a = sysOf(r, '점성술');
+  const fact = (label) => a?.facts?.find((x) => x.label === label);
+  const sun = fact('태양'), mc = fact('중천'), asc = fact('상승점');
+
+  let h10 = null;
+  try {
+    const cc = classicalChart(r.input);
+    h10 = readHouse(10, cc.pos, { cusps: cc.cusps, asc: cc.asc, mc: cc.mc }, cc.sect);
+  } catch { /* 룰러 없이 간다 */ }
+
+  const head = [
+    sun ? `태양 ${String(sun.value).replace(/\s*[\d.]+°$/, '')}${sun.note ? ` ${sun.note}` : ''}` : '',
+    mc ? `MC ${String(mc.value).replace(/\s*[\d.]+°$/, '')}` : '',
+    h10 ? `MC 지배성 ${h10.ruler}의 ${h10.rulerSign} ${h10.rulerHouse}하우스`
+      + `${h10.rulerDignity?.exaltation ? ' 고양' : h10.rulerDignity?.domicile ? ' 자기 자리' : ''}` : '',
+    asc ? `상승 ${String(asc.value).replace(/\s*[\d.]+°$/, '')}` : '',
+  ].filter(Boolean).join(', ');
+
+  const gate = h10?.rulerDignity?.score >= 5
+    ? '이 자리의 주인이 힘을 받고 있어, 사회적 자리는 받쳐지는 쪽으로 보았습니다.'
+    : h10?.rulerDignity?.fall || h10?.rulerDignity?.detriment
+      ? '이 자리의 주인이 약한 자리에 있어, 사회적 자리를 얻는 데 품이 더 드는 쪽으로 보았습니다.'
+      : '';
+
+  return para(head ? `서양점성술에서는 ${head}를 핵심으로 보았습니다. ${gate}` : '')
+    + labeled('태양이 놓인 자리', readingText(r, '점성술', '태양'))
+    + labeled('사회적 목표점(MC)', readingText(r, '점성술', '중천') || readingText(r, '점성술', 'MC')
+    || (h10 ? `${h10.cuspSign}가 사회적 목표점입니다. 그 자리의 주인 ${j(h10.ruler, '은')} `
+      + `${h10.rulerSign} ${h10.rulerHouse}하우스에 있어, 그 영역을 통해 자리가 만들어집니다.` : ''))
+    + labeled('겉으로 드러나는 나', readingText(r, '점성술', '상승'));
+}
+
+/** 1-3. 자미두수 관록궁·재백궁 — 명예운과 재물 그릇 */
+function s13(r) {
+  let b = null, gwanBr = '', jaeBr = '';
+  try {
+    b = buildBoard(r.input);
+    gwanBr = BRANCHES[palaceBranch(b.myeong, '관록궁')] ?? '';
+    jaeBr = BRANCHES[palaceBranch(b.myeong, '재백궁')] ?? '';
+  } catch { /* 지지 없이 간다 */ }
+
+  const gwanStars = palaceStars(r.input, '관록궁');
+  const jaeStars = palaceStars(r.input, '재백궁');
+  const head = (gwanStars.length || jaeStars.length)
+    ? `관록궁 ${gwanBr}의 ${gwanStars.join('·') || '공궁'}, `
+      + `재백궁 ${jaeBr}의 ${j(jaeStars.join('·') || '공궁', '을')} 핵심으로 보았습니다. `
+      + '직업이 삶의 축이 되는 자리와, 그 직업이 돈으로 바뀌는 자리를 나란히 놓고 읽습니다.'
+    : '';
+
+  const nat = natureOf(gwanStars, '일할 때의 본인');
+
+  // 다음 대한이 무엇을 건드리는가 — 문서의 마지막 문단이 이 모양이다
+  let nextLine = '';
+  try {
+    const lim = decadeLimits(r.input, b);
+    const cur = lim.find((d) => r.input.currentYear >= d.fromYear && r.input.currentYear <= d.toYear);
+    const nxt = cur ? lim.find((d) => d.fromYear > cur.toYear) : null;
+    if (nxt) {
+      nextLine = `다음 ${nxt.fromAge}~${nxt.toAge}세 대한은 원국의 ${nxt.palaceOfNatal}에 걸립니다`
+        + `(${nxt.fromYear}~${nxt.toYear}년). 그 십 년에는 그 자리가 삶의 앞으로 나옵니다.`;
+    }
+  } catch { /* 없으면 생략 */ }
+
+  return para(head)
+    + labeled('명예운', readingText(r, '자미두수', '관록궁'))
+    + labeled('재물운', readingText(r, '자미두수', '재백궁'))
+    + labeled('주의', nat?.risk?.length ? nat.risk.join(' / ') : '')
+    + para(nextLine);
+}
 
 function careerLife(v, r) {
-  const gwan = natureOf(palaceStars(r.input, '관록궁'), '일할 때의 본인');
-  const jae = natureOf(palaceStars(r.input, '재백궁'), '돈을 다룰 때의 본인');
-  let west = [];
-  try { west = westernPair(r.input, r, 10, '직업'); } catch { /* 넘어간다 */ }
-
-  return sub('1-1', '대운 기준 직장 이동',
-      para(withSrc(v.life?.career)) + timingOf(r, '직업'))
-    + sub('1-2', '재물이 들어오는 자리',
-      para(withSrc(v.work?.money)) + timingOf(r, '재물'))
-    + sub('1-3', `태양·MC가 보여주는 사회적 잠재력 — ${headOf(r, '점성술')}`,
-      readList(west) + readings(r, '점성술', 4))
-    + sub('1-4', `자미두수 관록궁·재백궁 — ${headOf(r, '자미두수')}`,
-      (gwan ? para(gwan.text) : '') + (jae ? para(jae.text) : ''))
-    + sub('1-5', `사주가 보는 자리 — ${headOf(r, '사주')}`, readings(r, '사주', 6))
-    + sub('1-6', '평생의 결',
+  return sub('1-1', '대운 기준 직장 이동과 재물', s11(v, r))
+    + sub('1-2', '태양·MC가 보여주는 사회적 잠재력', s12(r))
+    + sub('1-3', '자미두수 관록궁·재백궁: 명예운과 재물 그릇', s13(r))
+    + sub('1-4', '사주가 보는 타고난 구성', readings(r, '사주', 6))
+    + sub('1-5', '평생의 결',
       [v.life?.early, v.life?.middle, v.life?.late].map(withSrc).filter(Boolean).map(para).join(''));
 }
 
@@ -150,17 +307,33 @@ function relations(v, r) {
     chv = childrenVerdict(ch);
   } catch { /* 넘어간다 */ }
 
+  let buBr = '', jaBr = '';
+  try {
+    const b = buildBoard(r.input);
+    buBr = BRANCHES[palaceBranch(b.myeong, '부처궁')] ?? '';
+    jaBr = BRANCHES[palaceBranch(b.myeong, '자녀궁')] ?? '';
+  } catch { /* 생략 */ }
+
+  const spStars = palaceStars(r.input, '부처궁');
+  const chStars = palaceStars(r.input, '자녀궁');
+
   return sub('2-1', '배우자 — 어떤 사람이고 언제인가',
-      readList(sp) + (spv.lines ?? []).map(para).join('') + timingOf(r, '결혼'))
-    + sub('2-2', '자녀 — 수·성별·시기·어떤 아이인가',
-      readList(ch) + (chv.lines ?? []).map(para).join('') + timingOf(r, '자녀'))
-    + sub('2-3', `숙요 — ${headOf(r, '숙요')}`, readings(r, '숙요', 4))
+      para(spStars.length ? `부처궁 ${buBr}의 ${spStars.join('·')}를 핵심으로 보았습니다.` : '')
+      + (spv.lines ?? []).map(para).join('')
+      + readList(sp) + timingOf(r, '결혼'))
+    + sub('2-2', '자녀 — 수·성별·시기',
+      para(chStars.length ? `자녀궁 ${jaBr}의 ${chStars.join('·')}를 핵심으로 보았습니다.` : '')
+      + (chv.lines ?? []).map(para).join('')
+      + readList(ch) + timingOf(r, '자녀'))
+    + sub('2-3', `27숙(숙요) — ${headOf(r, '숙요')}`, readings(r, '숙요', 4))
     + sub('2-4', '형제·또래', para(withSrc(v.life?.sibling)));
 }
 
 /* ── 3. 올해 ────────────────────────────────────────────── */
 
 function thisYear(v, f, r) {
+  const yr = f.year?.period?.sajuYear ?? r.input.currentYear;
+  const gz = f.year?.period?.gz?.year?.hanja ?? '';
   const areas = ['총운', '금전운', '직장운', '애정운', '학업운', '건강운']
     .map((a) => {
       const s = f.year?.areas?.[a]?.score;
@@ -171,7 +344,8 @@ function thisYear(v, f, r) {
     areaText('총운', m.areas?.총운?.score ?? m.score, 'month'),
   ]);
 
-  return sub('3-1', `요일과 수호 행성 — ${headOf(r, '태국 점성술')}`,
+  return para(`${yr}년은 ${gz}년입니다. 요일·다샤·괘·월운을 차례로 놓았습니다.`)
+    + sub('3-1', `요일과 수호행성 — ${headOf(r, '태국 점성술')}`,
       readings(r, '태국 점성술', 4) + readings(r, '마하보테', 3))
     + sub('3-2', `현재 다샤 — ${headOf(r, '베딕')}`, readings(r, '베딕', 5))
     + sub('3-3', `올해 괘 — ${headOf(r, '토정비결')}`,
@@ -195,17 +369,19 @@ function direction(r, f) {
     rows.push(['피할 방위', d.bad.map((b) =>
       `${b.dir}(${b.kind}${b.overlap ? ` · 흉방 ${b.overlap}개 겹침` : ''})`).join(', ')]);
   }
-  return sub('4-1', '올해 방위', table2(['구분', '방위'], rows)
-      + (rows.length ? para('방위는 계산값이지만 실제 동네 이름은 그 방향을 지도에 대 본 '
-        + '추정입니다. 세파는 구성 배치가 아니라 그 해 간지에서 나옵니다.') : ''))
-    + sub('4-2', `구성학 — ${headOf(r, '구성학')}`, readings(r, '구성학', 4))
-    + sub('4-3', '옮기는 시기', timingOf(r, '이사', 8));
+  return para('구성학 연반으로 그 해 열린 방위와 막힌 방위를 봅니다.')
+    + table2(['구분', '방위'], rows)
+    + (rows.length ? para('방위는 계산값이지만 실제 동네 이름은 그 방향을 지도에 대 본 '
+      + '추정입니다. 세파는 구성 배치가 아니라 그 해 간지에서 나옵니다.') : '')
+    + sub('4-1', `구성학 — ${headOf(r, '구성학')}`, readings(r, '구성학', 4))
+    + sub('4-2', '옮기는 시기', timingOf(r, '이사', 8));
 }
 
 /* ── 5. 기문·수비학 ─────────────────────────────────────── */
 
 const inner = (r) =>
-  sub('5-1', `홍국기문 — ${headOf(r, '홍국기문')}`, readings(r, '홍국기문', 5))
+  para('기문과 수비학은 평생의 성패 흐름과 안쪽 과제를 봅니다.')
+  + sub('5-1', `홍국기문 — ${headOf(r, '홍국기문')}`, readings(r, '홍국기문', 5))
   + sub('5-2', `수비학 — ${headOf(r, '카발라')}`, readings(r, '카발라', 5))
   + sub('5-3', `타고난 괘 — ${headOf(r, '주역')}`, readings(r, '주역', 4))
   + sub('5-4', `육임 — ${headOf(r, '육임')}`, readings(r, '육임', 3))
@@ -214,7 +390,6 @@ const inner = (r) =>
 /* ── 6. 최종 타임라인 ───────────────────────────────────── */
 
 function finale(r) {
-  // 분야마다 창을 한 표에 모은다 — "언제 무엇이" 가 한눈에 보여야 한다
   const rows = [];
   for (const [domain, label] of [['직업', '일'], ['재물', '돈'], ['결혼', '관계'],
     ['자녀', '자녀'], ['이사', '옮김']]) {
@@ -226,11 +401,11 @@ function finale(r) {
       if (w) rows.push([label, `${w.span}${w.ageLabel ? ` (${w.ageLabel})` : ''} · ${w.systems.join('+')} ${w.systems.length}갈래`]);
     } catch { /* 그 분야만 건너뛴다 */ }
   }
-  return sub('6-1', '분야마다 가장 센 창', table2(['분야', '시기'], rows))
-    + sub('6-2', '읽는 법', para('이 문서의 값은 천문·역법 계산에서 나온 것이고, 풀이는 각 '
-      + '전통의 독법을 옮긴 것입니다. 시기를 짚는 힘은 저희가 재 봤을 때 기준선을 넘지 '
-      + '못했으니, "언제"보다 "무엇이 어떤 결로 흐르는가"를 보시는 편이 이 문서를 제대로 '
-      + '쓰는 길입니다.'));
+  return para('분야마다 가장 센 창을 한 표에 모았습니다.')
+    + table2(['분야', '시기'], rows)
+    + para('이 문서의 값은 천문·역법 계산에서 나온 것이고, 풀이는 각 전통의 독법을 옮긴 '
+      + '것입니다. 시기를 짚는 힘은 저희가 재 봤을 때 기준선을 넘지 못했으니, "언제"보다 '
+      + '"무엇이 어떤 결로 흐르는가"를 보시는 편이 이 문서를 제대로 쓰는 길입니다.');
 }
 
 /* ── 문서 전체 ──────────────────────────────────────────── */

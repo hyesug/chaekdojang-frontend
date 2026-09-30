@@ -54,7 +54,20 @@ type UserProfile = {
     progressPercent: number;
     remainingCount: number;
   } | null;
+  customerCode: string;
+  email: string | null;
+  createdAt: string;
+  authProviders: ("KAKAO" | "NAVER" | "GOOGLE" | "LOCAL")[];
 };
+
+const AUTH_PROVIDER_LABELS: Record<"KAKAO" | "NAVER" | "GOOGLE" | "LOCAL", string> = {
+  KAKAO: "카카오",
+  NAVER: "네이버",
+  GOOGLE: "구글",
+  LOCAL: "일반 로그인",
+};
+
+const OAUTH_PROVIDERS = ["KAKAO", "NAVER", "GOOGLE"] as const;
 
 type EditForm = {
   nickname: string;
@@ -118,6 +131,10 @@ const APPLICATION_STATUS_LABELS: Record<OfficialProfileApplicationStatus, string
 export default function ProfilePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
+
+  function linkProvider(provider: "KAKAO" | "NAVER" | "GOOGLE") {
+    window.location.assign(`${BASE}/api/users/me/auth-providers/${provider}/link`);
+  }
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -601,6 +618,24 @@ export default function ProfilePage() {
                 </button>
               </div>
             </div>
+
+            <section className="mt-5 rounded-xl border border-cream-200 bg-cream-50 p-4 text-sm text-brown-600">
+              <h2 className="font-serif font-bold text-brown-800">계정 정보</h2>
+              <dl className="mt-3 space-y-2">
+                <div className="flex justify-between gap-4"><dt>책도장 ID</dt><dd className="font-medium text-brown-800">{profile.customerCode}</dd></div>
+                {profile.email && <div className="flex justify-between gap-4"><dt>이메일</dt><dd className="truncate text-brown-800">{profile.email}</dd></div>}
+                <div className="flex justify-between gap-4"><dt>가입일</dt><dd className="text-brown-800">{new Date(profile.createdAt).toLocaleDateString("ko-KR")}</dd></div>
+              </dl>
+              <div className="mt-4 border-t border-cream-200 pt-3">
+                <p className="text-xs text-brown-400">연결된 로그인 수단</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {profile.authProviders.map((provider) => <span key={provider} className="rounded-full bg-white px-3 py-1 text-xs">{AUTH_PROVIDER_LABELS[provider]}</span>)}
+                  {OAUTH_PROVIDERS.filter((provider) => !profile.authProviders.includes(provider)).map((provider) => (
+                    <button key={provider} type="button" onClick={() => linkProvider(provider)} className="rounded-full border border-brown-300 px-3 py-1 text-xs text-brown-600 hover:bg-white">+ {AUTH_PROVIDER_LABELS[provider]} 연결</button>
+                  ))}
+                </div>
+              </div>
+            </section>
 
             {/* 통계 */}
             <div className="grid grid-cols-3 gap-4 mt-5 pt-5 border-t border-cream-200 text-center">

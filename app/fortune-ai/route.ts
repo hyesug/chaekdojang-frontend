@@ -46,7 +46,8 @@ const MAX_MESSAGES = 40;
 const MAX_QUESTION_CHARS = 20_000;
 
 /** 로그인·월 한도 검사를 켤지. 지금은 꺼 두고 누구나 쓸 수 있게 한다 */
-const REQUIRE_LOGIN = process.env.FORTUNE_AI_REQUIRE_LOGIN === "1";
+// 질문권은 계정 원장에 귀속된다. 명시적으로 0을 설정한 개발 환경에서만 끈다.
+const REQUIRE_LOGIN = process.env.FORTUNE_AI_REQUIRE_LOGIN !== "0";
 
 /**
  * 시스템 프롬프트.
@@ -900,7 +901,7 @@ function line(obj: unknown) {
  *
  * 연결 대기도 10초는 너무 길다. 백엔드가 죽었으면 빨리 알려주는 편이 낫다.
  */
-async function reserveMonthlyUse(req: Request) {
+async function reserveCredit(req: Request, requestId: string) {
   let response: Response;
   try {
     response = await fetch(`${BACKEND_URL}/api/fortune-ai/reservations`, {
@@ -908,6 +909,7 @@ async function reserveMonthlyUse(req: Request) {
       headers: {
         Cookie: req.headers.get("cookie") ?? "",
         Accept: "application/json",
+        "X-Idempotency-Key": requestId,
       },
       cache: "no-store",
       signal: AbortSignal.timeout(5000),
@@ -927,7 +929,20 @@ async function reserveMonthlyUse(req: Request) {
       status: response.status || 502,
     };
   }
-  return { data: payload.data as { remaining: number; monthlyLimit: number } };
+  return { data: payload.data as { requestId: string; totalBalance: number; freeRemaining: number } };
+}
+
+async function settleCredit(req: Request, requestId: string, path: "complete" | "refund", body: unknown) {
+  try {
+    await fetch(`${BACKEND_URL}/api/fortune-ai/reservations/${requestId}/${path}`, {
+      method: "POST",
+      headers: { Cookie: req.headers.get("cookie") ?? "", Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify(body), cache: "no-store", signal: AbortSignal.timeout(5000),
+    });
+  } catch (err) {
+    // 원장 확정 실패는 사용자 응답을 망치지 않는다. 동일 requestId 재전송은 백엔드에서 안전하다.
+    console.error("[fortune-ai] 질문권 정산 실패", err);
+  }
 }
 
 export async function POST(req: Request) {
@@ -1001,12 +1016,15 @@ export async function POST(req: Request) {
   // 지금은 꺼 둔다. 켜려면 Vercel 환경변수 FORTUNE_AI_REQUIRE_LOGIN 을 1 로 두면 된다.
   // (자바 쪽 POST /api/fortune-ai/reservations 는 그대로 살아 있다.)
   let remaining: number | null = null;
+  let creditRequestId: string | null = null;
+  const requestedAt = new Date();
   if (REQUIRE_LOGIN) {
-    const reservation = await reserveMonthlyUse(req);
+    creditRequestId = crypto.randomUUID();
+    const reservation = await reserveCredit(req, creditRequestId);
     if ("error" in reservation) {
       return Response.json({ error: reservation.error }, { status: reservation.status });
     }
-    remaining = reservation.data.remaining;
+    remaining = reservation.data.totalBalance;
   }
 
   const client = new Anthropic({ apiKey });
@@ -1042,6 +1060,7 @@ export async function POST(req: Request) {
       messages,
     });
   } catch (err) {
+    if (creditRequestId) await settleCredit(req, creditRequestId, "refund", { errorType: describe(err).slice(0, 120) });
     return Response.json({ error: describe(err) }, { status: 502 });
   }
 
@@ -1062,6 +1081,17 @@ export async function POST(req: Request) {
           }
         }
         const final = await stream.finalMessage();
+        if (creditRequestId) {
+          await settleCredit(req, creditRequestId, "complete", {
+            model: MODEL,
+            inputTokens: final.usage.input_tokens,
+            outputTokens: final.usage.output_tokens,
+            cacheReadTokens: final.usage.cache_read_input_tokens ?? 0,
+            cacheWriteTokens: final.usage.cache_creation_input_tokens ?? 0,
+            requestedAt: requestedAt.toISOString().slice(0, 19),
+            durationMs: Date.now() - requestedAt.getTime(),
+          });
+        }
 
         if (final.stop_reason === "refusal") {
           controller.enqueue(
@@ -1088,6 +1118,7 @@ export async function POST(req: Request) {
           })
         );
       } catch (err) {
+        if (creditRequestId) await settleCredit(req, creditRequestId, "refund", { errorType: describe(early ?? err).slice(0, 120) });
         controller.enqueue(line({ error: describe(early ?? err) }));
       } finally {
         controller.close();

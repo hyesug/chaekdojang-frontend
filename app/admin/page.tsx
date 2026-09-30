@@ -7,7 +7,7 @@ import ReviewDetailModal from "../components/ReviewDetailModal";
 import { API_BASE } from "../lib/api";
 import { authFetch, getValidToken } from "../lib/auth";
 
-type Tab = "dashboard" | "users" | "reviews" | "groups" | "inquiries" | "officialProfiles" | "actions" | "security" | "audit";
+type Tab = "dashboard" | "users" | "reviews" | "groups" | "inquiries" | "officialProfiles" | "actions" | "security" | "audit" | "aiCredits";
 
 interface PageResponse<T> {
   content: T[];
@@ -291,6 +291,11 @@ interface DashboardSummary {
   todaySuspiciousRequests: number;
 }
 
+interface AiCreditStatistics {
+  calls: number; successes: number; failures: number; averageInputTokens: number; averageOutputTokens: number;
+  averageCost: number; p50Cost: number; p95Cost: number; totalCost: number;
+}
+
 interface AggregatedSecurity {
   severity: string;
   type: string;
@@ -350,6 +355,7 @@ const tabs: Array<{ key: Tab; label: string }> = [
   { key: "actions", label: "🧭 유입·사용자 행동" },
   { key: "security", label: "🛡️ 보안·오류" },
   { key: "audit", label: "🧾 관리자 이력" },
+  { key: "aiCredits", label: "🤖 AI 질문권" },
 ];
 
 const LIST_PAGE_SIZE = 50;
@@ -869,6 +875,12 @@ export default function AdminPage() {
   const [auditLogs, setAuditLogs] = useState<AdminAuditLog[]>([]);
   const [lottoRounds, setLottoRounds] = useState<LottoPredictionRound[]>([]);
   const [lottoGenerating, setLottoGenerating] = useState(false);
+  const [aiCreditStats, setAiCreditStats] = useState<AiCreditStatistics | null>(null);
+  const [creditUserId, setCreditUserId] = useState("");
+  const [creditAmount, setCreditAmount] = useState("1");
+  const [creditDescription, setCreditDescription] = useState("");
+  const [creditAdjusting, setCreditAdjusting] = useState(false);
+  const [creditMessage, setCreditMessage] = useState("");
   const [dashboardSummary, setDashboardSummary] = useState<DashboardSummary | null>(null);
   const [aggregatedSecurity, setAggregatedSecurity] = useState<AggregatedSecurity[]>([]);
   const [publicReadAlerts, setPublicReadAlerts] = useState<PublicReadAlert[]>([]);
@@ -1097,6 +1109,7 @@ export default function AdminPage() {
         nextSecurity,
         nextPublicReadAlerts,
         nextLottoRounds,
+        nextAiCreditStats,
       ] = await Promise.all([
         fetchAdmin<PageResponse<User>>(getUserSearchPath(0, userFiltersRef.current)),
         fetchFirstPage<Review>("/api/admin/reviews?size=100"),
@@ -1113,6 +1126,7 @@ export default function AdminPage() {
         fetchAdmin<AggregatedSecurity[]>("/api/admin/security/summary"),
         fetchAdmin<PublicReadAlert[]>("/api/admin/security/public-read-alerts"),
         fetchAdmin<LottoPredictionRound[]>("/api/admin/lotto-future-validations"),
+        fetchAdmin<AiCreditStatistics>("/api/admin/ai-credits/statistics"),
       ]);
       const nextContentLookups = await fetchContentLookups(nextMetrics, nextReviews, nextStats ?? []);
       setUsers(nextUsers?.content ?? []);
@@ -1134,9 +1148,26 @@ export default function AdminPage() {
       setAggregatedSecurity(nextSecurity ?? []);
       setPublicReadAlerts(nextPublicReadAlerts ?? []);
       setLottoRounds(nextLottoRounds ?? []);
+      setAiCreditStats(nextAiCreditStats);
     } finally {
       setLoading(false);
     }
+  }
+
+  async function adjustAiCredit(event: React.FormEvent) {
+    event.preventDefault();
+    const userId = Number(creditUserId); const amount = Number(creditAmount);
+    if (!Number.isInteger(userId) || !Number.isInteger(amount) || !amount || creditDescription.trim().length < 1) {
+      setCreditMessage("회원 ID, 0이 아닌 수량, 사유를 입력하세요."); return;
+    }
+    setCreditAdjusting(true); setCreditMessage("");
+    try {
+      const token = getToken(); if (!token) return;
+      const res = await authFetch(`${API_BASE}/api/admin/ai-credits/${userId}/adjustments`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ amount, description: creditDescription.trim() }) });
+      if (!res.ok) { const json = await res.json().catch(() => null); setCreditMessage(json?.message ?? "질문권 조정에 실패했습니다."); return; }
+      setCreditMessage("원장에 기록했습니다."); setCreditDescription("");
+      setAiCreditStats(await fetchAdmin<AiCreditStatistics>("/api/admin/ai-credits/statistics"));
+    } finally { setCreditAdjusting(false); }
   }
 
   async function generateLottoFutureValidation() {
@@ -2558,6 +2589,30 @@ export default function AdminPage() {
               ))}
               <PaginationControls page={auditPage} total={filteredAuditLogs.length} onChange={setAuditPage} />
               {filteredAuditLogs.length === 0 && <EmptyState>관리자 이력이 없어요</EmptyState>}
+            </section>
+          )}
+
+          {tab === "aiCredits" && (
+            <section className="space-y-4">
+              <div className="rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+                <h2 className="font-serif text-xl font-bold text-brown-900">AI 질문권·원가</h2>
+                <p className="mt-1 text-sm text-brown-500">Claude 실제 응답의 토큰 사용량과 원가를 기준으로 집계합니다.</p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                  {[["호출", aiCreditStats?.calls], ["성공 / 실패", aiCreditStats ? `${aiCreditStats.successes} / ${aiCreditStats.failures}` : null], ["평균 원가", aiCreditStats?.averageCost], ["P50 / P95", aiCreditStats ? `$${Number(aiCreditStats.p50Cost).toFixed(4)} / $${Number(aiCreditStats.p95Cost).toFixed(4)}` : null], ["누적 API 비용", aiCreditStats ? `$${Number(aiCreditStats.totalCost).toFixed(4)}` : null]].map(([label, value]) => <div key={String(label)} className="rounded-xl bg-cream-50 p-3"><p className="text-xs text-brown-400">{label}</p><p className="mt-1 font-semibold text-brown-800">{value == null ? "-" : typeof value === "number" && label === "평균 원가" ? `$${value.toFixed(4)}` : String(value)}</p></div>)}
+                </div>
+                {aiCreditStats && <p className="mt-4 text-sm text-brown-500">평균 토큰: 입력 {Math.round(aiCreditStats.averageInputTokens).toLocaleString()} · 출력 {Math.round(aiCreditStats.averageOutputTokens).toLocaleString()}</p>}
+              </div>
+              <form onSubmit={adjustAiCredit} className="rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+                <h3 className="font-serif text-lg font-bold text-brown-900">회원 질문권 조정</h3>
+                <p className="mt-1 text-sm text-brown-500">지급은 양수, 회수는 음수로 입력하며 모든 변경은 원장에 남습니다.</p>
+                <div className="mt-4 grid gap-2 sm:grid-cols-[140px_140px_1fr_auto]">
+                  <input value={creditUserId} onChange={(e) => setCreditUserId(e.target.value)} inputMode="numeric" placeholder="회원 ID" className="rounded-lg border border-cream-300 px-3 py-2 text-sm" />
+                  <input value={creditAmount} onChange={(e) => setCreditAmount(e.target.value)} inputMode="numeric" placeholder="수량 (+/-)" className="rounded-lg border border-cream-300 px-3 py-2 text-sm" />
+                  <input value={creditDescription} onChange={(e) => setCreditDescription(e.target.value)} placeholder="조정 사유" className="rounded-lg border border-cream-300 px-3 py-2 text-sm" />
+                  <button disabled={creditAdjusting} className="rounded-lg bg-brown-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{creditAdjusting ? "처리 중" : "원장 반영"}</button>
+                </div>
+                {creditMessage && <p className="mt-3 text-sm text-brown-600">{creditMessage}</p>}
+              </form>
             </section>
           )}
         </div>

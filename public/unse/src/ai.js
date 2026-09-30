@@ -375,7 +375,8 @@ function wire(context, calc = null, compat = null) {
         ` 토큰 · 약 $${usd.toFixed(4)}<br>` +
         (u.cacheRead
           ? '명반을 캐시에서 읽어 입력 비용이 10분의 1로 줄었습니다.'
-          : '이번엔 명반을 캐시에 올리느라 값이 붙었습니다. 다음 질문부터 크게 줄어듭니다.');
+          : '이번엔 명반을 캐시에 올리느라 값이 붙었습니다. 다음 질문부터 크게 줄어듭니다.') +
+        (Number.isInteger(u.remaining) ? `<br><strong>남은 AI 질문권: ${u.remaining}회</strong>` : '');
     }
   }
 }

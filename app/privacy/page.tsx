@@ -11,7 +11,7 @@ export default function PrivacyPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-10 text-brown-700">
       <h1 className="font-serif text-3xl font-bold text-brown-800 mb-4">개인정보처리방침</h1>
-      <p className="text-sm text-brown-400 mb-8">시행일: 2026년 9월 24일</p>
+      <p className="text-sm text-brown-400 mb-8">버전: 0.1 · 시행일: 2026년 9월 24일</p>
 
       <div className="space-y-7 leading-7">
         <section>
@@ -31,7 +31,7 @@ export default function PrivacyPage() {
           </p>
           <ul className="mt-3 list-disc pl-5 space-y-1">
             <li>카카오: 회원 식별값, 닉네임, 프로필 이미지</li>
-            <li>네이버: 회원 식별값, 이름, 이메일, 프로필 이미지</li>
+            <li>네이버: 회원 식별값</li>
             <li>구글: 회원 식별값, 이름 또는 표시 이름, 이메일, 프로필 이미지</li>
           </ul>
           <p className="mt-3">
@@ -60,9 +60,10 @@ export default function PrivacyPage() {
           </p>
           <ul className="mt-3 list-disc pl-5 space-y-1">
             <li>
-              AI에게 묻기: 질문 내용과 함께 위 입력 정보, 이를 바탕으로 계산한 명반 결과가 책도장 서버를 거쳐
-              AI 서비스(Anthropic)로 전송됩니다. 책도장은 월 이용 한도 확인을 위해 로그인한 이용자의 이용
-              시각을 기록할 수 있으며, 질문과 답변 본문은 책도장 서버에 저장하지 않습니다.
+              AI에게 묻기: 질문 내용과 브라우저에서 계산한 명반 결과가 책도장 서버를 거쳐 AI 서비스(Anthropic,
+              OpenAI)로 전송됩니다. 이름, 정확한 생년월일시, 출생지·거주지 원문과 내부 사용자 식별자는 AI
+              요청에 포함하지 않습니다. 질문과 답변 본문은 책도장 서버에 저장하지 않으며, 질문권 처리와 원가
+              측정을 위해 내부 사용자 식별자, 요청 식별자, 모델, 토큰 수, 처리 시각·성공 여부·오류 종류를 기록합니다.
             </li>
             <li>
               프로필 저장: 로그인한 이용자가 저장을 선택한 경우에만 이름, 성별, 생년월일(양력), 태어난 시각,
@@ -72,7 +73,7 @@ export default function PrivacyPage() {
           </ul>
           <p className="mt-3">
             궁합에 입력한 상대방 정보는 저장하지 않습니다. 다만 궁합 화면에서 AI에게 물으면 두 사람의
-            입력 정보와 계산 결과가 함께 AI 서비스(Anthropic)로 전송됩니다. 타인의 정보를 입력할 때는
+            계산 결과와 질문이 AI 서비스(Anthropic, OpenAI)로 전송됩니다. 타인의 정보를 입력할 때는
             당사자의 동의를 받아 주세요.
           </p>
         </section>

@@ -111,6 +111,8 @@ export default function RootLayout({
           <nav className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
             <a href="/privacy" className="hover:text-brown-600">개인정보처리방침</a>
             <a href="/terms" className="hover:text-brown-600">이용약관</a>
+            <a href="/payment-info" className="hover:text-brown-600">환불·결제 안내</a>
+            <a href="/cs" className="hover:text-brown-600">문의</a>
           </nav>
         </footer>
       </body>

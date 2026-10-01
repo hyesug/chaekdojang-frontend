@@ -1,0 +1,10 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+
+export const metadata: Metadata = { title: "AI 질문권 결제·환불 안내", alternates: { canonical: "/payment-info" } };
+const business = { name: process.env.NEXT_PUBLIC_BUSINESS_NAME, representative: process.env.NEXT_PUBLIC_BUSINESS_REPRESENTATIVE, address: process.env.NEXT_PUBLIC_BUSINESS_ADDRESS, registration: process.env.NEXT_PUBLIC_BUSINESS_REGISTRATION_NUMBER, salesRegistration: process.env.NEXT_PUBLIC_BUSINESS_SALES_REGISTRATION_NUMBER, contact: process.env.NEXT_PUBLIC_CUSTOMER_SERVICE_CONTACT };
+
+export default function PaymentInfoPage() {
+  const ready = Object.values(business).every(Boolean);
+  return <main className="mx-auto max-w-3xl px-4 py-10 text-brown-700"><h1 className="font-serif text-3xl font-bold text-brown-800">AI 질문권 결제·환불 안내</h1><p className="mt-2 text-sm text-brown-400">버전: 결제 정책 검토본 0.1 · 시행 전 법률·PG 검토 필요</p><section className="mt-8 space-y-3 leading-7"><h2 className="font-serif text-xl font-bold text-brown-800">상품과 사용 조건</h2><p>질문권은 운세 AI 풀이에 사용하는 횟수 단위입니다. Claude Sonnet·GPT Sol은 1회, Claude Opus는 2회, GPT Astra는 5회가 차감됩니다. 기간권은 구매 시점부터 상품에 표시된 기간 동안 사용할 수 있습니다.</p><p>AI 제공자 또는 서비스 오류·시간 초과로 풀이가 정상 완료되지 않으면 해당 요청의 질문권은 자동 복구됩니다.</p></section><section className="mt-8 space-y-3 leading-7"><h2 className="font-serif text-xl font-bold text-brown-800">환불 및 취소</h2><p>미사용·일부 사용·중복 결제·AI 장애·미지급·결제 취소별 최종 환불 기준은 전자상거래·디지털콘텐츠 법령 및 PortOne/NHN KCP 심사 기준을 확인한 뒤 확정·공개해야 합니다. 이 페이지는 운영 전 검토 안내이며, 확정 전 결제를 운영에 공개하지 않습니다.</p><p>결제 또는 질문권 오류는 <Link className="underline" href="/cs">고객센터</Link>로 접수할 수 있습니다.</p></section><section className="mt-8 space-y-3 leading-7"><h2 className="font-serif text-xl font-bold text-brown-800">판매자 정보</h2>{ready ? <ul className="list-disc pl-5"><li>상호: {business.name}</li><li>대표자: {business.representative}</li><li>주소: {business.address}</li><li>사업자등록번호: {business.registration}</li><li>통신판매업 신고번호: {business.salesRegistration}</li><li>고객센터: {business.contact}</li></ul> : <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-800">스테이징 안내: 판매자 정보는 사업자 등록 및 통신판매업 신고 후 운영자가 환경변수로 입력해야 합니다. 가짜 정보는 표시하지 않습니다.</p>}</section></main>;
+}

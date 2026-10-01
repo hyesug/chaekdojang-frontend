@@ -31,3 +31,12 @@ test('개인 문맥에 체계별 해석과 방위 도시 후보가 실린다', (
   assert.match(c, /- 열린 방위 [^:]+: [^\n]*\(\d+km\)/);
   assert.ok(c.length < 60_000, `문맥 ${c.length}자`);
 });
+
+test('AI 문맥은 이름·출생일시·출생지를 원문으로 전송하지 않는다', () => {
+  const c = context(A);
+  assert.doesNotMatch(c, /## 기본\n가/);
+  assert.doesNotMatch(c, /1992년 1월 30일/);
+  assert.doesNotMatch(c, /16시 28분/);
+  assert.doesNotMatch(c, /출생 여주 · 거주 서울/);
+  assert.match(c, /브라우저에서 계산했고, AI에는 계산 결과만 전송/);
+});

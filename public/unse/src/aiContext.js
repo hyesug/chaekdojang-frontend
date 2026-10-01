@@ -381,26 +381,18 @@ export function monthSection(r) {
  */
 export function buildContext(form, r, f = null) {
   const out = [];
-  const { chart, lunar, birth, input, synthesis: s } = r;
+  const { chart, input, synthesis: s } = r;
 
   // ── 기본 ──
-  const when = `${form.year}년 ${form.month}월 ${form.day}일` +
-    (input.timeKnown ? ` ${p2(form.hour)}시 ${p2(form.minute)}분` : ' (시각 미상)');
-  const tst = input.timeKnown
-    ? ` → 진태양시 ${birth.tst.h}시 ${p2(birth.tst.mi)}분 (경도·균시차 보정 ${birth.totalShiftMinutes >= 0 ? '+' : '−'}${Math.abs(birth.totalShiftMinutes).toFixed(0)}분)`
-    : '';
-
   out.push('## 기본');
-  // 이름은 선택 입력이다. 비워 두면 'undefined · 여성 · 만 34세' 가 문맥에 실렸다
-  out.push([form.name?.trim(), form.gender === 'male' ? '남성' : '여성', `만 ${input.age}세`]
+  // AI 전송 문맥에는 직접 식별자인 이름을 넣지 않는다.
+  out.push([form.gender === 'male' ? '남성' : '여성', `만 ${input.age}세`]
     .filter(Boolean).join(' · '));
-  out.push(`양력 ${when}${tst}`);
-  out.push(`음력 ${lunar.year}.${lunar.isLeap ? '윤' : ''}${lunar.month}.${lunar.day}`);
-  out.push(`출생 ${form.birthPlace} · 거주 ${form.homePlace} (${input.moveDirection}쪽으로 이동)`);
+  out.push(`출생 정보는 브라우저에서 계산했고, AI에는 계산 결과만 전송한다. 올해 이동 방위: ${input.moveDirection}쪽`);
   out.push(
     `사주 연도 ${chart.sajuYear}년 ${chart.zodiac}띠` +
     (chart.sajuYear !== form.year
-      ? `  ※ 양력으로는 ${form.year}년생이지만 입춘 전이라 명리에서는 ${chart.sajuYear}년으로 본다`
+      ? `  ※ 입춘 전 출생으로 명리 연도는 ${chart.sajuYear}년으로 본다`
       : '')
   );
   if (!input.timeKnown) {
@@ -685,10 +677,8 @@ export const READING_PROMPT =
 export function buildCompatContext(formA, formB, c, forecastA = null, forecastB = null) {
   const out = [];
   const s = c.synthesis;
-  const who = (f) => `${f.name?.trim() ? `${f.name.trim()} · ` : ''}${f.gender === 'male' ? '남성' : '여성'} · ` +
-    `양력 ${f.year}년 ${f.month}월 ${f.day}일` +
-    (f.hour == null ? ' (시각 미상)' : ` ${p2(f.hour)}시 ${p2(f.minute)}분`) +
-    ` · ${f.birthPlace} 출생`;
+  const who = (f) => `${f.gender === 'male' ? '남성' : '여성'} · ` +
+    `출생 정보는 브라우저에서 계산했고, AI에는 궁합 계산 결과만 전송`;
 
   out.push('## 두 사람');
   out.push(who(formA));
@@ -766,7 +756,7 @@ export function buildCompatContext(formA, formB, c, forecastA = null, forecastB 
     const label = (x) => {
       const tags = [x.a.taekil.good && x.b.taekil.good ? '둘 다 황도' : x.a.taekil.good || x.b.taekil.good ? '한쪽 황도' : '흑도'];
       if (x.bad) tags.push('한쪽에 충·양인');
-      return `${x.a.m}/${x.a.d}(${x.a.weekday}) ${x.a.gz.hanja} ${formA.name} ${x.a.grade} / ${formB.name} ${x.b.grade} · ${tags.join(' ')}`;
+      return `${x.a.m}/${x.a.d}(${x.a.weekday}) ${x.a.gz.hanja} 첫째 ${x.a.grade} / 둘째 ${x.b.grade} · ${tags.join(' ')}`;
     };
     // 120일은 해를 넘기므로 월·일로 정렬하면 1월이 9월 앞에 선다. 원래 순서로 되돌린다.
     const bestDays = rows.filter((x) => !x.bad).sort((x, y) => y.sum - x.sum).slice(0, 12)

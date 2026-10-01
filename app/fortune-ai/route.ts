@@ -17,7 +17,13 @@ export const dynamic = "force-dynamic";
 // 300초는 Vercel 이 허용하는 최대치다.
 export const maxDuration = 300;
 
-const MODEL = "claude-opus-5";
+const TIERS = {
+  CLAUDE_SONNET: { provider: "ANTHROPIC", model: "claude-sonnet-5-5" },
+  GPT_SOL: { provider: "OPENAI", model: "gpt-6.1-sol" },
+  CLAUDE_OPUS: { provider: "ANTHROPIC", model: "claude-opus-5-5" },
+  GPT_ASTRA: { provider: "OPENAI", model: "gpt-6-astra" },
+} as const;
+type Tier = keyof typeof TIERS;
 // max_tokens 는 API 가 요구하는 필수 값이라 '무제한'을 줄 수가 없다. 대신
 // 실제로는 절대 닿지 않을 만큼 크게 잡는다. 이 정도면 원고지 200장쯤 되는데
 // 그 전에 위의 maxDuration 이 먼저 걸린다.
@@ -901,7 +907,7 @@ function line(obj: unknown) {
  *
  * 연결 대기도 10초는 너무 길다. 백엔드가 죽었으면 빨리 알려주는 편이 낫다.
  */
-async function reserveCredit(req: Request, requestId: string) {
+async function reserveCredit(req: Request, requestId: string, tier: Tier) {
   let response: Response;
   try {
     response = await fetch(`${BACKEND_URL}/api/fortune-ai/reservations`, {
@@ -910,8 +916,10 @@ async function reserveCredit(req: Request, requestId: string) {
         Cookie: req.headers.get("cookie") ?? "",
         Accept: "application/json",
         "X-Idempotency-Key": requestId,
+        "Content-Type": "application/json",
       },
       cache: "no-store",
+      body: JSON.stringify({ tier }),
       signal: AbortSignal.timeout(5000),
     });
   } catch (err) {
@@ -945,6 +953,39 @@ async function settleCredit(req: Request, requestId: string, path: "complete" | 
   }
 }
 
+async function streamOpenAi(req: Request, apiKey: string, model: string, messages: { role: "user" | "assistant"; content: string }[], system: string, requestId: string | null, requestedAt: Date, remaining: number | null) {
+  let response: Response;
+  try {
+    response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ model, stream: true, stream_options: { include_usage: true }, max_completion_tokens: 4000, messages: [{ role: "system", content: system }, ...messages] }),
+      signal: AbortSignal.timeout(300_000),
+    });
+  } catch (err) {
+    if (requestId) await settleCredit(req, requestId, "refund", { errorType: describe(err).slice(0, 120) });
+    return Response.json({ error: describe(err) }, { status: 502 });
+  }
+  if (!response.ok || !response.body) {
+    const error = await response.text().catch(() => "OpenAI API 오류");
+    if (requestId) await settleCredit(req, requestId, "refund", { errorType: error.slice(0, 120) });
+    return Response.json({ error: error.slice(0, 300) }, { status: 502 });
+  }
+  const body = new ReadableStream({ async start(controller) {
+    const reader = response.body!.getReader(); const decoder = new TextDecoder(); let buffer = ""; let usage: { prompt_tokens?: number; completion_tokens?: number; prompt_tokens_details?: { cached_tokens?: number } } | null = null;
+    try {
+      while (true) { const { done, value } = await reader.read(); if (done) break; buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n"); buffer = lines.pop() ?? "";
+        for (const sseLine of lines) { if (!sseLine.startsWith("data: ")) continue; const data = sseLine.slice(6); if (data === "[DONE]") continue; try { const event = JSON.parse(data); const text = event.choices?.[0]?.delta?.content; if (text) controller.enqueue(line({ t: text })); if (event.usage) usage = event.usage; } catch { /* partial provider event */ } }
+      }
+      if (!usage) throw new Error("OpenAI 사용량 정보를 받지 못했습니다.");
+      if (requestId) await settleCredit(req, requestId, "complete", { model, inputTokens: usage.prompt_tokens ?? 0, outputTokens: usage.completion_tokens ?? 0, cacheReadTokens: usage.prompt_tokens_details?.cached_tokens ?? 0, cacheWriteTokens: 0, requestedAt: requestedAt.toISOString().slice(0, 19), durationMs: Date.now() - requestedAt.getTime() });
+      controller.enqueue(line({ done: true, usage: { input: usage.prompt_tokens ?? 0, output: usage.completion_tokens ?? 0, cacheRead: usage.prompt_tokens_details?.cached_tokens ?? 0, cacheWrite: 0, ...(remaining === null ? {} : { remaining }) } }));
+    } catch (err) { if (requestId) await settleCredit(req, requestId, "refund", { errorType: describe(err).slice(0, 120) }); controller.enqueue(line({ error: describe(err) })); }
+    finally { controller.close(); }
+  }});
+  return new Response(body, { headers: { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store", "X-Accel-Buffering": "no" } });
+}
+
 export async function POST(req: Request) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
@@ -972,7 +1013,7 @@ export async function POST(req: Request) {
     );
   }
 
-  let body: { context?: string; focus?: string | null; messages?: { role: string; content: string }[] };
+  let body: { context?: string; focus?: string | null; messages?: { role: string; content: string }[]; tier?: Tier };
   try {
     body = await req.json();
   } catch {
@@ -980,6 +1021,8 @@ export async function POST(req: Request) {
   }
 
   const context = String(body.context ?? "");
+  const tier = body.tier && body.tier in TIERS ? body.tier : "CLAUDE_SONNET";
+  const tierConfig = TIERS[tier];
   const focus = body.focus ? String(body.focus) : "";
   const raw = Array.isArray(body.messages) ? body.messages : [];
   if (!context || raw.length === 0) {
@@ -1020,7 +1063,7 @@ export async function POST(req: Request) {
   const requestedAt = new Date();
   if (REQUIRE_LOGIN) {
     creditRequestId = crypto.randomUUID();
-    const reservation = await reserveCredit(req, creditRequestId);
+    const reservation = await reserveCredit(req, creditRequestId, tier);
     if ("error" in reservation) {
       return Response.json({ error: reservation.error }, { status: reservation.status });
     }
@@ -1028,6 +1071,15 @@ export async function POST(req: Request) {
   }
 
   const client = new Anthropic({ apiKey });
+  if (tierConfig.provider === "OPENAI") {
+    const openAiKey = process.env.OPENAI_API_KEY;
+    if (!openAiKey) {
+      if (creditRequestId) await settleCredit(req, creditRequestId, "refund", { errorType: "OPENAI_API_KEY_MISSING" });
+      return Response.json({ error: "GPT 풀이 설정이 아직 준비되지 않았습니다." }, { status: 503 });
+    }
+    const system = `${SYSTEM}\n\n# 이 사람의 명반\n\n아래는 천문 계산으로 구한 값입니다. 그대로 쓰세요.\n\n${context}${focus ? `\n\n# 이 질문에 맞춰 돌린 고해상도 계산\n\n${focus}` : ""}`;
+    return streamOpenAi(req, openAiKey, tierConfig.model, messages, system, creditRequestId, requestedAt, remaining);
+  }
 
   // stream() 은 요청을 바로 띄운다. 그 약속이 for-await 에 붙기 전에
   // 거절되면 처리되지 않은 거절이 되어 함수가 통째로 죽고, 단서 없는 500 이
@@ -1036,7 +1088,7 @@ export async function POST(req: Request) {
   let stream: ReturnType<typeof client.messages.stream>;
   try {
     stream = client.messages.stream({
-      model: MODEL,
+      model: tierConfig.model,
       max_tokens: MAX_TOKENS,
       thinking: { type: "adaptive" },
       // 명반은 한 사람에 대해 고정이라, 질문을 여러 번 던져도 앞부분은 그대로다.
@@ -1083,7 +1135,7 @@ export async function POST(req: Request) {
         const final = await stream.finalMessage();
         if (creditRequestId) {
           await settleCredit(req, creditRequestId, "complete", {
-            model: MODEL,
+            model: tierConfig.model,
             inputTokens: final.usage.input_tokens,
             outputTokens: final.usage.output_tokens,
             cacheReadTokens: final.usage.cache_read_input_tokens ?? 0,

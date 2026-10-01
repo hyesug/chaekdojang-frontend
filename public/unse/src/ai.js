@@ -153,6 +153,12 @@ export function aiSection(mode = 'solo', view = null) {
         ${quick.map((q, i) => `<button type="button" data-q="${i}">${esc(q[0])}</button>`).join('')}
       </div>
       <div id="ai-log" class="ai-log"></div>
+      <div class="ai-quick"><select id="ai-tier" aria-label="AI 풀이 모델">
+        <option value="CLAUDE_SONNET">Claude 균형 풀이 · 1 질문권</option>
+        <option value="GPT_SOL">GPT 균형 풀이 · 1 질문권</option>
+        <option value="CLAUDE_OPUS">Claude 심층 풀이 · 2 질문권</option>
+        <option value="GPT_ASTRA">GPT 최고 심층 풀이 · 5 질문권</option>
+      </select></div>
       <div class="ai-input">
         <textarea id="ai-q" rows="2" placeholder="궁금한 걸 물어보세요 (Ctrl+Enter 로 보내기)"></textarea>
         <button type="button" id="ai-send">보내기</button>
@@ -245,6 +251,7 @@ function wire(context, calc = null, compat = null) {
   const log = document.querySelector('#ai-log');
   const box = document.querySelector('#ai-q');
   const send = document.querySelector('#ai-send');
+  const tier = document.querySelector('#ai-tier');
   if (!log) return;
 
   document.querySelectorAll('.ai-quick button').forEach((b) => {
@@ -288,7 +295,7 @@ function wire(context, calc = null, compat = null) {
       const res = await fetch(ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ context: session.context, focus, messages: session.messages }),
+        body: JSON.stringify({ context: session.context, focus, messages: session.messages, tier: tier?.value ?? 'CLAUDE_SONNET' }),
       });
 
       if (!res.ok || !res.body) {

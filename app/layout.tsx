@@ -8,7 +8,7 @@ import IosInstallBanner from "./components/IosInstallBanner";
 import { shareText } from "./lib/serverApi";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.chaekdojang.com";
-const themeColor = "#6E4A36";
+const themeColor = "#174A46";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -106,7 +106,7 @@ export default function RootLayout({
         <Header />
         <main className="flex-1">{children}</main>
         <IosInstallBanner />
-        <footer className="px-4 py-8 text-center text-sm text-brown-400 border-t border-cream-200">
+        <footer className="mt-8 border-t border-cream-300 px-4 py-10 text-center text-sm text-brown-500">
           <p>2026 책도장. 읽은 책에 나만의 감상을 찍다</p>
           <nav className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
             <a href="/privacy" className="hover:text-brown-600">개인정보처리방침</a>

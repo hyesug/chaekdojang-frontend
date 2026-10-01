@@ -7,6 +7,7 @@
     "build": "npm run unse:bundle && next build",
     "start": "next start",
     "lint": "eslint",
+    "test:design": "node --test tests/design-system.test.mjs",
     "smoke:prod": "node scripts/smoke-prod.mjs",
     "test:unse": "node --test tests/unse/*.test.mjs",
     "unse:url": "node scripts/rename-unse-path.mjs",

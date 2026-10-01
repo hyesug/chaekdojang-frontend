@@ -159,6 +159,7 @@ export function aiSection(mode = 'solo', view = null) {
         <option value="CLAUDE_OPUS">Claude 심층 풀이 · 2 질문권</option>
         <option value="GPT_ASTRA">GPT 최고 심층 풀이 · 5 질문권</option>
       </select></div>
+      <p class="ai-note"><a href="/ai-credits">질문권 잔액 확인·기간권 구매</a></p>
       <div class="ai-input">
         <textarea id="ai-q" rows="2" placeholder="궁금한 걸 물어보세요 (Ctrl+Enter 로 보내기)"></textarea>
         <button type="button" id="ai-send">보내기</button>

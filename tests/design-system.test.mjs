@@ -34,4 +34,15 @@ test("공통 404·오류·로딩 화면을 제공한다", () => {
   }
 });
 
+test("공통 field와 modal은 보조기술에 상태와 역할을 제공한다", () => {
+  const fieldPath = path.join(root, "app/components/ui/Field.tsx");
+  const modalPath = path.join(root, "app/components/ui/ModalShell.tsx");
+  assert.equal(existsSync(fieldPath), true, "Field primitive가 필요합니다");
+  assert.equal(existsSync(modalPath), true, "ModalShell primitive가 필요합니다");
+  assert.match(readFileSync(fieldPath, "utf8"), /aria-describedby/);
+  assert.match(readFileSync(fieldPath, "utf8"), /aria-invalid/);
+  assert.match(readFileSync(modalPath, "utf8"), /role="dialog"/);
+  assert.match(readFileSync(modalPath, "utf8"), /aria-modal="true"/);
+});
+
 test.todo("운세 화면은 장식용 gradient를 사용하지 않는다");

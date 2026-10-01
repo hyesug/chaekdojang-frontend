@@ -36,7 +36,7 @@ export default function AdminNavLink({ onClick }: { onClick?: () => void }) {
     <Link
       href="/admin"
       onClick={onClick}
-      className="text-sm text-red-500 hover:text-red-700 transition-colors font-medium whitespace-nowrap"
+      className="text-sm font-medium text-wine-700 underline decoration-wine-500/50 underline-offset-4 transition-colors hover:text-wine-500 whitespace-nowrap"
     >
       관리자
     </Link>

@@ -39,21 +39,21 @@ export default function AuthButtons() {
 
   // 마운트 전: 서버·클라이언트 HTML이 일치하도록 빈 공간 유지
   if (!mounted) {
-    return <div className="hidden md:block w-40 h-8" />;
+    return <div className="hidden h-8 w-40 lg:block" />;
   }
 
   if (loggedIn) {
     return (
-      <div className="hidden md:flex items-center gap-2">
+      <div className="hidden items-center gap-2 lg:flex">
         <Link
           href="/profile"
-          className="px-4 py-1.5 text-sm text-brown-600 hover:text-brown-800 transition-colors"
+          className="px-2 py-2 text-sm text-brown-600 hover:text-brown-800 transition-colors"
         >
           내 프로필
         </Link>
         <button
           onClick={logout}
-          className="px-4 py-1.5 text-sm border border-brown-300 text-brown-500 rounded-full hover:bg-cream-200 transition-colors"
+          className="cdj-button cdj-button--secondary min-h-10 px-3"
         >
           로그아웃
         </button>
@@ -62,16 +62,16 @@ export default function AuthButtons() {
   }
 
   return (
-    <div className="hidden md:flex items-center gap-2">
+    <div className="hidden items-center gap-2 lg:flex">
       <Link
         href="/auth/login"
-        className="px-4 py-1.5 text-sm text-brown-600 hover:text-brown-800 transition-colors"
+        className="px-2 py-2 text-sm text-brown-600 hover:text-brown-800 transition-colors"
       >
         로그인
       </Link>
       <Link
         href="/auth/register"
-        className="px-4 py-1.5 text-sm bg-brown-600 text-white rounded-full hover:bg-brown-700 transition-colors"
+        className="cdj-button cdj-button--primary min-h-10 px-3"
       >
         회원가입
       </Link>

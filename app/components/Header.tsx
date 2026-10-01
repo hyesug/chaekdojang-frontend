@@ -25,21 +25,21 @@ const navLinks: { href: string; label: string; external?: boolean }[] = [
 
 export default function Header() {
   return (
-    <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-sm border-b border-cream-200">
-      <div className="max-w-6xl mx-auto px-4 h-16 flex items-center gap-4">
+    <header className="sticky top-0 z-50 border-b border-cream-300 bg-cream-50/95 backdrop-blur-sm">
+      <div className="mx-auto flex h-[4.25rem] max-w-6xl items-center gap-4 px-4">
         <Link
           href="/"
           aria-label="책도장 홈으로 이동"
-          className="relative z-10 -ml-2 flex-none inline-flex min-h-11 items-center gap-2 rounded-lg px-2 font-serif text-2xl font-bold tracking-tight text-brown-700"
+          className="relative z-10 -ml-2 inline-flex min-h-11 flex-none items-center gap-2 px-2 font-serif text-xl font-semibold tracking-tight text-brown-800"
         >
           <span className="stamp-mark pointer-events-none text-[11px] leading-none">冊</span>
           책도장
         </Link>
 
-        <nav className="hidden md:flex flex-1 items-center justify-center gap-4">
+        <nav className="hidden flex-1 items-center justify-center gap-5 lg:flex" aria-label="주요 메뉴">
           {navLinks.map(({ href, label, external }) => {
             const cls =
-              "text-sm text-brown-500 hover:text-brown-800 transition-colors font-medium whitespace-nowrap";
+              "border-b-2 border-transparent py-1 text-sm text-brown-500 transition-colors hover:border-brown-500 hover:text-brown-800 whitespace-nowrap";
             return external ? (
               <a key={href} href={href} className={cls}>
                 {label}
@@ -52,13 +52,13 @@ export default function Header() {
           })}
         </nav>
 
-        <div className="hidden md:flex items-center gap-3 flex-none ml-auto">
+        <div className="ml-auto hidden flex-none items-center gap-3 lg:flex">
           <AdminNavLink />
           <NotificationBell />
           <AuthButtons />
         </div>
 
-        <div className="flex md:hidden items-center gap-2 flex-none ml-auto">
+        <div className="ml-auto flex flex-none items-center gap-2 lg:hidden">
           <NotificationBell />
           <MobileMenu links={navLinks} />
         </div>

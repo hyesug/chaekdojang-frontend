@@ -7,6 +7,7 @@ import ExpandableBio from "./ExpandableBio";
 import ProfileAvatar from "./ProfileAvatar";
 import { API_BASE } from "../lib/api";
 import { authFetch, getValidToken } from "../lib/auth";
+import { ModalShell } from "./ui/ModalShell";
 
 const BASE = API_BASE;
 
@@ -108,10 +109,7 @@ export default function FollowListModal({ userId, type, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-
-      <div className="relative z-10 w-full sm:max-w-sm bg-white rounded-t-2xl sm:rounded-2xl max-h-[70vh] flex flex-col shadow-xl">
+    <ModalShell title={type === "followings" ? "팔로잉" : "팔로워"} onClose={onClose} className="sm:max-w-sm">
         {/* 헤더 */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-cream-200">
           <h2 className="font-serif font-bold text-brown-800">
@@ -184,7 +182,6 @@ export default function FollowListModal({ userId, type, onClose }: Props) {
             </ul>
           )}
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 }

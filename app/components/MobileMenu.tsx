@@ -33,20 +33,20 @@ export default function MobileMenu({ links }: { links: NavLink[] }) {
   }
 
   return (
-    <div className="md:hidden relative">
+    <div className="relative lg:hidden">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="p-2 text-brown-600 text-xl leading-none"
+        className="flex min-h-11 min-w-11 items-center justify-center p-2 text-xl leading-none text-brown-700"
         aria-label={open ? "메뉴 닫기" : "메뉴 열기"}
       >
         {open ? "✕" : "☰"}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-10 w-52 bg-white rounded-2xl shadow-lg border border-cream-200 p-4 flex flex-col gap-2">
+        <div className="absolute right-0 top-12 flex w-64 flex-col gap-1 border border-cream-300 bg-cream-50 p-3 shadow-[var(--shadow-floating)]">
           {links.map(({ href, label, external }) => {
             const cls =
-              "text-sm text-brown-700 font-medium hover:text-brown-500 py-1.5 px-2 rounded-lg hover:bg-cream-50 transition-colors";
+              "min-h-11 border-b border-cream-200 px-2 py-3 text-sm text-brown-700 transition-colors hover:bg-cream-100";
             // 운세는 Next 라우트가 아니라 정적 사이트라 일반 링크로 나간다
             return external ? (
               <a key={href} href={href} onClick={() => setOpen(false)} className={cls}>
@@ -61,7 +61,7 @@ export default function MobileMenu({ links }: { links: NavLink[] }) {
           <Link
             href="/install"
             onClick={() => setOpen(false)}
-            className="text-sm text-brown-700 font-medium hover:text-brown-500 py-1.5 px-2 rounded-lg hover:bg-cream-50 transition-colors"
+            className="min-h-11 border-b border-cream-200 px-2 py-3 text-sm text-brown-700 transition-colors hover:bg-cream-100"
           >
             앱처럼 사용하기
           </Link>
@@ -72,13 +72,13 @@ export default function MobileMenu({ links }: { links: NavLink[] }) {
               <Link
                 href="/profile"
                 onClick={() => setOpen(false)}
-                className="text-sm text-brown-700 font-medium py-1.5 px-2 rounded-lg hover:bg-cream-50 transition-colors"
+                className="min-h-11 px-2 py-3 text-sm text-brown-700 transition-colors hover:bg-cream-100"
               >
                 내 프로필
               </Link>
               <button
                 onClick={logout}
-                className="text-sm text-brown-500 font-medium py-1.5 px-2 text-left"
+                className="min-h-11 px-2 py-3 text-left text-sm text-brown-500"
               >
                 로그아웃
               </button>
@@ -88,14 +88,14 @@ export default function MobileMenu({ links }: { links: NavLink[] }) {
               <Link
                 href="/auth/login"
                 onClick={() => setOpen(false)}
-                className="text-sm text-brown-600 font-medium py-1.5 px-2"
+                className="min-h-11 px-2 py-3 text-sm text-brown-600"
               >
                 로그인
               </Link>
               <Link
                 href="/auth/register"
                 onClick={() => setOpen(false)}
-                className="px-4 py-2 bg-brown-600 text-white rounded-full text-sm text-center hover:bg-brown-700 transition-colors"
+                className="cdj-button cdj-button--primary mt-2 text-center"
               >
                 회원가입
               </Link>

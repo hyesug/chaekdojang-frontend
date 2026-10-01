@@ -7,6 +7,7 @@ import ProfileAvatar from "./ProfileAvatar";
 import ReviewViewTracker from "./ReviewViewTracker";
 import { API_BASE } from "../lib/api";
 import { authFetch, getValidToken } from "../lib/auth";
+import { ModalShell } from "./ui/ModalShell";
 
 const BASE = API_BASE;
 
@@ -254,11 +255,9 @@ export default function ReviewDetailModal({ reviewId, onClose, onEngagementChang
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+    <>
       <ReviewViewTracker reviewId={reviewId} />
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-
-      <div className="relative z-10 w-full sm:max-w-xl bg-white rounded-t-2xl sm:rounded-2xl max-h-[92vh] flex flex-col shadow-xl overflow-hidden">
+      <ModalShell title="독후감" onClose={onClose} className="sm:max-w-xl">
         {/* 헤더 */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-cream-200 flex-shrink-0">
           <span className="font-serif font-bold text-brown-800 text-sm">독후감</span>
@@ -467,7 +466,7 @@ export default function ReviewDetailModal({ reviewId, onClose, onEngagementChang
             </button>
           )}
         </form>
-      </div>
-    </div>
+      </ModalShell>
+    </>
   );
 }

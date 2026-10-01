@@ -204,28 +204,29 @@ export default function FeedClient({ initialPage }: FeedClientProps) {
   }, [tab, hasMore, loadingMore, loading]);
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
+    <div className="cdj-page cdj-page--reading">
       {/* 피드 헤더 */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-7 flex items-end justify-between gap-4">
         <div>
-          <h1 className="font-serif text-2xl font-bold text-brown-800">피드</h1>
-          <p className="text-xs text-brown-400 mt-0.5">이웃의 독후감</p>
+          <p className="cdj-kicker">Reader&apos;s archive</p>
+          <h1 className="cdj-title mt-2">피드</h1>
+          <p className="mt-2 text-sm text-brown-500">이웃의 독후감</p>
         </div>
         <Link
           href="/write"
-          className="px-4 py-2 text-sm bg-brown-600 text-white rounded-full hover:bg-brown-700 transition-colors"
+          className="cdj-button cdj-button--primary shrink-0"
         >
           + 독후감 쓰기
         </Link>
       </div>
 
-      <section className="mb-4 rounded-xl border border-cream-200 bg-white px-4 py-3">
+      <section className="cdj-paper mb-4 px-4 py-3">
         <p className="text-xs leading-5 text-brown-500">
           책도장은 독후감을 기록하고, 읽은 책을 서재에 모으고, 다른 독자의 감상과 책 취향을 나누는 독서 기록 SNS입니다.
         </p>
       </section>
 
-      <section className="mb-5 rounded-md border border-cream-200 bg-cream-50 px-3 py-2.5">
+      <section className="mb-5 border-l-2 border-brown-600 bg-cream-50 px-4 py-3">
         <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-2">
           <h2 className="text-sm font-medium text-brown-700">
             긴 독후감을 AI 독서카드로 정리해보세요.
@@ -244,21 +245,23 @@ export default function FeedClient({ initialPage }: FeedClientProps) {
         </div>
       )}
 
-      <div className="flex gap-1 mb-6 bg-cream-200 rounded-xl p-1">
+      <div className="mb-6 flex border-b border-cream-300" role="tablist" aria-label="피드 필터">
         {(
           [
-            { value: "all", label: "📚 전체" },
-            { value: "following", label: "❤️ 팔로잉" },
-            { value: "taste", label: "✨ 취향" },
+            { value: "all", label: "전체" },
+            { value: "following", label: "팔로잉" },
+            { value: "taste", label: "취향" },
           ] as const
         ).map(({ value, label }) => (
           <button
             key={value}
             onClick={() => setTab(value)}
-            className={`flex-1 py-2 text-xs font-medium rounded-lg transition-colors ${
+            role="tab"
+            aria-selected={tab === value}
+            className={`flex-1 border-b-2 py-3 text-sm font-medium transition-colors ${
               tab === value
-                ? "bg-white text-brown-800 shadow-sm"
-                : "text-brown-400 hover:text-brown-600"
+                ? "border-brown-700 text-brown-800"
+                : "border-transparent text-brown-400 hover:text-brown-600"
             }`}
           >
             {label}
@@ -268,15 +271,15 @@ export default function FeedClient({ initialPage }: FeedClientProps) {
 
       {/* 전체 탭 — 정렬 선택 */}
       {tab === "all" && (
-        <div className="flex gap-2 mb-4">
-          {([{ value: "recent", label: "최신순" }, { value: "rating", label: "⭐ 별점순" }, { value: "popular", label: "🔥 인기순" }] as const).map(({ value, label }) => (
+        <div className="mb-5 flex flex-wrap gap-x-4 gap-y-2">
+          {([{ value: "recent", label: "최신순" }, { value: "rating", label: "별점순" }, { value: "popular", label: "인기순" }] as const).map(({ value, label }) => (
             <button
               key={value}
               onClick={() => setSort(value)}
-              className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
+              className={`border-b py-1 text-xs transition-colors ${
                 sort === value
-                  ? "bg-brown-600 text-white border-brown-600"
-                  : "bg-white text-brown-500 border-cream-300 hover:border-brown-400"
+                  ? "border-brown-700 text-brown-800"
+                  : "border-transparent text-brown-500 hover:border-brown-400"
               }`}
             >
               {label}
@@ -293,7 +296,6 @@ export default function FeedClient({ initialPage }: FeedClientProps) {
       {/* 취향/팔로잉 탭 — 미로그인 안내 */}
       {!loading && (tab === "following" || tab === "taste") && !loggedIn && (
         <div className="text-center py-16 text-brown-400">
-          <p className="text-4xl mb-3">🔒</p>
           <p className="font-medium text-brown-600 mb-1">
             로그인 후 이용할 수 있어요
           </p>
@@ -302,7 +304,7 @@ export default function FeedClient({ initialPage }: FeedClientProps) {
           </p>
           <Link
             href="/auth/login"
-            className="inline-block px-6 py-2.5 bg-brown-600 text-white rounded-full text-sm font-medium hover:bg-brown-700 transition-colors"
+            className="cdj-button cdj-button--primary mt-2"
           >
             로그인하기
           </Link>
@@ -312,7 +314,6 @@ export default function FeedClient({ initialPage }: FeedClientProps) {
       {/* 취향 탭 — 로그인했지만 추천 없음 */}
       {!loading && tab === "taste" && loggedIn && reviews.length === 0 && (
         <div className="text-center py-16 text-brown-400">
-          <p className="text-4xl mb-3">✨</p>
           <p className="font-medium text-brown-600 mb-1">아직 추천할 독자가 없어요</p>
           <p className="text-sm">책을 더 읽고 독후감을 남기면 취향이 맞는 독자를 찾아드려요</p>
         </div>
@@ -347,7 +348,6 @@ export default function FeedClient({ initialPage }: FeedClientProps) {
       {/* 빈 상태 */}
       {!loading && reviews.length === 0 && !(tab === "following" && !loggedIn) && !(tab === "taste" && loggedIn) && (
         <div className="text-center py-24 text-brown-400">
-          <p className="text-5xl mb-4">📖</p>
           <p className="font-medium">
             {tab === "following"
               ? "팔로우한 사람의 독후감이 없어요"

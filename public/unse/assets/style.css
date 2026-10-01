@@ -1,27 +1,26 @@
 /* 종합 운세 — 화면 */
 
-/* 책도장과 같은 결로 — 종이와 잉크, 따뜻한 크림·브라운.
-   강조색은 둘만 쓴다: 갈색 계열 한 줄기와 도장 붉은색 하나. */
+/* 책도장 청록 잉크 아카이브 — 종이, 잉크, 기록 도장. */
 :root {
-  --bg: #FAF6EF;
-  --bg-soft: #FDFAF5;
-  --card: #FFFFFF;
-  --card-2: #F7F1E6;
-  --line: #E4D4B8;
-  --line-soft: #F0E6D2;
-  --ink: #2A1810;
-  --ink-2: #6E4A36;
-  --ink-3: #9E7352;
-  --gold: #8B6048;
-  --gold-soft: #BA9470;
-  --stamp: #8B1E1E;
-  --sage: #5C7A60;
-  --mok: #5C7A60;
-  --hwa: #8B1E1E;
-  --to: #9E7352;
-  --geum: #6E4A36;
+  --bg: #F3F2EB;
+  --bg-soft: #FCFBF7;
+  --card: #FCFBF7;
+  --card-2: #EDF3EE;
+  --line: #C9D1C8;
+  --line-soft: #E2E6DE;
+  --ink: #102A2C;
+  --ink-2: #315F5A;
+  --ink-3: #56706A;
+  --gold: #174A46;
+  --gold-soft: #78988F;
+  --stamp: #8B3040;
+  --sage: #78988F;
+  --mok: #78988F;
+  --hwa: #8B3040;
+  --to: #56706A;
+  --geum: #174A46;
   --su: #4A6B8A;
-  --radius: 12px;
+  --radius: 8px;
   --maxw: 760px;
 }
 
@@ -50,7 +49,7 @@ header h1 {
 header p { margin: 0; color: var(--ink-3); font-size: 14px; }
 header .rule {
   width: 40px; height: 1px; margin: 22px auto 0;
-  background: linear-gradient(90deg, transparent, var(--gold-soft), transparent);
+  background: var(--gold-soft);
 }
 /* 휴대폰에서는 제목만으로 첫 화면이 다 차서 입력칸이 안 보였다.
    글자를 줄이는 대신 위아래 여백을 줄인다 — 읽는 크기는 지킨다 */
@@ -187,7 +186,7 @@ button.go:disabled { opacity: 0.5; cursor: default; }
 .domain { display: grid; grid-template-columns: 92px 1fr 34px; align-items: center; gap: 11px; margin-bottom: 8px; }
 .domain-name { font-size: 13px; color: var(--ink-2); }
 .domain-track { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
-.domain-fill { height: 100%; background: linear-gradient(90deg, var(--gold-soft), var(--gold)); border-radius: 3px; }
+.domain-fill { height: 100%; background: var(--gold); border-radius: 3px; }
 .domain-val { font-size: 12px; color: var(--ink-3); text-align: right; }
 
 /* 일치도 */
@@ -310,7 +309,7 @@ footer strong { color: var(--ink-2); font-weight: 600; }
 .vlist { font-size: 11px; color: var(--ink-3); line-height: 1.55; word-break: keep-all; }
 
 .domain-fill.good { background: var(--sage); }
-.domain-fill.mid { background: linear-gradient(90deg, var(--gold-soft), var(--gold)); }
+.domain-fill.mid { background: var(--gold); }
 .domain-fill.bad { background: var(--stamp); }
 
 .vtag {
@@ -370,7 +369,7 @@ footer strong { color: var(--ink-2); font-weight: 600; }
   display: flex; gap: 8px; margin-top: 14px;
   position: sticky; bottom: 0; z-index: 1;
   padding: 10px 0 4px;
-  background: linear-gradient(180deg, rgba(250,246,239,0), rgba(250,246,239,.94) 32%);
+  background: var(--bg-soft);
 }
 #imgmodal .imgacts button {
   flex: 1; padding: 13px; border-radius: 10px; border: 1px solid var(--line);
@@ -421,11 +420,11 @@ footer strong { color: var(--ink-2); font-weight: 600; }
   box-shadow: inset 0 -5px 10px rgba(0,0,0,.22), 0 3px 10px rgba(0,0,0,.35);
 }
 .ball.mini { width: 32px; height: 32px; font-size: 14px; box-shadow: inset 0 -3px 6px rgba(0,0,0,.22); }
-.ball.b1 { background: linear-gradient(160deg, #ffd44d, #e8b42a); }
-.ball.b2 { background: linear-gradient(160deg, #6db4ff, #3d86dd); color: #06121f; }
-.ball.b3 { background: linear-gradient(160deg, #ff7d78, #dd4a44); color: #2a0705; }
-.ball.b4 { background: linear-gradient(160deg, #c8cfdb, #98a1b2); }
-.ball.b5 { background: linear-gradient(160deg, #7ddc9a, #45ab68); color: #052013; }
+.ball.b1 { background: #D2A53A; }
+.ball.b2 { background: #5D91BE; color: #06121f; }
+.ball.b3 { background: #B85A55; color: #2a0705; }
+.ball.b4 { background: #A8B0BC; }
+.ball.b5 { background: #5C9671; color: #052013; }
 
 .fact.ispick { background: rgba(217,178,106,.08); }
 .fact dd em { font-style: normal; color: var(--gold); font-size: 11.5px; margin-left: 6px; }
@@ -457,7 +456,7 @@ details.pool[open] > summary::before { content: '▾ '; }
 .area-track { height: 7px; background: rgba(0,0,0,.04); border-radius: 4px; overflow: hidden; }
 .area-fill { height: 100%; border-radius: 4px; }
 .area-fill.hi { background: var(--sage); }
-.area-fill.mid { background: linear-gradient(90deg, var(--gold-soft), var(--gold)); }
+.area-fill.mid { background: var(--gold); }
 .area-fill.lo { background: var(--stamp); }
 .area-text { font-size: 14px; color: var(--ink-2); margin: 9px 0 0; }
 .area-src { font-size: 11px; color: var(--ink-3); margin: 5px 0 0; }
@@ -467,8 +466,8 @@ details.pool[open] > summary::before { content: '▾ '; }
 .tl-barwrap { height: 108px; display: flex; align-items: flex-end; justify-content: center; }
 .tl-bar { width: 68%; border-radius: 4px 4px 0 0; }
 .tl-bar.hi { background: var(--sage); }
-.tl-bar.mid { background: linear-gradient(180deg, var(--gold), var(--gold-soft)); }
-.tl-bar.lo { background: linear-gradient(180deg, var(--hwa), #9c4b47); }
+.tl-bar.mid { background: var(--gold); }
+.tl-bar.lo { background: var(--hwa); }
 .tl-score { font-size: 11.5px; color: var(--ink-2); margin-top: 6px; font-weight: 600; }
 .tl-mon { font-size: 10.5px; color: var(--ink-3); margin-top: 2px; }
 .tl-gz { font-size: 10.5px; color: var(--ink-3); opacity: .7; }
@@ -536,7 +535,7 @@ details.pool[open] > summary::before { content: '▾ '; }
 }
 .ai-input button {
   padding: 0 20px; border: none; border-radius: 10px;
-  background: linear-gradient(180deg, #d9b26a, #b8934f);
+  background: var(--gold);
   color: #FFFFFF; font-family: inherit; font-size: 14.5px; font-weight: 700; cursor: pointer;
 }
 .ai-input button:disabled { opacity: .45; cursor: default; }
@@ -1035,4 +1034,13 @@ footer .ver { font-size: 11.5px; color: var(--ink-3); margin-top: 18px; letter-s
   .rp-ul li { font-size: 12.3px; }
   .rp-tbl-4 { font-size: 10.6px; }
   .rp-tbl-4 th, .rp-tbl-4 td { padding: 4px 4px; }
+}
+
+/* Archive geometry: controls stay compact; data tags remain the sole pills. */
+.panel, .card, .synth, .agree, .facts, .pillar, details.sys, .ai-turn, .scen-card, .scen-ctx, .cmp-card, .rp {
+  border-radius: var(--radius);
+}
+
+input, select, textarea, button.go, .ask-btn, .mode, .lt, .ft, .planned span {
+  border-radius: 6px;
 }

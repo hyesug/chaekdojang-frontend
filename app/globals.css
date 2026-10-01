@@ -103,6 +103,8 @@ button:not(:disabled), [role="button"]:not([aria-disabled="true"]) { cursor: poi
 .rounded-lg { border-radius: var(--radius-md); }
 .rounded-xl, .rounded-2xl, .rounded-3xl { border-radius: var(--radius-lg); }
 .shadow, .shadow-sm, .shadow-md, .shadow-lg, .shadow-xl { box-shadow: none; }
+.bg-white { background-color: var(--color-surface); }
+button.rounded-full, a.rounded-full { border-radius: var(--radius-md); }
 
 .stamp-mark {
   display: inline-flex; align-items: center; justify-content: center;

@@ -662,7 +662,7 @@ export default function ReviewCard({
 
   return (
     <>
-      <article className="stamp-card bg-white rounded-lg border border-cream-200 p-5 hover:shadow-md transition-shadow overflow-hidden">
+      <article className="cdj-surface overflow-hidden p-5 transition-colors hover:border-brown-300">
         <div className="flex gap-4">
           {/* 책 표지 */}
           {post.book?.thumbnail ? (

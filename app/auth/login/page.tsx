@@ -44,10 +44,11 @@ function LoginContent() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center px-4 py-12">
+    <div className="cdj-page flex min-h-[calc(100vh-8rem)] items-center justify-center">
       <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <h1 className="font-serif text-3xl font-bold text-brown-800 mb-2">
+        <div className="mb-8 text-center">
+          <p className="cdj-kicker">Reader account</p>
+          <h1 className="cdj-title mt-3 text-3xl">
             {isSignup ? "회원가입" : "로그인"}
           </h1>
           <p className="text-sm text-brown-400">
@@ -63,7 +64,7 @@ function LoginContent() {
           </p>
         )}
 
-        <div className="bg-white rounded-2xl border border-cream-200 p-6 shadow-sm flex flex-col gap-3">
+        <div className="cdj-surface flex flex-col gap-3 p-6">
           {needsAgeConfirmation && (
             <label className="flex items-start gap-2 rounded-xl border border-cream-200 bg-cream-50 px-3 py-3 text-left">
               <input
@@ -81,7 +82,7 @@ function LoginContent() {
           <a
             href={`${BACKEND}/oauth2/authorization/kakao`}
             aria-disabled={needsAgeConfirmation && !ageConfirmed}
-            className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-medium bg-[#FEE500] text-[#3C1E1E] hover:brightness-95 transition ${socialButtonClass}`}
+            className={`flex min-h-11 w-full items-center justify-center gap-2 border border-transparent px-4 py-3 text-sm font-medium hover:brightness-95 transition ${socialButtonClass}`}
           >
             <KakaoIcon />
             카카오로 {isSignup ? "시작하기" : "로그인"}
@@ -90,7 +91,7 @@ function LoginContent() {
           <a
             href={`${BACKEND}/oauth2/authorization/naver`}
             aria-disabled={needsAgeConfirmation && !ageConfirmed}
-            className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-medium bg-[#03C75A] text-white hover:brightness-95 transition ${socialButtonClass}`}
+            className={`flex min-h-11 w-full items-center justify-center gap-2 border border-transparent px-4 py-3 text-sm font-medium hover:brightness-95 transition ${socialButtonClass}`}
           >
             <NaverIcon />
             네이버로 {isSignup ? "시작하기" : "로그인"}
@@ -99,7 +100,7 @@ function LoginContent() {
           <a
             href={`${BACKEND}/oauth2/authorization/google`}
             aria-disabled={needsAgeConfirmation && !ageConfirmed}
-            className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-medium bg-white text-brown-800 border border-cream-300 hover:bg-cream-50 transition ${socialButtonClass}`}
+            className={`flex min-h-11 w-full items-center justify-center gap-2 border border-cream-300 bg-cream-50 px-4 py-3 text-sm font-medium text-brown-800 hover:bg-cream-100 transition ${socialButtonClass}`}
           >
             <GoogleIcon />
             구글로 {isSignup ? "시작하기" : "로그인"}
@@ -115,7 +116,7 @@ function LoginContent() {
             <button
               type="button"
               onClick={handleDevLogin}
-              className="w-full py-3 rounded-xl text-sm font-medium bg-cream-100 text-brown-700 hover:bg-cream-200 transition"
+              className="cdj-button cdj-button--secondary w-full"
             >
               로컬 개발자 로그인
             </button>

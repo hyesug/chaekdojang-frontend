@@ -131,7 +131,7 @@ function collect(p, mode) {
 // ─────────────────────────────────────────────────────────────
 
 /**
- * 궁합 화면 — 축마다 엔진이 쓴 문장을 그대로 이어서 나열하고, 아래에 AI 묻기.
+ * 궁합 화면 — 먼저 종합을 읽고 AI 질문으로 이어진 뒤, 필요할 때만 축별 기록을 펼친다.
  * 판정 개수·근거·양 끝은 싣지 않는다.
  */
 function renderCompat(formA, formB, r) {
@@ -154,18 +154,6 @@ function renderCompat(formA, formB, r) {
         ? `<p class="say-text"><strong>${k}</strong> — ${esc(v.buckets[k].join(' · '))}</p>` : '')).join('')}
     </div>
 
-    <div class="card compat-prose">
-      ${v.eightAxes.map((a) => `
-        <p class="say-text"><strong>${esc(a.label)}</strong> — ${esc([a.conclusion, a.reality, a.good, a.bad].filter(Boolean).join(' '))}</p>
-      `).join('')}
-    </div>
-
-    ${v.strong?.text || v.friction?.text ? `
-    <div class="card">
-      ${v.strong?.text ? `<p class="say-text"><strong>가장 좋게 보는 자리</strong> — ${esc(v.strong.text)}</p>` : ''}
-      ${v.friction?.text ? `<p class="say-text"><strong>가장 어렵게 보는 자리</strong> — ${esc(v.friction.text)}</p>` : ''}
-    </div>` : ''}
-
     <div class="section-label">계산값 · 두 사람의 기준</div>
     <div class="card pair-calculation">
       <dl>
@@ -176,6 +164,20 @@ function renderCompat(formA, formB, r) {
 
     <div class="section-label">AI 명반 해석</div>
     ${aiSection('pair', v)}
+
+    <details class="compat-details">
+      <summary>관계 축별 해석 <span>여덟 가지 관계의 읽기</span></summary>
+      <div class="compat-prose">
+        ${v.eightAxes.map((a) => `
+          <p class="say-text"><strong>${esc(a.label)}</strong> — ${esc([a.conclusion, a.reality, a.good, a.bad].filter(Boolean).join(' '))}</p>
+        `).join('')}
+      </div>
+      ${v.strong?.text || v.friction?.text ? `
+      <div class="compat-extremes">
+        ${v.strong?.text ? `<p class="say-text"><strong>가장 좋게 보는 자리</strong> — ${esc(v.strong.text)}</p>` : ''}
+        ${v.friction?.text ? `<p class="say-text"><strong>가장 어렵게 보는 자리</strong> — ${esc(v.friction.text)}</p>` : ''}
+      </div>` : ''}
+    </details>
 
     ${renderPairReport(formA, formB, r, v, {
       a: elementDistribution(r.A?.chart?.pillars ?? {}).count,

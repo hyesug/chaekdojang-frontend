@@ -49,7 +49,7 @@ test('상세 성향은 여러 체계에서 실제로 반복된 것만 남긴다'
   }
 });
 
-test('개인 화면은 명반 · 오늘/이달 두 탭 · 프로필 저장 · 통합 문서만 둔다', async () => {
+test('개인 화면은 명반 · 오늘/이달 · AI 질문 · 프로필 저장 · 통합 문서를 둔다', async () => {
   const ui = await readFile(
     new URL('../../public/unse/src/ui.js', import.meta.url),
     'utf8',
@@ -61,13 +61,14 @@ test('개인 화면은 명반 · 오늘/이달 두 탭 · 프로필 저장 · �
   assert.match(ui, /오늘의 운세/);
   assert.match(ui, /이달의 운세/);
   assert.match(ui, /id="profileCard"/);
-  // AI 질문 자리를 **통합 해석 문서**가 대신한다. 질문 한 번에 수백 원이
-  // 나가는데 모델이 하던 일의 대부분은 엔진이 쓴 문장을 배열하는 것이었다.
+  // 통합 해석 문서는 계산 근거를, AI는 사용자의 후속 질문을 맡는다.
   assert.match(ui, /renderReport\(form, r, f, v\)/);
+  assert.match(ui, /aiSection\('solo', v\)/);
+  assert.match(ui, /initAI\(form, r, f\)/);
 
-  // 걷어낸 것들 — AI 호출은 화면에서 완전히 내렸다
+  // 걷어낸 것들 — 무거운 보조 패널은 첫 화면에 다시 두지 않는다.
   for (const gone of ['나라는 사람', 'hiresPanel', 'shareBar', 'sensitivityPanel',
-    'aiSection', 'initAI', 'initCompatAI']) {
+  ]) {
     assert.equal(ui.includes(gone), false, gone + ' 이(가) 남아 있다');
   }
 });

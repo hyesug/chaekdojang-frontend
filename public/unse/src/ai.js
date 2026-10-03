@@ -20,6 +20,11 @@ import { loadCreditStatus } from './credits.js';
 
 const ENDPOINT = '/fortune-ai';
 
+/** 결제 안내는 서버가 잔액 부족으로 확정한 경우에만 연다. */
+export function isCreditExhausted(error) {
+  return error?.status === 402;
+}
+
 /** 대화 상태. 한 사람의 명반에 대해 계속 이어서 묻는다 */
 let session = null;
 
@@ -328,7 +333,7 @@ function wire(context, calc = null, compat = null) {
         try { msg = (await res.json()).error ?? msg; } catch { /* 본문이 JSON 이 아닐 수 있다 */ }
         // 서버가 이유를 말해 준 오류다. 마침 탭을 옮겼더라도 이 말을 그대로
         // 보여줘야 한다 — "화면을 벗어나서"로 덮으면 진짜 원인이 가려진다
-        throw Object.assign(new Error(msg), { fromServer: true });
+        throw Object.assign(new Error(msg), { fromServer: true, status: res.status });
       }
 
       // 줄 단위 JSON 을 흘려 받는다
@@ -370,7 +375,7 @@ function wire(context, calc = null, compat = null) {
       const why = (leftPage && !err.fromServer)
         ? '화면을 벗어나 있는 동안 연결이 끊겼습니다.'
         : esc(err.message);
-      if (/질문권|이용 한도|로그인/.test(String(err.message))) {
+      if (isCreditExhausted(err)) {
         box.value = question;
         showPaywall(log, why);
         bubble.remove();
@@ -378,8 +383,8 @@ function wire(context, calc = null, compat = null) {
         return;
       }
       bubble.innerHTML = acc
-        ? `<p>${renderText(acc)}</p><p class="ai-err">${why} 여기까지 받았습니다.</p>`
-        : `<p class="ai-err">${why}</p>`;
+        ? `<p>${renderText(acc)}</p><p class="ai-err" role="alert">${why} 여기까지 받았습니다.</p>`
+        : `<p class="ai-err" role="alert">${why}</p>`;
 
       // 다시 묻기 — 끊긴 뒤에 질문을 손으로 다시 치게 하지 않는다
       const again = document.createElement('button');
@@ -402,7 +407,8 @@ function wire(context, calc = null, compat = null) {
   function showPaywall(parent, reason) {
     const row = document.createElement('div');
     row.className = 'ai-paywall';
-    row.innerHTML = `<p><strong>질문권이 필요합니다.</strong> ${esc(reason)}</p><p><a href="/ai-credits">질문권 구매</a> · <a href="/payment-info">환불·결제 안내</a> · <a href="/terms">이용약관</a></p>`;
+    const balance = Number.isFinite(creditStatus.totalBalance) ? `현재 잔액 ${creditStatus.totalBalance}회 · ` : '';
+    row.innerHTML = `<p><strong>질문권이 필요합니다.</strong> ${esc(reason)}</p><p>${balance}<a href="/ai-credits">질문권 구매</a> · <a href="/payment-info">환불·결제 안내</a> · <a href="/terms">이용약관</a></p>`;
     parent.appendChild(row);
     row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }

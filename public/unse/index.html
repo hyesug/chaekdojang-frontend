@@ -81,81 +81,92 @@
 
 <div class="wrap">
 
-  <header>
+  <header class="analysis-intro">
+    <p class="eyebrow">책도장 · 명반 분석</p>
     <h1>종합 운세</h1>
-    <p>여러 체계를 한 번에 돌려, 겹치는 것과 갈리는 것을 함께 봅니다</p>
+    <p>여러 계산 체계가 만나는 자리와 갈리는 자리를, 한 장의 기록처럼 읽습니다.</p>
     <div class="rule"></div>
   </header>
 
-  <div class="modes">
-    <button type="button" class="mode on" data-mode="solo">개인 운세</button>
-    <button type="button" class="mode" data-mode="pair">궁합</button>
+  <div class="modes" role="group" aria-label="분석 종류">
+    <button type="button" class="mode on" data-mode="solo" aria-pressed="true">개인 운세</button>
+    <button type="button" class="mode" data-mode="pair" aria-pressed="false">궁합</button>
   </div>
 
-  <form id="form" class="panel" autocomplete="off">
+  <form id="form" class="panel analysis-form" autocomplete="off" novalidate>
+   <p id="form-error" class="form-error" role="alert" hidden></p>
    <div class="person" id="personA">
     <div class="person-title" hidden>첫 번째 사람</div>
-    <div class="grid three">
-      <div>
-        <label for="name">이름</label>
-        <input id="name" placeholder="홍길동" autocomplete="name">
+    <fieldset class="analysis-fields">
+      <legend>분석할 사람의 출생 정보</legend>
+      <p class="fieldset-note">출생 시각과 장소는 명반의 시간·위치 보정에 사용합니다.</p>
+      <div class="grid three">
+        <div>
+          <label for="name">이름 <span aria-hidden="true">(선택)</span></label>
+          <input id="name" placeholder="홍길동" autocomplete="name">
+        </div>
+        <div>
+          <label for="gender">성별</label>
+          <select id="gender">
+            <option value="male">남</option>
+            <option value="female">여</option>
+          </select>
+        </div>
+        <div>
+          <label for="calendar">양력 / 음력</label>
+          <select id="calendar">
+            <option value="solar">양력</option>
+            <option value="lunar">음력 (평달)</option>
+            <option value="lunar-leap">음력 (윤달)</option>
+          </select>
+        </div>
       </div>
-      <div>
-        <label for="gender">성별</label>
-        <select id="gender">
-          <option value="male">남</option>
-          <option value="female">여</option>
-        </select>
-      </div>
-      <div>
-        <label for="calendar">양력 / 음력</label>
-        <select id="calendar">
-          <option value="solar">양력</option>
-          <option value="lunar">음력 (평달)</option>
-          <option value="lunar-leap">음력 (윤달)</option>
-        </select>
-      </div>
-    </div>
 
-    <div class="grid three" style="margin-top:14px">
-      <div>
-        <label for="year">연</label>
-        <input id="year" type="number" inputmode="numeric" placeholder="1990" min="1900" max="2100">
+      <div class="grid three form-row">
+        <div>
+          <label for="year">태어난 해</label>
+          <input id="year" type="number" inputmode="numeric" placeholder="1990" min="1900" max="2100">
+        </div>
+        <div>
+          <label for="month">월</label>
+          <input id="month" type="number" inputmode="numeric" placeholder="5" min="1" max="12">
+        </div>
+        <div>
+          <label for="day">일</label>
+          <input id="day" type="number" inputmode="numeric" placeholder="15" min="1" max="31">
+        </div>
       </div>
-      <div>
-        <label for="month">월</label>
-        <input id="month" type="number" inputmode="numeric" placeholder="5" min="1" max="12">
-      </div>
-      <div>
-        <label for="day">일</label>
-        <input id="day" type="number" inputmode="numeric" placeholder="15" min="1" max="31">
-      </div>
-    </div>
 
-    <div class="grid two" style="margin-top:14px">
-      <div>
-        <label for="hour">태어난 시</label>
-        <input id="hour" type="number" inputmode="numeric" placeholder="14" min="0" max="23">
+      <div class="grid two form-row">
+        <div>
+          <label for="hour">태어난 시</label>
+          <input id="hour" type="number" inputmode="numeric" placeholder="14" min="0" max="23">
+        </div>
+        <div>
+          <label for="minute">분</label>
+          <input id="minute" type="number" inputmode="numeric" placeholder="30" min="0" max="59">
+        </div>
       </div>
-      <div>
-        <label for="minute">분</label>
-        <input id="minute" type="number" inputmode="numeric" placeholder="30" min="0" max="59">
-      </div>
-    </div>
-    <label class="check"><input type="checkbox" id="noTime"> 태어난 시간을 모릅니다</label>
+      <label class="check"><input type="checkbox" id="noTime"> 태어난 시간을 모릅니다</label>
 
-    <div class="grid two" style="margin-top:14px">
-      <div>
-        <label for="birthPlace">태어난 곳</label>
-        <input id="birthPlace" list="cities" placeholder="서울">
-        <p class="fieldnote">목록에 없으면 가장 가까운 시·군으로 — 결과가 거의 같습니다</p>
+      <div class="grid two form-row">
+        <div>
+          <label for="birthPlace">태어난 곳</label>
+          <input id="birthPlace" list="cities" placeholder="서울">
+          <p class="fieldnote">목록에 없으면 가장 가까운 시·군을 입력하세요.</p>
+        </div>
+        <div>
+          <label for="homePlace">지금 사는 곳</label>
+          <input id="homePlace" list="cities" placeholder="서울">
+        </div>
       </div>
-      <div>
-        <label for="homePlace">지금 사는 곳</label>
-        <input id="homePlace" list="cities" placeholder="서울">
-      </div>
-    </div>
-    <label class="check"><input type="checkbox" id="dst"> 해외 출생이고, 그때 서머타임 기간이었습니다</label>
+
+      <details class="input-options">
+        <summary>태어난 시간 보정과 거주지</summary>
+        <p>해외 출생 당시 서머타임이 적용됐다면 명반의 기준 시각을 보정합니다.</p>
+        <label class="check"><input type="checkbox" id="dst"> 해외 출생이고, 그때 서머타임 기간이었습니다</label>
+      </details>
+    </fieldset>
    </div>
 
    <!-- 궁합일 때 두 번째 사람 칸이 여기에 만들어진다 -->
@@ -164,15 +175,14 @@
     <datalist id="cities"></datalist>
 
     <p class="hint" id="profileNote" hidden>저장해 둔 프로필로 채웠습니다.</p>
-    <button class="go" type="submit">풀이 보기</button>
-    <p class="hint">
-      명반 계산은 이 브라우저 안에서 합니다. AI 에게 물을 때만 입력한 정보와 명반 계산 결과가
-      책도장 서버를 거쳐 AI(Anthropic)로 전송되고, 프로필 저장을 누르면 책도장 서버에 보관됩니다.
+    <button class="go" type="submit">명반 생성하기</button>
+    <p class="hint data-note">
+      명반 계산은 이 기기에서 먼저 진행합니다. AI 해석을 요청할 때만 계산된 명반 정보가 책도장 서버를 거쳐 AI로 전송됩니다. 프로필은 저장을 선택한 경우에만 보관합니다.
       <a href="/privacy">개인정보처리방침</a>
     </p>
   </form>
 
-  <div id="result" aria-live="polite" aria-atomic="false"></div>
+  <div id="result" aria-live="polite" aria-atomic="false" aria-busy="false" tabindex="-1"></div>
 
   <footer>
     <p>

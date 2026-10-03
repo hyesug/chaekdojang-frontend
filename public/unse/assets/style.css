@@ -20,7 +20,7 @@
   --to: #56706A;
   --geum: #174A46;
   --su: #4A6B8A;
-  --radius: 8px;
+  --radius: 6px;
   --maxw: 760px;
 }
 
@@ -41,20 +41,25 @@ body {
 .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 20px 100px; }
 
 /* ── 머리말 ── */
-header { text-align: center; padding: 56px 0 36px; }
+header { text-align: center; padding: 46px 0 26px; }
+header.analysis-intro { text-align: left; max-width: 610px; }
+.eyebrow {
+  margin: 0 0 7px; color: var(--stamp); font-size: 11px; font-weight: 700;
+  letter-spacing: .14em; text-transform: uppercase;
+}
 header h1 {
   font-size: 27px; font-weight: 600; margin: 0 0 10px;
   letter-spacing: 0.06em; color: var(--gold);
 }
 header p { margin: 0; color: var(--ink-3); font-size: 14px; }
 header .rule {
-  width: 40px; height: 1px; margin: 22px auto 0;
+  width: 40px; height: 1px; margin: 20px 0 0;
   background: var(--gold-soft);
 }
 /* 휴대폰에서는 제목만으로 첫 화면이 다 차서 입력칸이 안 보였다.
    글자를 줄이는 대신 위아래 여백을 줄인다 — 읽는 크기는 지킨다 */
 @media (max-width: 560px) {
-  header { padding: 28px 0 20px; }
+  header { padding: 26px 0 18px; }
   header h1 { font-size: 23px; margin-bottom: 8px; }
   header .rule { margin-top: 14px; }
 }
@@ -64,7 +69,7 @@ header .rule {
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 24px;
+  padding: 26px;
   margin-bottom: 18px;
 }
 
@@ -72,13 +77,26 @@ header .rule {
 .grid.two { grid-template-columns: 1fr 1fr; }
 .grid.three { grid-template-columns: 1fr 1fr 1fr; }
 
-label { display: block; font-size: 14px; color: var(--ink-3); margin-bottom: 6px; }
+label { display: block; font-size: 13px; color: var(--ink-2); margin-bottom: 6px; }
+
+fieldset { border: 0; margin: 0; min-inline-size: 0; padding: 0; }
+.analysis-fields > legend {
+  color: var(--ink); font-size: 17px; font-weight: 600; letter-spacing: -.02em;
+}
+.fieldset-note { margin: 4px 0 20px; color: var(--ink-3); font-size: 12px; line-height: 1.65; }
+.form-row { margin-top: 16px; }
+.input-options {
+  margin-top: 17px; border-top: 1px solid var(--line-soft); padding-top: 13px;
+}
+.input-options summary { color: var(--ink-2); cursor: pointer; font-size: 13px; font-weight: 600; }
+.input-options p { color: var(--ink-3); font-size: 12px; line-height: 1.65; margin: 8px 0 0; }
+.input-options .check { margin-top: 9px; }
 
 input, select {
   width: 100%; padding: 11px 12px;
   background: var(--bg-soft);
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: 5px;
   color: var(--ink);
   font-size: 14.5px;
   font-family: inherit;
@@ -89,7 +107,7 @@ input:focus, select:focus {
   outline: none;
   border-color: var(--gold);
   background: #FFFFFF;
-  box-shadow: 0 0 0 3px rgba(139, 96, 72, .10);
+  box-shadow: 0 0 0 3px rgba(23, 74, 70, .15);
 }
 input::placeholder { color: var(--ink-3); opacity: .75; }
 /* 브라우저 자동완성이 자기 배경을 깔아 글자를 덮는 것도 막는다 */
@@ -106,11 +124,11 @@ input:-webkit-autofill:focus {
 .check input { width: auto; margin: 0; accent-color: var(--gold); }
 
 button.go {
-  width: 100%; margin-top: 22px; padding: 14px;
+  width: 100%; margin-top: 24px; min-height: 48px; padding: 12px 14px;
   background: var(--gold);
-  border: none; border-radius: 10px;
-  color: #FFFFFF; font-size: 15.5px; font-weight: 700;
-  font-family: inherit; letter-spacing: 0.04em; cursor: pointer;
+  border: 1px solid var(--gold); border-radius: 5px;
+  color: #FFFFFF; font-size: 15px; font-weight: 600;
+  font-family: inherit; letter-spacing: .01em; cursor: pointer;
 }
 button.go:hover { filter: brightness(1.07); }
 button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible {
@@ -120,6 +138,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 button.go:disabled { opacity: 0.5; cursor: default; }
 
 .hint { font-size: 12px; color: var(--ink-3); margin-top: 12px; line-height: 1.6; }
+.data-note { padding-top: 13px; border-top: 1px solid var(--line-soft); }
+.form-error {
+  margin: 0 0 17px; padding: 10px 12px; border-left: 3px solid var(--stamp);
+  background: rgba(139, 48, 64, .07); color: var(--stamp); font-size: 13px; line-height: 1.55;
+}
 
 /* ── 결과 공통 ── */
 .section-label {
@@ -256,9 +279,11 @@ footer {
 footer strong { color: var(--ink-2); font-weight: 600; }
 
 .error {
-  background: rgba(224,112,107,.1); border: 1px solid rgba(224,112,107,.35);
-  color: var(--stamp); border-radius: 10px; padding: 13px; font-size: 13.5px; margin-bottom: 14px;
+  border-left: 3px solid var(--stamp); background: rgba(139,48,64,.07);
+  color: var(--ink-2); border-radius: 0; padding: 15px 16px; font-size: 13.5px; margin-bottom: 14px;
 }
+.error strong { color: var(--stamp); font-weight: 600; }
+.error p { margin: 5px 0 0; }
 
 #result { display: none; }
 #result.on { display: block; }
@@ -266,6 +291,8 @@ footer strong { color: var(--ink-2); font-weight: 600; }
 @media (max-width: 560px) {
   .grid.three { grid-template-columns: 1fr 1fr; }
   .grid.three > :last-child { grid-column: 1 / -1; }
+  .panel { padding: 20px 16px; }
+  .form-row { margin-top: 14px; }
   .pillar .gz { font-size: 23px; }
   .axis-row { grid-template-columns: 66px 1fr 66px; gap: 7px; }
   .fact { grid-template-columns: 74px 1fr; }
@@ -632,7 +659,15 @@ details.pool[open] > summary::before { content: '▾ '; }
 @media (max-width: 420px) { .mb-grid { grid-template-columns: 1fr; } }
 
 /* ── 계산 과정 ── */
-.card.progress { padding: 26px 22px; }
+.progress {
+  margin: 18px 0; padding: 22px 0; border-top: 1px solid var(--gold-soft);
+  border-bottom: 1px solid var(--line);
+}
+.state-label {
+  margin: 0 0 4px; color: var(--stamp); font-size: 11px; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase;
+}
+.progress-title { margin: 0 0 16px; color: var(--ink); font-size: 16px; font-weight: 600; }
 .steps { list-style: none; margin: 0; padding: 0; }
 .steps li {
   display: flex; align-items: center; gap: 11px;

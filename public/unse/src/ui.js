@@ -20,6 +20,7 @@ import { renderReport, renderPairReport } from './report.js';
 import { buildView, buildCompatView } from './viewmodel.js';
 import { SYSTEM_META, TIER_LABEL, SOURCE_LABEL } from './meta.js';
 import { loadProfile, saveProfile, deleteProfile, loginUrl } from './profile.js';
+import { aiSection, initAI, initCompatAI } from './ai.js';
 
 /** 방금 본 결과. 주소 갱신과 프로필 저장이 다시 쓴다 */
 let last = null;
@@ -55,6 +56,7 @@ export async function run(mode, box, next) {
     const c = compareFortune(form, formB);
     await next();
     box.innerHTML = renderCompat(form, formB, c);
+    initCompatAI(form, formB, c);
     await next();
     await next();
   } else {
@@ -65,6 +67,7 @@ export async function run(mode, box, next) {
     const f = readForecast(form);
     await next();
     box.innerHTML = render(form, r, f);
+    initAI(form, r, f);
     await next();
     fillProfileCard(form);
     await next();
@@ -136,11 +139,13 @@ function renderCompat(formA, formB, r) {
   const v = buildCompatView(formA, formB, r);
 
   return `
-    <div class="hero">
-      <div class="hero-who">궁합</div>
+    <div class="result-header">
+      <p class="result-kicker">분석 기록 · 궁합</p>
       <h2 class="hero-title">${esc(formA.name)} <span style="color:var(--gold-soft)">×</span> ${esc(formB.name)}</h2>
+      <p class="result-meta">두 사람의 출생 기준을 열다섯 체계로 나란히 살폈습니다.</p>
     </div>
 
+    <div class="section-label">해석 · 핵심 종합</div>
     <div class="card">
       <div class="scope">${esc(v.verdict ?? '')} · 열다섯 체계</div>
       ${v.summary ? `<p class="say-text">${esc(v.summary)}</p>` : ''}
@@ -160,6 +165,17 @@ function renderCompat(formA, formB, r) {
       ${v.strong?.text ? `<p class="say-text"><strong>가장 좋게 보는 자리</strong> — ${esc(v.strong.text)}</p>` : ''}
       ${v.friction?.text ? `<p class="say-text"><strong>가장 어렵게 보는 자리</strong> — ${esc(v.friction.text)}</p>` : ''}
     </div>` : ''}
+
+    <div class="section-label">계산값 · 두 사람의 기준</div>
+    <div class="card pair-calculation">
+      <dl>
+        <div><dt>${esc(formA.name)}</dt><dd>${esc(`${formA.year}.${String(formA.month).padStart(2, '0')}.${String(formA.day).padStart(2, '0')}`)} · ${formA.hour == null ? '시각 미상' : `${String(formA.hour).padStart(2, '0')}:${String(formA.minute).padStart(2, '0')}`} · ${esc(formA.birthPlace)}</dd></div>
+        <div><dt>${esc(formB.name)}</dt><dd>${esc(`${formB.year}.${String(formB.month).padStart(2, '0')}.${String(formB.day).padStart(2, '0')}`)} · ${formB.hour == null ? '시각 미상' : `${String(formB.hour).padStart(2, '0')}:${String(formB.minute).padStart(2, '0')}`} · ${esc(formB.birthPlace)}</dd></div>
+      </dl>
+    </div>
+
+    <div class="section-label">AI 명반 해석</div>
+    ${aiSection('pair', v)}
 
     ${renderPairReport(formA, formB, r, v, {
       a: elementDistribution(r.A?.chart?.pillars ?? {}).count,
@@ -223,7 +239,7 @@ function chartPanel(r) {
     .map(([k, x]) => `${k} ${String(x).replace(/ [\d.]+°$/, '')}`).join(' · ');
 
   return `
-    <div class="section-label">명반</div>
+    <div class="section-label">계산값 · 명반 요약</div>
     <div class="card">
       <div class="pillars">${pillar}</div>
       ${brief ? `<p class="mb-brief">${esc(brief)}</p>` : ''}
@@ -286,11 +302,18 @@ function render(form, r, f) {
     </tr>`).join('');
 
   return `
-    <div class="hero">
-      <div class="hero-who">내 명반</div>
+    <div class="result-header">
+      <p class="result-kicker">분석 기록 · 개인 명반</p>
       <h2 class="hero-title">${esc(v.who.name)} 님</h2>
-      <p class="hero-born">${esc(v.who.born)}</p>
+      <p class="result-meta">${esc(v.who.born)} · 계산 기준은 아래 명반 요약에서 확인할 수 있습니다.</p>
     </div>
+
+    <div class="section-label">해석 · 핵심 종합</div>
+    <section class="core-reading" aria-label="핵심 종합 해석">
+      ${v.hero.theme ? `<p class="core-theme">${esc(v.hero.theme)}</p>` : ''}
+      ${v.hero.agree?.area ? `<p>올해는 <strong>${esc(v.hero.agree.area)}</strong>에 ${esc(String(v.hero.agree.on))}개 체계가 함께 주목합니다.</p>` : ''}
+      ${v.twist ? `<p class="core-caution"><strong>갈리는 지점</strong> ${esc(v.twist.text ?? v.twist)}</p>` : ''}
+    </section>
 
     ${chartPanel(r)}
 
@@ -326,7 +349,10 @@ function render(form, r, f) {
         </div>
       </details>`)}
 
-    <div class="card profile-card" id="profileCard">
+    <div class="section-label">AI 명반 해석</div>
+    ${aiSection('solo', v)}
+
+    <div class="profile-card" id="profileCard">
       <p class="agree-note" style="margin:0">프로필 저장 여부를 확인하는 중…</p>
     </div>
 

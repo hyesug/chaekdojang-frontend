@@ -28,3 +28,17 @@ test('계산 시작과 실패는 결과 busy 상태와 첫 입력 오류를 연�
   assert.match(boot, /box\.setAttribute\('aria-busy', 'true'\)/);
   assert.match(boot, /box\.setAttribute\('aria-busy', 'false'\)/);
 });
+
+test('결과는 해석·계산값·AI·세부 계산 순서로 읽게 한다', async () => {
+  const ui = await read('src/ui.js');
+  const report = await read('src/report.js');
+  const personalRender = ui.slice(ui.indexOf('function render(form, r, f)'));
+
+  const interpretation = personalRender.indexOf('해석 · 핵심 종합');
+  const calculation = personalRender.indexOf('${chartPanel(r)}');
+  const ai = personalRender.indexOf('AI 명반 해석');
+  assert.ok(interpretation >= 0 && calculation > interpretation && ai > calculation);
+  assert.match(ui, /계산값 · 명반 요약/);
+  assert.match(report, /세부 계산 보기/);
+  assert.doesNotMatch(report, /<details class="rp" open>/);
+});

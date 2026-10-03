@@ -472,8 +472,8 @@ export function renderReport(form, r, f, v) {
   ].filter(Boolean).join('');
 
   return `
-    <details class="rp" open>
-      <summary class="rp-sum">통합 해석 문서 — 열다섯 체계를 한 장으로</summary>
+    <details class="rp">
+      <summary class="rp-sum">세부 계산 보기 <span>열다섯 체계의 통합 해석 문서</span></summary>
       <div class="rp-doc">
         <div class="rp-cover">
           <h2 class="rp-title">${esc(v.who?.name ?? form.name ?? '')} 명반 통합 해석</h2>
@@ -601,8 +601,8 @@ export function renderPairReport(formA, formB, c, v, elementDist) {
   ].filter(Boolean).join('');
 
   return `
-    <details class="rp" open>
-      <summary class="rp-sum">통합 관계 해석 보고서 — 열다섯 체계로 맞대어 본 것</summary>
+    <details class="rp">
+      <summary class="rp-sum">세부 계산 보기 <span>열다섯 체계의 관계 해석 보고서</span></summary>
       <div class="rp-doc">
         <div class="rp-cover">
           <h2 class="rp-title">${esc(A)} · ${esc(B)}</h2>

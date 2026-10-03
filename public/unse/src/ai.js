@@ -16,6 +16,7 @@ import { routeQuestion } from './hires/router.js';
 import { buildHiRes } from './hires/context.js';
 import * as PAIR from './hires/pair.js';
 import { horaryCast, formatHorary } from './systems/horary.js';
+import { loadCreditStatus } from './credits.js';
 
 const ENDPOINT = '/fortune-ai';
 
@@ -146,22 +147,28 @@ function addCopy(bubble, text) {
 
 export function aiSection(mode = 'solo', view = null) {
   quick = mode === 'pair' ? PAIR_QUICK : suggestedQuick(view);
+  const target = mode === 'pair'
+    ? `${view?.who?.a ?? '첫 번째 사람'} · ${view?.who?.b ?? '두 번째 사람'}`
+    : `${view?.who?.name ?? '내'} 명반`;
   return `
-    <div class="section-label">AI 에게 묻기</div>
     <div class="card ai">
+      <div class="ai-record-head">
+        <div><p class="ai-kicker">AI 명반 해석</p><p class="ai-target">현재 분석 대상: ${esc(target)}</p></div>
+        <p class="ai-credit" id="ai-credit-status" role="status">질문권을 확인하는 중입니다.</p>
+      </div>
       <div class="ai-quick">
         ${quick.map((q, i) => `<button type="button" data-q="${i}">${esc(q[0])}</button>`).join('')}
       </div>
-      <div id="ai-log" class="ai-log"></div>
+      <div id="ai-log" class="ai-log" aria-live="polite" aria-relevant="additions text"></div>
       <div class="ai-quick"><select id="ai-tier" aria-label="AI 풀이 모델">
         <option value="CLAUDE_SONNET">Claude 균형 풀이 · 1 질문권</option>
         <option value="GPT_SOL">GPT 균형 풀이 · 1 질문권</option>
         <option value="CLAUDE_OPUS">Claude 심층 풀이 · 2 질문권</option>
         <option value="GPT_ASTRA">GPT 최고 심층 풀이 · 5 질문권</option>
       </select></div>
-      <p class="ai-note"><a href="/ai-credits">질문권 잔액 확인·기간권 구매</a></p>
       <div class="ai-input">
-        <textarea id="ai-q" rows="2" placeholder="궁금한 걸 물어보세요 (Ctrl+Enter 로 보내기)"></textarea>
+        <label class="sr-only" for="ai-q">명반에 관해 질문하기</label>
+        <textarea id="ai-q" rows="3" placeholder="궁금한 걸 물어보세요 (Ctrl+Enter 로 보내기)"></textarea>
         <button type="button" id="ai-send">보내기</button>
       </div>
       <p class="ai-note" id="ai-note">
@@ -253,7 +260,19 @@ function wire(context, calc = null, compat = null) {
   const box = document.querySelector('#ai-q');
   const send = document.querySelector('#ai-send');
   const tier = document.querySelector('#ai-tier');
+  const credit = document.querySelector('#ai-credit-status');
   if (!log) return;
+  let creditStatus = { kind: 'unavailable' };
+
+  const paintCredit = (status) => {
+    creditStatus = status;
+    if (!credit) return;
+    if (status.kind === 'available') credit.textContent = `남은 질문 ${status.totalBalance}회`;
+    else if (status.kind === 'exhausted') credit.textContent = '남은 질문 0회';
+    else if (status.kind === 'logged-out') credit.innerHTML = `<a href="/auth/login?returnTo=/unse/">로그인 후 질문권 사용</a>`;
+    else credit.textContent = '질문권 상태를 확인하지 못했습니다.';
+  };
+  loadCreditStatus().then(paintCredit);
 
   document.querySelectorAll('.ai-quick button').forEach((b) => {
     b.addEventListener('click', () => ask(quick[+b.dataset.q][1]));
@@ -268,6 +287,11 @@ function wire(context, calc = null, compat = null) {
 
   async function ask(question) {
     if (session.busy) return;
+    if (creditStatus.kind === 'exhausted') {
+      box.value = question;
+      showPaywall(log, '질문권이 모두 사용되었습니다. 질문은 입력창에 남겨 두었습니다.');
+      return;
+    }
     session.busy = true;
     send.disabled = true;
 
@@ -346,6 +370,13 @@ function wire(context, calc = null, compat = null) {
       const why = (leftPage && !err.fromServer)
         ? '화면을 벗어나 있는 동안 연결이 끊겼습니다.'
         : esc(err.message);
+      if (/질문권|이용 한도|로그인/.test(String(err.message))) {
+        box.value = question;
+        showPaywall(log, why);
+        bubble.remove();
+        session.messages.pop();
+        return;
+      }
       bubble.innerHTML = acc
         ? `<p>${renderText(acc)}</p><p class="ai-err">${why} 여기까지 받았습니다.</p>`
         : `<p class="ai-err">${why}</p>`;
@@ -366,6 +397,14 @@ function wire(context, calc = null, compat = null) {
       session.busy = false;
       send.disabled = false;
     }
+  }
+
+  function showPaywall(parent, reason) {
+    const row = document.createElement('div');
+    row.className = 'ai-paywall';
+    row.innerHTML = `<p><strong>질문권이 필요합니다.</strong> ${esc(reason)}</p><p><a href="/ai-credits">질문권 구매</a> · <a href="/payment-info">환불·결제 안내</a> · <a href="/terms">이용약관</a></p>`;
+    parent.appendChild(row);
+    row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
   function showUsage(u) {

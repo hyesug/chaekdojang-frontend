@@ -42,3 +42,11 @@ test('결과는 해석·계산값·AI·세부 계산 순서로 읽게 한다', a
   assert.match(report, /세부 계산 보기/);
   assert.doesNotMatch(report, /<details class="rp" open>/);
 });
+
+test('AI 영역은 질문권 상태와 소진 paywall을 기록 안에서 표시한다', async () => {
+  const ai = await read('src/ai.js');
+
+  assert.match(ai, /loadCreditStatus/);
+  assert.match(ai, /id="ai-credit-status"/);
+  assert.match(ai, /className = 'ai-paywall'/);
+});

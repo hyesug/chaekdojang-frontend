@@ -518,22 +518,29 @@ details.pool[open] > summary::before { content: '▾ '; }
 @media (max-width: 560px) { .modes { flex-wrap: wrap; } .mode { min-width: 30%; } }
 
 /* ── AI 에게 묻기 ── */
+.ai { border-top: 2px solid var(--gold); }
+.ai-record-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 17px; padding-bottom: 13px; border-bottom: 1px solid var(--line-soft); }
+.ai-kicker { margin: 0; color: var(--stamp); font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.ai-target { margin: 3px 0 0; color: var(--ink); font-size: 14px; font-weight: 600; }
+.ai-credit { margin: 0; color: var(--ink-2); font-size: 12px; text-align: right; white-space: nowrap; }
+.ai-credit a { color: var(--gold); }
 .ai-quick { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 16px; }
 .ai-quick button {
-  padding: 8px 14px; border-radius: 999px; font-size: 12.5px;
-  background: var(--card-2); border: 1px solid var(--line); color: var(--ink-2);
+  padding: 7px 10px; border-radius: 4px; font-size: 12.5px;
+  background: transparent; border: 1px solid var(--line); color: var(--ink-2);
   font-family: inherit; cursor: pointer; transition: border-color .15s, color .15s;
 }
 .ai-quick button:hover { border-color: var(--gold-soft); color: var(--gold); }
 
-.ai-log { display: flex; flex-direction: column; gap: 14px; }
+.ai-log { display: flex; flex-direction: column; gap: 0; border-top: 1px solid var(--line-soft); }
 .ai-log:not(:empty) { margin-bottom: 16px; }
-.ai-turn { border-radius: 12px; padding: 13px 16px; font-size: 14.5px; line-height: 1.8; }
+.ai-turn { border-radius: 0; padding: 15px 0; font-size: 14.5px; line-height: 1.8; border-bottom: 1px solid var(--line-soft); }
 .ai-turn.me {
-  background: rgba(217,178,106,.1); border: 1px solid var(--gold-soft);
-  color: var(--ink); align-self: flex-end; max-width: 85%;
+  background: transparent; color: var(--ink); align-self: stretch; max-width: none;
 }
-.ai-turn.bot { background: var(--bg-soft); border: 1px solid var(--line); color: var(--ink-2); }
+.ai-turn.me::before { content: '질문'; color: var(--stamp); display: block; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.ai-turn.bot { background: transparent; color: var(--ink-2); }
+.ai-turn.bot::before { content: 'AI 명반 해석'; color: var(--gold); display: block; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
 .ai-turn p { margin: 0 0 10px; }
 .ai-turn p:last-child { margin-bottom: 0; }
 .ai-turn h4 { margin: 16px 0 7px; font-size: 14.5px; color: var(--gold); }
@@ -569,20 +576,31 @@ details.pool[open] > summary::before { content: '▾ '; }
 .ai-input { display: flex; gap: 8px; align-items: stretch; }
 .ai-input textarea {
   flex: 1; padding: 11px 13px; background: var(--bg-soft);
-  border: 1px solid var(--line); border-radius: 10px; color: var(--ink);
+  border: 1px solid var(--line); border-radius: 5px; color: var(--ink);
   font-family: inherit; font-size: 14.5px; line-height: 1.6; resize: vertical;
 }
 .ai-input textarea:focus {
   outline: none; border-color: var(--gold); background: #FFFFFF;
-  box-shadow: 0 0 0 3px rgba(139, 96, 72, .10);
+  box-shadow: 0 0 0 3px rgba(23, 74, 70, .15);
 }
 .ai-input button {
-  padding: 0 20px; border: none; border-radius: 10px;
+  min-width: 82px; padding: 0 18px; border: 1px solid var(--gold); border-radius: 5px;
   background: var(--gold);
   color: #FFFFFF; font-family: inherit; font-size: 14.5px; font-weight: 700; cursor: pointer;
 }
 .ai-input button:disabled { opacity: .45; cursor: default; }
 .ai-note { font-size: 11.5px; color: var(--ink-3); line-height: 1.7; margin: 12px 2px 0; }
+.ai-paywall { margin: 16px 0 0; border-left: 3px solid var(--stamp); background: rgba(139, 48, 64, .07); padding: 13px 14px; color: var(--ink-2); font-size: 13px; line-height: 1.65; }
+.ai-paywall p { margin: 0; }
+.ai-paywall p + p { margin-top: 7px; font-size: 12px; }
+.ai-paywall strong, .ai-paywall a { color: var(--stamp); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+@media (max-width: 560px) {
+  .ai-record-head { display: block; }
+  .ai-credit { margin-top: 6px; text-align: left; white-space: normal; }
+  .ai-input { display: grid; grid-template-columns: 1fr; }
+  .ai-input button { min-height: 46px; }
+}
 
 /* ── 문장 풀이 ────────────────────────────────────────────────
    점수와 막대를 걷어내고 문장만 남긴 뒤로 쓰는 것들.

@@ -43,7 +43,7 @@ export default function MobileMenu({ links }: { links: NavLink[] }) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-12 flex w-64 flex-col gap-1 border border-cream-300 bg-cream-50 p-3 shadow-[var(--shadow-floating)]">
+        <div className="absolute right-0 top-12 flex max-h-[calc(100dvh-68px)] w-64 flex-col gap-1 overflow-y-auto border border-cream-300 bg-cream-50 p-3 shadow-[var(--shadow-floating)]">
           {links.map(({ href, label, external }) => {
             const cls =
               "min-h-11 border-b border-cream-200 px-2 py-3 text-sm text-brown-700 transition-colors hover:bg-cream-100";

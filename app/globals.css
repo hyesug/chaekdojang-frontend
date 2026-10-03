@@ -54,9 +54,9 @@
   --color-cream-300: #C9D1C8;
   --color-brown-100: #E1E9E3;
   --color-brown-200: #C0D2C9;
-  --color-brown-300: #9BB4AA;
-  --color-brown-400: #78988F;
-  --color-brown-500: #56706A;
+  --color-brown-300: #566F69;
+  --color-brown-400: #496A63;
+  --color-brown-500: #3C5E58;
   --color-brown-600: #315F5A;
   --color-brown-700: #174A46;
   --color-brown-800: #102A2C;
@@ -86,9 +86,11 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-button, input, select, textarea { font: inherit; }
-button, a, input, select, textarea, summary { -webkit-tap-highlight-color: transparent; }
-button:not(:disabled), [role="button"]:not([aria-disabled="true"]) { cursor: pointer; }
+@layer base {
+  button, input, select, textarea { font: inherit; }
+  button, a, input, select, textarea, summary { -webkit-tap-highlight-color: transparent; }
+  button:not(:disabled), [role="button"]:not([aria-disabled="true"]) { cursor: pointer; }
+}
 
 :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
   outline: 2px solid var(--color-primary);
@@ -103,8 +105,11 @@ button:not(:disabled), [role="button"]:not([aria-disabled="true"]) { cursor: poi
 .rounded-lg { border-radius: var(--radius-md); }
 .rounded-xl, .rounded-2xl, .rounded-3xl { border-radius: var(--radius-lg); }
 .shadow, .shadow-sm, .shadow-md, .shadow-lg, .shadow-xl { box-shadow: none; }
-.bg-white { background-color: var(--color-surface); }
 button.rounded-full, a.rounded-full { border-radius: var(--radius-md); }
+
+@layer utilities {
+  .bg-white { background-color: var(--color-surface); }
+}
 
 .stamp-mark {
   display: inline-flex; align-items: center; justify-content: center;

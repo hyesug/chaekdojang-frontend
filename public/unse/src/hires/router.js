@@ -157,18 +157,27 @@ export function eventFromQuestion(q) {
 /** 몇 해를 볼 것인가 */
 function spanFromQuestion(q, thisYear) {
   // 평생을 물으면 넓게 본다. 십 년 단위 곡선은 이 범위 안에서 만든다
-  if (/평생|인생|일생|노후|말년/.test(q)) return { fromYear: thisYear, years: 6 };
+  // periodExplicit — 질문이 기간을 직접 말했는가. 말하지 않았으면 후속 질문에서
+  // 앞 질문의 기간을 이어받는다 (inheritPlan)
+  if (/평생|인생|일생|노후|말년/.test(q)) return { fromYear: thisYear, years: 6, periodExplicit: true };
   const years = [...q.matchAll(/(20\d{2})\s*년?/g)].map((m) => Number(m[1]))
     .filter((y) => y >= thisYear - 30 && y <= thisYear + 30);
   if (years.length) {
-    const from = Math.min(...years, thisYear);
+    // 예전에는 늘 올해부터 셌다. "2027년과 2028년 비교"에도 2026년이 끼고,
+    // "2030~2035년"은 6년 상한에 걸려 2026~2031년만 계산됐다.
+    // - 여러 해(범위·비교): 물은 첫 해부터. 순위가 물은 해들 안에서 매겨진다.
+    // - 앞날 한 해: 그 앞 한 해를 붙인다. 준비기(불만이 쌓이고 알아보는 때)가
+    //   대개 그 전 해에 있어서, 잘라 내면 국면이 "발생"부터 시작한다.
+    // - 올해·지난 한 해: 그 해만.
+    const lo = Math.min(...years);
     const to = Math.max(...years);
-    return { fromYear: from, years: Math.max(1, Math.min(6, to - from + 1)) };
+    const from = lo !== to ? lo : (lo > thisYear ? lo - 1 : lo);
+    return { fromYear: from, years: Math.max(1, Math.min(6, to - from + 1)), periodExplicit: true };
   }
-  if (/올해|금년|이번 ?해/.test(q)) return { fromYear: thisYear, years: 1 };
-  if (/내년|다음 ?해/.test(q)) return { fromYear: thisYear, years: 2 };
-  if (/앞으로|향후|몇 ?년|장기/.test(q)) return { fromYear: thisYear, years: 5 };
-  return { fromYear: thisYear, years: 3 };
+  if (/올해|금년|이번 ?해/.test(q)) return { fromYear: thisYear, years: 1, periodExplicit: true };
+  if (/내년|다음 ?해/.test(q)) return { fromYear: thisYear, years: 2, periodExplicit: true };
+  if (/앞으로|향후|몇 ?년|장기/.test(q)) return { fromYear: thisYear, years: 5, periodExplicit: true };
+  return { fromYear: thisYear, years: 3, periodExplicit: false };
 }
 
 /**
@@ -308,6 +317,9 @@ export function routeQuestion(question, thisYear) {
     needsHorary: isHoraryQuestion(q),
     // 사용자가 체계를 지정했으면 그 지정이 분야 라우팅보다 앞선다
     scopeLock: scopeLockOf(q),
+    // 성향만 묻는다 — 분야도 기간도 시기 낱말도 없다. 시기 계산 없이 성향 구획만 보낸다
+    traitsOnly: TRAIT_WORDS.test(q) && domains.length === 0 && !span.periodExplicit &&
+      !TIMING_WORDS.test(q) && !scopeLockOf(q) && !isHoraryQuestion(q),
     // 그 분야에 '안 된 쪽' 후보가 있는가. 없으면 점수가 높아도 "된다"가 아니다
     hasNegativeCandidate: NEGATIVE_CANDIDATES[domains[0]] ?? false,
     needsPlace: PLACE_WORDS.some((w) => q.includes(w)) || cities.length > 0,
@@ -353,6 +365,51 @@ export function pipelineFor(domains, flags = {}) {
   p.western.push('solarArc', 'profection');
   if (d.has('건강')) p.bazi.push('오행편중');
   return p;
+}
+
+/** 사람 자체(성향)를 묻는 말과, 시기를 묻는 말 */
+const TRAIT_WORDS = /성격|기질|성향|어떤 사람|타고난|장단점|강점|약점/;
+const TIMING_WORDS = /언제|시기|몇 ?월|몇 ?년|날짜|흐름|운세|올해|내년|앞으로/;
+
+/** "아까 말한 시기", "그 사람", "그중에서도" 처럼 앞 질문에 기대는 말 */
+const FOLLOW_UP = /아까|방금|앞서|위에서|그때|그 ?무렵|그 ?시기|그 ?해|그 ?달|그 ?사람|그 ?상대|그 ?중|중에서도|거기서|이어서|그럼|그러면|좀 더|더 자세히|왜 그런/;
+
+/**
+ * 후속 질문의 계획을 앞 질문에 잇는다.
+ *
+ * 질문 하나만 보고 라우팅하면 "2027년 중에서도 몇 월이 가장 강해?"는 분야를
+ * 못 찾아 기본값(직업)으로 가고, "아까 말한 시기에 만나는 사람은?"은 기간을
+ * 못 찾아 올해부터 3년으로 간다. 앞에서 연애를 물었는데 직업 계산을 실어
+ * 보내면 돈은 돈대로 들고 답은 엉뚱해진다.
+ *
+ * **앞 질문에 기대는 말("아까", "그중에서도", "그 사람")이 있을 때만** 잇는다.
+ * "내 성격은?"처럼 분야 낱말이 없는 새 질문까지 앞 분야를 물려받으면, 성격을
+ * 물었는데 재물 계산이 실린다 (측정 스크립트에서 실제로 그렇게 됐다).
+ * - 분야를 못 찾았으면(fallback) 앞 질문의 분야를 쓴다.
+ * - 기간을 말하지 않았으면 앞 질문이 말한(또는 이어받은) 기간을 쓴다.
+ * - 새 분야·새 기간을 말했으면 그대로 둔다. 화제가 바뀐 것이다.
+ */
+export function inheritPlan(plan, prev) {
+  if (!prev || !FOLLOW_UP.test(plan.question ?? '')) return plan;
+  const takeDomains = plan.fallback && !prev.fallback;
+  const takePeriod = !plan.periodExplicit && (prev.periodExplicit || prev.inherited);
+  if (!takeDomains && !takePeriod) return plan;
+
+  const domains = takeDomains ? prev.domains : plan.domains;
+  const flags = { place: plan.needsPlace || (takeDomains && prev.needsPlace), day: plan.needsDay };
+  return {
+    ...plan,
+    ...(takeDomains ? {
+      // "그 사람 성격은?"은 내 성향이 아니라 앞 분야(상대)의 이야기다
+      domains, primary: prev.primary, matched: prev.matched, fallback: false, traitsOnly: false,
+      event: plan.event ?? prev.event, eventDomain: plan.eventDomain ?? prev.eventDomain,
+      needsWealth: plan.needsWealth || prev.needsWealth,
+      hasNegativeCandidate: NEGATIVE_CANDIDATES[domains[0]] ?? false,
+    } : {}),
+    ...(takePeriod ? { fromYear: prev.fromYear, years: prev.years } : {}),
+    inherited: true,
+    pipeline: pipelineFor(domains, flags),
+  };
 }
 
 /** 화면에서 바로 쓰는 기본 계획 (질문을 아직 모를 때) */

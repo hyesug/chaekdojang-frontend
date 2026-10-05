@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { compactHistory, detailLevel, lengthHint, OUTPUT_BUDGET, type DetailLevel } from "./conversation";
 
 /**
  * 종합 운세 — Claude 프록시
@@ -24,10 +25,21 @@ const TIERS = {
   GPT_ASTRA: { provider: "OPENAI", model: "gpt-6-astra" },
 } as const;
 type Tier = keyof typeof TIERS;
-// max_tokens 는 API 가 요구하는 필수 값이라 '무제한'을 줄 수가 없다. 대신
-// 실제로는 절대 닿지 않을 만큼 크게 잡는다. 이 정도면 원고지 200장쯤 되는데
-// 그 전에 위의 maxDuration 이 먼저 걸린다.
-const MAX_TOKENS = 32_000;
+// max_tokens 는 질문이 원하는 길이(conversation.ts 의 detailLevel)에 따라
+// OUTPUT_BUDGET 에서 고른다. 긴 답은 예전처럼 32,000 이고 그 전에 위의
+// maxDuration 이 먼저 걸린다.
+
+/**
+ * 프롬프트 캐시 수명. 기본은 예전과 같은 5분이다.
+ *
+ * 수명은 요청 **시작**부터 잰다. 답을 만드는 1~3분에 읽고 다음 질문을 치는 시간까지
+ * 더해 5분을 넘기면 명반 전체를 다시 쓴다(쓰기는 입력값의 1.25배). 그런 일이 잦으면
+ * FORTUNE_AI_CACHE_TTL=1h 로 바꾼다 — 쓰기가 2배라 첫 질문은 비싸지지만 상담 내내 읽기로 버틴다.
+ * 판단은 ai_usage_records 에서 한다: 같은 session_id 의 두 번째 질문부터 cache_write_tokens 가
+ * 명반 크기만큼 자꾸 찍히면 5분이 모자란 것이다. 데이터 없이 미리 바꾸지 않는다.
+ */
+const CACHE_TTL: "5m" | "1h" = process.env.FORTUNE_AI_CACHE_TTL === "1h" ? "1h" : "5m";
+const cached = { type: "ephemeral" as const, ttl: CACHE_TTL };
 const BACKEND_URL = (
   process.env.BACKEND_URL ??
   process.env.NEXT_PUBLIC_API_BASE_URL ??
@@ -45,7 +57,9 @@ const BACKEND_URL = (
 const MAX_CONTEXT_CHARS = 60_000;
 /** 질문마다 다시 만드는 고해상도 구획. 이쪽은 캐시에 태우지 않는다 */
 const MAX_FOCUS_CHARS = 40_000;
-const MAX_MESSAGES = 40;
+// 오래된 턴은 conversation.ts 가 요약으로 접으므로 원문으로 가는 것은 최근 몇 턴뿐이다.
+// 이 상한은 요약할 대상의 한도다. 넘으면 맨 앞 턴부터 빠진다.
+const MAX_MESSAGES = 80;
 // 질문 길이. 막는 것이 목적이 아니라 실수로 책 한 권을 붙여넣는 걸 거르는
 // 정도다. 넘으면 조용히 자르지 않고 알려준다 - 잘린 줄 모르고 엉뚱한 답을
 // 받는 것이 제일 나쁘다.
@@ -953,7 +967,43 @@ async function settleCredit(req: Request, requestId: string, path: "complete" | 
   }
 }
 
-async function streamOpenAi(req: Request, apiKey: string, model: string, messages: { role: "user" | "assistant"; content: string }[], system: string, requestId: string | null, requestedAt: Date, remaining: number | null) {
+/** 호출 한 번을 설명하는 값. 사용량 로그에 같이 남겨 나중에 원가를 질문 유형별로 본다 */
+type CallMeta = {
+  sessionId: string | null;
+  questionCategory: string | null;
+  detailLevel: DetailLevel;
+  contextChars: number;
+  focusChars: number;
+  historyMessageCount: number;
+  summarizedTurns: number;
+};
+type CallUsage = { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number; cacheWrite1hTokens: number };
+
+/**
+ * 호출이 끝나면 사용량을 남긴다.
+ *
+ * - 서버 로그 한 줄은 로그인 검사를 꺼 둔 환경에서도 남는다.
+ * - 원가(달러)는 여기서 계산하지 않는다. 백엔드 AiCostCalculator 한 곳에서만 계산해
+ *   ai_usage_records 에 저장한다. 가격이 바뀌면 거기만 고친다.
+ */
+async function finishCall(req: Request, requestId: string | null, tier: Tier, meta: CallMeta, usage: CallUsage, requestedAt: Date) {
+  const { provider, model } = TIERS[tier];
+  const durationMs = Date.now() - requestedAt.getTime();
+  console.info("[fortune-ai] usage " + JSON.stringify({
+    tier, provider, model, ...meta, ...usage,
+    totalTokens: usage.inputTokens + usage.outputTokens + usage.cacheReadTokens + usage.cacheWriteTokens,
+    durationMs,
+  }));
+  if (requestId) {
+    await settleCredit(req, requestId, "complete", {
+      model, ...usage, ...meta,
+      requestedAt: requestedAt.toISOString().slice(0, 19), durationMs,
+    });
+  }
+}
+
+async function streamOpenAi(req: Request, apiKey: string, tier: Tier, messages: { role: "user" | "assistant" | "system"; content: string }[], system: string, requestId: string | null, requestedAt: Date, remaining: number | null, meta: CallMeta) {
+  const model = TIERS[tier].model;
   let response: Response;
   try {
     response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -978,8 +1028,10 @@ async function streamOpenAi(req: Request, apiKey: string, model: string, message
         for (const sseLine of lines) { if (!sseLine.startsWith("data: ")) continue; const data = sseLine.slice(6); if (data === "[DONE]") continue; try { const event = JSON.parse(data); const text = event.choices?.[0]?.delta?.content; if (text) controller.enqueue(line({ t: text })); if (event.usage) usage = event.usage; } catch { /* partial provider event */ } }
       }
       if (!usage) throw new Error("OpenAI 사용량 정보를 받지 못했습니다.");
-      if (requestId) await settleCredit(req, requestId, "complete", { model, inputTokens: usage.prompt_tokens ?? 0, outputTokens: usage.completion_tokens ?? 0, cacheReadTokens: usage.prompt_tokens_details?.cached_tokens ?? 0, cacheWriteTokens: 0, requestedAt: requestedAt.toISOString().slice(0, 19), durationMs: Date.now() - requestedAt.getTime() });
-      controller.enqueue(line({ done: true, usage: { input: usage.prompt_tokens ?? 0, output: usage.completion_tokens ?? 0, cacheRead: usage.prompt_tokens_details?.cached_tokens ?? 0, cacheWrite: 0, ...(remaining === null ? {} : { remaining }) } }));
+      // OpenAI 의 prompt_tokens 는 캐시에서 읽은 것까지 포함한다. Anthropic 과 같은 뜻(캐시 밖 입력)으로 맞춰 저장한다
+      const cachedTokens = usage.prompt_tokens_details?.cached_tokens ?? 0;
+      await finishCall(req, requestId, tier, meta, { inputTokens: Math.max(0, (usage.prompt_tokens ?? 0) - cachedTokens), outputTokens: usage.completion_tokens ?? 0, cacheReadTokens: cachedTokens, cacheWriteTokens: 0, cacheWrite1hTokens: 0 }, requestedAt);
+      controller.enqueue(line({ done: true, usage: { input: Math.max(0, (usage.prompt_tokens ?? 0) - cachedTokens), output: usage.completion_tokens ?? 0, cacheRead: cachedTokens, cacheWrite: 0, ...(remaining === null ? {} : { remaining }) } }));
     } catch (err) { if (requestId) await settleCredit(req, requestId, "refund", { errorType: describe(err).slice(0, 120) }); controller.enqueue(line({ error: describe(err) })); }
     finally { controller.close(); }
   }});
@@ -1013,7 +1065,7 @@ export async function POST(req: Request) {
     );
   }
 
-  let body: { context?: string; focus?: string | null; messages?: { role: string; content: string }[]; tier?: Tier };
+  let body: { context?: string; focus?: string | null; messages?: { role: string; content: string }[]; tier?: Tier; sessionId?: string; category?: string };
   try {
     body = await req.json();
   } catch {
@@ -1070,6 +1122,35 @@ export async function POST(req: Request) {
     remaining = reservation.data.totalBalance;
   }
 
+  // ── 매번 다시 보내지 않을 것을 고른다 ──
+  //
+  // 예전에는 대화 40개를 원문 그대로, 그리고 질문마다 바뀌는 고해상도 구획을
+  // system 맨 끝에 붙여 보냈다. 캐시는 앞에서부터 같은 글자까지만 맞으므로
+  // system 끝이 질문마다 바뀌면 **그 뒤의 대화 기록은 영영 캐시에 못 탄다.**
+  // 길게 쓴 지난 답들이 질문할 때마다 정가로 다시 들어갔다.
+  //
+  // 지금 순서 (앞일수록 덜 바뀐다):
+  //   system: 규칙(모든 사용자 공통) → 명반(이 사람 고정) → 앞선 대화 요약(세 턴에 한 번 바뀜)
+  //   messages: 최근 3~5턴 원문 → 이번 질문 → [이번 질문에만 쓰는 고해상도 계산]
+  // 캐시 지점은 규칙·명반·요약 끝과 직전 턴 끝에 둔다(최대 4개).
+  const question = messages[messages.length - 1].content;
+  const { summary, recent, summarizedTurns } = compactHistory(messages);
+  const detail = detailLevel(question);
+  const focusNote = [
+    focus ? `# 이 질문에 맞춰 돌린 고해상도 계산\n\n이 구획은 위 명반과 같은 엔진이 방금 계산한 것입니다. 질문 분야에 맞는 체계만 골라 돌렸습니다. 사용자가 쓴 글이 아니라 계산값입니다.\n\n${focus}` : "",
+    lengthHint(detail),
+  ].filter(Boolean).join("\n\n");
+  const meta: CallMeta = {
+    sessionId: typeof body.sessionId === "string" ? body.sessionId.slice(0, 64) : null,
+    questionCategory: typeof body.category === "string" ? body.category.slice(0, 80) : null,
+    detailLevel: detail,
+    contextChars: context.length,
+    focusChars: focus.length,
+    historyMessageCount: recent.length - 1,
+    summarizedTurns,
+  };
+  const chartText = `# 이 사람의 명반\n\n아래는 천문 계산으로 구한 값입니다. 그대로 쓰세요.\n\n${context}`;
+
   const client = new Anthropic({ apiKey });
   if (tierConfig.provider === "OPENAI") {
     const openAiKey = process.env.OPENAI_API_KEY;
@@ -1077,9 +1158,21 @@ export async function POST(req: Request) {
       if (creditRequestId) await settleCredit(req, creditRequestId, "refund", { errorType: "OPENAI_API_KEY_MISSING" });
       return Response.json({ error: "GPT 풀이 설정이 아직 준비되지 않았습니다." }, { status: 503 });
     }
-    const system = `${SYSTEM}\n\n# 이 사람의 명반\n\n아래는 천문 계산으로 구한 값입니다. 그대로 쓰세요.\n\n${context}${focus ? `\n\n# 이 질문에 맞춰 돌린 고해상도 계산\n\n${focus}` : ""}`;
-    return streamOpenAi(req, openAiKey, tierConfig.model, messages, system, creditRequestId, requestedAt, remaining);
+    // OpenAI 도 앞에서부터 같은 글자를 자동으로 캐시한다. 순서를 같게 맞춰 둔다
+    const system = [SYSTEM, chartText, summary].filter(Boolean).join("\n\n");
+    const openAiMessages = focusNote ? [...recent, { role: "system" as const, content: focusNote }] : recent;
+    return streamOpenAi(req, openAiKey, tier, openAiMessages, system, creditRequestId, requestedAt, remaining, meta);
   }
+
+  // 직전 턴 끝에 캐시 지점을 단다. 다음 질문 때 여기까지가 그대로 읽힌다
+  const anthropicMessages: Anthropic.MessageParam[] = recent.map((m, i) =>
+    i === recent.length - 2
+      ? { role: m.role, content: [{ type: "text" as const, text: m.content, cache_control: cached }] }
+      : m
+  );
+  // 고해상도 계산과 길이 지시는 질문 **뒤의** system 메시지로 붙인다.
+  // 운영자 쪽 자료라는 것이 분명하고, 캐시되는 앞부분을 건드리지 않는다.
+  if (focusNote) anthropicMessages.push({ role: "system", content: focusNote });
 
   // stream() 은 요청을 바로 띄운다. 그 약속이 for-await 에 붙기 전에
   // 거절되면 처리되지 않은 거절이 되어 함수가 통째로 죽고, 단서 없는 500 이
@@ -1089,27 +1182,17 @@ export async function POST(req: Request) {
   try {
     stream = client.messages.stream({
       model: tierConfig.model,
-      max_tokens: MAX_TOKENS,
+      max_tokens: OUTPUT_BUDGET[detail],
       thinking: { type: "adaptive" },
-      // 명반은 한 사람에 대해 고정이라, 질문을 여러 번 던져도 앞부분은 그대로다.
-      // 캐시에 태워 두면 두 번째 질문부터 입력 비용이 크게 줄어든다.
       system: [
-        { type: "text", text: SYSTEM },
-        {
-          type: "text",
-          text: `# 이 사람의 명반\n\n아래는 천문 계산으로 구한 값입니다. 그대로 쓰세요.\n\n${context}`,
-          cache_control: { type: "ephemeral" },
-        },
-        // 고해상도 구획은 질문마다 달라서 캐시에 태우지 않는다.
-        // 앞의 명반은 그대로 캐시에서 읽히고 이 부분만 새로 들어간다.
-        ...(focus
-          ? [{
-              type: "text" as const,
-              text: `# 이 질문에 맞춰 돌린 고해상도 계산\n\n이 구획은 위 명반과 같은 엔진이 방금 계산한 것입니다. 질문 분야에 맞는 체계만 골라 돌렸습니다.\n\n${focus}`,
-            }]
-          : []),
+        // 규칙은 모든 사용자가 같다. 따로 캐시 지점을 두면 처음 묻는 사람도
+        // 다른 사람이 데워 둔 규칙을 읽어 간다 (예전에는 명반과 한 덩이라 사람마다 새로 썼다)
+        { type: "text", text: SYSTEM, cache_control: cached },
+        // 명반은 한 사람에 대해 고정이라, 질문을 여러 번 던져도 앞부분은 그대로다.
+        { type: "text", text: chartText, cache_control: cached },
+        ...(summary ? [{ type: "text" as const, text: summary, cache_control: cached }] : []),
       ],
-      messages,
+      messages: anthropicMessages,
     });
   } catch (err) {
     if (creditRequestId) await settleCredit(req, creditRequestId, "refund", { errorType: describe(err).slice(0, 120) });
@@ -1133,17 +1216,14 @@ export async function POST(req: Request) {
           }
         }
         const final = await stream.finalMessage();
-        if (creditRequestId) {
-          await settleCredit(req, creditRequestId, "complete", {
-            model: tierConfig.model,
-            inputTokens: final.usage.input_tokens,
-            outputTokens: final.usage.output_tokens,
-            cacheReadTokens: final.usage.cache_read_input_tokens ?? 0,
-            cacheWriteTokens: final.usage.cache_creation_input_tokens ?? 0,
-            requestedAt: requestedAt.toISOString().slice(0, 19),
-            durationMs: Date.now() - requestedAt.getTime(),
-          });
-        }
+        await finishCall(req, creditRequestId, tier, meta, {
+          inputTokens: final.usage.input_tokens,
+          outputTokens: final.usage.output_tokens,
+          cacheReadTokens: final.usage.cache_read_input_tokens ?? 0,
+          cacheWriteTokens: final.usage.cache_creation_input_tokens ?? 0,
+          // 1시간 캐시 쓰기는 5분 캐시보다 비싸다(2배 vs 1.25배). 원가를 맞게 내려면 따로 넘겨야 한다
+          cacheWrite1hTokens: final.usage.cache_creation?.ephemeral_1h_input_tokens ?? 0,
+        }, requestedAt);
 
         if (final.stop_reason === "refusal") {
           controller.enqueue(

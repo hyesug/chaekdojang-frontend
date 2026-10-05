@@ -12,8 +12,8 @@
 import { buildContext, READING_PROMPT, buildCompatContext, COMPAT_PROMPT,
          domainSections, monthSection } from './aiContext.js';
 import { readForecast } from './forecast.js';
-import { routeQuestion } from './hires/router.js';
-import { buildHiRes } from './hires/context.js';
+import { routeQuestion, inheritPlan } from './hires/router.js';
+import { buildHiRes, formatTraits } from './hires/context.js';
 import * as PAIR from './hires/pair.js';
 import { horaryCast, formatHorary } from './systems/horary.js';
 import { loadCreditStatus } from './credits.js';
@@ -199,11 +199,16 @@ export function initAI(form, fortune, forecast) {
  * 이 질문에 필요한 고해상도 계산만 돌려 한 덩이로 만든다.
  * 계산이 터져도 질문 자체는 가야 하므로 실패는 조용히 삼킨다.
  */
-function focusFor(question, calc) {
+function focusFor(question, calc, prevPlan = null) {
   if (!calc?.fortune) return null;
   try {
-    const plan = routeQuestion(question, calc.fortune.input.currentYear);
-    const parts = [buildHiRes(calc.fortune, calc.forecast, plan).text];
+    // 후속 질문("아까 그 시기", "그중 몇 월")은 앞 질문의 분야·기간을 잇는다
+    const plan = inheritPlan(routeQuestion(question, calc.fortune.input.currentYear), prevPlan);
+    session.lastPlan = plan;
+    const hires = buildHiRes(calc.fortune, calc.forecast, plan);
+    // 성향만 물었으면 시기 계산·분야 구획 없이 속성별 담당 체계 구획만 보낸다
+    if (plan.traitsOnly) return formatTraits(hires.json) || hires.text;
+    const parts = [hires.text];
 
     // 분야 구획은 **걸린 분야만** 온다. 일곱을 다 캐시에 넣어 두었더니
     // 자녀를 물어도 재물·건강이 따라가 캐시 덩어리가 47,600자였다
@@ -259,7 +264,9 @@ function pairFocus(question, compat) {
 
 /** 화면이 그려진 뒤 입력칸과 버튼을 붙인다. 개인·궁합이 같은 배선을 쓴다 */
 function wire(context, calc = null, compat = null) {
-  session = { context, calc, compat, messages: [], busy: false };
+  // sessionId 는 사용량 로그를 상담 단위로 묶는 데만 쓴다 (사람을 가리키지 않는 임의 값)
+  session = { context, calc, compat, messages: [], busy: false, lastPlan: null,
+    id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}` };
 
   const log = document.querySelector('#ai-log');
   const box = document.querySelector('#ai-q');
@@ -321,11 +328,13 @@ function wire(context, calc = null, compat = null) {
     try {
       const focus = session.compat
         ? pairFocus(question, session.compat)
-        : focusFor(question, session.calc);
+        : focusFor(question, session.calc, session.lastPlan);
+      // 사용량 로그에 남길 질문 분야. 원가를 질문 유형별로 보려고 보낸다
+      const category = session.compat ? 'pair' : (session.lastPlan?.domains ?? []).join(',');
       const res = await fetch(ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ context: session.context, focus, messages: session.messages, tier: tier?.value ?? 'CLAUDE_SONNET' }),
+        body: JSON.stringify({ context: session.context, focus, messages: session.messages, tier: tier?.value ?? 'CLAUDE_SONNET', sessionId: session.id, category }),
       });
 
       if (!res.ok || !res.body) {
@@ -415,8 +424,9 @@ function wire(context, calc = null, compat = null) {
 
   function showUsage(u) {
     if (!u) return;
-    // Opus 5 기준 입력 $5 / 출력 $25 per MTok. 캐시 읽기는 입력의 1/10로 잡는다.
-    const usd = (u.input * 5 + u.output * 25 + u.cacheRead * 0.5 + u.cacheWrite * 6.25) / 1e6;
+    // 달러 원가는 여기서 셈하지 않는다. 모델마다 단가가 달라 화면에서 한 가지 값으로
+    // 셈하면 틀린다(예전에는 어느 모델이든 Opus 5 단가로 셈했다). 원가는 백엔드
+    // AiCostCalculator 가 한 곳에서 계산해 사용량 기록에 남긴다.
     const note = document.querySelector('#ai-note');
     if (note) {
       note.innerHTML =
@@ -425,7 +435,7 @@ function wire(context, calc = null, compat = null) {
         // 몇십 토큰인데도 명반 몇천 자를 캐시에 얹느라 값이 붙는다.
         (u.cacheWrite ? ` · 캐시에 올림 ${u.cacheWrite.toLocaleString()}` : '') +
         (u.cacheRead ? ` · 캐시에서 읽음 ${u.cacheRead.toLocaleString()}` : '') +
-        ` 토큰 · 약 $${usd.toFixed(4)}<br>` +
+        ' 토큰<br>' +
         (u.cacheRead
           ? '명반을 캐시에서 읽어 입력 비용이 10분의 1로 줄었습니다.'
           : '이번엔 명반을 캐시에 올리느라 값이 붙었습니다. 다음 질문부터 크게 줄어듭니다.') +

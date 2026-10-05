@@ -686,6 +686,36 @@ export function formatHiRes(j, plan) {
     out.push('');
   }
 
+  out.push(...interpretedLines(j));
+
+  // ── F. 기저율 — 순위를 보기 전에 ──
+  // 뒤에 적으면 이미 순위를 확률로 읽은 다음이다
+  for (const b of j.baseRates ?? []) {
+    out.push(BR.formatBaseRate(b.domain, j.who));
+    out.push('');
+  }
+
+  out.push(...afterBaseRates(j, plan));
+  return out.join('\n');
+}
+
+/**
+ * 성향만 묻는 질문용 — 속성별 담당 체계 구획만 낸다.
+ *
+ * "내 성격은?"에는 분야도 기간도 없어서 예전에는 기본 분야(직업)의 3년치 시기
+ * 계산(약 2만 자)이 통째로 실렸다. 시스템 프롬프트가 성향 질문에는 이 구획을
+ * 1순위로 쓰고 시기를 말하지 말라고 하므로, 나머지는 돈만 들고 답에 잡음이 된다.
+ * 원국 자체(열다섯 체계·타고난 구성·내면)는 캐시된 명반에 이미 있다.
+ */
+export function formatTraits(j) {
+  const lines = interpretedLines(j);
+  if (!lines.length) return '';
+  return ['## 성향 질문용 계산 — 시기 계산은 싣지 않았다 (성향 질문에는 시기를 말하지 않는다)', '', ...lines]
+    .join('\n').trim();
+}
+
+function interpretedLines(j) {
+  const out = [];
   // ── 속성별 담당 체계 ──
   if (j.interpreted) {
     out.push('### [B~D] 속성마다 담당 체계 하나가 읽은 것 — **섞지 않았다**');
@@ -713,14 +743,12 @@ export function formatHiRes(j, plan) {
       '말할 수 있지만, **언제 무슨 일이 일어난다고는 말하지 말 것** — 시기 예측은 따로 쟀고 신호가 없었다(p=0.886).');
     out.push('');
   }
+  return out;
+}
 
-  // ── F. 기저율 — 순위를 보기 전에 ──
-  // 뒤에 적으면 이미 순위를 확률로 읽은 다음이다
-  for (const b of j.baseRates ?? []) {
-    out.push(BR.formatBaseRate(b.domain, j.who));
-    out.push('');
-  }
-
+/** formatHiRes 의 기저율 다음 부분 (사건 추론부터 끝까지) */
+function afterBaseRates(j, plan) {
+  const out = [];
   // ── B~E. 사건 추론 ──
   out.push('### [B~E] 사건 추론 — 위 계산값을 현실 사건으로 옮긴 것 (계산이 아니라 해석)');
   out.push('구간 등급은 이 사람의 이 기간 안에서의 상대 순위다. 확률이 아니며 숫자로 옮기지 말 것.');
@@ -919,5 +947,5 @@ export function formatHiRes(j, plan) {
   out.push('- 숫자는 범위로만 쓰고, 명반에서 직접 나온 값이 아니라는 것을 한 번 밝힐 것.');
   out.push('- 가능성을 셋 이상 늘어놓지 말 것. 주 시나리오 하나와 대안 하나로 끝낼 것.');
   void plan;
-  return out.join('\n');
+  return out;
 }

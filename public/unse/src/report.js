@@ -102,15 +102,13 @@ function timingOf(r, domain, span = 10) {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   받은 docx 를 절 단위로 그대로 옮긴 것
+   통합 해석 보고서의 형식
 
-   문서의 **차례·제목·표 머리글·문장 뼈대**를 고정하고, 중괄호만 명반에서
-   채운다. 사람이 바뀌어도 같은 문서를 읽는 느낌이 나야 한다.
-
-   뼈대 문장은 해석이 아니라 형식이다. 해석은 각 체계의 readings 에서
-   가져오고 여기서 새 뜻을 만들지 않는다. 문서에 있던 절 가운데
-   '2. 프로젝트·사업·수익화'는 그 대화에서 나온 이야기라 넣지 않았다 —
-   명반에서 나오는 값이 아니다.
+   참고 보고서에서 가져온 것은 차례·제목·표 머리글 같은 편집 형식뿐이다.
+   특정인의 결론, 날짜, 관계 평가는 복사하지 않는다. 각 절은 지금 계산한
+   명반의 facts·readings·viewmodel만 재배열하므로 대상이 달라지면 내용도
+   달라진다. 엔진에 없는 지표(서비스 실적, 추첨 번호, 질문 시각 점시)는
+   그럴듯한 답으로 채우지 않고 계산 범위를 적는다.
    ═══════════════════════════════════════════════════════════ */
 
 function readingText(r, sysName, contains) {
@@ -274,6 +272,27 @@ const careerLife = (v, r) =>
   + sub('1-5', '평생의 결',
     [v.life?.early, v.life?.middle, v.life?.late].map(withSrc).filter(Boolean).map(para).join(''));
 
+/* ── 2. 프로젝트·사업·수익화 ───────────────────────────── */
+
+function projectBusiness(v, r) {
+  const signals = [
+    ['직업 적성', withSrc(v.work?.job)],
+    ['재물 흐름', withSrc(v.work?.money)],
+    ['홍국기문', headOf(r, '홍국기문')],
+  ].filter(([, value]) => value);
+  return sub('2-1', '현재 프로젝트 전반의 장애물',
+    table2(['계산에서 읽힌 축', '현재 해석'], signals)
+    + para('이 절은 명반에서 반복되는 일·재물의 결을 모은 것입니다. 실제 일정, 매출, 팀 구성 같은 사업 지표는 계산하지 않습니다.'))
+    + sub('2-2', '책도장',
+      labeled('일을 만드는 방식', withSrc(v.work?.job))
+      + labeled('돈과 조건의 흐름', withSrc(v.work?.money))
+      + para('책도장의 실제 성과나 제품 의사결정은 명반으로 판정하지 않습니다. 이 기록은 현재 입력에서 읽힌 일의 결을 점검하는 보조 자료입니다.'))
+    + sub('2-3', '로또 분석과 횡재운',
+      labeled('재물 축', withSrc(v.work?.money))
+      + labeled('현재 상징값', headOf(r, '주역') || headOf(r, '홍국기문'))
+      + para('추첨 번호·당첨 확률·구매 시점은 이 명반 계산의 범위가 아닙니다. 재물 해석을 로또 결과나 투자 판단으로 바꾸어 읽지 마세요.'));
+}
+
 /* ── 2. 관계 ────────────────────────────────────────────── */
 
 function relations(v, r) {
@@ -295,15 +314,15 @@ function relations(v, r) {
   } catch { /* */ }
   const spS = palaceStars(r.input, '부처궁'), chS = palaceStars(r.input, '자녀궁');
 
-  return sub('2-1', '배우자 — 어떤 사람이고 언제인가',
+  return sub('3-1', '배우자 — 어떤 사람이고 언제인가',
       para(spS.length ? `부처궁 ${buBr}의 ${j(spS.join('·'), '을')} 핵심으로 보았습니다.` : '')
       + (spv.lines ?? []).map(para).join('') + readList(sp) + timingOf(r, '결혼'))
-    + sub('2-2', '자녀 — 수·성별·시기',
+    + sub('3-2', '자녀 — 수·성별·시기',
       para(chS.length ? `자녀궁 ${jaBr}의 ${j(chS.join('·'), '을')} 핵심으로 보았습니다.` : '')
       + (chv.lines ?? []).map(para).join('') + readList(ch) + timingOf(r, '자녀'))
-    + sub('2-3', `27숙(숙요) — ${headOf(r, '숙요')}`,
+    + sub('3-3', `27숙(숙요) — ${headOf(r, '숙요')}`,
       para(`본명숙을 ${headOf(r, '숙요')}로 두고 읽었습니다.`) + readings(r, '숙요', 4))
-    + sub('2-4', '형제·또래', para(withSrc(v.life?.sibling)));
+    + sub('3-4', '형제·또래', para(withSrc(v.life?.sibling)));
 }
 
 /* ── 3. 올해 흐름 ───────────────────────────────────────── */
@@ -336,16 +355,17 @@ function thisYear(v, f, r) {
       return s == null ? null : [a.replace('운', ''), areaText(a, s, 'year')];
     }).filter(Boolean);
 
-  return para(`${yr}년은 ${gz}년입니다. 요일·다샤·괘·월운을 차례로 놓았습니다.`)
-    + sub('3-1', `요일과 수호행성 — ${headOf(r, '태국 점성술')}`,
+  return para(`${yr}년은 ${gz}년입니다. 요일·다샤·점시 형식의 현재 흐름·월운을 차례로 놓았습니다.`)
+    + sub('4-1', `요일·Jupiter와 ${yr}년 — ${headOf(r, '태국 점성술')}`,
       para(`출생 요일과 주성을 ${headOf(r, '태국 점성술')}로 두고 읽었습니다.`)
       + readings(r, '태국 점성술', 4) + readings(r, '마하보테', 3))
-    + sub('3-2', `현재 다샤 — ${headOf(r, '베딕')}`, readings(r, '베딕', 5))
-    + sub('3-3', `올해 괘 — ${headOf(r, '토정비결')}`,
-      readings(r, '토정비결', 4) + readings(r, '태을신수', 2))
-    + sub('3-4', '올해 영역별', table2(['영역', '풀이'], areas))
-    + sub('3-5', '절기월 열두 달',
+    + sub('4-2', `현재 다샤 — ${headOf(r, '베딕')}`, readings(r, '베딕', 5))
+    + sub('4-3', `${yr}년 점시 형식의 현재 흐름 (별도 점시 아님) — ${headOf(r, '토정비결')}`,
+      readings(r, '토정비결', 4) + readings(r, '태을신수', 2)
+      + para('질문 시각을 입력받아 세운 별도 점시는 아닙니다. 출생 명반과 올해 계산값으로 현재 흐름을 정리했습니다.'))
+    + sub('4-4', '절기월 열두 달',
       tableN(['절기월', '핵심', '좋은 점', '주의'], months)
+      + table2(['영역', '풀이'], areas)
       + para('달마다의 간지는 역법으로 정해지는 값입니다. 다만 어느 달이 더 좋은지를 가리는 '
         + '힘은 저희가 재 봤을 때 기준선을 넘지 못했으니, 순위로 읽지 마시고 "이 달에 무엇이 '
         + '맞물리는가"까지만 보세요.'));
@@ -374,8 +394,8 @@ function direction(r, f) {
     + (rows.length ? para('방위는 계산값이지만 실제 동네 이름은 그 방향을 지도에 대 본 추정입니다. '
       + '세파는 구성 배치가 아니라 그 해 간지에서 나옵니다. 실제 이사에서는 연반과 월반이 다르므로 '
       + '목적지와 날짜가 정해지면 다시 계산해야 합니다.') : '')
-    + sub('4-1', `구성학 — ${headOf(r, '구성학')}`, readings(r, '구성학', 4))
-    + sub('4-2', '옮기는 시기', timingOf(r, '이사', 8));
+    + sub('5-1', `구성학 — ${headOf(r, '구성학')}`, readings(r, '구성학', 4))
+    + sub('5-2', '옮기는 시기', timingOf(r, '이사', 8));
 }
 
 /* ── 5. 기문·수비학 ─────────────────────────────────────── */
@@ -392,15 +412,15 @@ function inner(r) {
     ['손실', '흥분 → 여러 개 동시 시작 → 비용·시간 과투입 → 피로 → 중단'],
   ];
 
-  return sub('5-1', `홍국기문 — ${headOf(r, '홍국기문')}`,
+  return sub('6-1', `홍국기문 — ${headOf(r, '홍국기문')}`,
       para(num ? `${num}를 핵심으로 보았습니다. 쌓은 것을 밖으로 내보내야 완성되는 자리입니다.` : '')
       + readings(r, '홍국기문', 5)
       + table2(['패턴', '내용'], pattern))
-    + sub('5-2', `수비학 — ${headOf(r, '카발라')}`,
+    + sub('6-2', `Life Path·생일수 — ${headOf(r, '카발라')}`,
       para(`${headOf(r, '카발라')}로 두고 읽었습니다.`) + readings(r, '카발라', 5))
-    + sub('5-3', `타고난 괘 — ${headOf(r, '주역')}`, readings(r, '주역', 4))
-    + sub('5-4', `육임 — ${headOf(r, '육임')}`, readings(r, '육임', 3))
-    + sub('5-5', `타로 — ${headOf(r, '타로')}`, readings(r, '타로', 4));
+    + sub('6-3', `타고난 괘 — ${headOf(r, '주역')}`, readings(r, '주역', 4))
+    + sub('6-4', `육임 — ${headOf(r, '육임')}`, readings(r, '육임', 3))
+    + sub('6-5', `타로 — ${headOf(r, '타로')}`, readings(r, '타로', 4));
 }
 
 /* ── 6. 올해 전반 신수 ──────────────────────────────────── */
@@ -422,6 +442,21 @@ function yearHealth(f, r, v) {
     + table2(['분야', '해석'], rows)
     + para('큰 흉을 단정하지 않습니다. 몸은 과로와 수면, 사고는 피곤한 상태에서의 무리한 강행을 '
       + '조심하시라는 뜻으로 읽으시면 됩니다.');
+}
+
+/* ── 8. 질문별 답변 통합 색인 ───────────────────────────── */
+
+function answerIndex(v, f, r) {
+  const yr = f.year?.period?.sajuYear ?? r.input.currentYear;
+  const rows = [
+    ['커리어·명예', withSrc(v.life?.career)],
+    ['재물·수익화', withSrc(v.work?.money)],
+    ['관계·숙요', withSrc(v.life?.spouse)],
+    [`${yr}년 흐름`, withSrc(v.now?.year)],
+    ['건강·생활 리듬', withSrc(v.life?.body)],
+  ].filter(([, answer]) => answer);
+  return para('같은 계산값을 여러 절에서 반복해 읽지 않도록, 주요 질문의 현재 답을 한 표로 모았습니다.')
+    + tableN(['#', '질문', '통합 답변'], rows.map(([question, answer], index) => [index + 1, question, answer]));
 }
 
 /* ── 7. 최종 타임라인과 실행 원칙 ───────────────────────── */
@@ -463,12 +498,14 @@ export function renderReport(form, r, f, v) {
   const body = [
     sec(0, '한눈에 보는 통합 결론', overview(v, f, r)),
     sec(1, '평생 커리어·명예·재물 흐름', careerLife(v, r)),
-    sec(2, '관계·숙요', relations(v, r)),
-    sec(3, `${yr}년 흐름: 요일·다샤·괘·월운`, thisYear(v, f, r)),
-    sec(4, '행운 요소·방위·이사/이직 방향', direction(r, f)),
-    sec(5, '기문·수비학이 보여주는 평생 성패와 내적 과제', inner(r)),
-    sec(6, `${yr}년 전반 신수: 건강·집안·사고·재물`, yearHealth(f, r, v)),
-    sec(7, '최종 타임라인과 실행 원칙', finale(r)),
+    sec(2, '프로젝트·사업·수익화', projectBusiness(v, r)),
+    sec(3, '관계·숙요', relations(v, r)),
+    sec(4, `${yr}년 흐름: 요일·다샤·점시·월운`, thisYear(v, f, r)),
+    sec(5, '행운 요소·방위·이사/이직 방향', direction(r, f)),
+    sec(6, '기문·수비학이 보여주는 평생 성패와 내적 과제', inner(r)),
+    sec(7, `${yr}년 전반 신수: 건강·집안·사고·재물`, yearHealth(f, r, v)),
+    sec(8, '질문별 답변 통합 색인', answerIndex(v, f, r)),
+    sec(9, '최종 타임라인과 실행 원칙', finale(r)),
   ].filter(Boolean).join('');
 
   return `
@@ -513,9 +550,62 @@ function pRead(c, name, max = 99) {
     `<p class="rp-t">${x.title ? `<strong>${esc(x.title)}</strong> — ` : ''}${esc(x.text)}</p>`).join('');
 }
 
+function pFirstText(c, name) {
+  const item = pSys(c, name)?.readings?.[0];
+  if (!item) return '';
+  return [item.title, item.text].filter(Boolean).join(' — ');
+}
+
 /** 한 체계 절 — 계산값 표 + 풀이 */
 const pBlock = (c, n, title, name, max = 99) =>
   sub(n, `${title} — ${pHead(c, name)}`, pFacts(c, name) + pRead(c, name, max));
+
+const pairAxisText = (v, key) => {
+  const axis = v?.eightAxes?.find((item) => item.key === key);
+  if (!axis) return '';
+  return [axis.conclusion, axis.reality, axis.good, axis.bad].filter(Boolean).join(' ');
+};
+
+function pairCommonYear(v, year) {
+  const lifeRows = [
+    ['생활의 기준', pairAxisText(v, '생활')],
+    ['돈·일의 조율', pairAxisText(v, '돈')],
+    ['역할 나누기', pairAxisText(v, '역할분담')],
+  ].filter(([, value]) => value);
+  const impactRows = [
+    ['끌림', pairAxisText(v, '끌림')],
+    ['감정', pairAxisText(v, '감정')],
+    ['대화', pairAxisText(v, '대화')],
+  ].filter(([, value]) => value);
+
+  return sub('12-1', '결혼·생활 계획',
+    table2(['공동 과제', `${year}년 해석`], lifeRows)
+    + para('실제 결혼·주거·재정 일정은 두 사람의 합의와 현실 조건으로 정해야 합니다. 이 표는 관계 명반에서 반복되는 점검 항목입니다.'))
+    + sub('12-2', '서로에게 미치는 영향',
+      table2(['관계 축', '관계에서 읽힌 축'], impactRows));
+}
+
+function pairCurrentChecklist(c, v) {
+  const rows = [
+    ['생활', pHead(c, '사주'), pairAxisText(v, '생활')],
+    ['돈', pHead(c, '베딕'), pairAxisText(v, '돈')],
+    ['대화', pHead(c, '점성술'), pairAxisText(v, '대화')],
+    ['장기 유지', pHead(c, '자미두수'), pairAxisText(v, '장기유지')],
+  ].filter(([, headline, reading]) => headline || reading)
+    .map((row) => row.map((value) => value || '계산값 없음'));
+
+  return tableN(['관계 축', '주요 계산값', '현재 확인할 점'], rows)
+    + para('현재 궁합 엔진은 두 사람의 출생 명반을 비교합니다. 달별 관계 예측은 계산하지 않으므로, 이 절은 월별 흐름이 아니라 지금의 관계에서 확인할 축을 정리한 것입니다.');
+}
+
+function pairGoodTime(c, year) {
+  const rows = [
+    ['주역', pHead(c, '주역'), pFirstText(c, '주역')],
+    ['수리', pHead(c, '카발라'), pFirstText(c, '카발라')],
+  ].filter(([, value]) => value);
+  return tableN(['근거', '현재 계산값', `${year}년 적용 원칙`], rows)
+    + para('날짜를 길일로 판정하는 별도 계산은 제공하지 않습니다. 실제 일정은 건강·계약·가족 상황을 먼저 확인하세요.');
+}
 
 export function renderPairReport(formA, formB, c, v, elementDist) {
   const A = c.A?.input?.name ?? formA.name;
@@ -523,6 +613,7 @@ export function renderPairReport(formA, formB, c, v, elementDist) {
   const s = c.synthesis ?? {};
   const today = new Date();
   const stamp = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
+  const year = c.A?.input?.currentYear ?? today.getFullYear();
 
   // 1. 핵심 결론 — 체계마다 한 줄씩. 문서의 "명리: … / 시나스트리: …" 모양
   const lines = (c.results ?? [])
@@ -578,14 +669,18 @@ export function renderPairReport(formA, formB, c, v, elementDist) {
     sec(8, '베딕 아스타쿠타', pFacts(c, '베딕') + pRead(c, '베딕')),
     sec(9, '구성학 본명성', pFacts(c, '구성학') + pRead(c, '구성학')),
     sec(10, '생명의 나무 — 수비학', pFacts(c, '카발라') + pRead(c, '카발라')),
-    sec(11, '그 밖의 체계',
+    sec(11, `${year}년 결혼 점시 (출생정보 기준·별도 점시 아님)`,
       pBlock(c, '11-1', '주역', '주역')
       + pBlock(c, '11-2', '육임', '육임')
       + pBlock(c, '11-3', '홍국기문', '홍국기문')
       + pBlock(c, '11-4', '태을신수', '태을신수')
       + pBlock(c, '11-5', '토정비결', '토정비결')
-      + pBlock(c, '11-6', '타로', '타로')),
-    sec(12, '여러 체계에서 반복되는 것',
+      + pBlock(c, '11-6', '타로', '타로')
+      + para('질문을 던진 시각을 입력받아 세운 결혼 점시는 아닙니다. 두 사람의 출생 명반 비교에서 나온 현재 상징값을 같은 형식으로 정리했습니다.')),
+    sec(12, `${year}년 두 사람의 공동운 (출생정보 기준)`, pairCommonYear(v, year)),
+    sec(13, '현재부터 3개월 관계 흐름 (월별 예측 아님)', pairCurrentChecklist(c, v)),
+    sec(14, `${year}년 화합하기 좋은 시기: 주역·수리 (일정 판정 없음)`, pairGoodTime(c, year)),
+    sec(15, '여러 체계에서 반복되는 공통 패턴',
       table2(['판정', '체계'], ['좋음', '무난', '어려움']
         .filter((k) => s.buckets?.[k]?.length)
         .map((k) => [k, s.buckets[k].join(' · ')]))
@@ -594,10 +689,12 @@ export function renderPairReport(formA, formB, c, v, elementDist) {
           .map((k) => `${k}: ${s.coreBuckets[k].join('·')}`).join(' / ')) : '')
       + (s.split ? para('명반을 세우는 체계 안에서도 판단이 갈립니다. '
         + '한쪽 결론만 들고 가지 마세요.') : '')),
-    sec(13, '최종 통합 판단',
+    sec(16, '최종 통합 판단',
       para(`열다섯을 모두 놓고 보면 ${s.verdict ?? ''} 쪽입니다.`)
       + (s.best?.length ? para(`가장 후하게 본 곳: ${s.best.map((x) => x.name).join(' · ')}`) : '')
       + (s.worst?.length ? para(`가장 어렵게 본 곳: ${s.worst.map((x) => x.name).join(' · ')}`) : '')),
+    sec('부록', '해석 범위와 주의사항',
+      para('이 보고서는 현재 입력한 두 사람의 출생 정보로 계산한 상징 체계의 해석입니다. 결혼·이별·임신·투자·건강과 관련된 실제 의사결정은 당사자의 대화와 전문가의 객관적 조언을 우선하세요.')),
   ].filter(Boolean).join('');
 
   return `

@@ -68,10 +68,13 @@ let mode = 'solo';
 document.querySelectorAll('.mode').forEach((btn) => {
   btn.addEventListener('click', () => {
     mode = btn.dataset.mode;
-    document.querySelectorAll('.mode').forEach((x) => x.classList.toggle('on', x === btn));
+    document.querySelectorAll('.mode').forEach((x) => {
+      x.classList.toggle('on', x === btn);
+      x.setAttribute('aria-pressed', String(x === btn));
+    });
     $('#personB').hidden = mode !== 'pair';
     document.querySelectorAll('.person-title').forEach((t) => { t.hidden = mode !== 'pair'; });
-    $('.go').textContent = mode === 'pair' ? '궁합 보기' : '풀이 보기';
+    $('.go').textContent = mode === 'pair' ? '궁합 명반 생성하기' : '명반 생성하기';
     $('#result').classList.remove('on');
     // 아직 안 받았으면 지울 결과도 없다
     pending?.then((ui) => ui.reset()).catch(() => {});
@@ -94,6 +97,38 @@ function wireNoTime(prefix) {
 }
 wireNoTime('');
 wireNoTime('b-');
+
+function clearFormError() {
+  const error = $('#form-error');
+  error.hidden = true;
+  error.textContent = '';
+  document.querySelectorAll('#form [aria-invalid="true"]').forEach((el) => {
+    el.removeAttribute('aria-invalid');
+    el.removeAttribute('aria-describedby');
+  });
+}
+
+function errorField(message) {
+  if (/생년월일|1900년|2100년/.test(message)) return message.includes('두 번째') ? '#b-year' : '#year';
+  if (/출생 시간/.test(message)) return message.includes('두 번째') ? '#b-hour' : '#hour';
+  return null;
+}
+
+function showFormError(message) {
+  const error = $('#form-error');
+  const field = errorField(message);
+  error.textContent = message;
+  error.hidden = false;
+  if (!field) return;
+  const input = $(field);
+  if (!input) return;
+  input.setAttribute('aria-invalid', 'true');
+  input.setAttribute('aria-describedby', 'form-error');
+  input.focus({ preventScroll: true });
+  input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+$('#form').addEventListener('input', clearFormError);
 
 // ─────────────────────────────────────────────────────────────
 // 제출
@@ -124,7 +159,9 @@ const PAIR_STEPS = [
 ];
 
 const progressShell = (steps) => `
-  <div class="card progress">
+  <div class="progress" role="status" aria-live="polite">
+    <p class="state-label">계산 중</p>
+    <p class="progress-title">입력한 기준으로 명반을 세우고 있습니다.</p>
     <ol class="steps">
       ${steps.map((t) => `<li><span class="mark"></span>${esc(t)}</li>`).join('')}
     </ol>
@@ -153,11 +190,15 @@ function stepper(minMs = 260) {
 $('#form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const box = $('#result');
+  const submit = $('.go');
+  clearFormError();
 
   // 진행 표시를 먼저 띄운다. 엔진을 받아오는 동안 화면이 멈춘 것처럼
   // 보이지 않게 하려는 것이다 — 미리 받아둔 경우에는 어차피 곧바로 넘어간다.
   box.innerHTML = progressShell(mode === 'pair' ? PAIR_STEPS : SOLO_STEPS);
   box.classList.add('on');
+  box.setAttribute('aria-busy', 'true');
+  submit.disabled = true;
   box.scrollIntoView({ behavior: 'smooth', block: 'start' });
   const next = stepper();
   await new Promise((r) => setTimeout(r, 0));
@@ -165,11 +206,18 @@ $('#form').addEventListener('submit', async (e) => {
   try {
     const ui = await loadUI();
     await ui.run(mode, box, next);
+    box.setAttribute('aria-busy', 'false');
+    box.focus({ preventScroll: true });
   } catch (err) {
     // 받아오지 못한 경우도 여기로 온다. 다음 시도에서 다시 받도록 비워 둔다.
     pending = null;
-    box.innerHTML = `<div class="error">${esc(err.message)}</div>`;
+    const message = err instanceof Error ? err.message : '명반을 만들지 못했습니다.';
+    showFormError(message);
+    box.innerHTML = `<div class="error" role="alert"><strong>명반을 만들지 못했습니다.</strong><p>${esc(message)}</p><p>입력을 확인한 뒤 다시 시도해 주세요.</p></div>`;
     box.classList.add('on');
+    box.setAttribute('aria-busy', 'false');
+  } finally {
+    submit.disabled = false;
   }
 });
 

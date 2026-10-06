@@ -18,7 +18,7 @@
  * 고르고 배열만 한다. 새로 지으면 어느 계산에서 나온 말인지 추적할 수 없다.
  */
 import { areaText } from './forecast.js';
-import { currentDaeun, computeDaeun, TEN_GOD_GROUP, elementDistribution } from './core/ganzhi.js';
+import { currentDaeun, computeDaeun, TEN_GOD_GROUP, elementDistribution, tenGod, branchRelations } from './core/ganzhi.js';
 import { buildBoard, decadeLimits } from './hires/ziwei.js';
 import { yearTimeline } from './reading.js';
 import { j } from './core/josa.js';
@@ -362,6 +362,33 @@ function relations(v, r) {
 
 /* ── 3. 올해 흐름 ───────────────────────────────────────── */
 
+/** 그 달에 들어오는 기운(십성)이 생활에서 어떻게 나타나는가 + 할 일 */
+const MONTH_GOD = {
+  비견: '동료·친구와 함께하는 일이 늘어나는 달입니다. 혼자 하던 일을 나누면 훨씬 수월해집니다.',
+  겁재: '경쟁자가 생기거나 뜻밖에 돈이 나갈 일이 생기는 달입니다. 돈을 빌려주거나 함께 투자하는 일은 한 번 더 따져보세요.',
+  식신: '하고 싶은 일을 즐기며 결과물을 만드는 달입니다. 미뤄 둔 작업을 마무리하기 좋습니다.',
+  상관: '말과 재주가 밖으로 드러나는 달입니다. 아이디어를 내기에는 좋지만 윗사람 앞에서는 말을 골라 하세요.',
+  편재: '뜻밖의 돈이나 거래 기회가 들어오는 달입니다. 다만 큰 투자는 한 번에 몰지 말고 나눠서 결정하세요.',
+  정재: '꾸준한 수입과 살림이 안정되는 달입니다. 저축을 늘리거나 가계부를 정리하기 좋습니다.',
+  편관: '갑작스러운 책임이나 압박이 들어오는 달입니다. 혼자 떠안지 말고 일정을 미리 조정해 두세요.',
+  정관: '직장에서 평가·직함·책임이 걸린 일이 생기는 달입니다. 원칙대로 처리하면 인정받습니다.',
+  편인: '새로운 공부나 독특한 관심사에 빠지는 달입니다. 생각이 많아지니 결정은 기한을 정해 두세요.',
+  정인: '배움·자격·문서 일이 잘 풀리는 달입니다. 서류를 정리하거나 도움을 청하기 좋습니다.',
+};
+/** 명반의 네 자리가 가리키는 생활 영역 */
+const SEAT_WHO = { day: '배우자나 가까운 사람', month: '직장이나 집안', year: '부모·윗사람', hour: '자녀·아랫사람이나 앞날의 계획' };
+/** 그 달이 명반의 자리와 만나는 꼴 → 생기기 쉬운 일 + 대처 */
+const MONTH_HIT = {
+  충: (w) => `${w} 쪽에 변동이 생기기 쉬우니, 큰 결정은 서두르지 말고 미리 계획을 세워 두세요.`,
+  육합: (w) => `${w} 쪽에서 반가운 일이 생기기 쉬우니, 만남이나 제안은 적극적으로 받아 보세요.`,
+  반합: (w) => `${w} 쪽에서 힘을 보태 주는 일이 생기기 쉬우니, 도움을 청하기 좋습니다.`,
+  삼형: (w) => `${w} 일로 같은 말이 오가기 쉬우니, 중요한 합의는 말보다 문서로 남기세요.`,
+  상형: (w) => `${w} 일로 같은 말이 오가기 쉬우니, 중요한 합의는 말보다 문서로 남기세요.`,
+  자형: (w) => `${w} 일을 혼자 떠안고 지치기 쉬우니, 나눠 맡길 사람을 먼저 찾으세요.`,
+  해: (w) => `${w} 쪽에서 속상한 일이 생기기 쉬우니, 서운한 점은 작을 때 말로 풀어 두세요.`,
+  파: (w) => `${w} 쪽 계획이 틀어지기 쉬우니, 약속과 일정은 한 번 더 확인하세요.`,
+};
+
 function thisYear(v, f, r) {
   const yr = f.year?.period?.sajuYear ?? r.input.currentYear;
   const AREAS = ['금전운', '직장운', '애정운', '학업운', '건강운'];
@@ -369,21 +396,42 @@ function thisYear(v, f, r) {
   // 운세의 한 해는 입춘(2월 초)에 시작해 다음 해 1월에 끝난다. 그래서 '1월'이 맨 끝에 온다 —
   // 헷갈리지 않게 달마다 연도를 붙이고 이번 달을 표시한다.
   const nowKey = f.today.y * 100 + f.today.m;
-  // 달마다 한 문단: 분위기 → 잘 풀리는 분야와 그 이유 → 조심할 분야와 대처.
-  // 이웃한 달이 같은 내용이면 "11월 ~ 1월"로 묶는다 (같은 문단이 줄줄이 되풀이되지 않게)
+  // 달마다 한 문단. 예전에는 분위기 두 가지 × 분야 이름만 바뀌는 틀이라 어느 달이나 같아 보였다.
+  // 이제는 ① 그 달에 들어오는 기운(열 가지)이 실제로 어떤 일로 나타나는지
+  // ② 그 달이 타고난 명반의 어느 자리와 부딪치거나 맞물리는지를 쓰고,
+  // ③ 분야는 그 달에 실제로 두드러질 때(점수가 높거나 낮을 때)만 덧붙인다.
+  // 같은 설명은 처음 나온 달에만 다 쓰고, 뒤에서는 "2월처럼 …" / "직장 쪽도 …"로 줄인다
+  const godSeen = new Map();
+  const areaSeen = new Set();
   const rawMonths = (f.timeline ?? []).map((m) => {
     const a = m.areas ?? {};
     const ranked = AREAS.map((k) => [k, a[k]?.score ?? null]).filter(([, sc]) => sc != null).sort((x, y) => y[1] - x[1]);
     const [best, bestScore] = ranked[0] ?? [];
     const [worst, worstScore] = ranked.at(-1) ?? [];
-    const mood = areaText('총운', a.총운?.score ?? m.score, 'month');
-    const bestLine = !best ? ''
-      : bestScore >= 62 ? `${j(NAME[best], '이')} 잘 풀립니다. ${areaText(best, bestScore, 'month')}`
-        : `큰 굴곡 없이 지나가는 달이고, 그중 ${NAME[best]} 쪽이 가장 낫습니다.`;
-    const worstLine = !worst || worst === best ? ''
-      : worstScore < 42 ? `${NAME[worst]} 쪽은 조심하세요. ${areaText(worst, worstScore, 'month')}`
-        : `${NAME[worst]} 쪽이 상대적으로 덜하지만 크게 걱정할 정도는 아닙니다.`;
-    const text = [firstOf(mood), bestLine, worstLine].filter(Boolean).join(' ');
+    let god = null, hitLine = '';
+    try {
+      god = tenGod(r.chart.dayStem, m.gz.stem);
+      for (const key of ['day', 'month', 'year', 'hour']) {
+        const p = r.chart.pillars[key];
+        if (!p) continue;
+        const rel = branchRelations(p.branch, m.gz.branch).find((x) => !x.minor);
+        if (rel && MONTH_HIT[rel.kind]) { hitLine = MONTH_HIT[rel.kind](SEAT_WHO[key]); break; }
+      }
+    } catch { /* 문장만 줄어든다 */ }
+    let godLine = MONTH_GOD[god] ?? '';
+    if (godLine && godSeen.has(god)) godLine = `${godSeen.get(god)}처럼 ${firstOf(godLine)}`;
+    else if (godLine) godSeen.set(god, `${m.from.m}월`);
+    let bestLine = '';
+    if (best && bestScore >= 62) {
+      bestLine = areaSeen.has(best) ? `${NAME[best]} 쪽도 잘 풀립니다.` : `특히 ${NAME[best]} 쪽은 ${areaText(best, bestScore, 'month')}`;
+      areaSeen.add(best);
+    }
+    const text = [
+      godLine,
+      hitLine,
+      bestLine,
+      worst && worst !== best && worstScore < 42 ? `${j(NAME[worst], '은')} 조심하세요. ${areaText(worst, worstScore, 'month')}` : '',
+    ].filter(Boolean).join(' ');
     return { key: m.from.y * 100 + m.from.m, label: `${m.from.y}년 ${m.from.m}월`, text };
   });
   const months = [];

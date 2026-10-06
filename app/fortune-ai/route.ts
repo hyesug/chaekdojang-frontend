@@ -64,6 +64,16 @@ const MAX_MESSAGES = 80;
 // 정도다. 넘으면 조용히 자르지 않고 알려준다 - 잘린 줄 모르고 엉뚱한 답을
 // 받는 것이 제일 나쁘다.
 const MAX_QUESTION_CHARS = 20_000;
+/**
+ * 한 번에 받는 전체 글자 상한(명반+고해상도+대화 원문 합계).
+ * 대화의 지난 답(assistant)은 브라우저가 보내는 값이라 위조할 수 있다. 칸마다 상한만 있으면
+ * 80개×2만 자를 실어 질문권 하나로 비싼 호출을 만들 수 있으므로 합계에도 천장을 둔다.
+ * 정상 상담은 명반 6만 + 고해상도 4만 + 최근 몇 턴이라 이 값에 닿지 않는다.
+ */
+const MAX_TOTAL_CHARS = 200_000;
+/** 장애 때 AI 풀이만 끄는 스위치. 질문권을 잡기 전에 막으므로 차감도 일어나지 않는다 */
+const AI_DISABLED = process.env.FORTUNE_AI_DISABLED === "1";
+const OPENAI_BASE_URL = (process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1").replace(/\/$/, "");
 
 /** 로그인·월 한도 검사를 켤지. 지금은 꺼 두고 누구나 쓸 수 있게 한다 */
 // 질문권은 계정 원장에 귀속된다. 명시적으로 0을 설정한 개발 환경에서만 끈다.
@@ -907,8 +917,36 @@ function describe(err: unknown) {
   return String(err);
 }
 
+/**
+ * 사용자에게 보여줄 오류 문구.
+ *
+ * 제공자 원문(상태 코드·내부 메시지·요청 ID)은 사용자 화면에 내보내지 않고 서버 로그에만 남긴다.
+ * 질문권 복구가 실제로 끝났을 때만 "복구됐다"고 말한다.
+ */
+function publicError(err: unknown, refunded: boolean) {
+  const busy = err instanceof Anthropic.APIError && [429, 503, 529].includes(err.status ?? 0);
+  const head = busy ? "AI 서버가 붐벼 답을 받지 못했습니다." : "AI 답을 받지 못했습니다.";
+  return `${head} ${refunded ? "이 질문에 쓴 질문권은 복구했습니다. " : ""}잠시 뒤 다시 시도해 주세요.`;
+}
+
+/** 로그 한 줄. 질문·명반 본문은 싣지 않고 요청 식별자와 원인만 남긴다 */
+function logFailure(stage: string, requestId: string | null, tier: Tier, err: unknown) {
+  console.error(`[fortune-ai] ${stage} 실패 ` + JSON.stringify({ requestId, tier, error: describe(err).slice(0, 300) }));
+}
+
+/** 한국어 기준 대략 토큰 수. 연결이 끊겨 제공자 사용량을 못 받은 호출의 원가 추정에만 쓴다 */
+const approxTokens = (chars: number) => Math.ceil(chars / 1.5);
+
 function line(obj: unknown) {
   return new TextEncoder().encode(JSON.stringify(obj) + "\n");
+}
+
+/** 사용자가 연결을 끊은 뒤에는 enqueue/close 가 던진다. 정산 로직이 그 예외에 끊기지 않게 감싼다 */
+function safeEnqueue(controller: ReadableStreamDefaultController, obj: unknown) {
+  try { controller.enqueue(line(obj)); } catch { /* 이미 닫힌 스트림 */ }
+}
+function safeClose(controller: ReadableStreamDefaultController) {
+  try { controller.close(); } catch { /* 이미 닫힌 스트림 */ }
 }
 
 /**
@@ -956,15 +994,44 @@ async function reserveCredit(req: Request, requestId: string, tier: Tier) {
 
 async function settleCredit(req: Request, requestId: string, path: "complete" | "refund", body: unknown) {
   try {
-    await fetch(`${BACKEND_URL}/api/fortune-ai/reservations/${requestId}/${path}`, {
+    const res = await fetch(`${BACKEND_URL}/api/fortune-ai/reservations/${requestId}/${path}`, {
       method: "POST",
       headers: { Cookie: req.headers.get("cookie") ?? "", Accept: "application/json", "Content-Type": "application/json" },
       body: JSON.stringify(body), cache: "no-store", signal: AbortSignal.timeout(5000),
     });
+    // 예전에는 응답 코드를 보지 않아 백엔드가 500 을 돌려줘도 아무 흔적이 없었다
+    // (실제로 환불이 전부 실패하고 있었는데 로그에 남지 않았다)
+    if (!res.ok) {
+      console.error(`[fortune-ai] 질문권 정산 실패 ${JSON.stringify({ requestId, path, status: res.status })}`);
+      return false;
+    }
+    return true;
   } catch (err) {
     // 원장 확정 실패는 사용자 응답을 망치지 않는다. 동일 requestId 재전송은 백엔드에서 안전하다.
-    console.error("[fortune-ai] 질문권 정산 실패", err);
+    console.error(`[fortune-ai] 질문권 정산 실패 ${JSON.stringify({ requestId, path, error: describe(err).slice(0, 200) })}`);
+    return false;
   }
+}
+
+/**
+ * 오류로 끝난 호출을 정산한다.
+ *
+ * 사용자가 스스로 연결을 끊었는데 이미 답 일부를 받아 갔으면 **사용으로 확정**한다.
+ * 예전에는 여기서도 환불해서, 답을 거의 다 받은 뒤 탭을 닫으면 질문권이 돌아왔다 —
+ * 질문권 하나로 비용이 드는 호출을 무한히 만들 수 있는 구멍이었다.
+ * 제공자 오류처럼 사용자가 만들 수 없는 실패만 환불한다.
+ * @returns 환불했으면 true
+ */
+async function settleFailure(req: Request, requestId: string | null, tier: Tier, meta: CallMeta, err: unknown,
+  clientGone: boolean, deliveredChars: number, usage: CallUsage, requestedAt: Date) {
+  if (!requestId) return false;
+  if (clientGone && deliveredChars > 0) {
+    console.info(`[fortune-ai] 연결 끊김 — 받아 간 답이 있어 사용 확정 ${JSON.stringify({ requestId, tier, deliveredChars })}`);
+    await finishCall(req, requestId, tier, meta, usage, requestedAt);
+    return false;
+  }
+  logFailure(clientGone ? "연결 끊김(답 전)" : "AI 호출", requestId, tier, err);
+  return settleCredit(req, requestId, "refund", { errorType: (clientGone ? "CLIENT_ABORTED_BEFORE_ANSWER" : describe(err)).slice(0, 120) });
 }
 
 /** 호출 한 번을 설명하는 값. 사용량 로그에 같이 남겨 나중에 원가를 질문 유형별로 본다 */
@@ -978,6 +1045,7 @@ type CallMeta = {
   summarizedTurns: number;
 };
 type CallUsage = { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number; cacheWrite1hTokens: number };
+const ZERO_USAGE: CallUsage = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, cacheWrite1hTokens: 0 };
 
 /**
  * 호출이 끝나면 사용량을 남긴다.
@@ -1004,45 +1072,59 @@ async function finishCall(req: Request, requestId: string | null, tier: Tier, me
 
 async function streamOpenAi(req: Request, apiKey: string, tier: Tier, messages: { role: "user" | "assistant" | "system"; content: string }[], system: string, requestId: string | null, requestedAt: Date, remaining: number | null, meta: CallMeta) {
   const model = TIERS[tier].model;
+  // 사용자가 연결을 끊으면 제공자 호출도 끊는다(비용 절감). 끊긴 것은 정산에서 따로 다룬다
+  const upstream = new AbortController();
+  let clientGone = false;
+  const onClientAbort = () => { clientGone = true; upstream.abort(); };
+  req.signal?.addEventListener("abort", onClientAbort);
   let response: Response;
   try {
-    response = await fetch("https://api.openai.com/v1/chat/completions", {
+    response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
       method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({ model, stream: true, stream_options: { include_usage: true }, max_completion_tokens: 4000, messages: [{ role: "system", content: system }, ...messages] }),
-      signal: AbortSignal.timeout(300_000),
+      signal: AbortSignal.any([upstream.signal, AbortSignal.timeout(300_000)]),
     });
   } catch (err) {
-    if (requestId) await settleCredit(req, requestId, "refund", { errorType: describe(err).slice(0, 120) });
-    return Response.json({ error: describe(err) }, { status: 502 });
+    const refunded = await settleFailure(req, requestId, tier, meta, err, clientGone, 0, ZERO_USAGE, requestedAt);
+    return Response.json({ error: publicError(err, refunded) }, { status: 502 });
   }
   if (!response.ok || !response.body) {
-    const error = await response.text().catch(() => "OpenAI API 오류");
-    if (requestId) await settleCredit(req, requestId, "refund", { errorType: error.slice(0, 120) });
-    return Response.json({ error: error.slice(0, 300) }, { status: 502 });
+    const error = new Error(`OpenAI ${response.status}: ${(await response.text().catch(() => "")).slice(0, 200)}`);
+    const refunded = await settleFailure(req, requestId, tier, meta, error, false, 0, ZERO_USAGE, requestedAt);
+    return Response.json({ error: publicError(error, refunded) }, { status: 502 });
   }
+  const inputChars = system.length + messages.reduce((n, m) => n + m.content.length, 0);
   const body = new ReadableStream({ async start(controller) {
     const reader = response.body!.getReader(); const decoder = new TextDecoder(); let buffer = ""; let usage: { prompt_tokens?: number; completion_tokens?: number; prompt_tokens_details?: { cached_tokens?: number } } | null = null;
+    let delivered = 0;
     try {
       while (true) { const { done, value } = await reader.read(); if (done) break; buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split("\n"); buffer = lines.pop() ?? "";
-        for (const sseLine of lines) { if (!sseLine.startsWith("data: ")) continue; const data = sseLine.slice(6); if (data === "[DONE]") continue; try { const event = JSON.parse(data); const text = event.choices?.[0]?.delta?.content; if (text) controller.enqueue(line({ t: text })); if (event.usage) usage = event.usage; } catch { /* partial provider event */ } }
+        for (const sseLine of lines) { if (!sseLine.startsWith("data: ")) continue; const data = sseLine.slice(6); if (data === "[DONE]") continue; try { const event = JSON.parse(data); const text = event.choices?.[0]?.delta?.content; if (text) { safeEnqueue(controller, { t: text }); delivered += text.length; } if (event.usage) usage = event.usage; } catch { /* partial provider event */ } }
       }
+      if (clientGone) throw new Error("client aborted");
       if (!usage) throw new Error("OpenAI 사용량 정보를 받지 못했습니다.");
       // OpenAI 의 prompt_tokens 는 캐시에서 읽은 것까지 포함한다. Anthropic 과 같은 뜻(캐시 밖 입력)으로 맞춰 저장한다
       const cachedTokens = usage.prompt_tokens_details?.cached_tokens ?? 0;
       await finishCall(req, requestId, tier, meta, { inputTokens: Math.max(0, (usage.prompt_tokens ?? 0) - cachedTokens), outputTokens: usage.completion_tokens ?? 0, cacheReadTokens: cachedTokens, cacheWriteTokens: 0, cacheWrite1hTokens: 0 }, requestedAt);
-      controller.enqueue(line({ done: true, usage: { input: Math.max(0, (usage.prompt_tokens ?? 0) - cachedTokens), output: usage.completion_tokens ?? 0, cacheRead: cachedTokens, cacheWrite: 0, ...(remaining === null ? {} : { remaining }) } }));
-    } catch (err) { if (requestId) await settleCredit(req, requestId, "refund", { errorType: describe(err).slice(0, 120) }); controller.enqueue(line({ error: describe(err) })); }
-    finally { controller.close(); }
-  }});
+      safeEnqueue(controller, { done: true, usage: { input: Math.max(0, (usage.prompt_tokens ?? 0) - cachedTokens), output: usage.completion_tokens ?? 0, cacheRead: cachedTokens, cacheWrite: 0, ...(remaining === null ? {} : { remaining }) } });
+    } catch (err) {
+      // 끊긴 호출은 제공자 사용량을 못 받는다. 원가 기록용으로 글자 수에서 어림한다
+      const refunded = await settleFailure(req, requestId, tier, meta, err, clientGone, delivered,
+        { inputTokens: approxTokens(inputChars), outputTokens: approxTokens(delivered), cacheReadTokens: 0, cacheWriteTokens: 0, cacheWrite1hTokens: 0 }, requestedAt);
+      safeEnqueue(controller, { error: publicError(err, refunded) });
+    }
+    finally { req.signal?.removeEventListener("abort", onClientAbort); safeClose(controller); }
+  }, cancel() { onClientAbort(); } });
   return new Response(body, { headers: { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store", "X-Accel-Buffering": "no" } });
 }
 
 export async function POST(req: Request) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
+  if (AI_DISABLED || !apiKey) {
+    if (!apiKey) console.error("[fortune-ai] ANTHROPIC_API_KEY 미설정");
     return Response.json(
-      { error: "서버에 ANTHROPIC_API_KEY 가 설정되어 있지 않습니다." },
+      { error: "AI 풀이를 잠시 쉬고 있습니다. 명반 계산은 그대로 쓸 수 있고, 질문권은 차감되지 않았습니다." },
       { status: 503 }
     );
   }
@@ -1107,6 +1189,10 @@ export async function POST(req: Request) {
     return Response.json({ error: "마지막은 사용자 질문이어야 합니다." }, { status: 400 });
   }
 
+  if (context.length + focus.length + messages.reduce((n, m) => n + m.content.length, 0) > MAX_TOTAL_CHARS) {
+    return Response.json({ error: "대화가 너무 길어졌습니다. 새 상담으로 이어서 물어봐 주세요." }, { status: 413 });
+  }
+
   // 계산은 비회원도 무료지만, 외부 모델 호출은 로그인 계정의 월 한도에서만 쓸 수 있다.
   // 지금은 꺼 둔다. 켜려면 Vercel 환경변수 FORTUNE_AI_REQUIRE_LOGIN 을 1 로 두면 된다.
   // (자바 쪽 POST /api/fortune-ai/reservations 는 그대로 살아 있다.)
@@ -1155,8 +1241,8 @@ export async function POST(req: Request) {
   if (tierConfig.provider === "OPENAI") {
     const openAiKey = process.env.OPENAI_API_KEY;
     if (!openAiKey) {
-      if (creditRequestId) await settleCredit(req, creditRequestId, "refund", { errorType: "OPENAI_API_KEY_MISSING" });
-      return Response.json({ error: "GPT 풀이 설정이 아직 준비되지 않았습니다." }, { status: 503 });
+      const refunded = creditRequestId ? await settleCredit(req, creditRequestId, "refund", { errorType: "OPENAI_API_KEY_MISSING" }) : false;
+      return Response.json({ error: `GPT 풀이 설정이 아직 준비되지 않았습니다.${refunded ? " 질문권은 복구했습니다." : ""}` }, { status: 503 });
     }
     // OpenAI 도 앞에서부터 같은 글자를 자동으로 캐시한다. 순서를 같게 맞춰 둔다
     const system = [SYSTEM, chartText, summary].filter(Boolean).join("\n\n");
@@ -1195,9 +1281,15 @@ export async function POST(req: Request) {
       messages: anthropicMessages,
     });
   } catch (err) {
-    if (creditRequestId) await settleCredit(req, creditRequestId, "refund", { errorType: describe(err).slice(0, 120) });
-    return Response.json({ error: describe(err) }, { status: 502 });
+    const refunded = await settleFailure(req, creditRequestId, tier, meta, err, false, 0, ZERO_USAGE, requestedAt);
+    return Response.json({ error: publicError(err, refunded) }, { status: 502 });
   }
+
+  // 사용자가 연결을 끊었는지. 정산(환불이냐 사용 확정이냐)을 가르는 데 쓴다
+  let clientGone = false;
+  let delivered = 0;
+  const onClientAbort = () => { clientGone = true; stream.abort(); };
+  req.signal?.addEventListener("abort", onClientAbort);
 
   // 소비하기 전에 거절되어도 처리되지 않은 거절이 되지 않도록 미리 붙인다.
   // 실제 오류는 아래 for-await 에서 다시 잡혀 사용자에게 전달된다.
@@ -1212,9 +1304,11 @@ export async function POST(req: Request) {
             event.type === "content_block_delta" &&
             event.delta.type === "text_delta"
           ) {
-            controller.enqueue(line({ t: event.delta.text }));
+            safeEnqueue(controller, { t: event.delta.text });
+            delivered += event.delta.text.length;
           }
         }
+        if (clientGone) throw new Error("client aborted");
         const final = await stream.finalMessage();
         await finishCall(req, creditRequestId, tier, meta, {
           inputTokens: final.usage.input_tokens,
@@ -1226,38 +1320,41 @@ export async function POST(req: Request) {
         }, requestedAt);
 
         if (final.stop_reason === "refusal") {
-          controller.enqueue(
-            line({ error: "이 질문에는 답하기 어렵습니다. 다르게 물어봐 주세요." })
-          );
+          safeEnqueue(controller, { error: "이 질문에는 답하기 어렵습니다. 다르게 물어봐 주세요." });
         }
         // 길이에 걸려 잘리면 조용히 끊기지 않게 알려준다. 문장 중간에서
         // 멈춘 글을 아무 말 없이 보여주면 고장난 것처럼 보인다.
         if (final.stop_reason === "max_tokens") {
-          controller.enqueue(
-            line({ t: "\n\n…(답이 길어 여기서 끊겼습니다. 나눠서 물어보시면 끝까지 답해 드립니다.)" })
-          );
+          safeEnqueue(controller, { t: "\n\n…(답이 길어 여기서 끊겼습니다. 나눠서 물어보시면 끝까지 답해 드립니다.)" });
         }
-        controller.enqueue(
-          line({
-            done: true,
-            usage: {
-              input: final.usage.input_tokens,
-              output: final.usage.output_tokens,
-              cacheRead: final.usage.cache_read_input_tokens ?? 0,
-              cacheWrite: final.usage.cache_creation_input_tokens ?? 0,
-              ...(remaining === null ? {} : { remaining }),
-            },
-          })
-        );
+        safeEnqueue(controller, {
+          done: true,
+          usage: {
+            input: final.usage.input_tokens,
+            output: final.usage.output_tokens,
+            cacheRead: final.usage.cache_read_input_tokens ?? 0,
+            cacheWrite: final.usage.cache_creation_input_tokens ?? 0,
+            ...(remaining === null ? {} : { remaining }),
+          },
+        });
       } catch (err) {
-        if (creditRequestId) await settleCredit(req, creditRequestId, "refund", { errorType: describe(early ?? err).slice(0, 120) });
-        controller.enqueue(line({ error: describe(early ?? err) }));
+        // 끊긴 호출은 최종 사용량이 없다. 시작 때 받은 입력·캐시 토큰은 그대로 쓰고 출력은 받아 간 글자로 어림한다
+        const u = stream.currentMessage?.usage;
+        const refunded = await settleFailure(req, creditRequestId, tier, meta, early ?? err, clientGone, delivered, {
+          inputTokens: u?.input_tokens ?? 0,
+          outputTokens: Math.max(u?.output_tokens ?? 0, approxTokens(delivered)),
+          cacheReadTokens: u?.cache_read_input_tokens ?? 0,
+          cacheWriteTokens: u?.cache_creation_input_tokens ?? 0,
+          cacheWrite1hTokens: u?.cache_creation?.ephemeral_1h_input_tokens ?? 0,
+        }, requestedAt);
+        safeEnqueue(controller, { error: publicError(early ?? err, refunded) });
       } finally {
-        controller.close();
+        req.signal?.removeEventListener("abort", onClientAbort);
+        safeClose(controller);
       }
     },
     cancel() {
-      stream.abort();
+      onClientAbort();
     },
   });
 

@@ -255,17 +255,39 @@ function pairFocus(question, compat) {
     const mw = PAIR.marriageWindow(compat.A, compat.B, from, 6);
     const rel = PAIR.relationshipCharts(compat.A, compat.B, mw.rows.map((r) => r.year));
     const nav = PAIR.navamsaPair(compat.A, compat.B);
-    return PAIR.formatPair(mw, rel, nav, compat.A.input.name, compat.B.input.name);
+    // 이름은 AI 로 보내지 않는다(개인정보처리방침). 두 사람은 순서로만 부른다
+    return PAIR.formatPair(mw, rel, nav, PAIR_LABELS[0], PAIR_LABELS[1]);
   } catch (e) {
     console.warn('[운세] 두 사람 겹침 계산을 건너뜁니다:', e.message);
     return null;
   }
 }
 
+const PAIR_LABELS = ['첫 번째 사람', '두 번째 사람'];
+
+/**
+ * AI 로 보내는 글에서 입력한 이름을 지운다.
+ *
+ * 문맥 생성기는 이름을 넣지 않게 짜여 있지만, 체계별 풀이 문장 어딘가에 이름이 섞여 들어가도
+ * 밖으로 나가지 않도록 보내기 직전에 한 번 더 거른다. 한 글자 이름은 일반 낱말까지 지울 수 있어 건너뛴다.
+ */
+export function redactNames(text, names) {
+  if (!text) return text;
+  let out = String(text);
+  for (const [name, label] of names) {
+    const n = String(name ?? '').trim();
+    if (n.length >= 2) out = out.split(n).join(label);
+  }
+  return out;
+}
+
 /** 화면이 그려진 뒤 입력칸과 버튼을 붙인다. 개인·궁합이 같은 배선을 쓴다 */
 function wire(context, calc = null, compat = null) {
   // sessionId 는 사용량 로그를 상담 단위로 묶는 데만 쓴다 (사람을 가리키지 않는 임의 값)
-  session = { context, calc, compat, messages: [], busy: false, lastPlan: null,
+  const names = compat
+    ? [[compat.A?.input?.name, PAIR_LABELS[0]], [compat.B?.input?.name, PAIR_LABELS[1]]]
+    : [[calc?.fortune?.input?.name, '본인']];
+  session = { context: redactNames(context, names), calc, compat, names, messages: [], busy: false, lastPlan: null,
     id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}` };
 
   const log = document.querySelector('#ai-log');
@@ -334,7 +356,7 @@ function wire(context, calc = null, compat = null) {
       const res = await fetch(ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ context: session.context, focus, messages: session.messages, tier: tier?.value ?? 'CLAUDE_SONNET', sessionId: session.id, category }),
+        body: JSON.stringify({ context: session.context, focus: redactNames(focus, session.names), messages: session.messages, tier: tier?.value ?? 'CLAUDE_SONNET', sessionId: session.id, category }),
       });
 
       if (!res.ok || !res.body) {
@@ -382,7 +404,8 @@ function wire(context, calc = null, compat = null) {
       // 있었는데, 휴대폰에서 화면을 벗어나면 연결이 끊겨 이 자리로 오므로
       // 그때까지 흘러온 답이 통째로 사라졌다. 끊긴 것은 연결이지 답이 아니다.
       const why = (leftPage && !err.fromServer)
-        ? '화면을 벗어나 있는 동안 연결이 끊겼습니다.'
+        ? '화면을 벗어나 있는 동안 연결이 끊겼습니다.' +
+          (acc ? ' 답을 받기 시작한 뒤라 이 질문의 질문권은 사용 처리되었습니다.' : '')
         : esc(err.message);
       if (isCreditExhausted(err)) {
         box.value = question;

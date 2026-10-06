@@ -336,7 +336,7 @@ function personOf(reads, who) {
   const traits = raw.match(/구체적으로는\s*\*\*([^*]+)\*\*/)?.[1];
   const weak = raw.match(/걸림돌이 되는 자리는\s*\*\*([^*]+)\*\*/)?.[1];
   return readItems([
-    [`${who} 성격`, traits ? `${traits.split(/\s+·\s+/).join(', ')}.` : ''],
+    [`${who}는 이런 사람`, traits ? `${traits.split(/\s+·\s+/).join(', ')}.` : ''],
     [`${who}의 아쉬운 점`, weak ? `${weak.replace(/\s*\/\s*/g, ', ').replace(/다$/, '다.')}` : ''],
   ]);
 }

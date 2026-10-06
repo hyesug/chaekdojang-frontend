@@ -168,11 +168,6 @@ const sec = (n, title, body, lead = '') => !body ? '' : `
 const sub = (n, title, body) => !body ? '' :
   `<div class="rp-sub"><h4 class="rp-h4">${n ? `<span>${esc(n)}</span>` : ''}${esc(title)}</h4>${body}</div>`;
 
-/** 분야 모듈이 낸 읽기 목록. 체계 이름·궁 이름은 제목으로 쓰지 않는다 */
-const readList = (reads, max = 4) => readItems((reads ?? [])
-  .filter((x) => x?.text).slice(0, max)
-  .map((x) => ['', x.text]));
-
 /**
  * 한 분야의 시기 — **그 분야의 근거로만** 만든 연도표.
  *
@@ -217,15 +212,6 @@ function readingText(r, sysName, contains) {
   return s?.readings?.find((x) => String(x.title).includes(contains))?.text ?? '';
 }
 const labeled = (k, t) => t ? readItems([[k, t]]) : '';
-
-/**
- * 머리글이 여럿인 표 → 작은 카드 묶음. 4열 표는 휴대폰에서 칸마다 두세 글자씩 끊겼다.
- * 첫 칸을 카드 제목으로, 나머지는 머리글을 작은 이름표로 붙인다.
- */
-const tableN = (head, rows) => !rows.length ? '' :
-  `<ul class="rp-cards">${rows.map((cs) => `<li><b>${esc(cs[0])}</b>${cs.slice(1)
-    .map((c, i) => { const x = plain(c); return x ? `<p>${head[i + 1] ? `<span class="rp-lab">${esc(head[i + 1])}</span>` : ''}${esc(x)}</p>` : ''; })
-    .join('')}</li>`).join('')}</ul>`;
 
 /** 십성 무리가 그 해에 건드리는 것 — 고정표 */
 const GOD_FIELD = {
@@ -326,6 +312,35 @@ const careerLife = (v, r) =>
 
 /* ── 2. 사랑과 가족 ─────────────────────────────────────── */
 
+/**
+ * 판정 줄(직업·나이·수·성별)에 주어를 붙이고 결론 문장만 남긴다.
+ * 원문은 "직업은 …", "나이는 연하 쪽입니다. 자미두수·사주 2갈래가…"처럼 주어가 빠져 있고
+ * 뒤에 계산 방식 설명이 붙어, 걸러내고 나면 누구 이야기인지 알 수 없었다.
+ */
+function verdictLines(lines, who) {
+  return (lines ?? []).map((line) => {
+    let t = String(line).replace(/\*\*/g, '').split(/(?<=[.!?])\s/)[0];
+    if (/\s—\s.*(표|>)/.test(t)) t = t.replace(/\s—\s.*$/, '');
+    t = t.replace(/\s*\([^)]*\)/g, '').replace(/[.]?$/, '.');
+    return t
+      .replace(/^직업은 /, `${who}의 직업은 `)
+      .replace(/^나이는 (\S+) 쪽/, `${who} 나이는 나보다 $1 쪽`)
+      .replace(/^수는 /, `${who} 수는 `)
+      .replace(/^성별은 /, `${who} 성별은 `);
+  });
+}
+
+/** 별 풀이에서 그 사람의 성격 목록과 아쉬운 점만 뽑는다 (앞 문장은 별 이름 설명이라 걸러진다) */
+function personOf(reads, who) {
+  const raw = (reads ?? []).map((x) => String(x?.text ?? '')).join('\n');
+  const traits = raw.match(/구체적으로는\s*\*\*([^*]+)\*\*/)?.[1];
+  const weak = raw.match(/걸림돌이 되는 자리는\s*\*\*([^*]+)\*\*/)?.[1];
+  return readItems([
+    [`${who} 성격`, traits ? `${traits.split(/\s+·\s+/).join(', ')}.` : ''],
+    [`${who}의 아쉬운 점`, weak ? `${weak.replace(/\s*\/\s*/g, ', ').replace(/다$/, '다.')}` : ''],
+  ]);
+}
+
 function relations(v, r) {
   const chart = { ...r.chart, gender: r.input.gender };
   let sp = [], spv = { lines: [] }, ch = [], chv = { lines: [] };
@@ -339,9 +354,9 @@ function relations(v, r) {
   } catch { /* */ }
 
   return sub('', '배우자 — 어떤 사람이고 언제인가',
-      para(withSrc(v.life?.spouse)) + (spv.lines ?? []).map(para).join('') + readList(sp, 2) + timingOf(r, '결혼'))
+      para(withSrc(v.life?.spouse)) + verdictLines(spv.lines, '배우자').map(para).join('') + personOf(sp, '배우자') + timingOf(r, '결혼'))
     + sub('', '자녀',
-      para(withSrc(v.life?.child)) + (chv.lines ?? []).map(para).join('') + readList(ch, 2) + timingOf(r, '자녀'))
+      para(withSrc(v.life?.child)) + verdictLines(chv.lines, '자녀').map(para).join('') + personOf(ch, '자녀') + timingOf(r, '자녀'))
     + sub('', '형제·동료', para(withSrc(v.life?.sibling)));
 }
 
@@ -350,29 +365,37 @@ function relations(v, r) {
 function thisYear(v, f, r) {
   const yr = f.year?.period?.sajuYear ?? r.input.currentYear;
   const AREAS = ['금전운', '직장운', '애정운', '학업운', '건강운'];
+  const NAME = { 금전운: '금전', 직장운: '직장', 애정운: '애정', 학업운: '학업', 건강운: '건강' };
   // 운세의 한 해는 입춘(2월 초)에 시작해 다음 해 1월에 끝난다. 그래서 '1월'이 맨 끝에 온다 —
   // 헷갈리지 않게 달마다 연도를 붙이고 이번 달을 표시한다.
   const nowKey = f.today.y * 100 + f.today.m;
-  const moods = [];
-  const months = (f.timeline ?? []).map((m) => {
+  // 달마다 한 문단: 분위기 → 잘 풀리는 분야와 그 이유 → 조심할 분야와 대처.
+  // 이웃한 달이 같은 내용이면 "11월 ~ 1월"로 묶는다 (같은 문단이 줄줄이 되풀이되지 않게)
+  const rawMonths = (f.timeline ?? []).map((m) => {
     const a = m.areas ?? {};
-    const pick = (k) => a[k]?.score ?? null;
-    const ranked = AREAS.map((k) => [k, pick(k)]).filter(([, s]) => s != null).sort((x, y) => y[1] - x[1]);
-    const best = ranked[0], worst = ranked.at(-1);
-    const mood = areaText('총운', pick('총운') ?? m.score, 'month');
-    if (mood && !moods.includes(mood)) moods.push(mood);
-    const tag = String(mood ?? '').split(/(?<=[.!?])\s/)[0].replace(/입니다\.$/, '');
-    const key = m.from.y * 100 + m.from.m;
-    return [
-      `${m.from.y}년 ${m.from.m}월${key === nowKey ? ' · 이번 달' : ''}`,
-      tag,
-      best ? best[0].replace('운', '') : '',
-      worst ? worst[0].replace('운', '') : '',
-    ];
+    const ranked = AREAS.map((k) => [k, a[k]?.score ?? null]).filter(([, sc]) => sc != null).sort((x, y) => y[1] - x[1]);
+    const [best, bestScore] = ranked[0] ?? [];
+    const [worst, worstScore] = ranked.at(-1) ?? [];
+    const mood = areaText('총운', a.총운?.score ?? m.score, 'month');
+    const bestLine = !best ? ''
+      : bestScore >= 62 ? `${j(NAME[best], '이')} 잘 풀립니다. ${areaText(best, bestScore, 'month')}`
+        : `큰 굴곡 없이 지나가는 달이고, 그중 ${NAME[best]} 쪽이 가장 낫습니다.`;
+    const worstLine = !worst || worst === best ? ''
+      : worstScore < 42 ? `${NAME[worst]} 쪽은 조심하세요. ${areaText(worst, worstScore, 'month')}`
+        : `${NAME[worst]} 쪽이 상대적으로 덜하지만 크게 걱정할 정도는 아닙니다.`;
+    const text = [firstOf(mood), bestLine, worstLine].filter(Boolean).join(' ');
+    return { key: m.from.y * 100 + m.from.m, label: `${m.from.y}년 ${m.from.m}월`, text };
   });
-  const legend = moods.map((x) => {
-    const [head, ...rest] = x.split(/(?<=[.!?])\s/);
-    return [head.replace(/입니다\.$/, ''), rest.join(' ') || head];
+  const months = [];
+  for (const m of rawMonths) {
+    const last = months.at(-1);
+    if (last && last.text === m.text) { last.to = m; continue; }
+    months.push({ ...m, to: null });
+  }
+  const monthRows = months.map((m) => {
+    const keys = m.to ? rawMonths.filter((x) => x.key >= m.key && x.key <= m.to.key).map((x) => x.key) : [m.key];
+    const label = m.to ? `${m.label} ~ ${m.to.label}` : m.label;
+    return [`${label}${keys.includes(nowKey) ? ' · 이번 달' : ''}`, m.text];
   });
 
   const areas = ['총운', '금전운', '직장운', '애정운', '학업운', '건강운']
@@ -386,9 +409,7 @@ function thisYear(v, f, r) {
     + sub('', '타고난 요일의 성향', readings(r, '태국 점성술', 1))
     + sub('', '달마다의 흐름',
       '<p class="rp-fine rp-fine-top">운세의 한 해는 입춘(2월 초)에 시작해 다음 해 1월에 끝나서 1월이 맨 뒤에 옵니다. 달의 경계도 1일이 아니라 절기(매달 4~8일 무렵)입니다.</p>'
-      + table2(['분위기', '뜻'], legend)
-      + tableN(['달', '', '잘 풀리는 쪽', '조심할 쪽'], months)
-      + '<p class="rp-fine">어느 달이 더 좋다는 순위가 아니라, 그 달에 어느 쪽이 상대적으로 잘 풀리고 어느 쪽을 조심할지로 읽어 주세요.</p>');
+      + timeline(monthRows));
 }
 
 /* ── 4. 방향과 이동 ─────────────────────────────────────── */
@@ -399,8 +420,11 @@ function direction(r, f) {
   catch { /* */ }
   const uniq = (xs) => [...new Set(xs)];
   const rows = [];
-  if (d?.good?.length) rows.push(['좋은 방향', uniq(d.good.map((g) => g.dir)).join(', ')]);
-  if (d?.bad?.length) rows.push(['피할 방향', uniq(d.bad.map((b) => b.dir)).join(', ')]);
+  // 한 방위가 길방이면서 흉방(예: 본명적살)이기도 하면 피할 쪽으로만 적는다 — aiContext.js 와 같은 규칙
+  const badDirs = uniq((d?.bad ?? []).map((b) => b.dir));
+  const goodDirs = uniq((d?.good ?? []).map((g) => g.dir)).filter((x) => !badDirs.includes(x));
+  if (goodDirs.length) rows.push(['좋은 방향', goodDirs.join(', ')]);
+  if (badDirs.length) rows.push(['피할 방향', badDirs.join(', ')]);
   const thai = sysOf(r, '태국 점성술')?.facts ?? [];
   const lucky = thai.filter((x) => /색|요일/.test(x.label)).map((x) => `${x.label} ${x.value}`).join(' · ');
 

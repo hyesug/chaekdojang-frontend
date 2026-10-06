@@ -104,3 +104,14 @@ test('같은 리포트 형식도 출생 정보가 바뀌면 내용이 달라진�
   assert.notEqual(personal(A), personal(other));
   assert.notEqual(pair(A, B), pair(other, B));
 });
+
+test('좋은 방향과 피할 방향에 같은 방위가 함께 나오지 않는다', () => {
+  for (const form of [A, B, { ...A, year: 1975 }, { ...B, year: 2001 }]) {
+    const html = personal(form);
+    const list = (label) => (html.match(new RegExp(`<dt>${label}</dt><dd>([^<]*)</dd>`))?.[1] ?? '')
+      .split(', ').filter(Boolean);
+    const good = list('좋은 방향');
+    const bad = list('피할 방향');
+    assert.deepEqual(good.filter((d) => bad.includes(d)), [], `겹침: ${good} / ${bad}`);
+  }
+});

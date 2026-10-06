@@ -17,94 +17,90 @@ const B = {
   birthPlace: '부산', homePlace: '부산', gender: 'female',
 };
 const rx = (value) => new RegExp(value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+/** 화면에 보이는 글만 — 태그를 걷어낸다 */
+const visible = (html) => html.replace(/<[^>]+>/g, ' ');
 
-test('개인 통합 해석은 참고 문서의 전체 목차를 계산 결과로 채운다', () => {
-  const r = readFortune(A);
-  const f = readForecast(A);
-  const html = renderReport(A, r, f, buildView(A, r, f));
-  const year = f.year.period.sajuYear;
+/**
+ * 이 문서는 처음 보는 사람이 읽는다. 계산 근거로 쓰이는 용어·한자·강조 표시가
+ * 화면 글에 남으면 안 된다. (계산 근거는 명반 계산 화면과 AI 문맥이 따로 갖고 있다)
+ */
+const JARGON = /[一-鿿]|(?:명|부처|자녀|재백|관록|천이|복덕)궁|하우스|대운|사화|다샤|일간|관성|재성|식상|라그나|삼형|육합|\*\*|p=|°/;
 
-  for (const heading of [
-    '0. 한눈에 보는 통합 결론',
-    '1. 평생 커리어·명예·재물 흐름',
-    '2. 프로젝트·사업·수익화',
-    '2-2. 책도장',
-    '2-3. 로또 분석과 횡재운',
-    '3. 관계·숙요',
-    `4. ${year}년 흐름: 요일·다샤·점시·월운`,
-    '5. 행운 요소·방위·이사/이직 방향',
-    '6. 기문·수비학이 보여주는 평생 성패와 내적 과제',
-    '7. 2026년 전반 신수: 건강·집안·사고·재물',
-    '8. 질문별 답변 통합 색인',
-    '9. 최종 타임라인과 실행 원칙',
-  ]) assert.match(html, rx(heading));
-
-  assert.match(html, /보고서 개인 명반 통합 해석/);
-  assert.match(html, /사주/);
-  assert.match(html, /점시 형식의 현재 흐름 \(별도 점시 아님\)/);
-});
-
-test('궁합 통합 보고서는 관계 보고서의 목차를 두 사람의 계산 결과로 채운다', () => {
-  const c = compareFortune(A, B);
-  const view = buildCompatView(A, B, c);
-  const html = renderPairReport(A, B, c, view, {
+const personal = (form) => {
+  const r = readFortune(form);
+  const f = readForecast(form);
+  return renderReport(form, r, f, buildView(form, r, f));
+};
+const pair = (a, b) => {
+  const c = compareFortune(a, b);
+  return renderPairReport(a, b, c, buildCompatView(a, b, c), {
     a: elementDistribution(c.A.chart.pillars).count,
     b: elementDistribution(c.B.chart.pillars).count,
   });
-  const year = c.A.input.currentYear;
+};
 
-  for (const heading of [
-    '1. 핵심 결론',
-    '2. 해석에 사용한 핵심 계산값',
-    '3. 사주 — 일간·오행·합충',
-    '4. 서양 시나스트리 — 감정·끌림·지속성',
-    '5. 자미두수 — 부처궁 교차와 상호 영향',
-    '6. 27숙(숙요) — 위성 관계',
-    '7. 요일·수호행성',
-    '8. 베딕 아스타쿠타',
-    '9. 구성학 본명성',
-    '10. 생명의 나무',
-    `11. ${year}년 결혼 점시 (출생정보 기준·별도 점시 아님)`,
-    `12. ${year}년 두 사람의 공동운 (출생정보 기준)`,
-    '13. 현재부터 3개월 관계 흐름 (월별 예측 아님)',
-    `14. ${year}년 화합하기 좋은 시기: 주역·수리 (일정 판정 없음)`,
-    '15. 여러 체계에서 반복되는 공통 패턴',
-    '16. 최종 통합 판단',
-    '부록. 해석 범위와 주의사항',
-  ]) assert.match(html, rx(heading));
-
-  assert.match(html, /보고서 개인 · 보고서 상대/);
-  assert.match(html, /점술·점성 체계는 상징적 해석 도구/);
-  assert.match(html, /11-4\. 태을신수/);
-  assert.match(html, /11-5\. 토정비결/);
-  assert.match(html, /11-6\. 타로/);
-  for (const key of ['생활', '돈', '역할분담', '끌림', '감정', '대화', '장기유지']) {
-    const axis = view.eightAxes.find((item) => item.key === key);
-    assert.ok(axis, `${key} 축이 없습니다`);
-    assert.match(html, rx(axis.conclusion));
+test('개인 리포트는 핵심 키워드·커리어·타임라인·실행 순서의 결과지로 시작한다', () => {
+  const html = personal(A);
+  const order = [
+    '보고서 개인님의 인생 데이터 분석 리포트',
+    '한눈에 보는 내 인생의 핵심 키워드',
+    '타고난 강점', '사회적 역할', '주의할 패턴',
+    '커리어 &amp; 재물: 나의 시장 가치와 돈 버는 법',
+    '어떤 일을 할 때 빛나는가', '수익 스타일',
+    '타임라인: 지금 나는 어느 계절을 지나고 있는가',
+    '지금 내 삶의 메인 테마',
+    '당장 실행해볼 수 있는 Action Item 3가지',
+    '더 자세히 보기',
+  ];
+  let at = -1;
+  for (const heading of order) {
+    const i = html.indexOf(heading);
+    assert.ok(i > at, `순서가 어긋났거나 없음: ${heading}`);
+    at = i;
+  }
+  for (const tag of ['DO', 'KEY']) assert.match(html, rx(`>${tag}<`));
+  // 자세한 장은 접어 두고, 겹치던 장(사업·로또, 질문별 색인)은 다시 넣지 않는다
+  for (const chapter of ['일과 돈', '사랑과 가족', '방향과 이동', '내면의 패턴', '시기 한눈에 보기']) {
+    assert.match(html, rx(chapter));
+  }
+  for (const gone of ['2-2. 책도장', '로또 분석과 횡재운', '질문별 답변 통합 색인', '세부 계산 보기']) {
+    assert.doesNotMatch(html, rx(gone));
   }
 });
 
-test('같은 보고서 형식도 출생 정보가 바뀌면 계산 해석이 달라진다', () => {
-  const other = { ...A, month: 1, day: 3, hour: 4 };
-  const r = readFortune(A);
-  const f = readForecast(A);
-  const otherR = readFortune(other);
-  const otherF = readForecast(other);
+test('개인 리포트 화면 글에는 전문용어·한자·강조 표시가 남지 않는다', () => {
+  for (const form of [A, { ...A, gender: 'female' }, { ...B, hour: null }]) {
+    const text = visible(personal(form));
+    const hit = text.match(JARGON);
+    assert.equal(hit, null, `남은 용어: ${hit?.[0]} — ${hit ? text.slice(Math.max(0, hit.index - 30), hit.index + 30) : ''}`);
+  }
+});
 
-  const personal = renderReport(A, r, f, buildView(A, r, f));
-  const changedPersonal = renderReport(other, otherR, otherF, buildView(other, otherR, otherF));
-  assert.notEqual(personal, changedPersonal);
+test('배우자 문장은 번역투 없이 쓴다', () => {
+  const text = visible(personal({ ...A, gender: 'female' }));
+  assert.doesNotMatch(text, /자리에 힘이 여러 갈래로 실립니다/);
+});
 
+test('궁합 리포트는 두 사람 결과지와 관계 축을 쉬운 말로 싣는다', () => {
   const c = compareFortune(A, B);
-  const changed = compareFortune(other, B);
-  const pair = renderPairReport(A, B, c, buildCompatView(A, B, c), {
-    a: elementDistribution(c.A.chart.pillars).count,
-    b: elementDistribution(c.B.chart.pillars).count,
-  });
-  const changedPair = renderPairReport(other, B, changed, buildCompatView(other, B, changed), {
-    a: elementDistribution(changed.A.chart.pillars).count,
-    b: elementDistribution(changed.B.chart.pillars).count,
-  });
-  assert.notEqual(pair, changedPair);
+  const view = buildCompatView(A, B, c);
+  const html = pair(A, B);
+  for (const heading of ['보고서 개인 · 보고서 상대 관계 분석 리포트', '한눈에 보는 두 사람',
+    '두 사람의 기본 성향', '감정과 끌림', '생활의 궁합', '더 자세히 보기']) {
+    assert.match(html, rx(heading));
+  }
+  assert.match(html, /점술은 상징적 해석 도구/);
+  for (const key of ['생활', '돈', '역할분담', '끌림', '감정', '대화', '장기유지']) {
+    const axis = view.eightAxes.find((item) => item.key === key);
+    assert.ok(axis, `${key} 축이 없습니다`);
+    assert.match(html, rx(axis.conclusion.slice(0, 12)));
+  }
+  const hit = visible(html).match(JARGON);
+  assert.equal(hit, null, `남은 용어: ${hit?.[0]}`);
+});
+
+test('같은 리포트 형식도 출생 정보가 바뀌면 내용이 달라진다', () => {
+  const other = { ...A, month: 1, day: 3, hour: 4 };
+  assert.notEqual(personal(A), personal(other));
+  assert.notEqual(pair(A, B), pair(other, B));
 });

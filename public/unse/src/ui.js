@@ -145,15 +145,6 @@ function renderCompat(formA, formB, r) {
       <p class="result-meta">두 사람의 출생 기준을 열다섯 체계로 나란히 살폈습니다.</p>
     </div>
 
-    <div class="section-label">해석 · 핵심 종합</div>
-    <div class="card">
-      <div class="scope">${esc(v.verdict ?? '')} · 열다섯 체계</div>
-      ${v.summary ? `<p class="say-text">${esc(v.summary)}</p>` : ''}
-      ${v.counts?.text ? `<p class="say-text">${esc(v.counts.text)}</p>` : ''}
-      ${['좋음', '무난', '어려움'].map((k) => (v.buckets?.[k]?.length
-        ? `<p class="say-text"><strong>${k}</strong> — ${esc(v.buckets[k].join(' · '))}</p>` : '')).join('')}
-    </div>
-
     <div class="section-label">계산값 · 두 사람의 기준</div>
     <div class="card pair-calculation">
       <dl>
@@ -161,6 +152,12 @@ function renderCompat(formA, formB, r) {
         <div><dt>${esc(formB.name)}</dt><dd>${esc(`${formB.year}.${String(formB.month).padStart(2, '0')}.${String(formB.day).padStart(2, '0')}`)} · ${formB.hour == null ? '시각 미상' : `${String(formB.hour).padStart(2, '0')}:${String(formB.minute).padStart(2, '0')}`} · ${esc(formB.birthPlace)}</dd></div>
       </dl>
     </div>
+
+    <div class="section-label">관계 데이터 분석</div>
+    ${renderPairReport(formA, formB, r, v, {
+      a: elementDistribution(r.A?.chart?.pillars ?? {}).count,
+      b: elementDistribution(r.B?.chart?.pillars ?? {}).count,
+    })}
 
     <div class="section-label">AI 명반 해석</div>
     ${aiSection('pair', v)}
@@ -179,10 +176,6 @@ function renderCompat(formA, formB, r) {
       </div>` : ''}
     </details>
 
-    ${renderPairReport(formA, formB, r, v, {
-      a: elementDistribution(r.A?.chart?.pillars ?? {}).count,
-      b: elementDistribution(r.B?.chart?.pillars ?? {}).count,
-    })}
 
   `;
 }
@@ -278,27 +271,26 @@ function render(form, r, f) {
   const v = buildView(form, r, f);
   lastView = v;
 
-  const block = (label, text) => text
-    ? `<div class="say">${label ? `<div class="say-name">${esc(label)}</div>` : ''}
-         <p class="say-text">${esc(text)}</p></div>`
+  // 오늘·이달의 운세도 아래 결과지(report.js)와 같은 카드 모양 — 이모지 + 이름 + 한두 문장
+  const item = (icon, label, text) => text
+    ? `<li><span class="rp-ic" aria-hidden="true">${icon}</span><div><b>${esc(label)}</b><p>${esc(text)}</p></div></li>`
     : '';
-
-  // 총운은 제목 줄에서 이미 말하므로 영역은 넷만
-  const areaBlocks = (block_, kind) => ['애정운', '금전운', '직장운', '건강운']
+  const AREA_ICON = { 총운: '🌐', 애정운: '💗', 금전운: '💰', 직장운: '💼', 건강운: '🌿' };
+  const areaItems = (block_, kind) => ['총운', '애정운', '금전운', '직장운', '건강운']
     .map((a) => block_.areas[a]?.score == null ? ''
-      : block(a.replace('운', ''), areaText(a, block_.areas[a].score, kind)))
+      : item(AREA_ICON[a], a === '총운' ? '전체 흐름' : a.replace('운', ''), areaText(a, block_.areas[a].score, kind)))
     .join('');
+  const todayInfo = v.month.days.find((x) => x.d === f.today.d);
 
   const pane = (id, on, html) =>
     `<div class="tab-pane" data-tab="${id}" ${on ? '' : 'hidden'}>${html}</div>`;
 
-  const dayList = (arr) => arr.slice().sort((a, b) => a - b).join(', ');
+  const dayList = (arr) => arr.length ? `${arr.slice().sort((a, b) => a - b).join(', ')}일` : '';
   const L = v.month.lucky;
 
   const dayRows = v.month.days.map((x) => `
     <tr class="${x.d === f.today.d ? 'now' : ''}">
       <td class="dt">${x.d}<small>${esc(x.weekday)}</small></td>
-      <td class="sl">${x.sinsal.map((n) => `<span class="sinsal">${esc(n)}</span>`).join('')}</td>
       <td class="ln">${esc(x.line)}</td>
       <td class="gd ${x.cls}">${esc(x.grade)}</td>
     </tr>`).join('');
@@ -310,13 +302,6 @@ function render(form, r, f) {
       <p class="result-meta">${esc(v.who.born)} · 계산 기준은 아래 명반 요약에서 확인할 수 있습니다.</p>
     </div>
 
-    <div class="section-label">해석 · 핵심 종합</div>
-    <section class="core-reading" aria-label="핵심 종합 해석">
-      ${v.hero.theme ? `<p class="core-theme">${esc(v.hero.theme)}</p>` : ''}
-      ${v.hero.agree?.area ? `<p>올해는 <strong>${esc(v.hero.agree.area)}</strong>에 ${esc(String(v.hero.agree.on))}개 체계가 함께 주목합니다.</p>` : ''}
-      ${v.twist ? `<p class="core-caution"><strong>갈리는 지점</strong> ${esc(v.twist.text ?? v.twist)}</p>` : ''}
-    </section>
-
     ${chartPanel(r)}
 
     <div class="tabs">
@@ -325,31 +310,40 @@ function render(form, r, f) {
     </div>
 
     ${pane('today', true, `
-      <div class="card">
-        <div class="scope">${f.today.m}월 ${f.today.d}일 · ${esc(f.day.period.gz.day.hanja)} · ${esc(v.now.grade)}</div>
-        ${block(null, v.now.line)}
-        ${block('전체', areaText('총운', f.day.areas.총운.score, 'day'))}
-        ${areaBlocks(f.day, 'day')}
-      </div>`)}
+      <section class="rp-card rp-card-solo">
+        <h3 class="rp-card-h"><span aria-hidden="true">☀️</span> 오늘의 운세 · ${f.today.m}월 ${f.today.d}일${todayInfo?.weekday ? `(${esc(todayInfo.weekday)})` : ''}</h3>
+        ${v.now.grade ? `<p class="rp-chips"><span>오늘의 컨디션 · ${esc(v.now.grade)}</span></p>` : ''}
+        ${v.now.line ? `<blockquote class="rp-quote">${esc(v.now.line)}</blockquote>` : ''}
+        <ul class="rp-bul">${areaItems(f.day, 'day')}</ul>
+      </section>`)}
 
     ${pane('month', false, `
-      <div class="card">
-        <div class="scope">${esc(v.month.label)} · ${esc(f.month.period.gz.month.hanja)}</div>
-        ${block('전체', areaText('총운', f.month.areas.총운.score, 'month'))}
-        ${areaBlocks(f.month, 'month')}
-        ${block('좋은 날', `자리 이동이나 이사에 좋은 날은 ${dayList(L.move)}일이고, 문서와 계약·면접에 좋은 날은 ${dayList(L.contract)}일입니다. 재물의 흐름이 좋은 날은 ${dayList(L.money)}일이며, 사람을 만나기 좋은 날은 ${dayList(L.love)}일입니다.`)}
-        ${L.helper.length ? block('귀인이 드는 날', `돕는 사람이 붙는 날은 ${dayList(L.helper)}일입니다.`) : ''}
-        ${block('우선순위를 낮출 날', `${dayList(L.avoid)}일은 기운이 넘쳐 도리어 무리하기 쉬운 날이고, 그다음으로 조심할 날은 ${dayList(L.worst)}일입니다. 다른 날을 고를 수 있다면 뒤로 미루시라는 뜻이지, 이미 잡힌 수술이나 계약·면접 일정을 이 표 때문에 바꾸실 일은 아닙니다.`)}
-      </div>
+      <section class="rp-card rp-card-solo">
+        <h3 class="rp-card-h"><span aria-hidden="true">🗓️</span> ${esc(v.month.label)}의 운세</h3>
+        <ul class="rp-bul">${areaItems(f.month, 'month')}</ul>
+        <h4 class="rp-h4">📌 이달의 날짜 가이드</h4>
+        <ul class="rp-bul">
+          ${item('🚚', '이동·이사', dayList(L.move))}
+          ${item('📝', '계약·면접·문서', dayList(L.contract))}
+          ${item('💰', '돈이 도는 날', dayList(L.money))}
+          ${item('🤝', '사람 만나기', dayList(L.love))}
+          ${item('🙌', '도와줄 사람이 붙는 날', dayList(L.helper))}
+          ${item('⏸️', '미루면 좋은 날', L.avoid.length ? `${dayList(L.avoid)} — 기운이 넘쳐 무리하기 쉬운 날입니다.${L.worst.length ? ` 그다음은 ${dayList(L.worst)}.` : ''}` : '')}
+        </ul>
+        <p class="rp-fine">이미 잡힌 수술·계약·면접 일정을 이 날짜 때문에 바꾸실 필요는 없습니다. 고를 수 있을 때 참고만 하세요.</p>
+      </section>
       <details class="why" style="margin-top:14px">
         <summary>${esc(v.month.label)} 일자별로 보기</summary>
         <div class="daytable-wrap" style="margin-top:12px">
           <table class="daytable">
-            <thead><tr><th>날</th><th>신살</th><th>풀이</th><th>등급</th></tr></thead>
+            <thead><tr><th>날</th><th>풀이</th><th>등급</th></tr></thead>
             <tbody>${dayRows}</tbody>
           </table>
         </div>
       </details>`)}
+
+    <div class="section-label">인생 데이터 분석</div>
+    ${renderReport(form, r, f, v)}
 
     <div class="section-label">AI 명반 해석</div>
     ${aiSection('solo', v)}
@@ -357,8 +351,6 @@ function render(form, r, f) {
     <div class="profile-card" id="profileCard">
       <p class="agree-note" style="margin:0">프로필 저장 여부를 확인하는 중…</p>
     </div>
-
-    ${renderReport(form, r, f, v)}
   `;
 }
 

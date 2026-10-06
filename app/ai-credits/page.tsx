@@ -44,6 +44,27 @@ export default function AiCreditsPage() {
 
   useEffect(() => { load().catch(() => setMessage("질문권 정보를 불러오지 못했습니다.")); }, [load]);
 
+  // 모바일 결제는 결제창이 이 주소로 되돌아온다(redirectUrl). requestPayment 의 결과를 받지 못하므로
+  // 여기서 확정 호출을 대신 보낸다. 확정은 서버에서 멱등이라 데스크톱 흐름과 겹쳐도 두 번 지급되지 않는다.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const paymentId = params.get("paymentId");
+    if (!paymentId?.startsWith("ai-credit-")) return;
+    window.history.replaceState(null, "", "/ai-credits");
+    if (params.get("code")) { setMessage(params.get("message") ?? "결제가 취소되었습니다."); return; }
+    const orderId = paymentId.slice("ai-credit-".length);
+    if (!/^[0-9a-f-]{36}$/i.test(orderId)) return;
+    setBusy("redirect");
+    authFetch(`/api/ai-credit-orders/${orderId}/complete`, { method: "POST" })
+      .then(async (res) => {
+        const json = await res.json().catch(() => null);
+        setMessage(res.ok ? "질문권을 지급했습니다." : json?.message ?? "결제 확인에 실패했습니다. 고객센터로 문의해 주세요.");
+        return load();
+      })
+      .catch(() => setMessage("결제 확인에 실패했습니다. 고객센터로 문의해 주세요."))
+      .finally(() => setBusy(null));
+  }, [load]);
+
   async function buy(product: Product) {
     const storeId = process.env.NEXT_PUBLIC_PORTONE_STORE_ID;
     const channelKey = process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY;

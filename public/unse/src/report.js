@@ -592,7 +592,9 @@ function actionItems(r, v, me, s) {
 
   // DON'T — 돈·결정 습관에서 반복되기 쉬운 실수
   const dontHead = strip(take(pickOf(withSrc(v.work?.money), /마세요|말고/), pickOf(withSrc(v.work?.money), CAUTION)));
-  const dontWhy = [take(pickOf(me?.text, CAUTION)), '쓰기 전에 하루만 미뤄 보는 것만으로도 새는 돈이 크게 줄어듭니다.'].filter(Boolean).join(' ');
+  const dontWhy = dontHead
+    ? '돈이 들어오면 쓰기 전에 일정 몫을 먼저 따로 떼어 두세요. 저축·비상금 통장으로 자동이체를 걸어 두면 손에 닿기 전에 남길 수 있습니다.'
+    : '';
 
   // KEY — 가장 약한 기운을 생활에서 채우는 법
   let weak = null;

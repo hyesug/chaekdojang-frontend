@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { ChevronLeft } from "lucide-react";
 
 type BackButtonProps = {
   fallbackHref: string;
@@ -17,7 +18,7 @@ function safeHref(value: string | null) {
 export default function BackButton({
   fallbackHref,
   fallbackStorageKey,
-  label = "← 뒤로",
+  label = "뒤로",
   preferFallback = false,
   storageKey,
 }: BackButtonProps) {
@@ -54,9 +55,10 @@ export default function BackButton({
     <button
       type="button"
       onClick={handleBack}
-      className="text-sm text-brown-500 hover:text-brown-700"
+      className="-ml-2 inline-flex h-9 items-center gap-1 rounded-md px-2 text-sm font-medium text-sage-600 transition-colors hover:bg-cream-200 hover:text-brown-800"
     >
-      {label}
+      <ChevronLeft size={17} aria-hidden="true" />
+      {label.replace(/^[←<]\s*/, "")}
     </button>
   );
 }

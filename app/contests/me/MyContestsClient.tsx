@@ -65,8 +65,8 @@ export default function MyContestsClient() {
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8">
-      <h1 className="font-serif text-2xl font-bold text-brown-900">내 공모전 응모 현황</h1>
+    <main className="cdj-page cdj-page--reading">
+      <h1 className="cdj-title">내 공모전 응모 현황</h1>
       <p className="mt-2 text-sm text-brown-500">
         응모한 공모전의 심사 단계와 수상 결과를 봅니다. 접수 기간 안에는 응모를 취소할 수 있습니다.
       </p>
@@ -74,11 +74,11 @@ export default function MyContestsClient() {
       {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
 
       {entries.length === 0 ? (
-        <div className="mt-6 rounded-2xl border border-cream-200 bg-white p-6 text-center shadow-sm">
+        <div className="cdj-card mt-6 p-6 text-center">
           <p className="text-sm text-brown-500">아직 응모한 공모전이 없습니다.</p>
           <Link
             href="/contests"
-            className="mt-4 inline-flex rounded-full bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800"
+            className="cdj-button cdj-button--primary mt-4 inline-flex"
           >
             열려 있는 공모전 보기
           </Link>
@@ -89,7 +89,7 @@ export default function MyContestsClient() {
             <article
               key={entry.id}
               id={`contest-${entry.contestId}`}
-              className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm"
+              className="cdj-card p-4"
             >
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full bg-cream-100 px-2 py-0.5 text-xs font-semibold text-brown-600">

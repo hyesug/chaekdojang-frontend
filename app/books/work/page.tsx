@@ -1,5 +1,6 @@
 "use client";
 
+import { BookOpen } from "lucide-react";
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -28,7 +29,7 @@ function WorkReviewsContent() {
   }, [title, author]);
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
+    <div className="cdj-page cdj-page--reading">
       <div className="mb-6">
         <Link href="/search" className="text-sm text-brown-400 hover:text-brown-600">
           ← 검색으로
@@ -45,8 +46,8 @@ function WorkReviewsContent() {
       {loading ? (
         <div className="text-center py-16 text-brown-400">불러오는 중...</div>
       ) : reviews.length === 0 ? (
-        <div className="text-center py-16 text-brown-400 bg-white border border-cream-200 rounded-lg">
-          <p className="text-4xl mb-3">📖</p>
+        <div className="cdj-card text-center py-16 text-brown-400">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-cream-200 text-sage-600"><BookOpen size={22} aria-hidden="true" /></div>
           <p>아직 이 작품에 찍힌 독후감이 없어요.</p>
           <Link
             href={`/search?q=${encodeURIComponent(title)}`}

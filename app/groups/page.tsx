@@ -50,8 +50,8 @@ export default async function GroupsPage() {
   })) ?? [];
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8">
-      <section className="rounded-3xl border border-cream-200 bg-white p-6 shadow-sm">
+    <main className="cdj-page cdj-page--reading">
+      <section className="cdj-card p-6">
         <p className="text-sm font-semibold text-brown-400">책도장 독서모임</p>
         <h1 className="mt-2 font-serif text-3xl font-bold text-brown-900">
           함께 읽은 책과 독후감을 모아보세요
@@ -60,7 +60,7 @@ export default async function GroupsPage() {
           독서모임장이 모임을 만들고, 멤버들이 같은 책에 쓴 독후감을 한곳에 모아볼 수 있습니다.
         </p>
         <div className="mt-5 flex flex-wrap gap-2">
-          <Link href="/groups/new" className="rounded-full bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800">
+          <Link href="/groups/new" className="cdj-button cdj-button--primary">
             독서모임 만들기
           </Link>
         </div>

@@ -165,7 +165,7 @@ export default function ReviewReflectionPanel({
                   value={followDraft}
                   onChange={(event) => setFollowDraft(event.target.value)}
                   maxLength={600}
-                  className="min-h-24 w-full rounded-xl border border-violet-200 bg-white p-3 text-sm leading-6 text-brown-700 focus:outline-none"
+                  className="cdj-field text-sm min-h-24 w-full"
                 />
               ) : (
                 <p className="text-sm leading-7 text-brown-700">{followUp.question}</p>
@@ -202,7 +202,7 @@ export default function ReviewReflectionPanel({
                           value={comparisonDraft[key] as string}
                           onChange={(event) => setComparisonDraft({ ...comparisonDraft, [key]: event.target.value })}
                           maxLength={key === "reflectionQuestion" ? 600 : 800}
-                          className="mt-1 min-h-20 w-full rounded-xl border border-violet-200 bg-white p-3 text-sm leading-6 text-brown-700 focus:outline-none"
+                          className="cdj-field text-sm mt-1 min-h-20 w-full"
                         />
                       </label>
                     ))}

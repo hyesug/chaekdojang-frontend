@@ -139,12 +139,12 @@ export default function ManageCampaignClient({ campaignId }: { campaignId: numbe
   const canSelect = campaign.status === "CLOSED" || campaign.status === "SELECTED";
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8">
+    <main className="cdj-page cdj-page--reading">
       <Link href="/dojangdan/manage" className="text-sm text-brown-400 hover:text-brown-600">
         ← 운영실
       </Link>
 
-      <section className="mt-4 rounded-3xl border border-cream-200 bg-white p-6 shadow-sm">
+      <section className="cdj-card mt-4 p-6">
         <div className="flex items-center gap-2">
           <span className="rounded-full bg-cream-100 px-2.5 py-0.5 text-xs font-semibold text-brown-600">
             {STATUS_LABEL[campaign.status]}
@@ -188,7 +188,7 @@ export default function ManageCampaignClient({ campaignId }: { campaignId: numbe
               type="button"
               onClick={() => changeStatus(nextStatus.status)}
               disabled={busy}
-              className="rounded-full bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800 disabled:opacity-60"
+              className="cdj-button cdj-button--primary"
             >
               {nextStatus.label}
             </button>
@@ -231,7 +231,7 @@ export default function ManageCampaignClient({ campaignId }: { campaignId: numbe
         </div>
 
         {applicants.length === 0 ? (
-          <p className="mt-4 rounded-2xl border border-cream-200 bg-white p-6 text-center text-sm text-brown-500">
+          <p className="cdj-card mt-4 p-6 text-center text-sm text-brown-500">
             아직 신청자가 없습니다.
           </p>
         ) : (
@@ -255,7 +255,7 @@ export default function ManageCampaignClient({ campaignId }: { campaignId: numbe
             </div>
 
             {canSelect && (
-              <div className="mt-5 rounded-2xl border border-brown-100 bg-white p-4 shadow-sm">
+              <div className="cdj-card mt-5 p-4">
                 <label className="flex items-center gap-2 text-sm text-brown-700">
                   <input
                     type="checkbox"
@@ -316,7 +316,7 @@ function ApplicantCard({
   const record = applicant.trackRecord;
 
   return (
-    <article className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+    <article className="cdj-card p-4">
       <div className="flex items-start gap-3">
         {selectable && (
           <input type="checkbox" checked={checked} onChange={onToggle} className="mt-1.5" />

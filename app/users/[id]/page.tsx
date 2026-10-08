@@ -1,5 +1,6 @@
 "use client";
 
+import { BookOpen, SearchX } from "lucide-react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -168,16 +169,16 @@ export default function UserProfilePage() {
   if (!profile) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center text-brown-400">
-        <p className="text-4xl mb-3">🔍</p>
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-cream-200 text-sage-600"><SearchX size={22} aria-hidden="true" /></div>
         <p>존재하지 않는 사용자입니다.</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
+    <div className="cdj-page cdj-page--reading">
       {/* 프로필 카드 */}
-      <div className="bg-white rounded-2xl border border-cream-200 p-6 shadow-sm mb-6">
+      <div className="cdj-card p-6 mb-6">
         <div className="flex items-center gap-4">
           <ProfileAvatar src={profile.profileImage} name={profile.nickname} size="lg" />
           <div className="flex-1 min-w-0">
@@ -241,7 +242,7 @@ export default function UserProfilePage() {
 
         <Link
           href={`/calendar?userId=${profile.id}&nickname=${encodeURIComponent(profile.nickname)}`}
-          className="mt-5 flex items-center justify-center rounded-lg border border-cream-200 bg-white px-4 py-2 text-sm font-medium text-brown-600 hover:bg-cream-50"
+          className="cdj-card mt-5 flex items-center justify-center px-4 py-2 text-sm font-medium text-brown-600 hover:bg-cream-50"
         >
           월별 캘린더
         </Link>
@@ -258,8 +259,8 @@ export default function UserProfilePage() {
 
       {/* 인생책 */}
       {profile.lifeBook && (
-        <div className="bg-white rounded-2xl border border-cream-200 p-5 mb-6">
-          <h2 className="font-serif text-base font-bold text-brown-800 mb-3">📖 인생책</h2>
+        <div className="cdj-card p-5 mb-6">
+          <h2 className="font-serif text-base font-bold text-brown-800 mb-3">인생책</h2>
           <div className="flex items-center gap-3">
             {profile.lifeBook.thumbnail && (
               <img
@@ -295,18 +296,18 @@ export default function UserProfilePage() {
               value={reviewQuery}
               onChange={(event) => setReviewQuery(event.target.value)}
               placeholder="책 제목, 저자, 내용 검색"
-              className="w-full rounded-xl border border-cream-300 bg-white px-4 py-2.5 text-sm text-brown-800 shadow-sm placeholder:text-brown-300 focus:border-brown-400 focus:outline-none focus:ring-2 focus:ring-brown-100"
+              className="cdj-field text-sm w-full"
             />
           </label>
         )}
       </div>
       {reviews.length === 0 ? (
         <div className="text-center py-12 text-brown-400">
-          <p className="text-4xl mb-3">📖</p>
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-cream-200 text-sage-600"><BookOpen size={22} aria-hidden="true" /></div>
           <p>아직 독후감이 없어요</p>
         </div>
       ) : filteredReviews.length === 0 ? (
-        <div className="rounded-2xl border border-cream-200 bg-white py-12 text-center text-brown-400">
+        <div className="cdj-card py-12 text-center text-brown-400">
           검색 결과가 없어요.
         </div>
       ) : (

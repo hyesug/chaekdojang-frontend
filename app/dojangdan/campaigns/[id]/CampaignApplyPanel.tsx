@@ -89,7 +89,7 @@ export default function CampaignApplyPanel({
 
   if (status) {
     return (
-      <section className="mt-6 rounded-2xl border border-brown-100 bg-white p-5 shadow-sm">
+      <section className="cdj-card mt-6 p-5">
         <h2 className="font-serif text-lg font-bold text-brown-900">내 신청 상태</h2>
         <p className="mt-2 text-sm text-brown-600">
           현재 상태: <strong className="text-brown-800">{APPLICATION_STATUS_LABEL[status]}</strong>
@@ -125,7 +125,7 @@ export default function CampaignApplyPanel({
 
   if (priorityWindow && !canApplyNow) {
     return (
-      <section className="mt-6 rounded-2xl border border-brown-100 bg-white p-5 shadow-sm">
+      <section className="cdj-card mt-6 p-5">
         <h2 className="font-serif text-lg font-bold text-brown-900">관심 독자 우선 신청 기간</h2>
         <p className="mt-2 text-sm leading-6 text-brown-500">
           지금은 {profileName}의 소식을 받기로 한 독자에게 먼저 열려 있습니다. 곧 공개 모집이
@@ -136,7 +136,7 @@ export default function CampaignApplyPanel({
   }
 
   return (
-    <section className="mt-6 rounded-2xl border border-brown-100 bg-white p-5 shadow-sm">
+    <section className="cdj-card mt-6 p-5">
       <h2 className="font-serif text-lg font-bold text-brown-900">서평단 신청</h2>
 
       {priorityWindow && (
@@ -155,7 +155,7 @@ export default function CampaignApplyPanel({
         maxLength={2000}
         rows={4}
         placeholder="이 책을 왜 읽고 싶은지, 어떤 독후감을 남기고 싶은지 적어주세요."
-        className="mt-2 w-full rounded-xl border border-cream-200 px-3 py-2 text-sm text-brown-800 outline-none focus:border-brown-300"
+        className="cdj-field text-sm mt-2 w-full"
       />
 
       <div className="mt-5 space-y-3 rounded-2xl bg-cream-50 p-4">

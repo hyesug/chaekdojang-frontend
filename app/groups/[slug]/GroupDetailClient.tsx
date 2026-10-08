@@ -133,7 +133,7 @@ export default function GroupDetailClient({
             type="button"
             onClick={leaveGroup}
             disabled={loading}
-            className="rounded-full border border-cream-300 px-4 py-2 text-sm font-semibold text-brown-600 hover:bg-cream-50 disabled:opacity-50"
+            className="cdj-button cdj-button--secondary"
           >
             {loading ? "처리 중..." : "모임 탈퇴하기"}
           </button>
@@ -158,7 +158,7 @@ export default function GroupDetailClient({
       <button
         onClick={joinGroup}
         disabled={loading}
-        className="rounded-full bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800 disabled:opacity-50"
+        className="cdj-button cdj-button--primary"
       >
         {loading ? "처리 중..." : joinPolicy === "APPROVAL" ? "가입 신청하기" : "모임 가입하기"}
       </button>

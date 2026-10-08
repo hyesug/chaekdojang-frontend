@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { Bell } from "lucide-react";
 import { API_BASE } from "../lib/api";
 
 const BASE = API_BASE;
@@ -46,17 +47,18 @@ export default function NotificationBell() {
     }
   }
 
-  if (!mounted) return null;
+  // 마운트 전에도 자리를 차지해 헤더가 흔들리지 않게 한다
+  if (!mounted) return <span className="inline-block h-10 w-10" aria-hidden="true" />;
 
   return (
     <Link
       href="/notifications"
-      className="relative p-2 text-brown-500 hover:text-brown-800 transition-colors"
-      aria-label="알림"
+      className="cdj-icon-button relative"
+      aria-label={unread > 0 ? `알림 ${unread}개 안 읽음` : "알림"}
     >
-      <span className="text-xl leading-none">🔔</span>
+      <Bell size={20} strokeWidth={1.75} aria-hidden="true" />
       {unread > 0 && (
-        <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+        <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-wine-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-cream-50 tabular">
           {unread > 9 ? "9+" : unread}
         </span>
       )}

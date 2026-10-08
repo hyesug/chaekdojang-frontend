@@ -4,7 +4,10 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
+import { BookOpen, ChevronRight, Search, SearchX } from "lucide-react";
 import ProfileAvatar from "../components/ProfileAvatar";
+import { EmptyState } from "../components/ui/EmptyState";
+import { LoadingState } from "../components/ui/LoadingState";
 import { API_BASE } from "../lib/api";
 import { authFetch } from "../lib/auth";
 import { buildSearchLinks } from "../lib/purchaseLinks";
@@ -137,9 +140,7 @@ export default function SearchPage() {
   return (
     <Suspense
       fallback={
-        <div className="max-w-2xl mx-auto px-4 py-16 text-center text-brown-400">
-          불러오는 중...
-        </div>
+        <LoadingState label="불러오는 중" />
       }
     >
       <SearchContent />
@@ -352,16 +353,16 @@ function SearchContent() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
-      <h1 className="font-serif text-2xl font-bold text-brown-800 mb-6">검색</h1>
+    <div className="cdj-page cdj-page--reading">
+      <h1 className="cdj-title mb-6">검색</h1>
 
       {/* 탭 */}
-      <div className="flex gap-1 mb-4 bg-cream-200 rounded-xl p-1">
+      <div className="cdj-tabs mb-5" role="tablist" aria-label="검색 대상">
         {(
           [
-            { value: "books", label: "📚 책" },
-            { value: "webNovels", label: "📱 웹소설" },
-            { value: "users", label: "👤 사람" },
+            { value: "books", label: "책" },
+            { value: "webNovels", label: "웹소설" },
+            { value: "users", label: "사람" },
           ] as const
         ).map(({ value, label }) => (
           <button
@@ -377,9 +378,9 @@ function SearchContent() {
               setPublisherQuery("");
               router.replace("/search", { scroll: false });
             }}
-            className={`flex-1 py-2 text-xs font-medium rounded-lg transition-colors ${
-              tab === value ? "bg-white text-brown-800 shadow-sm" : "text-brown-400 hover:text-brown-600"
-            }`}
+            role="tab"
+            aria-selected={tab === value}
+            className="cdj-tab"
           >
             {label}
           </button>
@@ -387,61 +388,62 @@ function SearchContent() {
       </div>
 
       {/* 검색 폼 */}
-      <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2 mb-4">
-        <div className={`flex-1 grid grid-cols-1 gap-2 ${tab === "books" ? "sm:grid-cols-3" : ""}`}>
+      <form onSubmit={handleSearch} className="mb-6 flex flex-col gap-2">
+        <div className="relative">
+          <Search size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sage-500" aria-hidden="true" />
           <input
-            type="text"
+            type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={tab === "users" ? "닉네임으로 검색" : tab === "webNovels" ? "웹소설 제목" : "책 제목 또는 ISBN"}
-            className="w-full px-4 py-3 rounded-xl border border-cream-300 text-sm text-brown-800 bg-white placeholder:text-brown-300 focus:outline-none focus:border-brown-400 focus:ring-2 focus:ring-brown-100 transition"
+            aria-label="검색어"
+            className="cdj-field h-[52px] pl-11 pr-24 text-[15px]"
           />
-          {tab === "books" && (
-            <>
-              <input
-                type="text"
-                value={authorQuery}
-                onChange={(e) => setAuthorQuery(e.target.value)}
-                placeholder="저자명"
-                className="w-full px-4 py-3 rounded-xl border border-cream-300 text-sm text-brown-800 bg-white placeholder:text-brown-300 focus:outline-none focus:border-brown-400 focus:ring-2 focus:ring-brown-100 transition"
-              />
-              <input
-                type="text"
-                value={publisherQuery}
-                onChange={(e) => setPublisherQuery(e.target.value)}
-                placeholder="출판사"
-                className="w-full px-4 py-3 rounded-xl border border-cream-300 text-sm text-brown-800 bg-white placeholder:text-brown-300 focus:outline-none focus:border-brown-400 focus:ring-2 focus:ring-brown-100 transition"
-              />
-            </>
-          )}
+          <button
+            type="submit"
+            disabled={searching}
+            className="cdj-button cdj-button--primary cdj-button--sm absolute right-1.5 top-1/2 -translate-y-1/2"
+          >
+            {searching ? "검색 중" : "검색"}
+          </button>
         </div>
-        <button
-          type="submit"
-          disabled={searching}
-          className="px-6 py-3 bg-brown-600 text-white rounded-xl text-sm font-medium hover:bg-brown-700 transition-colors disabled:opacity-50 sm:w-auto"
-        >
-          {searching ? "검색 중..." : "검색"}
-        </button>
+        {tab === "books" && (
+          <div className="grid grid-cols-2 gap-2">
+            <input
+              type="text"
+              value={authorQuery}
+              onChange={(e) => setAuthorQuery(e.target.value)}
+              placeholder="저자명 (선택)"
+              aria-label="저자명"
+              className="cdj-field text-sm"
+            />
+            <input
+              type="text"
+              value={publisherQuery}
+              onChange={(e) => setPublisherQuery(e.target.value)}
+              placeholder="출판사 (선택)"
+              aria-label="출판사"
+              className="cdj-field text-sm"
+            />
+          </div>
+        )}
       </form>
 
       {tab === "webNovels" && (
-        <div className="mb-4 text-xs leading-5 text-brown-400">
+        <div className="mb-5 text-[13px] leading-5 text-sage-600">
           <p>네이버 웹소설·시리즈·카카오페이지·리디·문피아의 공식 작품 페이지를 찾아요.</p>
           <Link
             href={`/write?contentType=WEB_NOVEL&direct=platform${query.trim() ? `&title=${encodeURIComponent(query.trim())}` : ""}`}
-            className="mt-1 inline-block font-medium text-brown-600 hover:text-brown-800 hover:underline"
+            className="mt-1 inline-flex items-center font-medium text-brown-700 hover:underline"
           >
-            검색 결과에 없나요? 작품 URL 직접 입력 →
+            검색 결과에 없나요? 작품 URL 직접 입력
+            <ChevronRight size={14} aria-hidden="true" />
           </Link>
         </div>
       )}
 
       {/* 검색 중 */}
-      {searching && (
-        <div className="text-center py-12 text-brown-400">
-          <p>검색 중...</p>
-        </div>
-      )}
+      {searching && <LoadingState label="검색하는 중" />}
 
       {/* 결과 없음 */}
       {!searching && searched && (
@@ -449,48 +451,44 @@ function SearchContent() {
         (tab === "webNovels" && webNovelResults.length === 0) ||
         (tab === "users" && userResults.length === 0)
       ) && (
-        <div className="text-center py-12 text-brown-400">
-          <p className="text-4xl mb-3">🔍</p>
-          <p>검색 결과가 없습니다.</p>
-          <p className="text-sm mt-1">
-            {tab === "webNovels" ? "작품명을 정확히 입력해도 일반 웹에 색인되지 않은 작품은 찾지 못할 수 있어요." : "다른 키워드로 검색해보세요."}
-          </p>
-        </div>
+        <EmptyState title="검색 결과가 없어요" icon={<SearchX size={22} aria-hidden="true" />}>
+          {tab === "webNovels" ? "작품명을 정확히 입력해도 일반 웹에 색인되지 않은 작품은 찾지 못할 수 있어요." : "다른 키워드로 검색해보세요."}
+        </EmptyState>
       )}
 
       {webNovelError && (
-        <p className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-500">{webNovelError}</p>
+        <p className="cdj-alert cdj-alert--error mb-4">{webNovelError}</p>
       )}
 
       {/* 사람 검색 결과 */}
       {!searching && tab === "users" && userResults.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <p className="text-sm text-brown-400 mb-1">{userResults.length}명을 찾았어요</p>
-          {userResults.map((user) => (
-            <Link
-              key={user.id}
-              href={`/users/${user.id}`}
-              className="bg-white rounded-2xl border border-cream-200 p-4 flex items-center gap-3 hover:shadow-sm transition-shadow"
-            >
-              <ProfileAvatar src={user.profileImage} name={user.nickname} size="xl" />
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-brown-800 truncate">{user.nickname}</p>
-              </div>
-              <span className="text-brown-300 text-sm">›</span>
-            </Link>
-          ))}
+        <div>
+          <p className="mb-3 text-[13px] text-sage-600">{userResults.length}명을 찾았어요</p>
+          <div className="cdj-card divide-y divide-cream-200 overflow-hidden">
+            {userResults.map((user) => (
+              <Link
+                key={user.id}
+                href={`/users/${user.id}`}
+                className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-cream-100"
+              >
+                <ProfileAvatar src={user.profileImage} name={user.nickname} size="md" />
+                <p className="min-w-0 flex-1 truncate font-semibold text-brown-800">{user.nickname}</p>
+                <ChevronRight size={18} className="text-sage-500" aria-hidden="true" />
+              </Link>
+            ))}
+          </div>
         </div>
       )}
 
       {/* 웹소설 검색 결과 */}
       {!searching && tab === "webNovels" && webNovelResults.length > 0 && (
         <div className="flex flex-col gap-3">
-          <p className="mb-1 text-sm text-brown-400">공식 작품 {webNovelResults.length}개를 찾았어요</p>
+          <p className="mb-1 text-[13px] text-sage-600">공식 작품 {webNovelResults.length}개를 찾았어요</p>
           {webNovelResults.map((novel) => {
             const key = `${novel.platform}:${novel.externalId}`;
             const state = registering[key] ?? "idle";
             return (
-              <article key={key} className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+              <article key={key} className="cdj-card p-4">
                 <div className="flex items-start gap-4">
                   {novel.thumbnail ? (
                     <Image
@@ -498,7 +496,7 @@ function SearchContent() {
                       alt={`${novel.title} 표지`}
                       width={60}
                       height={88}
-                      className="h-[88px] w-[60px] flex-shrink-0 rounded-lg object-cover shadow-sm"
+                      className="h-[88px] w-[60px] flex-shrink-0 rounded-[3px] object-cover shadow-[0_4px_12px_-4px_rgb(16_42_44/22%)]"
                     />
                   ) : (
                     <div className="flex h-[88px] w-[60px] flex-shrink-0 items-center justify-center rounded-lg bg-brown-600 text-sm font-bold text-white">
@@ -507,21 +505,21 @@ function SearchContent() {
                   )}
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full bg-cream-200 px-2 py-0.5 text-[11px] font-medium text-sage-600">
+                      <span className="cdj-tag">
                         {novel.platformLabel}
                       </span>
                       <h2 className="font-serif font-bold leading-snug text-brown-800">{novel.title}</h2>
                     </div>
-                    <p className="mt-1 text-sm text-brown-400">{novel.author || "작가 정보 없음"}</p>
+                    <p className="mt-1 text-[13px] text-sage-600">{novel.author || "작가 정보 없음"}</p>
                     {novel.description && (
-                      <p className="mt-2 line-clamp-2 text-xs leading-5 text-brown-400">{novel.description}</p>
+                      <p className="mt-2 line-clamp-2 text-[13px] leading-5 text-sage-600">{novel.description}</p>
                     )}
                     <div className="mt-3 flex flex-wrap gap-2">
                       <button
                         type="button"
                         onClick={() => startWebNovelReview(novel)}
                         disabled={state === "loading"}
-                        className="rounded-full bg-brown-600 px-3 py-1.5 text-xs text-white hover:bg-brown-700 disabled:opacity-50"
+                        className="cdj-button cdj-button--primary cdj-button--sm"
                       >
                         {state === "loading" ? "작품 등록 중..." : state === "error" ? "다시 시도" : "독후감 쓰기"}
                       </button>
@@ -529,9 +527,9 @@ function SearchContent() {
                         href={novel.sourceUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="rounded-full border border-brown-300 px-3 py-1.5 text-xs text-brown-600 hover:border-brown-500"
+                        className="cdj-button cdj-button--secondary cdj-button--sm"
                       >
-                        공식 페이지 확인 →
+                        공식 페이지 확인
                       </a>
                     </div>
                   </div>
@@ -545,7 +543,7 @@ function SearchContent() {
       {/* 책 검색 결과 */}
       {!searching && tab === "books" && results.length > 0 && (
         <div className="flex flex-col gap-3">
-          <p className="text-sm text-brown-400 mb-1">
+          <p className="mb-1 text-[13px] text-sage-600">
             {groupedResults.length}개의 작품을 찾았어요
             {results.length !== groupedResults.length && (
               <span className="ml-1">({results.length}개 판본)</span>
@@ -562,7 +560,7 @@ function SearchContent() {
             return (
               <div
                 key={group.key}
-                className="bg-white rounded-2xl border border-cream-200 p-4 hover:shadow-sm transition-shadow"
+                className="cdj-card p-4"
               >
                 <div className="flex gap-4">
                   {/* 대표 표지 */}
@@ -573,13 +571,13 @@ function SearchContent() {
                         alt={book.title}
                         width={72}
                         height={108}
-                        className="w-[72px] h-[108px] rounded shadow-sm object-contain bg-white"
+                        className="h-[108px] w-[72px] rounded-[3px] bg-white object-contain shadow-[0_4px_12px_-4px_rgb(16_42_44/22%)]"
                       />
                     </Link>
                   ) : (
                     <Link href={`/books/${book.id}`} className="flex-shrink-0">
                       <div
-                        className="w-[72px] h-[108px] rounded shadow-sm flex items-center justify-center text-white text-xs font-bold"
+                        className="flex h-[108px] w-[72px] items-center justify-center rounded-[3px] font-serif text-sm font-bold text-white/85"
                         style={{ backgroundColor: COVER_COLORS[i % COVER_COLORS.length] }}
                       >
                         {book.title[0]}
@@ -591,21 +589,21 @@ function SearchContent() {
                   <div className="flex-1 min-w-0">
                     <Link
                       href={`/books/${book.id}`}
-                      className="font-serif font-bold text-brown-800 leading-snug hover:text-brown-600 hover:underline"
+                      className="font-serif text-[17px] font-bold leading-snug text-brown-800 hover:text-brown-600"
                     >
                       {group.workTitle}
                     </Link>
                     <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                      <p className="text-sm text-brown-400">{group.workAuthor}</p>
+                      <p className="text-[13px] text-sage-600">{group.workAuthor}</p>
                       {book.category && (
-                        <span className="rounded-full bg-cream-200 px-2 py-0.5 text-[11px] font-medium text-brown-500">
+                        <span className="rounded bg-cream-200 px-1.5 py-0.5 text-[11px] font-medium text-sage-700">
                           #{book.category}
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-brown-300 mt-0.5">
+                    <p className="mt-1 flex items-center gap-2 text-xs text-sage-600">
                       대표 판본: {book.publisher}
-                      <span className="ml-2 px-1.5 py-0.5 bg-cream-200 text-brown-500 rounded text-xs">
+                      <span className="rounded bg-cream-200 px-1.5 py-0.5 text-[11px] font-medium text-sage-700">
                         {group.editions.length}개 판본
                       </span>
                     </p>
@@ -615,20 +613,20 @@ function SearchContent() {
                       <Link
                         href={workHref}
                         onClick={() => trackMetric("book_click_search", workHref)}
-                        className="px-3 py-1.5 text-xs border border-brown-500 text-brown-700 rounded-full hover:bg-cream-100 transition-colors"
+                        className="cdj-button cdj-button--secondary cdj-button--sm"
                       >
                         독후감 모아보기
                       </Link>
                       <Link
                         href={representativeWriteHref}
-                        className="px-3 py-1.5 text-xs bg-brown-600 text-white rounded-full hover:bg-brown-700 transition-colors"
+                        className="cdj-button cdj-button--primary cdj-button--sm"
                       >
                         독후감 쓰기
                       </Link>
                       <button
                         type="button"
                         onClick={() => setExpandedGroups((prev) => ({ ...prev, [group.key]: !expanded }))}
-                        className="px-3 py-1.5 text-xs border border-brown-300 text-brown-600 rounded-full hover:border-brown-500 transition-colors"
+                        className="cdj-button cdj-button--ghost cdj-button--sm"
                       >
                         {expanded ? "판본 접기" : "판본 보기"}
                       </button>
@@ -636,21 +634,21 @@ function SearchContent() {
                         type="button"
                         onClick={() => addToLibrary(book)}
                         disabled={representativeAddState === "loading" || representativeAddState === "done"}
-                        className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
+                        className={`cdj-button cdj-button--sm border ${
                           representativeAddState === "done"
-                            ? "border-sage-500 text-sage-600 cursor-default"
+                            ? "border-transparent bg-brown-100 text-brown-700 cursor-default"
                             : representativeAddState === "error"
-                            ? "border-red-300 text-red-400"
-                            : "border-brown-300 text-brown-500 hover:border-brown-500 hover:text-brown-700"
+                            ? "border-wine-500/40 text-wine-500"
+                            : "border-cream-300 bg-cream-50 text-brown-800 hover:border-brown-200"
                         }`}
                       >
                         {representativeAddState === "done"
-                          ? "✓ 서재 추가됨"
+                          ? "서재에 담음"
                           : representativeAddState === "loading"
                           ? "추가 중..."
                           : representativeAddState === "error"
                           ? "실패 (다시)"
-                          : "+ 내 서재에 담기"}
+                          : "서재에 담기"}
                       </button>
                     </div>
 
@@ -658,14 +656,14 @@ function SearchContent() {
                     <div className="flex gap-2 mt-2">
                       {buildSearchLinks(group.workTitle, book.source, book.sourceUrl).map((link, idx) => (
                         <span key={link.provider} className="contents">
-                          {idx > 0 && <span className="text-brown-200 text-xs">|</span>}
+                          {idx > 0 && <span className="text-xs text-cream-300" aria-hidden="true">·</span>}
                           <a
                             href={link.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs text-brown-400 hover:text-brown-600 hover:underline transition-colors"
+                            className="text-xs text-sage-600 transition-colors hover:text-brown-800 hover:underline"
                           >
-                            {link.label} →
+                            {link.label}
                           </a>
                         </span>
                       ))}
@@ -674,13 +672,13 @@ function SearchContent() {
                 </div>
 
                 {expanded && (
-                  <div className="mt-4 pt-4 border-t border-cream-100 flex flex-col gap-3">
+                  <div className="mt-4 flex flex-col gap-2 border-t border-cream-200 pt-4">
                     {group.editions.map((edition) => {
                       const editionKey = edition.isbn13 || String(edition.id);
                       const addState = adding[editionKey] ?? "idle";
                       const encodedTitle = encodeURIComponent(edition.title);
                       return (
-                        <div key={editionKey} className="flex gap-3 rounded-xl bg-cream-50 border border-cream-200 p-3">
+                        <div key={editionKey} className="flex gap-3 rounded-lg bg-cream-100 p-3">
                           {edition.thumbnail ? (
                             <Image
                               src={edition.thumbnail}
@@ -700,14 +698,14 @@ function SearchContent() {
                           <div className="flex-1 min-w-0">
                             <Link
                               href={`/books/${edition.id}`}
-                              className="text-sm font-semibold text-brown-800 leading-snug hover:text-brown-600 hover:underline"
+                              className="text-sm font-semibold leading-snug text-brown-800 hover:underline"
                             >
                               {edition.title}
                             </Link>
                             <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                              <p className="text-xs text-brown-400">{edition.publisher}</p>
+                              <p className="text-xs text-sage-600">{edition.publisher}</p>
                               {edition.category && (
-                                <span className="rounded-full bg-cream-200 px-2 py-0.5 text-[11px] font-medium text-brown-500">
+                                <span className="rounded bg-cream-200 px-1.5 py-0.5 text-[11px] font-medium text-sage-700">
                                   #{edition.category}
                                 </span>
                               )}
@@ -715,7 +713,7 @@ function SearchContent() {
                             <div className="flex flex-wrap gap-2 mt-2">
                               <Link
                                 href={`/write?bookId=${edition.id}&title=${encodedTitle}&author=${encodeURIComponent(edition.author)}&publisher=${encodeURIComponent(edition.publisher)}${edition.thumbnail ? `&thumbnail=${encodeURIComponent(edition.thumbnail)}` : ""}`}
-                                className="px-3 py-1.5 text-xs bg-brown-600 text-white rounded-full hover:bg-brown-700 transition-colors"
+                                className="cdj-button cdj-button--primary cdj-button--sm"
                               >
                                 이 판본으로 독후감 쓰기
                               </Link>
@@ -723,21 +721,21 @@ function SearchContent() {
                                 type="button"
                                 onClick={() => addToLibrary(edition)}
                                 disabled={addState === "loading" || addState === "done"}
-                                className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
+                                className={`cdj-button cdj-button--sm border ${
                                   addState === "done"
-                                    ? "border-sage-500 text-sage-600 cursor-default"
+                                    ? "border-transparent bg-brown-100 text-brown-700 cursor-default"
                                     : addState === "error"
-                                    ? "border-red-300 text-red-400"
-                                    : "border-brown-300 text-brown-500 hover:border-brown-500 hover:text-brown-700"
+                                    ? "border-wine-500/40 text-wine-500"
+                                    : "border-cream-300 bg-cream-50 text-brown-800 hover:border-brown-200"
                                 }`}
                               >
                                 {addState === "done"
-                                  ? "✓ 서재 추가됨"
+                                  ? "서재에 담음"
                                   : addState === "loading"
                                   ? "추가 중..."
                                   : addState === "error"
                                   ? "실패 (재시도)"
-                                  : "+ 서재에 담기"}
+                                  : "서재에 담기"}
                               </button>
                             </div>
                           </div>
@@ -754,11 +752,9 @@ function SearchContent() {
 
       {/* 초기 상태 */}
       {!searched && (
-        <div className="text-center py-16 text-brown-300">
-          <p className="text-5xl mb-4">📚</p>
-          <p className="text-brown-400">읽고 싶은 책을 검색해보세요</p>
-          <p className="text-sm mt-1">카카오 · Google Books에서 통합 검색합니다</p>
-        </div>
+        <EmptyState title="읽은 책, 읽고 싶은 책을 찾아보세요" icon={<BookOpen size={22} aria-hidden="true" />}>
+          카카오 · Google Books에서 통합 검색합니다
+        </EmptyState>
       )}
     </div>
   );

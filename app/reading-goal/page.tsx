@@ -121,12 +121,12 @@ export default function ReadingGoalPage() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-8">
+    <main className="cdj-page cdj-page--reading">
       <div className="mb-4">
         <Link href="/profile" className="text-sm text-brown-400 hover:text-brown-600">← 프로필로 돌아가기</Link>
       </div>
 
-      <section className="rounded-2xl border border-cream-200 bg-white p-6 shadow-sm">
+      <section className="cdj-card p-6">
         <p className="text-sm font-semibold text-brown-400">독서 목표</p>
         <h1 className="mt-2 font-serif text-2xl font-bold text-brown-900">올해 몇 권 읽을까요?</h1>
         <p className="mt-3 text-sm leading-6 text-brown-500">
@@ -138,7 +138,7 @@ export default function ReadingGoalPage() {
         <ReadingGoalProgress goal={profile?.readingGoal ?? null} />
       </div>
 
-      <form onSubmit={saveGoal} className="mt-5 rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+      <form onSubmit={saveGoal} className="cdj-card mt-5 p-5">
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label className="mb-1.5 block text-sm text-brown-600" htmlFor="goal-year">연도</label>
@@ -149,7 +149,7 @@ export default function ReadingGoalPage() {
               max={2100}
               value={year}
               onChange={(e) => setYear(Number(e.target.value))}
-              className="w-full rounded-xl border border-cream-300 bg-cream-50 px-4 py-2.5 text-sm text-brown-800 focus:border-brown-400 focus:outline-none"
+              className="cdj-field text-sm w-full"
             />
           </div>
           <div>
@@ -161,7 +161,7 @@ export default function ReadingGoalPage() {
               max={999}
               value={targetCount}
               onChange={(e) => setTargetCount(e.target.value)}
-              className="w-full rounded-xl border border-cream-300 bg-cream-50 px-4 py-2.5 text-sm text-brown-800 focus:border-brown-400 focus:outline-none"
+              className="cdj-field text-sm w-full"
               placeholder="예: 30"
             />
           </div>
@@ -180,10 +180,10 @@ export default function ReadingGoalPage() {
         {message && <p className="mt-3 rounded-xl bg-cream-50 px-4 py-2.5 text-sm text-brown-600">{message}</p>}
 
         <div className="mt-4 flex gap-2">
-          <button type="submit" disabled={saving} className="flex-1 rounded-xl bg-brown-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brown-700 disabled:opacity-50">
+          <button type="submit" disabled={saving} className="cdj-button cdj-button--primary flex-1">
             {saving ? "저장 중..." : "목표 저장"}
           </button>
-          <button type="button" disabled={saving || !profile?.readingGoal} onClick={clearGoal} className="rounded-xl border border-brown-200 px-4 py-2.5 text-sm font-medium text-brown-500 transition-colors hover:bg-cream-50 disabled:opacity-40">
+          <button type="button" disabled={saving || !profile?.readingGoal} onClick={clearGoal} className="cdj-button cdj-button--secondary">
             삭제
           </button>
         </div>

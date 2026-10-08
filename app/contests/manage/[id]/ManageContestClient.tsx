@@ -156,12 +156,12 @@ export default function ManageContestClient({ contestId }: { contestId: number }
   ).length;
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8">
+    <main className="cdj-page cdj-page--reading">
       <Link href="/contests/manage" className="text-sm text-brown-400 hover:text-brown-600">
         ← 운영실
       </Link>
 
-      <section className="mt-4 rounded-3xl border border-cream-200 bg-white p-6 shadow-sm">
+      <section className="cdj-card mt-4 p-6">
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-cream-100 px-2.5 py-0.5 text-xs font-semibold text-brown-600">
             {CONTEST_STATUS_LABEL[contest.status]}
@@ -192,7 +192,7 @@ export default function ManageContestClient({ contestId }: { contestId: number }
               type="button"
               onClick={() => changeStatus(nextStatus.status)}
               disabled={busy}
-              className="rounded-full bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800 disabled:opacity-60"
+              className="cdj-button cdj-button--primary"
             >
               {nextStatus.label}
             </button>
@@ -242,7 +242,7 @@ export default function ManageContestClient({ contestId }: { contestId: number }
         </div>
 
         {entries.length === 0 ? (
-          <p className="mt-4 rounded-2xl border border-cream-200 bg-white p-6 text-center text-sm text-brown-500">
+          <p className="cdj-card mt-4 p-6 text-center text-sm text-brown-500">
             아직 응모작이 없습니다.
           </p>
         ) : (
@@ -270,7 +270,7 @@ export default function ManageContestClient({ contestId }: { contestId: number }
             </div>
 
             {judging && (
-              <div className="mt-5 rounded-2xl border border-brown-100 bg-white p-4 shadow-sm">
+              <div className="cdj-card mt-5 p-4">
                 <p className="text-sm text-brown-600">
                   등수와 상 이름을 입력한 응모작이 수상작이 됩니다. 지금 입력한{" "}
                   <strong className="text-brown-800">{awardedInputCount}편</strong>을 저장합니다.
@@ -321,7 +321,7 @@ function EntryCard({
   const current = award ?? { awardRank: "", awardName: "" };
 
   return (
-    <article className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+    <article className="cdj-card p-4">
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-semibold text-brown-800">{entry.nickname}</span>
         <span

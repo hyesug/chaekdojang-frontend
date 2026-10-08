@@ -1,5 +1,8 @@
 "use client";
 
+import { BookOpen, Bookmark, CalendarDays, ChevronRight, Library, Map as MapIcon, X } from "lucide-react";
+import { EmptyState } from "../components/ui/EmptyState";
+import { LoadingState } from "../components/ui/LoadingState";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -577,36 +580,36 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-16 text-center text-brown-400">
-        불러오는 중...
+      <div className="cdj-page cdj-page--reading">
+        <LoadingState label="프로필을 불러오는 중" />
       </div>
     );
   }
 
   if (!profile) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-16 text-center text-brown-400">
-        프로필을 불러올 수 없습니다.
+      <div className="cdj-page cdj-page--reading">
+        <EmptyState title="프로필을 불러올 수 없어요">잠시 후 다시 시도해주세요.</EmptyState>
       </div>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
+    <div className="cdj-page cdj-page--reading">
       {/* 프로필 카드 */}
-      <div className="bg-white rounded-2xl border border-cream-200 p-6 shadow-sm mb-6">
+      <div className="cdj-card p-6 mb-6">
         {!editing ? (
           <>
             <div className="flex items-center gap-4">
-              <ProfileAvatar src={profile.profileImage} name={profile.nickname} size="lg" />
+              <ProfileAvatar src={profile.profileImage} name={profile.nickname} size="xl" />
               <div className="flex-1 min-w-0">
-                <h1 className="font-serif text-xl font-bold text-brown-800 truncate">{profile.nickname}</h1>
+                <h1 className="truncate font-serif text-2xl font-bold text-brown-800">{profile.nickname}</h1>
                 <ExpandableBio bio={profile.bio} className="mt-1" />
               </div>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <button
                   onClick={() => setEditing(true)}
-                  className="px-4 py-2 text-sm border border-brown-300 text-brown-600 rounded-full hover:bg-cream-200 transition-colors flex-shrink-0"
+                  className="cdj-button cdj-button--secondary flex-shrink-0"
                 >
                   프로필 수정
                 </button>
@@ -619,8 +622,8 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <section className="mt-5 rounded-xl border border-cream-200 bg-cream-50 p-4 text-sm text-brown-600">
-              <h2 className="font-serif font-bold text-brown-800">계정 정보</h2>
+            <section className="mt-6 rounded-lg bg-cream-100 p-4 text-sm text-sage-700">
+              <h2 className="text-sm font-bold text-brown-800">계정 정보</h2>
               <dl className="mt-3 space-y-2">
                 <div className="flex justify-between gap-4"><dt>책도장 ID</dt><dd className="font-medium text-brown-800">{profile.customerCode}</dd></div>
                 {profile.email && <div className="flex justify-between gap-4"><dt>이메일</dt><dd className="truncate text-brown-800">{profile.email}</dd></div>}
@@ -629,35 +632,35 @@ export default function ProfilePage() {
               <div className="mt-4 border-t border-cream-200 pt-3">
                 <p className="text-xs text-brown-400">연결된 로그인 수단</p>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {profile.authProviders.map((provider) => <span key={provider} className="rounded-full bg-white px-3 py-1 text-xs">{AUTH_PROVIDER_LABELS[provider]}</span>)}
+                  {profile.authProviders.map((provider) => <span key={provider} className="cdj-tag">{AUTH_PROVIDER_LABELS[provider]}</span>)}
                   {OAUTH_PROVIDERS.filter((provider) => !profile.authProviders.includes(provider)).map((provider) => (
-                    <button key={provider} type="button" onClick={() => linkProvider(provider)} className="rounded-full border border-brown-300 px-3 py-1 text-xs text-brown-600 hover:bg-white">+ {AUTH_PROVIDER_LABELS[provider]} 연결</button>
+                    <button key={provider} type="button" onClick={() => linkProvider(provider)} className="cdj-button cdj-button--secondary cdj-button--sm">+ {AUTH_PROVIDER_LABELS[provider]} 연결</button>
                   ))}
                 </div>
               </div>
             </section>
 
             {/* 통계 */}
-            <div className="grid grid-cols-3 gap-4 mt-5 pt-5 border-t border-cream-200 text-center">
-              <div>
-                <p className="font-bold text-brown-800 text-xl">{profile.reviewCount}</p>
-                <p className="text-xs text-brown-400 mt-0.5">독후감</p>
+            <div className="mt-6 grid grid-cols-3 divide-x divide-cream-300 rounded-lg border border-cream-300 text-center">
+              <div className="px-3 py-3">
+                <p className="text-xl font-bold text-brown-800 tabular">{profile.reviewCount}</p>
+                <p className="mt-0.5 text-xs text-sage-600">독후감</p>
               </div>
               <button
                 onClick={() => setFollowModal("followers")}
-                className="group rounded-lg border border-brown-200 bg-cream-50 px-3 py-2 text-center shadow-sm transition-all hover:-translate-y-0.5 hover:border-brown-400 hover:bg-white hover:shadow-md focus:outline-none focus:ring-2 focus:ring-brown-300 active:translate-y-0"
+                className="px-3 py-3 text-center transition-colors hover:bg-cream-100"
                 aria-label="팔로워 목록 보기"
               >
-                <p className="font-bold text-brown-800 text-xl">{profile.followerCount}</p>
-                <p className="text-xs text-brown-500 mt-0.5">팔로워</p>
+                <p className="text-xl font-bold text-brown-800 tabular">{profile.followerCount}</p>
+                <p className="mt-0.5 text-xs text-sage-600">팔로워</p>
               </button>
               <button
                 onClick={() => setFollowModal("followings")}
-                className="group rounded-lg border border-brown-200 bg-cream-50 px-3 py-2 text-center shadow-sm transition-all hover:-translate-y-0.5 hover:border-brown-400 hover:bg-white hover:shadow-md focus:outline-none focus:ring-2 focus:ring-brown-300 active:translate-y-0"
+                className="px-3 py-3 text-center transition-colors hover:bg-cream-100"
                 aria-label="팔로잉 목록 보기"
               >
-                <p className="font-bold text-brown-800 text-xl">{profile.followingCount}</p>
-                <p className="text-xs text-brown-500 mt-0.5">팔로잉</p>
+                <p className="text-xl font-bold text-brown-800 tabular">{profile.followingCount}</p>
+                <p className="mt-0.5 text-xs text-sage-600">팔로잉</p>
               </button>
             </div>
 
@@ -670,20 +673,20 @@ export default function ProfilePage() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="rounded-lg border border-cream-200 bg-cream-50 px-3 py-3 text-center hover:border-brown-200 hover:bg-white transition-colors"
+                  className="rounded-lg bg-cream-100 px-3 py-3 text-center transition-colors hover:bg-cream-200"
                 >
-                  <p className="text-xl font-bold text-brown-800">{item.count}</p>
-                  <p className="text-xs text-brown-400 mt-0.5">{item.label}</p>
+                  <p className="text-xl font-bold text-brown-800 tabular">{item.count}</p>
+                  <p className="mt-0.5 text-xs text-sage-600">{item.label}</p>
                 </Link>
               ))}
             </div>
 
-            <section className="mt-5 rounded-xl border border-cream-200 bg-cream-50 p-3">
+            <section className="mt-5 rounded-lg border border-cream-300 p-4">
               <div className="mb-3 flex items-center justify-between gap-3">
-                <h2 className="font-serif text-base font-bold text-brown-800">독서 목표</h2>
+                <h2 className="text-sm font-bold text-brown-800">독서 목표</h2>
                 <Link
                   href="/reading-goal"
-                  className="shrink-0 rounded-full bg-brown-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brown-700"
+                  className="cdj-button cdj-button--primary cdj-button--sm shrink-0"
                 >
                   {profile.readingGoal ? "목표 수정" : "목표 설정"}
                 </Link>
@@ -691,7 +694,7 @@ export default function ProfilePage() {
               {profile.readingGoal ? (
                 <ReadingGoalProgress goal={profile.readingGoal} compact />
               ) : (
-                <p className="rounded-lg border border-cream-200 bg-white px-3 py-3 text-sm text-brown-400">
+                <p className="text-sm text-sage-600">
                   올해 독서 목표를 설정해보세요
                 </p>
               )}
@@ -699,14 +702,15 @@ export default function ProfilePage() {
 
             <Link
               href={`/u/${encodeURIComponent(profile.nickname)}`}
-              className="mt-4 block rounded-lg border border-dashed border-brown-200 bg-cream-50 px-4 py-3 text-sm text-brown-600 hover:bg-white transition-colors"
+              className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-dashed border-cream-300 px-4 py-3 text-sm text-sage-700 transition-colors hover:border-brown-200 hover:text-brown-800"
             >
-              공유 프로필: /u/{profile.nickname}
+              <span className="truncate">공유 프로필 <span className="font-medium text-brown-800">/u/{profile.nickname}</span></span>
+              <ChevronRight size={16} className="flex-none" aria-hidden="true" />
             </Link>
           </>
         ) : (
           <form onSubmit={handleSave} className="flex flex-col gap-4">
-            <h2 className="font-serif text-lg font-bold text-brown-800 mb-1">프로필 수정</h2>
+            <h2 className="cdj-heading mb-1">프로필 수정</h2>
             <div>
               <label className="block text-sm text-brown-600 mb-1.5" htmlFor="p-nickname">
                 닉네임
@@ -716,7 +720,7 @@ export default function ProfilePage() {
                 required
                 value={editForm.nickname}
                 onChange={(e) => setEditForm((f) => ({ ...f, nickname: e.target.value }))}
-                className="w-full px-4 py-2.5 rounded-xl border border-cream-300 text-sm text-brown-800 bg-cream-50 focus:outline-none focus:border-brown-400 focus:ring-2 focus:ring-brown-100 transition"
+                className="cdj-field text-sm w-full"
               />
             </div>
             <div>
@@ -730,7 +734,7 @@ export default function ProfilePage() {
                 onChange={(e) => setEditForm((f) => ({ ...f, bio: e.target.value }))}
                 placeholder="간단한 자기소개를 남겨보세요"
                 rows={3}
-                className="w-full px-4 py-2.5 rounded-xl border border-cream-300 text-sm text-brown-800 bg-cream-50 placeholder:text-brown-300 focus:outline-none focus:border-brown-400 focus:ring-2 focus:ring-brown-100 transition resize-none"
+                className="cdj-field text-sm w-full resize-none"
               />
               <p className="mt-1 text-right text-xs text-brown-300">
                 {editForm.bio.length} / {MAX_BIO_LENGTH}
@@ -757,7 +761,7 @@ export default function ProfilePage() {
                   type="button"
                   disabled={uploading || !editForm.profileImage}
                   onClick={handleUseDefaultImage}
-                  className="flex-1 rounded-xl border border-cream-300 px-4 py-2.5 text-sm text-brown-500 transition hover:border-brown-400 hover:bg-cream-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="cdj-button cdj-button--secondary flex-1"
                 >
                   기본이미지 쓰기
                 </button>
@@ -819,10 +823,10 @@ export default function ProfilePage() {
                 type="button"
                 onClick={closeDeleteModal}
                 disabled={deletingAccount}
-                className="text-xl leading-none text-brown-300 hover:text-brown-600 disabled:opacity-40"
+                className="cdj-icon-button disabled:opacity-40"
                 aria-label="닫기"
               >
-                ×
+                <X size={20} aria-hidden="true" />
               </button>
             </div>
             <label className="mt-4 block text-sm text-brown-600" htmlFor="delete-confirm">
@@ -833,13 +837,13 @@ export default function ProfilePage() {
                 id="delete-confirm"
                 value={deleteConfirmText}
                 onChange={(e) => setDeleteConfirmText(e.target.value)}
-                className="flex-1 rounded-xl border border-red-100 bg-red-50 px-4 py-2.5 text-sm text-brown-800 placeholder:text-brown-300 focus:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-100"
+                className="cdj-field text-sm flex-1"
                 placeholder={DELETE_CONFIRM_TEXT}
               />
               <button
                 type="submit"
                 disabled={deleteConfirmText !== DELETE_CONFIRM_TEXT || deletingAccount}
-                className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
+                className="cdj-button cdj-button--danger"
               >
                 {deletingAccount ? "삭제 중..." : "계정 삭제"}
               </button>
@@ -852,9 +856,9 @@ export default function ProfilePage() {
       )}
 
       {/* 인생책 */}
-      <div className="bg-white rounded-2xl border border-cream-200 p-5 mb-6">
+      <div className="cdj-card p-5 mb-6">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-serif text-base font-bold text-brown-800">📖 인생책</h2>
+          <h2 className="font-serif text-base font-bold text-brown-800">인생책</h2>
           <button
             onClick={() => setShowLifeBookSearch((v) => !v)}
             className="text-xs text-brown-400 hover:text-brown-600 transition-colors"
@@ -872,12 +876,12 @@ export default function ProfilePage() {
                 onChange={(e) => setLifeBookSearch(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && searchLifeBook(lifeBookSearch)}
                 placeholder="책 제목 또는 저자 검색"
-                className="flex-1 px-3 py-2 text-sm rounded-xl border border-cream-300 bg-cream-50 focus:outline-none focus:border-brown-400 transition"
+                className="cdj-field text-sm flex-1"
               />
               <button
                 onClick={() => searchLifeBook(lifeBookSearch)}
                 disabled={lifeBookSearching}
-                className="px-3 py-2 text-sm bg-brown-600 text-white rounded-xl hover:bg-brown-700 transition-colors disabled:opacity-50"
+                className="cdj-button cdj-button--primary"
               >
                 검색
               </button>
@@ -931,7 +935,7 @@ export default function ProfilePage() {
         )}
       </div>
 
-      <div className="bg-white rounded-2xl border border-cream-200 p-5 mb-6">
+      <div className="cdj-card p-5 mb-6">
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="font-serif text-base font-bold text-brown-800">공식 프로필</h2>
@@ -940,7 +944,7 @@ export default function ProfilePage() {
           <button
             type="button"
             onClick={() => setShowOfficialForm((value) => !value)}
-            className="shrink-0 rounded-full border border-brown-300 px-3 py-1.5 text-xs text-brown-600 hover:bg-cream-100"
+            className="cdj-button cdj-button--secondary cdj-button--sm shrink-0"
           >
             {showOfficialForm ? "닫기" : "신청하기"}
           </button>
@@ -986,7 +990,7 @@ export default function ProfilePage() {
                 id="official-type"
                 value={officialForm.type}
                 onChange={(e) => setOfficialForm((form) => ({ ...form, type: e.target.value as OfficialProfileType }))}
-                className="w-full rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-800 focus:border-brown-400 focus:outline-none"
+                className="cdj-field text-sm w-full"
               >
                 <option value="AUTHOR">작가</option>
                 <option value="PUBLISHER">출판사</option>
@@ -1001,7 +1005,7 @@ export default function ProfilePage() {
                 required
                 value={officialForm.displayName}
                 onChange={(e) => setOfficialForm((form) => ({ ...form, displayName: e.target.value }))}
-                className="w-full rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-800 focus:border-brown-400 focus:outline-none"
+                className="cdj-field text-sm w-full"
               />
             </div>
             <div>
@@ -1011,7 +1015,7 @@ export default function ProfilePage() {
                 value={officialForm.bio}
                 onChange={(e) => setOfficialForm((form) => ({ ...form, bio: e.target.value }))}
                 rows={3}
-                className="w-full resize-none rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-800 focus:border-brown-400 focus:outline-none"
+                className="cdj-field text-sm w-full resize-none"
               />
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -1022,7 +1026,7 @@ export default function ProfilePage() {
                   value={officialForm.officialUrl}
                   onChange={(e) => setOfficialForm((form) => ({ ...form, officialUrl: e.target.value }))}
                   placeholder="홈페이지, 인스타, 브런치 등"
-                  className="w-full rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-800 focus:border-brown-400 focus:outline-none"
+                  className="cdj-field text-sm w-full"
                 />
               </div>
               <div>
@@ -1033,7 +1037,7 @@ export default function ProfilePage() {
                   required
                   value={officialForm.contactEmail}
                   onChange={(e) => setOfficialForm((form) => ({ ...form, contactEmail: e.target.value }))}
-                  className="w-full rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-800 focus:border-brown-400 focus:outline-none"
+                  className="cdj-field text-sm w-full"
                 />
               </div>
             </div>
@@ -1044,7 +1048,7 @@ export default function ProfilePage() {
                 value={officialForm.proofUrl}
                 onChange={(e) => setOfficialForm((form) => ({ ...form, proofUrl: e.target.value }))}
                 placeholder="출판사 페이지, 작가 소개, 텀블벅 프로젝트 등"
-                className="w-full rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-800 focus:border-brown-400 focus:outline-none"
+                className="cdj-field text-sm w-full"
               />
             </div>
             <button
@@ -1059,32 +1063,23 @@ export default function ProfilePage() {
       </div>
 
       {/* 빠른 메뉴 */}
-      <div className="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <Link
-          href="/bookmarks"
-          className="py-3 rounded-2xl border border-cream-200 bg-white text-center text-sm text-brown-600 hover:bg-cream-50 hover:shadow-sm transition-all"
-        >
-          🔖 저장한 독후감
-        </Link>
-        <Link
-          href="/library"
-          className="py-3 rounded-2xl border border-cream-200 bg-white text-center text-sm text-brown-600 hover:bg-cream-50 hover:shadow-sm transition-all"
-        >
-          📚 내 서재
-        </Link>
-        <Link
-          href="/calendar"
-          className="py-3 rounded-2xl border border-cream-200 bg-white text-center text-sm text-brown-600 hover:bg-cream-50 hover:shadow-sm transition-all"
-        >
-          🗓️ 월별 캘린더
-        </Link>
-        <Link
-          href="/stats"
-          className="py-3 rounded-2xl border border-cream-200 bg-white text-center text-sm text-brown-600 hover:bg-cream-50 hover:shadow-sm transition-all"
-        >
-          🗺️ 독서 인생지도
-        </Link>
-      </div>
+      <nav className="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="내 기록 바로가기">
+        {[
+          { href: "/bookmarks", label: "저장한 독후감", Icon: Bookmark },
+          { href: "/library", label: "내 서재", Icon: Library },
+          { href: "/calendar", label: "월별 캘린더", Icon: CalendarDays },
+          { href: "/stats", label: "독서 인생지도", Icon: MapIcon },
+        ].map(({ href, label, Icon }) => (
+          <Link
+            key={href}
+            href={href}
+            className="cdj-card cdj-card--interactive flex flex-col items-center gap-2 px-3 py-4 text-sm font-medium text-brown-800"
+          >
+            <Icon size={20} strokeWidth={1.75} className="text-brown-700" aria-hidden="true" />
+            {label}
+          </Link>
+        ))}
+      </nav>
       <Link
         href="/install"
         className="-mt-3 mb-6 block text-center text-xs font-medium text-brown-400 underline underline-offset-2 hover:text-brown-600"
@@ -1094,8 +1089,8 @@ export default function ProfilePage() {
 
       {/* 취향 맞는 독자 추천 */}
       {recommendations.length > 0 && (
-        <div className="bg-white rounded-2xl border border-cream-200 p-5 mb-6">
-          <h2 className="font-serif text-base font-bold text-brown-800 mb-1">🤝 취향이 비슷한 독자</h2>
+        <div className="cdj-card p-5 mb-6">
+          <h2 className="font-serif text-base font-bold text-brown-800 mb-1">취향이 비슷한 독자</h2>
           <p className="text-xs text-brown-400 mb-4">읽은 책·별점·인생책을 기반으로 추천해요</p>
           <div className="flex flex-col gap-3">
             {recommendations.map((user) => (
@@ -1109,7 +1104,7 @@ export default function ProfilePage() {
                   <p className="text-sm font-semibold text-brown-800 truncate">{user.nickname}</p>
                   <ExpandableBio bio={user.bio} compact />
                 </div>
-                <span className="text-brown-300 text-xs flex-shrink-0">›</span>
+                <ChevronRight size={16} className="flex-shrink-0 text-sage-500" aria-hidden="true" />
               </Link>
             ))}
           </div>
@@ -1118,7 +1113,7 @@ export default function ProfilePage() {
 
       {/* 내 독후감 목록 */}
       <div className="flex items-center justify-between mb-3">
-        <h2 className="font-serif text-lg font-bold text-brown-800">내 독후감</h2>
+        <h2 className="cdj-heading">내 독후감</h2>
       </div>
 
       {/* 검색 */}
@@ -1127,11 +1122,11 @@ export default function ProfilePage() {
           value={reviewSearchInput}
           onChange={(e) => setReviewSearchInput(e.target.value)}
           placeholder="책 제목 또는 내용 검색"
-          className="flex-1 px-3 py-2 text-sm rounded-xl border border-cream-300 bg-white focus:outline-none focus:border-brown-400 transition"
+          className="cdj-field text-sm flex-1"
         />
         <button
           type="submit"
-          className="px-3 py-2 text-sm bg-brown-600 text-white rounded-xl hover:bg-brown-700 transition-colors"
+          className="cdj-button cdj-button--primary"
         >
           검색
         </button>
@@ -1144,7 +1139,7 @@ export default function ProfilePage() {
               const token: string | null = "cookie-session";
               if (token) loadReviews(token, 0, "");
             }}
-            className="px-3 py-2 text-sm border border-cream-300 text-brown-400 rounded-xl hover:bg-cream-50 transition-colors"
+            className="cdj-button cdj-button--secondary"
           >
             초기화
           </button>
@@ -1153,7 +1148,7 @@ export default function ProfilePage() {
 
       {reviews.length === 0 ? (
         <div className="text-center py-12 text-brown-400">
-          <p className="text-4xl mb-3">📖</p>
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-cream-200 text-sage-600"><BookOpen size={22} aria-hidden="true" /></div>
           <p>{reviewSearchRef.current ? `"${reviewSearchRef.current}" 검색 결과가 없어요` : "아직 독후감이 없어요"}</p>
           {!reviewSearchRef.current && (
             <Link
@@ -1186,7 +1181,7 @@ export default function ProfilePage() {
             <button
               onClick={handleLoadMore}
               disabled={reviewLoadingMore}
-              className="w-full mt-4 py-3 text-sm text-brown-500 border border-cream-300 rounded-xl hover:bg-cream-50 transition-colors disabled:opacity-50"
+              className="cdj-button cdj-button--secondary mt-4 w-full"
             >
               {reviewLoadingMore ? "불러오는 중..." : "더보기"}
             </button>

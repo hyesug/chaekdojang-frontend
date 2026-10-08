@@ -55,11 +55,11 @@ export default function AdminInquiryDetailPage({ params }: { params: Promise<{ i
       {/* 기존 답변 */}
       {inquiry.comments.length > 0 && (
         <div className="flex flex-col gap-3 mb-4">
-          <p className="text-sm font-medium text-brown-600">💬 답변 ({inquiry.comments.length})</p>
+          <p className="text-sm font-medium text-brown-600">답변 ({inquiry.comments.length})</p>
           {inquiry.comments.map((c) => (
             <div key={c.id} className="bg-cream-100 rounded-2xl p-4 border border-cream-200">
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-medium text-brown-600">📚 관리자</span>
+                <span className="text-xs font-medium text-brown-600">관리자</span>
                 <span className="text-xs text-brown-300">{new Date(c.createdAt).toLocaleDateString("ko-KR")}</span>
               </div>
               <p className="text-sm text-brown-700 whitespace-pre-wrap">{c.content}</p>
@@ -70,7 +70,7 @@ export default function AdminInquiryDetailPage({ params }: { params: Promise<{ i
 
       {/* 답변 작성 */}
       <div className="bg-white rounded-2xl p-5 shadow-sm border border-cream-200">
-        <p className="text-sm font-medium text-brown-700 mb-3">✏️ 답변 달기</p>
+        <p className="text-sm font-medium text-brown-700 mb-3">답변 달기</p>
         <form onSubmit={handleComment} className="flex flex-col gap-3">
           <textarea
             value={comment}

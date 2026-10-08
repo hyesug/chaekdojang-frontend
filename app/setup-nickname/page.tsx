@@ -1,5 +1,6 @@
 "use client";
 
+import { Library } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { API_BASE } from "../lib/api";
@@ -59,7 +60,7 @@ export default function SetupNicknamePage() {
     <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <p className="text-3xl mb-3">📚</p>
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-cream-200 text-sage-600"><Library size={22} aria-hidden="true" /></div>
           <h1 className="text-xl font-bold text-brown-800">닉네임을 설정해주세요</h1>
           <p className="text-sm text-brown-400 mt-1">책도장에서 사용할 이름이에요</p>
         </div>
@@ -72,7 +73,7 @@ export default function SetupNicknamePage() {
               onChange={(e) => setNickname(e.target.value)}
               placeholder="닉네임 (2~20자)"
               maxLength={20}
-              className="w-full px-4 py-3 rounded-xl border border-cream-300 bg-white text-brown-800 placeholder-brown-300 focus:outline-none focus:border-brown-400 text-sm"
+              className="cdj-field text-sm w-full"
               autoFocus
             />
             {error && <p className="text-red-500 text-xs mt-1.5">{error}</p>}

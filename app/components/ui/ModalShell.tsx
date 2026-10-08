@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { X } from "lucide-react";
 
 const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -56,12 +57,24 @@ export function ModalShell({ title, onClose, children, className = "" }: { title
   if (!mounted) return null;
 
   return createPortal(
-    <div ref={modalRootRef} className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
-      <button type="button" tabIndex={-1} aria-hidden="true" className="absolute inset-0 cursor-default bg-black/45" onClick={onClose} />
-      <section ref={dialogRef} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1} onKeyDown={trapFocus} className={`relative z-10 flex max-h-[88vh] w-full flex-col overflow-hidden bg-cream-50 sm:max-w-xl ${className}`}>
+    <div ref={modalRootRef} className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
+      <button type="button" tabIndex={-1} aria-hidden="true" className="cdj-backdrop absolute inset-0 cursor-default bg-brown-800/40" onClick={onClose} />
+      <section ref={dialogRef} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1} onKeyDown={trapFocus} className={`cdj-dialog relative z-10 flex max-h-[88vh] w-full flex-col overflow-hidden rounded-t-2xl border border-cream-300 bg-cream-50 shadow-[var(--shadow-floating)] sm:max-w-xl sm:rounded-xl ${className}`}>
         {children}
       </section>
     </div>,
     document.body,
+  );
+}
+
+// 모달 머리: 제목과 닫기 버튼을 모든 모달에서 같은 모양으로 맞춘다.
+export function ModalHeader({ title, onClose }: { title: ReactNode; onClose: () => void }) {
+  return (
+    <header className="flex items-center justify-between gap-3 border-b border-cream-300 py-3 pl-5 pr-3">
+      <h2 className="text-base font-bold text-brown-800">{title}</h2>
+      <button type="button" onClick={onClose} className="cdj-icon-button" aria-label="닫기">
+        <X size={20} strokeWidth={1.75} aria-hidden="true" />
+      </button>
+    </header>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { X } from "lucide-react";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -120,7 +121,7 @@ export default function FollowListModal({ userId, type, onClose }: Props) {
             className="text-brown-400 hover:text-brown-600 text-xl leading-none"
             aria-label="닫기"
           >
-            ✕
+            <X size={20} strokeWidth={1.75} aria-hidden="true" />
           </button>
         </div>
 

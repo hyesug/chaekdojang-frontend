@@ -78,7 +78,7 @@ export default async function CampaignDetailPage({ params, searchParams }: Props
         </div>
       )}
 
-      <section className="mt-4 rounded-3xl border border-cream-200 bg-white p-6 shadow-sm">
+      <section className="cdj-card mt-4 p-6">
         <div className="flex items-center gap-2">
           <span className="rounded-full bg-cream-100 px-2.5 py-0.5 text-xs font-semibold text-brown-600">
             {STATUS_LABEL[campaign.status]}
@@ -130,7 +130,7 @@ export default async function CampaignDetailPage({ params, searchParams }: Props
       </section>
 
       {detail.description && (
-        <section className="mt-6 rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+        <section className="cdj-card mt-6 p-5">
           <h2 className="font-serif text-lg font-bold text-brown-900">모집 안내</h2>
           <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-brown-600">
             {detail.description}
@@ -139,7 +139,7 @@ export default async function CampaignDetailPage({ params, searchParams }: Props
       )}
 
       {preview ? (
-        <section className="mt-6 rounded-2xl border border-cream-200 bg-white p-5 text-sm text-brown-500 shadow-sm">
+        <section className="cdj-card mt-6 p-5 text-sm text-brown-500">
           모집을 시작하면 이곳에 독자용 신청 영역이 표시됩니다.
         </section>
       ) : (

@@ -96,7 +96,7 @@ export default function GroupBookManagePanel({ slug, groupBookId, title, status,
         </div>
         {!editing && (
           <div className="flex gap-2">
-            <button type="button" onClick={() => setEditing(true)} className="rounded-full border border-brown-300 bg-white px-4 py-2 text-sm font-semibold text-brown-700 hover:bg-cream-50">
+            <button type="button" onClick={() => setEditing(true)} className="cdj-button cdj-button--secondary">
               수정
             </button>
             <button type="button" disabled={working} onClick={cancelSelection} className="rounded-full border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-500 hover:bg-red-50 disabled:opacity-40">
@@ -111,7 +111,7 @@ export default function GroupBookManagePanel({ slug, groupBookId, title, status,
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="space-y-1 text-xs text-brown-500">
               <span>진행 상태</span>
-              <select name="status" defaultValue={status} className="w-full rounded-xl border border-yellow-200 bg-white px-3 py-2 text-sm text-brown-700 outline-none focus:border-brown-400">
+              <select name="status" defaultValue={status} className="cdj-field text-sm w-full">
                 <option value="UPCOMING">다음 책</option>
                 <option value="READING">읽는 중</option>
                 <option value="COMPLETED">완독</option>
@@ -119,16 +119,16 @@ export default function GroupBookManagePanel({ slug, groupBookId, title, status,
             </label>
             <label className="space-y-1 text-xs text-brown-500">
               <span>마감일</span>
-              <input name="deadline" type="date" defaultValue={deadline ?? ""} className="w-full rounded-xl border border-yellow-200 bg-white px-3 py-2 text-sm text-brown-700 outline-none focus:border-brown-400" />
+              <input name="deadline" type="date" defaultValue={deadline ?? ""} className="cdj-field text-sm w-full" />
             </label>
           </div>
           <label className="block space-y-1 text-xs text-brown-500">
             <span>회차/기간 메모</span>
-            <input name="note" maxLength={200} defaultValue={note ?? ""} placeholder="예: 2회차 · 8월 1일~15일" className="w-full rounded-xl border border-yellow-200 bg-white px-3 py-2 text-sm text-brown-700 outline-none focus:border-brown-400" />
+            <input name="note" maxLength={200} defaultValue={note ?? ""} placeholder="예: 2회차 · 8월 1일~15일" className="cdj-field text-sm w-full" />
           </label>
           <div className="flex justify-end gap-2">
-            <button type="button" disabled={working} onClick={() => setEditing(false)} className="rounded-full border border-cream-300 bg-white px-4 py-2 text-sm font-semibold text-brown-600 disabled:opacity-40">취소</button>
-            <button disabled={working} className="rounded-full bg-brown-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">저장</button>
+            <button type="button" disabled={working} onClick={() => setEditing(false)} className="cdj-button cdj-button--secondary">취소</button>
+            <button disabled={working} className="cdj-button cdj-button--primary">저장</button>
           </div>
         </form>
       ) : (

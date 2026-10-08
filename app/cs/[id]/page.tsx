@@ -59,24 +59,24 @@ export default function InquiryDetailPage({ params }: { params: Promise<{ id: st
   );
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
+    <div className="cdj-page cdj-page--reading">
       <button onClick={() => router.back()} className="text-sm text-brown-400 hover:text-brown-600 mb-4">← 목록으로</button>
 
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-cream-200 mb-4">
+      <div className="cdj-card p-6 mb-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
             {editing ? (
               <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-cream-300 text-sm font-medium text-brown-800 focus:outline-none focus:border-brown-400 mb-2" />
+                className="cdj-field text-sm w-full mb-2" />
             ) : (
               <h2 className="text-lg font-bold text-brown-800">{inquiry.title}</h2>
             )}
-            <p className="text-xs text-brown-400">{new Date(inquiry.createdAt).toLocaleDateString("ko-KR")} · 🔒 비밀글</p>
+            <p className="text-xs text-brown-400">{new Date(inquiry.createdAt).toLocaleDateString("ko-KR")} · 비밀글</p>
           </div>
           <div className="flex gap-2 shrink-0">
             {editing ? (
               <>
-                <button onClick={handleUpdate} className="px-3 py-1 text-xs bg-brown-600 text-white rounded-lg hover:bg-brown-700">저장</button>
+                <button onClick={handleUpdate} className="cdj-button cdj-button--primary cdj-button--sm">저장</button>
                 <button onClick={() => setEditing(false)} className="px-3 py-1 text-xs text-brown-400 hover:text-brown-600">취소</button>
               </>
             ) : (
@@ -90,7 +90,7 @@ export default function InquiryDetailPage({ params }: { params: Promise<{ id: st
         <div className="mt-4 text-sm text-brown-700 leading-relaxed">
           {editing ? (
             <textarea value={editContent} onChange={(e) => setEditContent(e.target.value)}
-              rows={6} className="w-full px-3 py-2 rounded-xl border border-cream-300 text-sm text-brown-800 focus:outline-none focus:border-brown-400 resize-none" />
+              rows={6} className="cdj-field text-sm w-full resize-none" />
           ) : (
             <p className="whitespace-pre-wrap">{inquiry.content}</p>
           )}
@@ -99,11 +99,11 @@ export default function InquiryDetailPage({ params }: { params: Promise<{ id: st
 
       {inquiry.comments.length > 0 && (
         <div className="flex flex-col gap-3">
-          <p className="text-sm font-medium text-brown-600">💬 답변</p>
+          <p className="text-sm font-medium text-brown-600">답변</p>
           {inquiry.comments.map((c) => (
             <div key={c.id} className="bg-cream-100 rounded-2xl p-4 border border-cream-200">
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-medium text-brown-600">📚 관리자</span>
+                <span className="text-xs font-medium text-brown-600">관리자</span>
                 <span className="text-xs text-brown-300">{new Date(c.createdAt).toLocaleDateString("ko-KR")}</span>
               </div>
               <p className="text-sm text-brown-700 whitespace-pre-wrap">{c.content}</p>
@@ -113,7 +113,7 @@ export default function InquiryDetailPage({ params }: { params: Promise<{ id: st
       )}
 
       {inquiry.comments.length === 0 && (
-        <div className="text-center py-6 text-brown-300 text-sm">아직 답변이 없어요. 빠르게 답변드릴게요 😊</div>
+        <div className="text-center py-6 text-brown-300 text-sm">아직 답변이 없어요. 빠르게 답변드릴게요</div>
       )}
     </div>
   );

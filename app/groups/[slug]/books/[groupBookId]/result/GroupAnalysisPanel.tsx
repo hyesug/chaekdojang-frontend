@@ -66,7 +66,7 @@ export default function GroupAnalysisPanel({
 
   if (!analysis) {
     return (
-      <section className="mb-8 rounded-2xl border border-cream-200 bg-white p-6 shadow-sm">
+      <section className="cdj-card mb-8 p-6">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-purple-600">모임 전체 AI 분석</p>
         <h2 className="mt-2 font-serif text-2xl font-bold text-brown-900">함께 읽은 생각을 한눈에</h2>
         <p className="mt-3 text-sm leading-6 text-brown-500">

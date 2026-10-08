@@ -56,14 +56,14 @@ export default function ManageClient() {
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8">
-      <h1 className="font-serif text-2xl font-bold text-brown-900">책도장단 운영실</h1>
+    <main className="cdj-page cdj-page--reading">
+      <h1 className="cdj-title">책도장단 운영실</h1>
       <p className="mt-2 text-sm text-brown-500">
         서평단을 모집하고, 신청자를 선정하고, 독후감이 모이는 과정을 한곳에서 관리합니다.
       </p>
 
       {profiles.length === 0 ? (
-        <section className="mt-6 rounded-2xl border border-cream-200 bg-white p-6 shadow-sm">
+        <section className="cdj-card mt-6 p-6">
           <h2 className="font-serif text-lg font-bold text-brown-900">
             먼저 공식 프로필이 필요합니다
           </h2>
@@ -72,14 +72,14 @@ export default function ManageClient() {
           </p>
           <Link
             href="/cs"
-            className="mt-4 inline-flex rounded-full bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800"
+            className="cdj-button cdj-button--primary mt-4 inline-flex"
           >
             공식 프로필 문의하기
           </Link>
         </section>
       ) : (
         <>
-          <section className="mt-6 rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+          <section className="cdj-card mt-6 p-5">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h2 className="font-serif text-lg font-bold text-brown-900">내 공식 프로필</h2>
@@ -90,7 +90,7 @@ export default function ManageClient() {
               <button
                 type="button"
                 onClick={() => setCreating((previous) => !previous)}
-                className="flex-shrink-0 rounded-full bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800"
+                className="cdj-button cdj-button--primary flex-shrink-0"
               >
                 {creating ? "취소" : "새 캠페인"}
               </button>
@@ -116,7 +116,7 @@ export default function ManageClient() {
       <section className="mt-8">
         <h2 className="font-serif text-lg font-bold text-brown-900">내 캠페인</h2>
         {campaigns.length === 0 ? (
-          <p className="mt-4 rounded-2xl border border-cream-200 bg-white p-6 text-center text-sm text-brown-500">
+          <p className="cdj-card mt-4 p-6 text-center text-sm text-brown-500">
             아직 만든 캠페인이 없습니다.
           </p>
         ) : (
@@ -125,7 +125,7 @@ export default function ManageClient() {
               <Link
                 key={campaign.id}
                 href={`/dojangdan/manage/campaigns/${campaign.id}`}
-                className="block rounded-2xl border border-cream-200 bg-white p-4 shadow-sm hover:border-brown-200"
+                className="cdj-card block p-4 hover:border-brown-200"
               >
                 <div className="flex items-center gap-2">
                   <span className="rounded-full bg-cream-100 px-2 py-0.5 text-xs font-semibold text-brown-600">

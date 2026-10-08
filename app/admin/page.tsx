@@ -1,5 +1,6 @@
 "use client";
 
+import { Lock } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -346,16 +347,16 @@ type ContentViewSummary = {
 };
 
 const tabs: Array<{ key: Tab; label: string }> = [
-  { key: "dashboard", label: "📊 운영 현황" },
-  { key: "users", label: "👥 회원" },
-  { key: "reviews", label: "📖 독후감" },
-  { key: "groups", label: "👪 독서모임" },
-  { key: "inquiries", label: "💬 문의" },
-  { key: "officialProfiles", label: "🏷️ 공식 프로필" },
-  { key: "actions", label: "🧭 유입·사용자 행동" },
-  { key: "security", label: "🛡️ 보안·오류" },
-  { key: "audit", label: "🧾 관리자 이력" },
-  { key: "aiCredits", label: "🤖 AI 질문권" },
+  { key: "dashboard", label: "운영 현황" },
+  { key: "users", label: "회원" },
+  { key: "reviews", label: "독후감" },
+  { key: "groups", label: "독서모임" },
+  { key: "inquiries", label: "문의" },
+  { key: "officialProfiles", label: "공식 프로필" },
+  { key: "actions", label: "유입·사용자 행동" },
+  { key: "security", label: "보안·오류" },
+  { key: "audit", label: "관리자 이력" },
+  { key: "aiCredits", label: "AI 질문권" },
 ];
 
 const LIST_PAGE_SIZE = 50;
@@ -1819,7 +1820,7 @@ export default function AdminPage() {
   if (unauthorized) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-16 text-center">
-        <p className="text-2xl mb-2">🔒</p>
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-cream-200 text-sage-600"><Lock size={22} aria-hidden="true" /></div>
         <p className="font-medium text-brown-600">관리자만 접근할 수 있어요</p>
         <button onClick={() => router.back()} className="mt-4 text-sm text-brown-400 underline">돌아가기</button>
       </div>

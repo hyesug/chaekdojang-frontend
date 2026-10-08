@@ -120,7 +120,7 @@ export default async function OfficialProfilePage({ params }: Props) {
   };
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8">
+    <main className="cdj-page cdj-page--reading">
       <script
         type="application/ld+json"
         suppressHydrationWarning
@@ -164,7 +164,7 @@ export default async function OfficialProfilePage({ params }: Props) {
                 href={url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-full border border-cream-300 px-3 py-1.5 text-xs text-brown-600 hover:bg-cream-100"
+                className="cdj-button cdj-button--secondary cdj-button--sm"
               >
                 {externalLabel(url)}
               </a>
@@ -172,7 +172,7 @@ export default async function OfficialProfilePage({ params }: Props) {
             {profile.contactEmail && (
               <a
                 href={`mailto:${profile.contactEmail}`}
-                className="rounded-full bg-brown-600 px-3 py-1.5 text-xs text-white hover:bg-brown-700"
+                className="cdj-button cdj-button--primary cdj-button--sm"
               >
                 문의하기
               </a>
@@ -190,13 +190,13 @@ export default async function OfficialProfilePage({ params }: Props) {
         </div>
 
         {profile.books.length === 0 ? (
-          <div className="rounded-lg border border-cream-200 bg-white py-12 text-center text-sm text-brown-300">
+          <div className="cdj-card py-12 text-center text-sm text-brown-300">
             아직 연결된 책이 없어요.
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
             {profile.books.map((book) => (
-              <article key={book.id} className="rounded-lg border border-cream-200 bg-white p-4">
+              <article key={book.id} className="cdj-card p-4">
                 <div className="flex gap-3">
                   {book.thumbnail ? (
                     <Image

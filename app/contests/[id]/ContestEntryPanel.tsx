@@ -123,7 +123,7 @@ export default function ContestEntryPanel({
 
   if (alreadyEntered && entry) {
     return (
-      <section className="mt-6 rounded-2xl border border-brown-100 bg-white p-5 shadow-sm">
+      <section className="cdj-card mt-6 p-5">
         <h2 className="font-serif text-lg font-bold text-brown-900">내 응모 상태</h2>
         <p className="mt-2 text-sm text-brown-600">
           현재 상태: <strong className="text-brown-800">{ENTRY_STATUS_LABEL[entry.status]}</strong>
@@ -186,7 +186,7 @@ export default function ContestEntryPanel({
   }
 
   return (
-    <section className="mt-6 rounded-2xl border border-brown-100 bg-white p-5 shadow-sm">
+    <section className="cdj-card mt-6 p-5">
       <h2 className="font-serif text-lg font-bold text-brown-900">공모전 응모</h2>
       {entry?.status === "WITHDRAWN" && (
         <p className="mt-3 rounded-xl bg-cream-50 px-4 py-2.5 text-sm text-brown-600">
@@ -267,7 +267,7 @@ export default function ContestEntryPanel({
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               maxLength={200}
-              className="w-full rounded-xl border border-cream-200 px-3 py-2 text-sm text-brown-800 outline-none focus:border-brown-300"
+              className="cdj-field text-sm w-full"
             />
           </div>
 
@@ -282,7 +282,7 @@ export default function ContestEntryPanel({
               rows={12}
               maxLength={30000}
               placeholder="공모 요강을 확인하고 응모작을 작성해주세요."
-              className="w-full rounded-xl border border-cream-200 px-3 py-2 text-sm leading-7 text-brown-800 outline-none focus:border-brown-300"
+              className="cdj-field text-sm w-full"
             />
             <p className="mt-1 text-right text-xs text-brown-400">
               {content.length.toLocaleString()}자

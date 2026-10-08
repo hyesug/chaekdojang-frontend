@@ -1,5 +1,6 @@
 "use client";
 
+import { PenLine } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -170,9 +171,9 @@ export default function BookDetailClient({
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
+    <div className="cdj-page cdj-page--reading">
       {/* 책 정보 카드 */}
-      <div className="bg-white rounded-2xl border border-cream-200 p-6 mb-8 flex gap-5">
+      <div className="cdj-card p-6 mb-8 flex gap-5">
         {book.thumbnail ? (
           <Image
             src={book.thumbnail}
@@ -222,7 +223,7 @@ export default function BookDetailClient({
             {/* 독후감 쓰기 버튼 */}
             <Link
               href={`/write?bookId=${book.id}&title=${encodedTitle}&author=${encodeURIComponent(book.author)}&publisher=${encodeURIComponent(book.publisher)}${book.thumbnail ? `&thumbnail=${encodeURIComponent(book.thumbnail)}` : ""}`}
-              className="px-4 py-1.5 bg-brown-600 text-white text-xs rounded-full hover:bg-brown-700 transition-colors"
+              className="cdj-button cdj-button--primary cdj-button--sm"
             >
               독후감 쓰기
             </Link>
@@ -242,8 +243,8 @@ export default function BookDetailClient({
                   {libraryLoading
                     ? "처리 중..."
                     : libraryState.inLibrary && libraryState.status
-                    ? `📚 ${STATUS_LABELS[libraryState.status]} ▾`
-                    : "📚 서재 담기 ▾"}
+                    ? `${STATUS_LABELS[libraryState.status]} ▾`
+                    : "서재 담기 ▾"}
                 </button>
 
                 {showLibraryMenu && (
@@ -252,7 +253,7 @@ export default function BookDetailClient({
                       className="fixed inset-0 z-10"
                       onClick={() => setShowLibraryMenu(false)}
                     />
-                    <div className="absolute left-0 top-full mt-1 z-20 bg-white rounded-xl border border-cream-200 shadow-lg overflow-hidden w-36">
+                    <div className="cdj-card absolute left-0 top-full mt-1 z-20 overflow-hidden w-36">
                       {(["READING", "FINISHED", "WISHLIST"] as LibraryStatus[]).map((s) => (
                         <button
                           key={s}
@@ -294,7 +295,7 @@ export default function BookDetailClient({
 
       {reviews.length === 0 ? (
         <div className="text-center py-16 text-brown-400">
-          <p className="text-4xl mb-3">✏️</p>
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-cream-200 text-sage-600"><PenLine size={22} aria-hidden="true" /></div>
           <p>아직 독후감이 없어요</p>
           <p className="text-sm mt-1">첫 번째 독후감을 남겨보세요!</p>
         </div>

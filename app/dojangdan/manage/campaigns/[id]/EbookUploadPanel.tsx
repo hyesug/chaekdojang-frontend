@@ -50,7 +50,7 @@ export default function EbookUploadPanel({ campaignId }: { campaignId: number })
   }
 
   return (
-    <section className="mt-8 rounded-2xl border border-brown-100 bg-white p-5 shadow-sm">
+    <section className="cdj-card mt-8 p-5">
       <h2 className="font-serif text-lg font-bold text-brown-900">전자책 파일</h2>
       <p className="mt-1 text-xs leading-5 text-brown-400">
         PDF만 올릴 수 있고 50MB까지 지원합니다. 선정자에게는 열람자 정보(캠페인·독자 번호·발급 시각)가

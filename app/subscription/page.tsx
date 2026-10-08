@@ -105,7 +105,7 @@ export default function SubscriptionPage() {
   if (loading) return <main className="mx-auto max-w-2xl px-4 py-16 text-center text-brown-400">회고 구독을 불러오는 중...</main>;
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-8">
+    <main className="cdj-page cdj-page--reading">
       <div>
         <p className="text-xs font-semibold text-sage-700">결제·마케팅 구독과 별개</p>
         <h1 className="mt-1 font-serif text-3xl font-bold text-brown-900">기록 회고 구독</h1>
@@ -114,7 +114,7 @@ export default function SubscriptionPage() {
         </p>
       </div>
 
-      <section className="mt-6 rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+      <section className="cdj-card mt-6 p-5">
         <h2 className="font-serif text-lg font-bold text-brown-800">발행 설정</h2>
         <div className="mt-4 grid grid-cols-2 gap-2">
           {(["WEEKLY", "MONTHLY"] as const).map((value) => (
@@ -133,10 +133,10 @@ export default function SubscriptionPage() {
         </label>
         <p className="mt-3 text-xs leading-5 text-brown-400">새 기록·저장·이어쓰기·과거 기록이 하나도 없으면 빈 회고를 억지로 발행하지 않습니다.</p>
         <div className="mt-4 flex flex-wrap gap-2">
-          <button type="button" onClick={savePreference} disabled={saving} className="rounded-full bg-brown-700 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+          <button type="button" onClick={savePreference} disabled={saving} className="cdj-button cdj-button--primary">
             {saving ? "저장 중..." : preference?.enabled ? "설정 저장" : "회고 구독 시작"}
           </button>
-          {preference?.enabled && <button type="button" onClick={unsubscribe} className="rounded-full border border-cream-300 px-4 py-2.5 text-sm text-brown-500">발행 중지</button>}
+          {preference?.enabled && <button type="button" onClick={unsubscribe} className="cdj-button cdj-button--secondary">발행 중지</button>}
         </div>
         {message && <p className="mt-3 text-xs leading-5 text-brown-500">{message}</p>}
       </section>
@@ -147,7 +147,7 @@ export default function SubscriptionPage() {
           <Link href="/stats" className="text-xs font-medium text-brown-500 hover:underline">독서 인생 지도 →</Link>
         </div>
         {issues.length === 0 ? (
-          <div className="mt-3 rounded-2xl border border-cream-200 bg-white px-5 py-10 text-center text-sm text-brown-400">아직 발행할 내용이 없어요. 기록이 쌓인 뒤 다시 확인해 주세요.</div>
+          <div className="cdj-card mt-3 px-5 py-10 text-center text-sm text-brown-400">아직 발행할 내용이 없어요. 기록이 쌓인 뒤 다시 확인해 주세요.</div>
         ) : (
           <div className="mt-3 space-y-3">
             {issues.map((issue) => (

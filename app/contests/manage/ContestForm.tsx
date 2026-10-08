@@ -126,7 +126,7 @@ export default function ContestForm({ profiles = [], detail, onSaved, onCancel }
   }
 
   return (
-    <section className="mt-4 rounded-2xl border border-brown-100 bg-white p-5 shadow-sm">
+    <section className="cdj-card mt-4 p-5">
       <h2 className="font-serif text-lg font-bold text-brown-900">
         {editing ? "공모전 수정" : "새 공모전"}
       </h2>
@@ -153,7 +153,7 @@ export default function ContestForm({ profiles = [], detail, onSaved, onCancel }
           onChange={(event) => setTitle(event.target.value)}
           maxLength={200}
           placeholder="예: 제1회 시립도서관 독후감 공모전"
-          className="w-full rounded-xl border border-cream-200 px-3 py-2 text-sm text-brown-800 outline-none focus:border-brown-300"
+          className="cdj-field text-sm w-full"
         />
       </Field>
 
@@ -218,13 +218,13 @@ export default function ContestForm({ profiles = [], detail, onSaved, onCancel }
               }
             }}
             placeholder="책 제목으로 검색해 추가"
-            className="w-full rounded-xl border border-cream-200 px-3 py-2 text-sm text-brown-800 outline-none focus:border-brown-300"
+            className="cdj-field text-sm w-full"
           />
           <button
             type="button"
             onClick={searchBooks}
             disabled={searching}
-            className="flex-shrink-0 rounded-xl bg-brown-700 px-4 text-sm font-semibold text-white disabled:opacity-60"
+            className="cdj-button cdj-button--primary flex-shrink-0"
           >
             검색
           </button>
@@ -253,7 +253,7 @@ export default function ContestForm({ profiles = [], detail, onSaved, onCancel }
           rows={6}
           maxLength={10000}
           placeholder="응모 자격, 분량, 심사 기준, 유의사항을 적어주세요."
-          className="w-full rounded-xl border border-cream-200 px-3 py-2 text-sm text-brown-800 outline-none focus:border-brown-300"
+          className="cdj-field text-sm w-full"
         />
       </Field>
 
@@ -264,7 +264,7 @@ export default function ContestForm({ profiles = [], detail, onSaved, onCancel }
           rows={3}
           maxLength={2000}
           placeholder="예: 대상 1명 30만원 도서상품권 / 우수상 3명 각 10만원"
-          className="w-full rounded-xl border border-cream-200 px-3 py-2 text-sm text-brown-800 outline-none focus:border-brown-300"
+          className="cdj-field text-sm w-full"
         />
       </Field>
 

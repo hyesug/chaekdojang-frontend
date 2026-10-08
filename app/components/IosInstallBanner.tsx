@@ -14,7 +14,7 @@ export default function IosInstallBanner() {
 
   return (
     <section className="mx-auto mb-6 w-full max-w-2xl px-4">
-      <div className="rounded-lg border border-cream-300 bg-white px-4 py-3 text-sm text-brown-600 shadow-sm">
+      <div className="cdj-card px-4 py-3 text-sm text-brown-600">
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1">
             <p className="font-semibold text-brown-800">책도장을 앱처럼 사용해보세요</p>
@@ -24,7 +24,7 @@ export default function IosInstallBanner() {
                 <button
                   type="button"
                   onClick={promptInstall}
-                  className="rounded-full bg-brown-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brown-700"
+                  className="cdj-button cdj-button--primary cdj-button--sm"
                 >
                   앱 설치하기
                 </button>

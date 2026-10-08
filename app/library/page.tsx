@@ -1,10 +1,11 @@
 "use client";
 
+import { BookOpen, CalendarDays, Library, Plus, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { API_BASE } from "../lib/api";
+import { EmptyState } from "../components/ui/EmptyState";
 
 type LibraryStatus = "READING" | "FINISHED" | "WISHLIST";
 
@@ -22,12 +23,23 @@ type LibraryItem = {
   createdAt: string;
 };
 
-const TABS: { value: LibraryStatus | "ALL"; label: string; emoji: string }[] = [
-  { value: "ALL", label: "전체", emoji: "📚" },
-  { value: "READING", label: "읽는 중", emoji: "📖" },
-  { value: "FINISHED", label: "완독", emoji: "✅" },
-  { value: "WISHLIST", label: "읽고 싶어요", emoji: "🔖" },
+const TABS: { value: LibraryStatus | "ALL"; label: string }[] = [
+  { value: "ALL", label: "전체" },
+  { value: "READING", label: "읽는 중" },
+  { value: "FINISHED", label: "완독" },
+  { value: "WISHLIST", label: "읽고 싶어요" },
 ];
+
+const STATUS_STYLE: Record<LibraryStatus, string> = {
+  READING: "bg-brown-700 text-white",
+  FINISHED: "bg-cream-50/95 text-brown-800",
+  WISHLIST: "bg-cream-50/95 text-sage-700",
+};
+const STATUS_LABEL: Record<LibraryStatus, string> = {
+  READING: "읽는 중",
+  FINISHED: "완독",
+  WISHLIST: "읽고 싶어요",
+};
 
 const COVER_COLORS = ["#8B6048", "#6E7A4A", "#4A6E7A", "#7A4A6E", "#4A7A6E"];
 
@@ -119,174 +131,139 @@ export default function LibraryPage() {
 
   const filtered =
     activeTab === "ALL" ? items : items.filter((item) => item.status === activeTab);
+  const countOf = (value: LibraryStatus | "ALL") =>
+    value === "ALL" ? items.length : items.filter((item) => item.status === value).length;
 
   /* 로그인 안 된 경우 */
   if (!loggedIn) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-20 text-center">
-        <p className="text-5xl mb-4">📚</p>
-        <p className="font-serif text-xl font-bold text-brown-800 mb-2">내 서재</p>
-        <p className="text-brown-400 text-sm mb-6">서재를 보려면 로그인이 필요해요</p>
-        <Link
-          href="/auth/login"
-          className="inline-block px-6 py-2.5 bg-brown-600 text-white rounded-full text-sm font-medium hover:bg-brown-700 transition-colors"
+      <div className="cdj-page cdj-page--reading">
+        <EmptyState
+          title="내 서재"
+          icon={<Library size={22} aria-hidden="true" />}
+          action={<Link href="/auth/login" className="cdj-button cdj-button--primary">로그인하기</Link>}
         >
-          로그인하기
-        </Link>
+          서재를 보려면 로그인이 필요해요
+        </EmptyState>
       </div>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <h1 className="font-serif text-2xl font-bold text-brown-800">내 서재</h1>
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <Link
-            href="/calendar"
-            className="px-4 py-2 text-sm border border-brown-300 text-brown-600 rounded-full hover:bg-cream-200 transition-colors"
-          >
+    <div className="cdj-page">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="cdj-title">내 서재</h1>
+          {!loading && items.length > 0 && (
+            <p className="cdj-lead mt-2">
+              지금까지 <strong className="font-semibold text-brown-800 tabular">{countOf("FINISHED")}권</strong>을 완독했고,{" "}
+              <strong className="font-semibold text-brown-800 tabular">{countOf("READING")}권</strong>을 읽고 있어요.
+            </p>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/calendar" className="cdj-button cdj-button--secondary cdj-button--sm">
+            <CalendarDays size={15} aria-hidden="true" />
             월별 캘린더
           </Link>
-          <Link
-            href="/search"
-            className="px-4 py-2 text-sm border border-brown-300 text-brown-600 rounded-full hover:bg-cream-200 transition-colors"
-          >
-            + 책 추가
+          <Link href="/search" className="cdj-button cdj-button--primary cdj-button--sm">
+            <Plus size={15} aria-hidden="true" />
+            책 추가
           </Link>
         </div>
       </div>
 
       {/* 탭 */}
-      <div className="flex gap-1 mb-6 bg-cream-200 rounded-xl p-1">
+      <div className="cdj-tabs mb-6" role="tablist" aria-label="서재 분류">
         {TABS.map((tab) => (
           <button
             key={tab.value}
             onClick={() => setActiveTab(tab.value)}
-            className={`flex-1 py-2 text-xs font-medium rounded-lg transition-colors ${
-              activeTab === tab.value
-                ? "bg-white text-brown-800 shadow-sm"
-                : "text-brown-400 hover:text-brown-600"
-            }`}
+            role="tab"
+            aria-selected={activeTab === tab.value}
+            className="cdj-tab"
           >
-            {tab.emoji} {tab.label}
+            {tab.label}
+            {!loading && <span className="text-xs font-medium text-sage-500 tabular">{countOf(tab.value)}</span>}
           </button>
         ))}
       </div>
 
       {/* 로딩 */}
       {loading && (
-        <div className="text-center py-12 text-brown-400">
-          <p>불러오는 중...</p>
+        <div className="grid grid-cols-3 gap-x-4 gap-y-7 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6" aria-hidden="true">
+          {Array.from({ length: 6 }, (_, i) => (
+            <div key={i}>
+              <div className="cdj-skeleton aspect-[2/3] w-full" />
+              <div className="cdj-skeleton mt-3 h-3 w-4/5" />
+              <div className="cdj-skeleton mt-2 h-3 w-1/2" />
+            </div>
+          ))}
         </div>
       )}
 
       {/* 빈 상태 */}
       {!loading && filtered.length === 0 && (
-        <div className="text-center py-16 text-brown-400">
-          <p className="text-5xl mb-3">📖</p>
-          <p>아직 담긴 책이 없어요</p>
-          <Link
-            href="/search"
-            className="inline-block mt-4 text-sm text-brown-500 underline underline-offset-2"
-          >
-            책 검색하러 가기
-          </Link>
-        </div>
+        <EmptyState
+          title="아직 담긴 책이 없어요"
+          icon={<BookOpen size={22} aria-hidden="true" />}
+          action={<Link href="/search" className="cdj-button cdj-button--primary">책 검색하러 가기</Link>}
+        >
+          읽은 책, 읽고 있는 책, 읽고 싶은 책을 서재에 모아보세요.
+        </EmptyState>
       )}
 
-      {/* 도서 목록 */}
+      {/* 도서 목록: 표지 책장 */}
       {!loading && filtered.length > 0 && (
-        <div className="flex flex-col gap-3">
+        <ul className="grid grid-cols-3 gap-x-4 gap-y-8 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
           {filtered.map((item, i) => (
-            <div
-              key={item.id}
-              className="bg-white rounded-2xl border border-cream-200 p-4 flex gap-4 hover:shadow-sm transition-shadow"
-            >
-              {/* 책 표지 */}
-              <Link href={`/books/${item.book.id}`} className="flex-shrink-0">
+            <li key={item.id} className="group relative flex flex-col">
+              <Link href={`/books/${item.book.id}`} className="cdj-cover block w-full transition-transform duration-200 group-hover:-translate-y-1">
                 {item.book.thumbnail ? (
-                  <Image
-                    src={item.book.thumbnail}
-                    alt={item.book.title}
-                    width={52}
-                    height={74}
-                    className="w-[52px] h-[74px] rounded shadow-sm object-contain bg-white"
-                  />
+                  <img src={item.book.thumbnail} alt={item.book.title} loading="lazy" />
                 ) : (
-                  <div
-                    className="w-13 h-18 rounded shadow-sm flex items-center justify-center text-white text-xs font-bold"
-                    style={{
-                      width: 52,
-                      height: 74,
-                      backgroundColor: COVER_COLORS[i % COVER_COLORS.length],
-                    }}
+                  <span
+                    className="flex h-full items-end p-2.5 font-serif text-sm font-bold leading-snug text-white/90"
+                    style={{ backgroundColor: COVER_COLORS[i % COVER_COLORS.length] }}
                   >
-                    {item.book.title[0]}
-                  </div>
+                    {item.book.title}
+                  </span>
                 )}
+                <span className={`absolute left-1.5 top-1.5 rounded px-1.5 py-0.5 text-[10px] font-semibold shadow-sm ${STATUS_STYLE[item.status]}`}>
+                  {STATUS_LABEL[item.status]}
+                </span>
               </Link>
 
-              {/* 책 정보 */}
-              <div className="flex-1 min-w-0">
-                <Link
-                  href={`/books/${item.book.id}`}
-                  className="font-serif font-bold text-brown-800 leading-snug hover:text-brown-600 hover:underline"
+              <button
+                type="button"
+                onClick={() => removeItem(item.id)}
+                className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-brown-800/70 text-white opacity-0 transition-opacity hover:bg-wine-500 focus-visible:opacity-100 group-hover:opacity-100 max-sm:opacity-100 max-sm:bg-brown-800/50"
+                aria-label={`${item.book.title} 서재에서 삭제`}
+              >
+                <X size={14} aria-hidden="true" />
+              </button>
+
+              <Link href={`/books/${item.book.id}`} className="mt-3 line-clamp-2 text-sm font-semibold leading-snug text-brown-800 hover:underline">
+                {item.book.title}
+              </Link>
+              <p className="mt-0.5 truncate text-xs text-sage-600">{item.book.author}</p>
+
+              {/* 상태 변경 셀렉터 */}
+              <label className="mt-2">
+                <span className="sr-only">{item.book.title} 읽기 상태</span>
+                <select
+                  value={item.status}
+                  onChange={(e) => updateStatus(item.id, e.target.value as LibraryStatus)}
+                  className="cdj-field text-sm w-full"
                 >
-                  {item.book.title}
-                </Link>
-                <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <p className="text-sm text-brown-400">{item.book.author}</p>
-                  {item.book.category && (
-                    <span className="rounded-full bg-cream-200 px-2 py-0.5 text-[11px] font-medium text-brown-500">
-                      #{item.book.category}
-                    </span>
-                  )}
-                </div>
-
-                {/* 상태 변경 셀렉터 */}
-                <div className="flex items-center gap-2 mt-3">
-                  <select
-                    value={item.status}
-                    onChange={(e) => updateStatus(item.id, e.target.value as LibraryStatus)}
-                    className="text-xs px-2 py-1 rounded-lg border border-cream-300 text-brown-600 bg-cream-50 focus:outline-none focus:border-brown-400 cursor-pointer"
-                  >
-                    <option value="READING">📖 읽는 중</option>
-                    <option value="FINISHED">✅ 완독</option>
-                    <option value="WISHLIST">🔖 읽고 싶어요</option>
-                  </select>
-
-                  <button
-                    type="button"
-                    onClick={() => removeItem(item.id)}
-                    className="text-xs text-brown-300 hover:text-red-400 transition-colors ml-auto"
-                  >
-                    삭제
-                  </button>
-                </div>
-              </div>
-            </div>
+                  <option value="READING">읽는 중</option>
+                  <option value="FINISHED">완독</option>
+                  <option value="WISHLIST">읽고 싶어요</option>
+                </select>
+              </label>
+            </li>
           ))}
-        </div>
-      )}
-
-      {/* 통계 요약 */}
-      {!loading && items.length > 0 && (
-        <div className="mt-8 bg-cream-200 rounded-2xl p-4 grid grid-cols-3 gap-2 text-center">
-          {[
-            { label: "읽는 중", status: "READING", emoji: "📖" },
-            { label: "완독", status: "FINISHED", emoji: "✅" },
-            { label: "읽고 싶어요", status: "WISHLIST", emoji: "🔖" },
-          ].map((s) => (
-            <div key={s.status}>
-              <p className="text-xl">{s.emoji}</p>
-              <p className="font-bold text-brown-700 text-lg">
-                {items.filter((i) => i.status === s.status).length}
-              </p>
-              <p className="text-xs text-brown-400">{s.label}</p>
-            </div>
-          ))}
-        </div>
+        </ul>
       )}
     </div>
   );

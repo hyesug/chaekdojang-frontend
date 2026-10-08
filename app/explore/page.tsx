@@ -1,5 +1,6 @@
 "use client";
 
+import { BookOpen } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import ReviewCard, { type Review } from "../components/ReviewCard";
@@ -154,10 +155,10 @@ export default function ExplorePage() {
   }, [hasMore, loadingMore, loading]);
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
+    <div className="cdj-page cdj-page--reading">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="font-serif text-2xl font-bold text-brown-800">탐색</h1>
+          <h1 className="cdj-title">탐색</h1>
           <p className="text-xs text-brown-400 mt-0.5">모든 독후감 둘러보기</p>
         </div>
       </div>
@@ -165,12 +166,12 @@ export default function ExplorePage() {
       {/* 추천 독자 섹션 — 로그인 + 추천 있을 때만 */}
       {recommendedUsers.length > 0 && (
         <section className="mb-6">
-          <h2 className="text-sm font-semibold text-brown-600 mb-3">👥 추천 독자</h2>
+          <h2 className="text-sm font-semibold text-brown-600 mb-3">추천 독자</h2>
           <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
             {recommendedUsers.map((user) => (
               <div
                 key={user.id}
-                className="flex-shrink-0 w-48 bg-white rounded-2xl border border-cream-200 p-3 flex flex-col items-center gap-2"
+                className="cdj-card flex-shrink-0 w-48 p-3 flex flex-col items-center gap-2"
               >
                 <Link href={`/users/${user.id}`}>
                   <ProfileAvatar src={user.profileImage} name={user.nickname} size="md" />
@@ -210,9 +211,9 @@ export default function ExplorePage() {
       <div className="flex gap-1 mb-6 bg-cream-200 rounded-xl p-1">
         {(
           [
-            { value: "recent", label: "🕐 최신순" },
+            { value: "recent", label: "최신순" },
             { value: "rating", label: "⭐ 별점순" },
-            { value: "popular", label: "🔥 인기순" },
+            { value: "popular", label: "인기순" },
           ] as const
         ).map(({ value, label }) => (
           <button
@@ -233,7 +234,7 @@ export default function ExplorePage() {
         <div className="text-center py-12 text-brown-400">불러오는 중...</div>
       ) : reviews.length === 0 ? (
         <div className="text-center py-20 text-brown-400">
-          <p className="text-5xl mb-4">📖</p>
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-cream-200 text-sage-600"><BookOpen size={22} aria-hidden="true" /></div>
           <p>아직 독후감이 없어요</p>
         </div>
       ) : (

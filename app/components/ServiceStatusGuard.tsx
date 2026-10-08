@@ -57,11 +57,11 @@ export default function ServiceStatusGuard() {
       aria-live="assertive"
       className="fixed inset-0 z-[100] flex items-center justify-center bg-cream-100 px-5"
     >
-      <section className="w-full max-w-md rounded-lg border border-cream-300 bg-white px-6 py-8 text-center shadow-sm">
+      <section className="cdj-card w-full max-w-md px-6 py-8 text-center">
         <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full border-2 border-brown-200 text-brown-600">
           <span className="font-serif text-2xl font-bold">책</span>
         </div>
-        <h1 className="font-serif text-2xl font-bold text-brown-800">
+        <h1 className="cdj-title">
           {title}
         </h1>
         <p className="mt-4 text-sm leading-6 text-brown-500">{description}</p>
@@ -69,7 +69,7 @@ export default function ServiceStatusGuard() {
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="mt-6 rounded-full bg-brown-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brown-700"
+            className="cdj-button cdj-button--primary mt-6"
           >
             다시 확인하기
           </button>

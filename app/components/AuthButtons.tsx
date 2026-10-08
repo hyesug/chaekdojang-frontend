@@ -9,6 +9,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { CircleUserRound } from "lucide-react";
 import { isAuthenticated, logout as logoutSession } from "../lib/auth";
 
 export default function AuthButtons() {
@@ -39,22 +40,16 @@ export default function AuthButtons() {
 
   // 마운트 전: 서버·클라이언트 HTML이 일치하도록 빈 공간 유지
   if (!mounted) {
-    return <div className="hidden h-8 w-40 lg:block" />;
+    return <div className="hidden h-9 w-36 lg:block" />;
   }
 
   if (loggedIn) {
     return (
-      <div className="hidden items-center gap-2 lg:flex">
-        <Link
-          href="/profile"
-          className="px-2 py-2 text-sm text-brown-600 hover:text-brown-800 transition-colors"
-        >
-          내 프로필
+      <div className="hidden items-center gap-0.5 lg:flex">
+        <Link href="/profile" className="cdj-icon-button" aria-label="내 프로필" title="내 프로필">
+          <CircleUserRound size={20} strokeWidth={1.75} aria-hidden="true" />
         </Link>
-        <button
-          onClick={logout}
-          className="cdj-button cdj-button--secondary min-h-10 px-3"
-        >
+        <button onClick={logout} className="cdj-button cdj-button--ghost cdj-button--sm">
           로그아웃
         </button>
       </div>
@@ -62,17 +57,11 @@ export default function AuthButtons() {
   }
 
   return (
-    <div className="hidden items-center gap-2 lg:flex">
-      <Link
-        href="/auth/login"
-        className="px-2 py-2 text-sm text-brown-600 hover:text-brown-800 transition-colors"
-      >
+    <div className="hidden items-center gap-1 lg:flex">
+      <Link href="/auth/login" className="cdj-button cdj-button--ghost cdj-button--sm">
         로그인
       </Link>
-      <Link
-        href="/auth/register"
-        className="cdj-button cdj-button--primary min-h-10 px-3"
-      >
+      <Link href="/auth/register" className="cdj-button cdj-button--secondary cdj-button--sm">
         회원가입
       </Link>
     </div>

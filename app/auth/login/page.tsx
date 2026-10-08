@@ -47,11 +47,11 @@ function LoginContent() {
     <div className="cdj-page flex min-h-[calc(100vh-8rem)] items-center justify-center">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <p className="cdj-kicker">Reader account</p>
-          <h1 className="cdj-title mt-3 text-3xl">
-            {isSignup ? "회원가입" : "로그인"}
+          <span className="stamp-mark mx-auto h-11 w-11 text-base" aria-hidden="true">冊</span>
+          <h1 className="cdj-title mt-5 text-[1.75rem]">
+            {isSignup ? "책도장 시작하기" : "다시 오신 걸 환영해요"}
           </h1>
-          <p className="text-sm text-brown-400">
+          <p className="cdj-lead mt-2">
             {isSignup
               ? "소셜 계정으로 책도장을 시작합니다."
               : "책도장에 다시 온 것을 환영합니다."}
@@ -59,21 +59,21 @@ function LoginContent() {
         </div>
 
         {hasError && (
-          <p className="text-sm text-red-500 bg-red-50 px-4 py-2.5 rounded-xl text-center mb-4">
+          <p className="cdj-alert cdj-alert--error mb-4 text-center" role="alert">
             로그인에 실패했습니다. 다시 시도해주세요.
           </p>
         )}
 
-        <div className="cdj-surface flex flex-col gap-3 p-6">
+        <div className="cdj-card flex flex-col gap-2.5 p-6">
           {needsAgeConfirmation && (
-            <label className="flex items-start gap-2 rounded-xl border border-cream-200 bg-cream-50 px-3 py-3 text-left">
+            <label className="mb-1 flex cursor-pointer items-start gap-2.5 rounded-lg border border-cream-300 bg-cream-100 px-3.5 py-3 text-left">
               <input
                 type="checkbox"
                 checked={ageConfirmed}
                 onChange={(e) => setAgeConfirmed(e.target.checked)}
                 className="mt-0.5 h-4 w-4 rounded border-cream-300 accent-brown-600"
               />
-              <span className="text-xs leading-5 text-brown-500">
+              <span className="text-[13px] leading-5 text-brown-900">
                 만 14세 이상입니다. 만 14세 미만은 책도장에 가입하거나 서비스를 이용할 수 없습니다.
               </span>
             </label>
@@ -82,32 +82,32 @@ function LoginContent() {
           <a
             href={`${BACKEND}/oauth2/authorization/kakao`}
             aria-disabled={needsAgeConfirmation && !ageConfirmed}
-            className={`flex min-h-11 w-full items-center justify-center gap-2 border border-transparent px-4 py-3 text-sm font-medium hover:brightness-95 transition ${socialButtonClass}`}
+            className={`relative flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#FEE500] px-4 text-[15px] font-semibold text-black/85 transition hover:brightness-[0.97] ${socialButtonClass}`}
           >
-            <KakaoIcon />
+            <span className="absolute left-4"><KakaoIcon /></span>
             카카오로 {isSignup ? "시작하기" : "로그인"}
           </a>
 
           <a
             href={`${BACKEND}/oauth2/authorization/naver`}
             aria-disabled={needsAgeConfirmation && !ageConfirmed}
-            className={`flex min-h-11 w-full items-center justify-center gap-2 border border-transparent px-4 py-3 text-sm font-medium hover:brightness-95 transition ${socialButtonClass}`}
+            className={`relative flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#03C75A] px-4 text-[15px] font-semibold text-white transition hover:brightness-[0.97] ${socialButtonClass}`}
           >
-            <NaverIcon />
+            <span className="absolute left-4"><NaverIcon /></span>
             네이버로 {isSignup ? "시작하기" : "로그인"}
           </a>
 
           <a
             href={`${BACKEND}/oauth2/authorization/google`}
             aria-disabled={needsAgeConfirmation && !ageConfirmed}
-            className={`flex min-h-11 w-full items-center justify-center gap-2 border border-cream-300 bg-cream-50 px-4 py-3 text-sm font-medium text-brown-800 hover:bg-cream-100 transition ${socialButtonClass}`}
+            className={`relative flex min-h-12 w-full items-center justify-center gap-2 rounded-lg border border-[#DADCE0] bg-white px-4 text-[15px] font-semibold text-[#1F1F1F] transition hover:bg-[#F8F9FA] ${socialButtonClass}`}
           >
-            <GoogleIcon />
+            <span className="absolute left-4"><GoogleIcon /></span>
             구글로 {isSignup ? "시작하기" : "로그인"}
           </a>
 
           {isSignup && (
-            <p className="text-xs leading-5 text-brown-400 text-center mt-1">
+            <p className="mt-1 text-center text-xs leading-5 text-sage-600">
               이미 해당 소셜 계정으로 로그인된 적이 있으면 추가 입력 없이 이어집니다.
             </p>
           )}
@@ -116,7 +116,7 @@ function LoginContent() {
             <button
               type="button"
               onClick={handleDevLogin}
-              className="cdj-button cdj-button--secondary w-full"
+              className="cdj-button cdj-button--ghost mt-2 w-full"
             >
               로컬 개발자 로그인
             </button>
@@ -132,7 +132,7 @@ export default function LoginPage() {
     <Suspense
       fallback={
         <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center">
-          <p className="text-sm text-brown-400">불러오는 중...</p>
+          <p className="text-sm text-sage-600">불러오는 중...</p>
         </div>
       }
     >

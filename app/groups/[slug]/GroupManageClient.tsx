@@ -323,7 +323,7 @@ export default function GroupManageClient({ slug, manager: initialManager, membe
   if (!manager && !member) return null;
 
   return (
-    <section className="mt-8 rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+    <section className="cdj-card mt-8 p-5">
       <h2 className="font-serif text-lg font-bold text-brown-900">모임 관리</h2>
       <p className="mt-1 text-sm text-brown-400">
         {visibility === "PRIVATE"
@@ -342,7 +342,7 @@ export default function GroupManageClient({ slug, manager: initialManager, membe
               <button
                 type="button"
                 onClick={() => setNoticeEditing(true)}
-                className="rounded-xl border border-cream-300 bg-white px-4 py-2 text-sm font-semibold text-brown-600 hover:bg-cream-50"
+                className="cdj-button cdj-button--secondary"
               >
                 공지 수정
               </button>
@@ -369,7 +369,7 @@ export default function GroupManageClient({ slug, manager: initialManager, membe
               maxLength={2000}
               rows={4}
               placeholder="모임 일정, 준비물, 변경사항을 알려주세요."
-              className="w-full resize-y rounded-xl border border-yellow-200 bg-white px-3 py-2 text-sm leading-6 text-brown-800 focus:border-brown-400 focus:outline-none"
+              className="cdj-field text-sm w-full"
             />
             <div className="flex items-center justify-between gap-3">
               <span className="text-xs text-brown-400">{noticeText.length}/2000</span>
@@ -381,12 +381,12 @@ export default function GroupManageClient({ slug, manager: initialManager, membe
                       setNoticeText(savedNotice);
                       setNoticeEditing(false);
                     }}
-                    className="rounded-xl border border-cream-300 bg-white px-4 py-2 text-sm font-semibold text-brown-600 hover:bg-cream-50"
+                    className="cdj-button cdj-button--secondary"
                   >
                     취소
                   </button>
                 )}
-                <button disabled={loading || !noticeText.trim()} className="rounded-xl bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800 disabled:opacity-50">
+                <button disabled={loading || !noticeText.trim()} className="cdj-button cdj-button--primary">
                   {savedNotice ? "수정 저장" : "공지 등록"}
                 </button>
               </div>
@@ -416,10 +416,10 @@ export default function GroupManageClient({ slug, manager: initialManager, membe
                         <p className="text-xs text-brown-400">요청일 {new Date(member.createdAt).toLocaleDateString("ko-KR")}</p>
                       </div>
                       <div className="flex shrink-0 gap-2">
-                        <button type="button" disabled={loading} onClick={() => updateMember(member.id, "approve")} className="rounded-lg bg-brown-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brown-800 disabled:opacity-50">
+                        <button type="button" disabled={loading} onClick={() => updateMember(member.id, "approve")} className="cdj-button cdj-button--primary cdj-button--sm">
                           승인
                         </button>
-                        <button type="button" disabled={loading} onClick={() => updateMember(member.id, "reject")} className="rounded-lg border border-cream-300 px-3 py-1.5 text-xs font-semibold text-brown-500 hover:bg-cream-100 disabled:opacity-50">
+                        <button type="button" disabled={loading} onClick={() => updateMember(member.id, "reject")} className="cdj-button cdj-button--secondary cdj-button--sm">
                           거절
                         </button>
                         <button type="button" disabled={loading} onClick={() => updateMember(member.id, "block")} className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-50 disabled:opacity-50">
@@ -474,8 +474,8 @@ export default function GroupManageClient({ slug, manager: initialManager, membe
               <span className="rounded-full bg-white px-2 py-1 text-xs text-brown-400">책 검색</span>
             </div>
             <BookSearchSelect value={bookId} onChange={(id) => setBookId(id)} />
-            <input value={note} onChange={(event) => setNote(event.target.value)} placeholder="회차/기간 메모" className="w-full rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm text-brown-800 focus:border-brown-400 focus:outline-none" />
-            <button disabled={loading} className="w-full rounded-xl bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800 disabled:opacity-50">책 추가</button>
+            <input value={note} onChange={(event) => setNote(event.target.value)} placeholder="회차/기간 메모" className="cdj-field text-sm w-full" />
+            <button disabled={loading} className="cdj-button cdj-button--primary w-full">책 추가</button>
           </form>
         )}
         {manager && books.length > 0 && (
@@ -491,7 +491,7 @@ export default function GroupManageClient({ slug, manager: initialManager, membe
                   <div className="grid gap-2 sm:grid-cols-2">
                     <label className="space-y-1 text-xs text-brown-500">
                       <span>진행 상태</span>
-                      <select name="status" defaultValue={book.status} className="w-full rounded-lg border border-cream-300 bg-white px-3 py-2 text-sm text-brown-700 focus:border-brown-400 focus:outline-none">
+                      <select name="status" defaultValue={book.status} className="cdj-field text-sm w-full">
                         <option value="UPCOMING">다음 책</option>
                         <option value="READING">읽는 중</option>
                         <option value="COMPLETED">완독</option>
@@ -499,15 +499,15 @@ export default function GroupManageClient({ slug, manager: initialManager, membe
                     </label>
                     <label className="space-y-1 text-xs text-brown-500">
                       <span>마감일</span>
-                      <input name="deadline" type="date" defaultValue={book.deadline ?? ""} className="w-full rounded-lg border border-cream-300 bg-white px-3 py-2 text-sm text-brown-700 focus:border-brown-400 focus:outline-none" />
+                      <input name="deadline" type="date" defaultValue={book.deadline ?? ""} className="cdj-field text-sm w-full" />
                     </label>
                   </div>
                   <label className="block space-y-1 text-xs text-brown-500">
                     <span>회차/기간 메모</span>
-                    <input name="note" type="text" maxLength={200} defaultValue={book.note ?? ""} placeholder="예: 2회차 · 8월 1일~15일" className="w-full rounded-lg border border-cream-300 bg-white px-3 py-2 text-sm text-brown-700 focus:border-brown-400 focus:outline-none" />
+                    <input name="note" type="text" maxLength={200} defaultValue={book.note ?? ""} placeholder="예: 2회차 · 8월 1일~15일" className="cdj-field text-sm w-full" />
                   </label>
                   <div className="flex flex-wrap gap-2">
-                    <button disabled={loading} className="min-w-36 flex-1 rounded-lg border border-cream-300 px-3 py-2 text-sm font-semibold text-brown-600 hover:bg-cream-100 disabled:opacity-50">
+                    <button disabled={loading} className="cdj-button cdj-button--secondary min-w-36 flex-1">
                       저장
                     </button>
                     <Link href={`/groups/${encodeURIComponent(slug)}/books/${book.id}#questions`} className="rounded-lg border border-green-200 px-3 py-2 text-sm font-semibold text-green-700 hover:bg-green-50">
@@ -525,7 +525,7 @@ export default function GroupManageClient({ slug, manager: initialManager, membe
         {member && books.length > 0 && (
           <form onSubmit={attachReview} className="space-y-3 rounded-2xl bg-cream-50 p-4">
             <p className="text-sm font-semibold text-brown-700">내 독후감 연결</p>
-            <select value={groupBookId} onChange={(event) => setGroupBookId(event.target.value)} className="w-full rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm text-brown-700 focus:border-brown-400 focus:outline-none">
+            <select value={groupBookId} onChange={(event) => setGroupBookId(event.target.value)} className="cdj-field text-sm w-full">
               {books.map((book) => <option key={book.id} value={book.id}>{book.title}</option>)}
             </select>
             {reviewsLoading && <p className="rounded-xl bg-white px-3 py-4 text-sm text-brown-400">내 독후감을 불러오는 중...</p>}
@@ -573,7 +573,7 @@ export default function GroupManageClient({ slug, manager: initialManager, membe
                 ))}
               </div>
             )}
-            <button disabled={loading || !selectedReviewId} className="w-full rounded-xl bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800 disabled:opacity-50">선택한 독후감 연결</button>
+            <button disabled={loading || !selectedReviewId} className="cdj-button cdj-button--primary w-full">선택한 독후감 연결</button>
           </form>
         )}
       </div>

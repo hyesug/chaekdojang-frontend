@@ -88,7 +88,7 @@ export default function ReadingLogPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <section className="rounded-2xl border border-cream-200 bg-white p-6 shadow-sm sm:p-8">
+      <section className="cdj-card p-6 sm:p-8">
         <p className="text-sm font-semibold text-sage-700">책도장 독서 기록</p>
         <h1 className="mt-2 font-serif text-3xl font-bold leading-tight text-brown-900 sm:text-4xl">
           독서 기록을 한곳에서 관리하세요
@@ -117,7 +117,7 @@ export default function ReadingLogPage() {
         </div>
       </section>
 
-      <section className="mt-9 rounded-2xl border border-cream-200 bg-white p-6 shadow-sm sm:p-8">
+      <section className="cdj-card mt-9 p-6 sm:p-8">
         <h2 className="font-serif text-2xl font-bold text-brown-900">
           독서 기록을 꾸준히 남겨보세요
         </h2>

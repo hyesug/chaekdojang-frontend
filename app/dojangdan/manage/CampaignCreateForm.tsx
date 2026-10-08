@@ -89,7 +89,7 @@ export default function CampaignCreateForm({ profiles, onCreated }: Props) {
   }
 
   return (
-    <section className="mt-4 rounded-2xl border border-brown-100 bg-white p-5 shadow-sm">
+    <section className="cdj-card mt-4 p-5">
       <h2 className="font-serif text-lg font-bold text-brown-900">새 서평단 캠페인</h2>
 
       {profiles.length > 1 && (
@@ -135,13 +135,13 @@ export default function CampaignCreateForm({ profiles, onCreated }: Props) {
                   }
                 }}
                 placeholder="책 제목으로 검색"
-                className="w-full rounded-xl border border-cream-200 px-3 py-2 text-sm text-brown-800 outline-none focus:border-brown-300"
+                className="cdj-field text-sm w-full"
               />
               <button
                 type="button"
                 onClick={searchBooks}
                 disabled={searching}
-                className="flex-shrink-0 rounded-xl bg-brown-700 px-4 text-sm font-semibold text-white disabled:opacity-60"
+                className="cdj-button cdj-button--primary flex-shrink-0"
               >
                 검색
               </button>
@@ -174,7 +174,7 @@ export default function CampaignCreateForm({ profiles, onCreated }: Props) {
           value={title}
           onChange={(event) => setTitle(event.target.value)}
           maxLength={150}
-          className="w-full rounded-xl border border-cream-200 px-3 py-2 text-sm text-brown-800 outline-none focus:border-brown-300"
+          className="cdj-field text-sm w-full"
         />
       </Field>
 
@@ -185,7 +185,7 @@ export default function CampaignCreateForm({ profiles, onCreated }: Props) {
           rows={4}
           maxLength={5000}
           placeholder="어떤 독자를 찾는지, 어떤 독후감을 기대하는지 적어주세요."
-          className="w-full rounded-xl border border-cream-200 px-3 py-2 text-sm text-brown-800 outline-none focus:border-brown-300"
+          className="cdj-field text-sm w-full"
         />
       </Field>
 

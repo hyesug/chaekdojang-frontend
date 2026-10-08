@@ -217,18 +217,20 @@ function selectedWindows(r, label, span = 15, count = 3) {
   if (!result) return [];
   const until = `${Number(r.input.currentYear) + span - 1}-12`;
   let windows = peakWindows(result, domain, 12, 80).filter((w) => w.from <= until);
-  // 아직 결혼하지 않았거나 모르는 사람에게 결혼 신호보다 앞선 자녀 신호를 먼저 보이면
-  // 순서가 뒤집혀 읽힌다(피드백). 결혼 신호가 가장 높은 구간 이후의 자녀 신호를 앞에 둔다.
-  if (label === '자녀' && !isMarried(r)) {
-    const marriage = selectedWindows(r, '결혼', span, 1)[0];
-    if (marriage) {
-      const after = windows.filter((w) => w.to >= marriage.from);
-      if (after.length) windows = after;
-      windows.beforeMarriage = !after.length;
+  // 결혼과 자녀 신호의 순서가 뒤집혀 읽히지 않게 맞춘다. 기준은 **자녀 신호** —
+  // 검증에서 더 단단했다(사람 7명 빼고 고르기 7번 모두 사주+9개월, 가설 뒤 사례도 적중).
+  // 아직 결혼하지 않았거나 모르는 사람에게는 가장 높은 자녀 신호보다 앞선 결혼 신호를 앞에 둔다.
+  let afterChildren = false;
+  if (label === '결혼' && !isMarried(r)) {
+    const child = selectedWindows(r, '자녀', span, 1)[0];
+    if (child) {
+      const before = windows.filter((w) => w.from <= child.to);
+      if (before.length) windows = before;
+      afterChildren = !before.length;
     }
   }
   const picked = windows.slice(0, count);
-  picked.beforeMarriage = windows.beforeMarriage ?? false;
+  picked.afterChildren = afterChildren;
   return picked;
 }
 
@@ -285,7 +287,7 @@ function timingOf(r, domain, span = 10) {
   const spans = windows.map((w) => selectedSpan(r, w));
   if (!spans.length) return '';
   const rest = spans.length > 1 ? `가장 높고, 그다음은 ${esc(spans.slice(1).join(', '))}입니다` : '가장 높습니다';
-  const order = windows.beforeMarriage ? ' 이 신호는 결혼 신호보다 앞서 나옵니다. 결혼 시기와 함께 보세요.' : '';
+  const order = windows.afterChildren ? ' 이 신호는 자녀 신호보다 뒤에 나옵니다. 자녀 시기와 함께 보세요.' : '';
   return `<p class="rp-t rp-when">${esc(label)} 신호는 <strong>${esc(spans[0])}</strong>에 ${rest}.${order}</p>`;
 }
 
@@ -615,7 +617,7 @@ function finale(r) {
     const text = (spans.length === 1
       ? `${esc(what)}는 <strong>${esc(spans[0])}</strong>에 신호가 가장 높습니다.`
       : `${esc(what)}는 <strong>${esc(spans.join(', '))}</strong> 순으로 신호가 높습니다.`)
-      + (windows.beforeMarriage ? ' 결혼 신호보다 앞서 나오는 신호입니다.' : '');
+      + (windows.afterChildren ? ' 자녀 신호보다 뒤에 나오는 신호입니다.' : '');
     items.push(`<li><span class="rp-ic" aria-hidden="true">${icon}</span><div><p>${text}</p></div></li>`);
   }
   const principles = [

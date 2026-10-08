@@ -12,7 +12,7 @@
  * 이 표는 미래 사건의 보증이 아니다. 결과 화면에서는 "신호가 높은 구간"으로만 읽는다.
  */
 export const VALIDATED_REPORT_TIMING_POLICY = Object.freeze({
-  // 2026-10-08 학습: 사람 34명·사건 87건 (유명인 생시는 출처 미검증)
+  // 2026-10-08 학습: 사람 34명·사건 89건 (유명인 생시는 출처 미검증)
   // 결혼 — 사람 9명·월 사건 12건, 사람 단위 LOO·날짜 섞기 통과 (75% vs 기본 43%)
   결혼: Object.freeze({ scope: 'service', systems: ['yukim', 'sukyo'], basis: 'loo-and-shuffle' }),
   // 출산일보다 약 아홉 달 앞의 사주 신호 — 사람 7명 빼고 고르기에서 7번 모두 뽑혔다(빠진 쪽 77%)
@@ -23,7 +23,8 @@ export const VALIDATED_REPORT_TIMING_POLICY = Object.freeze({
   이사: Object.freeze({ scope: 'provisional', systems: ['jamidusu'], basis: 'loo-vote' }),                // 사람 3명, 1:1:1 → 사례 점수
   관계: Object.freeze({ scope: 'provisional', systems: ['sukyo', 'astrology_classical'], basis: 'loo-vote' }), // 사람 3명, 1:1:1 → 사례 점수
   학업: Object.freeze({ scope: 'provisional', systems: ['gujeong', 'thai'], basis: 'loo-vote' }),         // 사건 5건 중 3표
-  건강: Object.freeze({ scope: 'provisional', systems: ['gujeong', 'mahabote'], basis: 'single-case' }),  // 사례 1건
+  // 2명·3건(무릎 수술 2017·2026-10 포함), 빼고 고르기 3번 중 2표 — 빠진 쪽 78% vs 기본 49%
+  건강: Object.freeze({ scope: 'provisional', systems: ['yukim', 'mahabote'], basis: 'loo-vote' }),
   주거: Object.freeze({ scope: 'provisional', systems: ['saju'], basis: 'single-case' }),                 // 사례 1건
 
   // 날짜가 붙은 사례가 없는 분야 — 대운 전환을 보는 사주 하나를 임시로 쓴다

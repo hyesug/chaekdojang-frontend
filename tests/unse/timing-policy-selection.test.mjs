@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { selectTimingPolicy } from '../../public/unse/src/validation/timingPolicy.js';
+import { selectTimingPolicy, selectProvisionalPolicy } from '../../public/unse/src/validation/timingPolicy.js';
 import { reportTimingPolicy } from '../../public/unse/src/semantic/timing/policy.js';
 
 const row = (person, baseline, candidate, precision = 'month') => ({
@@ -79,4 +79,32 @@ test('사례가 부족할 때의 잠정 분야 정책은 리포트에서 사용�
     이사: { scope: 'provisional', systems: ['jamidusu', 'astrology_classical'], basis: 'personal-development' },
   };
   assert.deepEqual(reportTimingPolicy('이사', provisional), provisional.이사);
+});
+
+test('잠정 정책은 전체 사례 최고가 아니라 빼고 고른 조합이 빠진 쪽에서 나을 때만 채택한다', () => {
+  // lucky 는 사례 전체 평균(70)이 기본(60)보다 높지만 한 사건 덕분이다.
+  // 그 사건을 빼고 고르면 기본 방식이 뽑히고, 다른 사건을 빼면 lucky 가 뽑혀도 빠진 쪽 점수가 낮다.
+  const fluke = [0, 1, 2].map((i) => ({ person: 'P', precision: 'month',
+    scores: { baseline: 60, lucky: [100, 55, 55][i] } }));
+  const a = selectProvisionalPolicy(fluke, { baseline: 'baseline' });
+  assert.equal(a.full.candidate, 'lucky', '전체 사례로만 보면 lucky 가 1등이다');
+  assert.equal(a.unit, 'event', '한 사람뿐이면 사건 단위로 뺀다');
+  assert.equal(a.adopt, false);
+  assert.equal(a.selected, 'baseline');
+
+  // good 은 어느 사건을 빼도 뽑히고 빠진 쪽에서도 기본보다 낫다
+  const steady = [0, 1, 2].map((i) => ({ person: 'P', precision: 'month',
+    scores: { baseline: 60, good: [80, 75, 85][i] } }));
+  const b = selectProvisionalPolicy(steady, { baseline: 'baseline' });
+  assert.equal(b.adopt, true);
+  assert.equal(b.selected, 'good');
+  assert.equal(b.agreement, 1);
+});
+
+test('사람이 세 명 이상이면 사람 단위로 빼고 고른다', () => {
+  const rows = ['A', 'B', 'C', 'D'].map((person) => ({ person, precision: 'month', scores: { baseline: 50, good: 70 } }));
+  const v = selectProvisionalPolicy(rows, { baseline: 'baseline' });
+  assert.equal(v.unit, 'person');
+  assert.equal(v.units, 4);
+  assert.equal(v.selected, 'good');
 });

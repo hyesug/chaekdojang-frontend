@@ -10,7 +10,7 @@ import { SYSTEM_IDS } from '../public/unse/src/semantic/extract.js';
 import { lineageOf } from '../public/unse/src/semantic/lineage.js';
 import { groupTimingEvents } from '../public/unse/src/validation/timingCaseWindows.js';
 import { scoreEvent, scoreEventYearly } from '../public/unse/src/validation/timingMetrics.js';
-import { selectTimingPolicy } from '../public/unse/src/validation/timingPolicy.js';
+import { selectTimingPolicy, selectProvisionalPolicy } from '../public/unse/src/validation/timingPolicy.js';
 import { seededRandom } from '../public/unse/src/semantic/timing/schema.js';
 
 const file = process.argv[2] ?? 'validation/cases.json';
@@ -112,6 +112,10 @@ console.log(`단독 ${SYSTEM_CANDIDATES.length}개 + 독립 계보 쌍 ${Object.
 console.log('사람 단위 LOO·날짜 섞기·쌍 대 단독 비교를 모두 통과해야 서비스 정책이 됩니다.');
 const service = {};
 const personal = {};
+const report = {};      // 리포트에 넣을 제안 — service, 아니면 빼고 고르기(잠정), 아니면 기본 방식
+const table = [];
+const fmt = (v) => (Number.isFinite(v) ? `${v.toFixed(0)}%` : '—');
+const systemsOf = (candidate) => candidateSystems[candidate] ?? [...SYSTEM_IDS];   // baseline = 15체계 전체
 for (const [domain, rawRows] of rowsByDomain) {
   const rows = collapseFamilies(rawRows);
   const preliminary = selectTimingPolicy(rows, { baseline: 'baseline', candidateSystems });
@@ -135,7 +139,31 @@ for (const [domain, rawRows] of rowsByDomain) {
     people: verdict.people, monthlyEvents: verdict.monthlyEvents, reason: verdict.reason,
   } };
   (verdict.promote ? service : personal)[label] = proposal;
+
+  // 승격하지 못한 분야는 '빼고 고르기'로 잠정 조합을 고른다
+  const prov = verdict.promote ? null : selectProvisionalPolicy(rows, { baseline: 'baseline' });
+  const chosen = verdict.promote ? verdict.selected : prov.selected;
+  report[label] = {
+    scope: verdict.promote ? 'service' : 'provisional',
+    systems: systemsOf(chosen),
+    basis: verdict.promote ? 'loo-and-shuffle' : prov.adopt ? 'cv-provisional' : 'cv-baseline',
+  };
+  table.push({
+    label, people: verdict.people, events: rows.length,
+    inSample: `${verdict.personalSelected} ${fmt(prov?.full?.score ?? verdict.full?.score)}`,
+    unit: prov ? `${prov.unit === 'person' ? '사람' : '사건'} ${prov.units}` : '—',
+    cv: prov?.cv ? `${fmt(prov.cv.selected)} vs ${fmt(prov.cv.baseline)}`
+      : verdict.loo ? `${fmt(verdict.loo.selected)} vs ${fmt(verdict.loo.baseline)}` : '—',
+    agreement: prov?.agreement != null ? `${Math.round(prov.agreement * 100)}%` : '—',
+    decision: verdict.promote ? `service: ${chosen}` : prov.adopt ? `잠정 채택: ${chosen}` : '기본 방식(15체계)',
+  });
 }
+
+console.log('\n## 분야별 결과 — 전체 사례 최고 조합 vs 빼고 고르기');
+console.log('분야 | 사람 | 사건 | 전체 사례 최고 조합(점수) | 빼는 단위 | 빼고 고른 조합 vs 기본 방식 (빠진 쪽 점수) | 접힘 일치 | 결정');
+for (const t of table) console.log(`${t.label} | ${t.people} | ${t.events} | ${t.inSample} | ${t.unit} | ${t.cv} | ${t.agreement} | ${t.decision}`);
+console.log('\n## 리포트 정책 제안 (policy.js 에 옮길 값)');
+console.log(JSON.stringify(report, null, 2));
 console.log('\n## 서비스에 반영 가능한 제안');
 console.log(JSON.stringify(service, null, 2));
 console.log('\n## 개인 진단용 제안 (자동 반영 금지)');

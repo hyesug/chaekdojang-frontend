@@ -548,8 +548,11 @@ export function peakWindows(result, domain, topN = 2, floor = 80) {
   const runs = [];
   for (const r of hot) {
     const last = runs[runs.length - 1];
-    if (last && monthNo(r.period) === monthNo(last.to) + 1) { last.to = r.period; last.peak = Math.max(last.peak, r.activation); }
-    else runs.push({ from: r.period, to: r.period, peak: r.activation });
+    if (last && monthNo(r.period) === monthNo(last.to) + 1) {
+      last.to = r.period;
+      // 구간 안에서 가장 높은 달도 남긴다 — 긴 구간을 그대로 보이면 너무 넓다(피드백)
+      if (r.activation > last.peak) { last.peak = r.activation; last.peakAt = r.period; }
+    } else runs.push({ from: r.period, to: r.period, peak: r.activation, peakAt: r.period });
   }
   return runs.sort((a, b) => b.peak - a.peak).slice(0, topN);
 }

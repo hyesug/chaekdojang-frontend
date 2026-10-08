@@ -206,6 +206,9 @@ function reportTimeline(r) {
   } catch { return null; }
 }
 
+/** 이미 결혼했다고 고른 사람인가. 고르지 않았으면 false — 추측하지 않는다 */
+const isMarried = (r) => r.input?.marital === 'married';
+
 /** 한 체계 안에서도 점수가 높은 순서만 뽑되, 표시 범위를 벗어난 창은 버린다. */
 function selectedWindows(r, label, span = 15, count = 3) {
   const domain = REPORT_TIMING_DOMAIN[label];
@@ -213,25 +216,57 @@ function selectedWindows(r, label, span = 15, count = 3) {
   const result = domain && policy ? reportTimeline(r) : null;
   if (!result) return [];
   const until = `${Number(r.input.currentYear) + span - 1}-12`;
-  return peakWindows(result, domain, 12, 80)
-    .filter((w) => w.from <= until)
-    .slice(0, count);
+  let windows = peakWindows(result, domain, 12, 80).filter((w) => w.from <= until);
+  // 아직 결혼하지 않았거나 모르는 사람에게 결혼 신호보다 앞선 자녀 신호를 먼저 보이면
+  // 순서가 뒤집혀 읽힌다(피드백). 결혼 신호가 가장 높은 구간 이후의 자녀 신호를 앞에 둔다.
+  if (label === '자녀' && !isMarried(r)) {
+    const marriage = selectedWindows(r, '결혼', span, 1)[0];
+    if (marriage) {
+      const after = windows.filter((w) => w.to >= marriage.from);
+      if (after.length) windows = after;
+      windows.beforeMarriage = !after.length;
+    }
+  }
+  const picked = windows.slice(0, count);
+  picked.beforeMarriage = windows.beforeMarriage ?? false;
+  return picked;
 }
 
-/** "2027-03~2027-05" → "2027년 3~5월(37세)" */
+const monthsBetween = (a, b) => {
+  const [ay, am] = a.split('-').map(Number); const [by, bm] = b.split('-').map(Number);
+  return (by - ay) * 12 + (bm - am);
+};
+const shiftMonth = (key, d) => {
+  const [y, m] = key.split('-').map(Number); const n = y * 12 + (m - 1) + d;
+  return `${Math.floor(n / 12)}-${String((n % 12) + 1).padStart(2, '0')}`;
+};
+
+/**
+ * "2027-03~2027-05" → "2027년 3~5월(37세)".
+ * 반년보다 긴 구간은 그대로 보이면 1년 반짜리 범위가 되어 쓸모가 없다(피드백) —
+ * 가장 높은 달을 중심으로 앞뒤 석 달만 보인다: "2027년 7월 전후(2027년 4~10월, 28세)".
+ */
 function selectedSpan(r, w) {
-  const [fy, fm] = w.from.split('-').map(Number);
-  const [ty, tm] = w.to.split('-').map(Number);
-  const when = fy === ty
+  let from = w.from, to = w.to, center = null;
+  if (w.peakAt && monthsBetween(w.from, w.to) > 6) {
+    center = w.peakAt;
+    from = [shiftMonth(center, -3), w.from].sort().at(-1);
+    to = [shiftMonth(center, 3), w.to].sort()[0];
+  }
+  const [fy, fm] = from.split('-').map(Number);
+  const [ty, tm] = to.split('-').map(Number);
+  const range = fy === ty
     ? (fm === tm ? `${fy}년 ${fm}월` : `${fy}년 ${fm}~${tm}월`)
     : `${fy}년 ${fm}월~${ty}년 ${tm}월`;
   const fromAge = fy - r.input.year;
   const toAge = ty - r.input.year;
-  return `${when}(${fromAge === toAge ? `${fromAge}세` : `${fromAge}~${toAge}세`})`;
+  const age = fromAge === toAge ? `${fromAge}세` : `${fromAge}~${toAge}세`;
+  if (center) {
+    const [cy, cm] = center.split('-').map(Number);
+    return `${cy}년 ${cm}월 전후(${range}, ${age})`;
+  }
+  return `${range}(${age})`;
 }
-
-/** 이미 결혼했다고 고른 사람인가. 고르지 않았으면 false — 추측하지 않는다 */
-const isMarried = (r) => r.input?.marital === 'married';
 
 function timingOf(r, domain, span = 10) {
   // 이미 결혼한 사람에게 "결혼 시기는 ○년이 유력"은 틀린 말이다
@@ -246,10 +281,12 @@ function timingOf(r, domain, span = 10) {
   if (!policy) {
     return `<p class="rp-t rp-when">${esc(label)} 시기는 현재 실제 사례 검증에서 이 분야가 기존 방식보다 더 맞는 시기 규칙을 확인하지 못했습니다. 날짜를 제시하지 않습니다.</p>`;
   }
-  const spans = selectedWindows(r, domain, span).map((w) => selectedSpan(r, w));
+  const windows = selectedWindows(r, domain, span);
+  const spans = windows.map((w) => selectedSpan(r, w));
   if (!spans.length) return '';
   const rest = spans.length > 1 ? `가장 높고, 그다음은 ${esc(spans.slice(1).join(', '))}입니다` : '가장 높습니다';
-  return `<p class="rp-t rp-when">${esc(label)} 신호는 <strong>${esc(spans[0])}</strong>에 ${rest}.</p>`;
+  const order = windows.beforeMarriage ? ' 이 신호는 결혼 신호보다 앞서 나옵니다. 결혼 시기와 함께 보세요.' : '';
+  return `<p class="rp-t rp-when">${esc(label)} 신호는 <strong>${esc(spans[0])}</strong>에 ${rest}.${order}</p>`;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -315,7 +352,7 @@ function s11(v, r) {
       const parts = [
         once(firstOf(y.text)),
         once(YEAR_GOD[godOf.get(y.year)]),
-        once(y.hit?.kind ? HIT_TIP[y.hit.kind] : ''),
+        once(y.hit?.kind && HIT_TIP[y.hit.kind] ? HIT_TIP[y.hit.kind](HIT_AREA[y.hit.at] ?? '주변') : ''),
         y.daeunFrom ? '이 해부터 새 라이프 시즌이 시작됩니다.' : '',
       ].filter(Boolean);
       if (!parts.length) continue;
@@ -512,7 +549,9 @@ function thisYear(v, f, r) {
       return s == null ? null : [a === '총운' ? '전체' : a.replace('운', ''), areaText(a, s, 'year')];
     }).filter(Boolean);
 
-  return sub('', `${yr}년 분야별 흐름`, table2(['영역', '풀이'], areas))
+  return sub('', `${yr}년 분야별 흐름`,
+      '<p class="rp-fine rp-fine-top">분야마다 운이 좋은지 나쁜지의 정도입니다. 올해 어떤 일이 생기기 쉬운지는 아래 메인 테마에서 봅니다.</p>'
+      + table2(['영역', '풀이'], areas))
     + sub('', '올해의 메인 테마', readings(r, '토정비결', 2) + readings(r, '태을신수', 1))
     + sub('', '타고난 요일의 성향', readings(r, '태국 점성술', 1))
     + sub('', '달마다의 흐름',
@@ -573,9 +612,10 @@ function finale(r) {
     const windows = selectedWindows(r, domain, 15, 2);
     if (!windows.length) continue;
     const spans = windows.map((w) => selectedSpan(r, w));
-    const text = spans.length === 1
+    const text = (spans.length === 1
       ? `${esc(what)}는 <strong>${esc(spans[0])}</strong>에 신호가 가장 높습니다.`
-      : `${esc(what)}는 <strong>${esc(spans.join(', '))}</strong> 순으로 신호가 높습니다.`;
+      : `${esc(what)}는 <strong>${esc(spans.join(', '))}</strong> 순으로 신호가 높습니다.`)
+      + (windows.beforeMarriage ? ' 결혼 신호보다 앞서 나오는 신호입니다.' : '');
     items.push(`<li><span class="rp-ic" aria-hidden="true">${icon}</span><div><p>${text}</p></div></li>`);
   }
   const principles = [
@@ -655,16 +695,21 @@ const SEASON = {
   },
 };
 
-/** 그 해에 겹치는 일(합·충 등)을 생활 언어로 — 무엇이 일어나기 쉬운가 + 어떻게 하면 좋은가 */
+/**
+ * 그 해에 겹치는 일(합·충 등)을 생활 언어로 — **어느 영역에서** 무엇이 일어나기 쉬운가 + 어떻게 하면 좋은가.
+ * 영역을 빼고 종류만 말하면 같은 종류가 든 해마다 똑같은 문장이 되풀이된다(피드백).
+ * 영역은 세운이 부딪친 원국 기둥으로 정한다: 년주=집안·윗사람, 월주=직장·일, 일주=나와 배우자, 시주=자녀·결과물.
+ */
+const HIT_AREA = { year: '집안·윗사람', month: '직장·일', day: '나 자신과 배우자·가까운 사이', hour: '자녀·아랫사람·내 결과물' };
 const HIT_TIP = {
-  육합: '협업·계약·만남을 시작하기 좋습니다. 함께할 사람이나 파트너를 정하기 좋은 해입니다.',
-  반합: '주변의 추천·제안이 들어오기 쉽습니다. 받은 제안은 한 번 더 들여다보세요.',
-  충: '이직·이사·역할 변경처럼 자리가 바뀌는 일이 생기기 쉽습니다. 떠밀려 바뀌기 전에 미리 계획을 세워 두세요.',
-  삼형: '같은 문제로 말이 반복해서 오가기 쉽습니다. 중요한 합의는 말보다 문서로 남기세요.',
-  상형: '같은 문제로 말이 반복해서 오가기 쉽습니다. 중요한 합의는 말보다 문서로 남기세요.',
-  자형: '혼자 떠안고 지치기 쉽습니다. 일을 나눠 맡기고 도움을 요청하세요.',
-  해: '겉으로는 조용해도 속으로 서운함이 쌓이기 쉽습니다. 불만은 작을 때 말로 풀어 두세요.',
-  파: '정해둔 계획이나 약속이 틀어지기 쉽습니다. 계약·약속은 조건을 한 번 더 확인하세요.',
+  육합: (a) => `${a} 쪽에서 협업·계약·새 만남을 시작하기 좋습니다. 함께할 사람을 정하기 좋은 해입니다.`,
+  반합: (a) => `${a} 쪽에서 도움이나 제안이 들어오기 쉽습니다. 조건을 한 번 더 확인하고 잡으세요.`,
+  충: (a) => `${a} 쪽에 자리 변동(이직·이사·역할 변경)이 생기기 쉽습니다. 떠밀려 바뀌기 전에 계획을 세워 두세요.`,
+  삼형: (a) => `${a} 쪽에서 같은 문제로 말이 반복해서 오가기 쉽습니다. 중요한 합의는 문서로 남기세요.`,
+  상형: (a) => `${a} 쪽에서 같은 문제로 말이 반복해서 오가기 쉽습니다. 중요한 합의는 문서로 남기세요.`,
+  자형: (a) => `${a} 일을 혼자 떠안고 지치기 쉽습니다. 나눠 맡기고 도움을 요청하세요.`,
+  해: (a) => `${a} 쪽에서 겉은 조용해도 속으로 서운함이 쌓이기 쉽습니다. 불만은 작을 때 말로 풀어 두세요.`,
+  파: (a) => `${a} 쪽 계획이나 약속이 틀어지기 쉽습니다. 조건을 한 번 더 확인하세요.`,
 };
 
 /** 약한 기운을 생활에서 채우는 법 — 오행표를 행동으로 옮긴 고정표 */
@@ -691,8 +736,9 @@ function lifeSeasons(r) {
 
   // 한 해씩 — 그 해의 흐름 한두 문장 + 겹치는 일과 대처법
   const yearLine = (y) => {
-    const head = firstOf(y.text, 1);
-    const tip = y.hit?.kind ? HIT_TIP[y.hit.kind] : '';
+    // 그 해의 십성 풀이는 두 문장까지 — 첫 문장만 쓰면 '책임이 들어오는 해'처럼 제목만 남는다
+    const head = firstOf(y.text, 2);
+    const tip = y.hit?.kind && HIT_TIP[y.hit.kind] ? HIT_TIP[y.hit.kind](HIT_AREA[y.hit.at] ?? '주변') : '';
     const bond = y.bond ? '연애·결혼처럼 사람과의 인연이 움직이기 쉬운 해이기도 합니다.' : '';
     return [head, tip, bond].filter(Boolean).join(' ');
   };

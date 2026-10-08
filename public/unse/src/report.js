@@ -220,12 +220,15 @@ function selectedWindows(r, label, span = 15, count = 3) {
   // 결혼과 자녀 신호의 순서가 뒤집혀 읽히지 않게 맞춘다. 기준은 **자녀 신호** —
   // 검증에서 더 단단했다(사람 7명 빼고 고르기 7번 모두 사주+9개월, 가설 뒤 사례도 적중).
   // 아직 결혼하지 않았거나 모르는 사람에게는 가장 높은 자녀 신호보다 앞선 결혼 신호를 앞에 둔다.
+  // 단, 보여 줄 상위 창 안에서만 순서를 바꾼다 — 5위 같은 약한 창을 1위로 끌어올리면
+  // "올해 말 결혼 신호가 가장 높다"처럼 근거 없는 말이 된다(99년생 사례 피드백).
   let afterChildren = false;
   if (label === '결혼' && !isMarried(r)) {
     const child = selectedWindows(r, '자녀', span, 1)[0];
     if (child) {
-      const before = windows.filter((w) => w.from <= child.to);
-      if (before.length) windows = before;
+      const top = windows.slice(0, count);
+      const before = top.filter((w) => w.from <= child.to);
+      if (before.length) windows = [...before, ...top.filter((w) => !before.includes(w))];
       afterChildren = !before.length;
     }
   }
@@ -545,9 +548,20 @@ function thisYear(v, f, r) {
     return [`${label}${keys.includes(nowKey) ? ' · 이번 달' : ''}`, m.text];
   });
 
+  // 건강은 실제 사례로 고른 시기 체계가 올해 신호를 짚으면 그 달을 먼저 말한다.
+  // 일반 점수의 "큰 기복이 없는 해"와 시기 신호가 서로 다른 말을 하지 않게 한다.
+  const healthMonths = selectedWindows(r, '건강', 15, 3)
+    .map((w) => w.peakAt ?? w.from)
+    .filter((key) => Number(key.slice(0, 4)) === Number(yr))
+    .map((key) => Number(key.slice(5)))
+    .sort((a, b) => a - b);
+  const healthText = healthMonths.length
+    ? `${[...new Set(healthMonths)].map((m) => `${m}월`).join('·')} 무렵 몸에 일이 생기기 쉬운 신호가 있습니다. 미뤄 둔 검진·치료를 챙기고 일정을 무리하게 잡지 마세요.`
+    : null;
   const areas = ['총운', '금전운', '직장운', '애정운', '학업운', '건강운']
     .map((a) => {
       const s = f.year?.areas?.[a]?.score;
+      if (a === '건강운' && healthText) return ['건강', healthText];
       return s == null ? null : [a === '총운' ? '전체' : a.replace('운', ''), areaText(a, s, 'year')];
     }).filter(Boolean);
 
@@ -609,6 +623,7 @@ function finale(r) {
     ['결혼', '💞', '인연·관계가 가장 무르익는 때'],
     ['자녀', '👶', '자녀가 들어오기(임신) 쉬운 때'],
     ['이사', '🏠', '이사·이동하기 가장 좋은 때'],
+    ['건강', '🩺', '몸에 일이 생기기 쉬워 특히 챙겨야 하는 때'],
   ]) {
     if (domain === '결혼' && isMarried(r)) continue;
     const windows = selectedWindows(r, domain, 15, 2);

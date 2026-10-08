@@ -17,6 +17,8 @@ import { readFortune } from '../../engine.js';
 import * as ZW from '../../hires/ziwei.js';
 import * as VEX from '../../hires/vedicExt.js';
 import * as WS from '../../hires/western.js';
+import * as WE from '../../hires/westernExt.js';
+import * as CL from '../../hires/classical.js';
 import { buildGrid } from '../../hires/grid.js';
 import { daeunAt } from '../../hires/bazi.js';
 import { makePeriod, monthsOfYear } from '../../forecast.js';
@@ -31,7 +33,7 @@ import {
   clamp01, monthNo, monthKey, windowSlice,
 } from './schema.js';
 import {
-  sajuTiming, ziweiTiming, westernTiming, vedicTiming, otherTiming,
+  sajuTiming, ziweiTiming, westernTiming, modernAstrologyTiming, classicalAstrologyTiming, vedicTiming, otherTiming,
 } from './adapters.js';
 import { scoreEvents } from './events.js';
 
@@ -77,6 +79,11 @@ export function predictTimeline(o) {
   // 아니라 검증·정책 층에서만 넘긴다. 없으면 지금 서비스의 기본 규칙 그대로다.
   const requestedPolicy = o.timingPolicy ?? {};
   const candidatePolicies = o.validationPolicies ?? {};
+  const validationSystemIds = new Set(Object.values(candidatePolicies)
+    .flatMap((policy) => Object.values(policy ?? {}).flatMap((rule) => rule?.systems ?? [])));
+  const needsModernCandidate = validationSystemIds.has('astrology_modern');
+  const needsClassicalCandidate = validationSystemIds.has('astrology_classical');
+  const needsAstrology = useSystem('astrology') || needsModernCandidate || needsClassicalCandidate;
   const normalizePolicy = (domain, source = {}) => {
     const requested = source[domain] ?? {};
     const systems = Array.isArray(requested.systems) && requested.systems.length
@@ -120,7 +127,8 @@ export function predictTimeline(o) {
   }
   months.sort((a, b) => a.n - b.n);
 
-  const natalPack = useSystem('astrology') ? safe(() => WS.natalPack(fortune.input)) : null;
+  const natalPack = needsAstrology ? safe(() => WS.natalPack(fortune.input)) : null;
+  const classicalPack = needsClassicalCandidate ? safe(() => CL.classicalChart(fortune.input)) : null;
 
   // ── 분야마다 제 재료를 쓴다 ────────────────────────────────
   //
@@ -152,6 +160,13 @@ export function predictTimeline(o) {
     const transits = natalPack ? safe(() => WS.transitsAt(natalPack, m.jd, {
       timeKnown: fortune.input.timeKnown, houses: ALL_HOUSES, speed: 'month',
     })) : null;
+    const progressed = needsModernCandidate && natalPack
+      ? safe(() => WS.progressedAt(fortune.input, natalPack, m.jd)) : null;
+    const solarArc = needsModernCandidate && natalPack
+      ? safe(() => WE.solarArcAt(fortune.input, natalPack, m.jd)) : null;
+    const profection = needsClassicalCandidate && natalPack && fortune.input.timeKnown
+      ? safe(() => WE.profection(fortune.input, natalPack,
+        Math.max(0, m.from.y - fortune.input.year))) : null;
     // 베딕 — 다샤가 이 달에 바뀌었는가 (grid 의 months 에는 전환이 없다)
     const dl = m.vedic?.dasha;
     const now = dl ? [dl.md?.lord, dl.ad?.lord, dl.pd?.lord] : null;
@@ -164,7 +179,7 @@ export function predictTimeline(o) {
     if (now) prevDasha = now;
 
     ctxOf[key] = {
-      palaceRows, transits, dashaChanged,
+      palaceRows, transits, progressed, solarArc, classical: classicalPack, profection, dashaChanged,
       timeKnown: fortune.input.timeKnown,
       // 사주에서 자녀·배우자를 보는 십성은 성별로 갈린다 (adapters.js 의 seatGodsOf)
       isMale: fortune.input.isMale,
@@ -229,6 +244,8 @@ export function predictTimeline(o) {
       ...(useSystem('saju') ? [sajuTiming(m, key, c)] : []),
       ...(useSystem('jamidusu') ? [ziweiTiming(m, key, stack, c)] : []),
       ...(useSystem('astrology') ? [westernTiming(m, key, natalPack, c)] : []),
+      ...(needsModernCandidate ? [modernAstrologyTiming(m, key, natalPack, c)] : []),
+      ...(needsClassicalCandidate ? [classicalAstrologyTiming(m, key, natalPack, c)] : []),
       ...(useSystem('vedic') ? [vedicTiming(m, key, vedicPacks, c)] : []),
       ...auxIds.map((id) => otherTiming(id, key, auxRows[id][key], auxStats[id])),
     ];

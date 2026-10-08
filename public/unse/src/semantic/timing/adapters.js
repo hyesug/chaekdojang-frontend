@@ -27,6 +27,8 @@ import { lineageOf } from '../lineage.js';
 import { SYSTEM_IDS, SYSTEM_NAME } from '../extract.js';
 import { signal, unavailable, zeroActivations, clamp01, clampShift } from './schema.js';
 import * as NA from '../tables/nature.js';
+import * as CL from '../../hires/classical.js';
+import { signOf } from '../../systems/astrology.js';
 
 const safe = (fn) => { try { return fn(); } catch { return null; } };
 
@@ -371,16 +373,16 @@ const ANGLE_HOUSE = { 중천: 10, 상승점: 1, 하강점: 7, 천저: 4 };
 /** 느린 별은 판을 깔고, 빠른 별은 방아쇠를 당긴다 — 전통 독법의 두 층 */
 const SLOW_PLANETS = new Set(['명왕성', '해왕성', '천왕성', '토성', '목성', '라후']);
 
-export function westernTiming(month, period, natal, ctx = null) {
+function westernTransitTiming(system, month, period, natal, ctx = null) {
   // 열두 하우스를 모두 겨냥한 트랜싯이 있으면 그것을 쓴다. 없으면 기존 것
   // (분야가 '직업' 으로 고정돼 하우스 넷만 보던 자료) 으로 물러선다.
   const t = ctx?.transits ?? month?.western?.transits;
-  if (!t || !natal?.cusps) return unavailable('astrology', period, '출생 시각을 알아야 하우스를 세운다');
+  if (!t || !natal?.cusps) return unavailable(system, period, '출생 시각을 알아야 하우스를 세운다');
   // 시각을 모르면 커스프도 앵글도 없다. 트랜싯은 구해지지만 **어느 방을
   // 건드렸는지** 말할 수가 없어서 열두 분야가 전부 0 으로 나온다.
   // 그것은 "계산했고 낮다"가 아니라 "말할 수 없다"다.
   if (ctx?.timeKnown === false) {
-    return unavailable('astrology', period, '출생 시각을 몰라 트랜싯이 어느 하우스를 건드렸는지 말할 수 없다');
+    return unavailable(system, period, '출생 시각을 몰라 트랜싯이 어느 하우스를 건드렸는지 말할 수 없다');
   }
 
   const activations = zeroActivations();
@@ -433,7 +435,106 @@ export function westernTiming(month, period, natal, ctx = null) {
   }
 
   activations.personality = null; activations.timing = null;
-  return signal('astrology', period, {
+  return signal(system, period, {
+    activations, featureShift, evidence, resolution: 'month',
+    domainAvailability: availabilityOf(activations),
+  });
+}
+
+/** 기존 15체계에 남는 점성 시기 결과. 현대 후보와 계산 핵심은 같다. */
+export function westernTiming(month, period, natal, ctx = null) {
+  return westernTransitTiming('astrology', month, period, natal, ctx);
+}
+
+/**
+ * 현대 점성 후보 — 트랜싯에 진행 달과 솔라아크를 보강한다.
+ * 기존 `astrology` 결과는 호환성을 위해 트랜싯 신호 그대로 유지한다.
+ */
+export function modernAstrologyTiming(month, period, natal, ctx = null) {
+  const base = westernTransitTiming('astrology_modern', month, period, natal, ctx);
+  if (!base.available) return base;
+
+  const activations = { ...base.activations };
+  const evidence = [...base.evidence];
+  const progressedTargets = ctx?.progressed?.moonHits ?? [];
+  const solarArcHits = ctx?.solarArc?.hits ?? [];
+  for (const d of DOMAINS) {
+    const houses = WEST_HOUSE[d] ?? [];
+    const progressed = progressedTargets.some((hit) => {
+      const house = Number(String(hit.target ?? '').match(/(\d+)하우스/)?.[1]);
+      return houses.includes(house);
+    }) ? 0.22 : 0;
+    const solarArc = solarArcHits.some((hit) => {
+      const text = `${hit.from ?? ''} ${hit.to ?? ''}`;
+      return (houses.includes(10) && /중천|MC/.test(text))
+        || (houses.includes(1) && /상승점|ASC/.test(text))
+        || (houses.includes(4) && /천저|IC/.test(text))
+        || (houses.includes(7) && /하강점|DSC/.test(text));
+    }) ? 0.18 : 0;
+    activations[d] = evidenceOr({ transit: [base.activations[d]], progressed: [progressed], solarArc: [solarArc] });
+  }
+  for (const hit of progressedTargets.slice(0, 2)) evidence.push({
+    what: `진행 달–${hit.target} ${hit.aspect}`, basis: `오브 ${hit.orb}°`, weight: 0.22,
+  });
+  for (const hit of solarArcHits.slice(0, 2)) evidence.push({
+    what: `솔라아크 ${hit.from}–${hit.to} ${hit.aspect}`, basis: `오브 ${hit.orb}°`, weight: 0.18,
+  });
+  activations.personality = null; activations.timing = null;
+  return signal('astrology_modern', period, {
+    activations, featureShift: base.featureShift, evidence, resolution: 'month',
+    domainAvailability: availabilityOf(activations),
+  });
+}
+
+/**
+ * 고전 점성 후보 — 전통 일곱 행성, 분야 하우스의 주인, 연간 프로펙션만 쓴다.
+ * 천왕성·해왕성·명왕성은 의도적으로 넣지 않는다.
+ */
+export function classicalAstrologyTiming(month, period, natal, ctx = null) {
+  const t = ctx?.transits ?? month?.western?.transits;
+  const classical = ctx?.classical;
+  const profection = ctx?.profection;
+  if (!t || !natal?.cusps || !classical || ctx?.timeKnown === false) {
+    return unavailable('astrology_classical', period, '출생 시각을 알아야 고전 하우스·주인·프로펙션을 세운다');
+  }
+
+  const activations = zeroActivations();
+  const featureShift = {};
+  const evidence = [];
+  const traditional = new Set(CL.SEVEN);
+  for (const d of DOMAINS) {
+    const houses = WEST_HOUSE[d] ?? [];
+    const rulers = new Set(houses.map((house) => CL.DOMICILE[signOf(classical.cusps[house])]).filter(Boolean));
+    const groups = { house: [], ruler: [], profection: [] };
+    for (const hit of t.hits ?? []) {
+      if (!traditional.has(hit.planet)) continue;
+      const hitHouses = hit.axisHouses?.length ? hit.axisHouses : [hit.house].filter(Number.isFinite);
+      if (!hitHouses.some((house) => houses.includes(house))) continue;
+      const weight = (ASPECT_W[hit.aspect] ?? 0.3) * (0.4 + 0.6 * (hit.tight ?? 0.5))
+        * (hit.applying === false ? 0.65 : 1);
+      groups.house.push(weight);
+      if (rulers.has(hit.planet)) groups.ruler.push(weight * 0.9);
+      if (profection?.timeLord === hit.planet) groups.profection.push(weight * 0.85);
+    }
+    if (profection && (houses.includes(profection.house) || houses.includes(profection.lordNatalHouse))) {
+      groups.profection.push(0.22);
+    }
+    activations[d] = evidenceOr(groups);
+    if (activations[d] > 0) {
+      const condition = [...rulers, profection?.timeLord].filter(Boolean).map((planet) => `planet:${planet}`);
+      const shift = shiftFrom('astrology', d, condition);
+      if (shift) featureShift[d] = shift;
+    }
+  }
+  for (const hit of (t.hits ?? []).filter((hit) => traditional.has(hit.planet)).slice(0, 3)) {
+    evidence.push({ what: `고전 ${hit.planet}–${hit.target} ${hit.aspect}`,
+      basis: `오브 ${hit.orb}°${profection?.timeLord === hit.planet ? ' · 연주인' : ''}`,
+      weight: Math.round((hit.tight ?? 0) * 100) / 100 });
+  }
+  if (profection) evidence.push({ what: `${profection.house}하우스 프로펙션`,
+    basis: `연주인 ${profection.timeLord} · 출생 ${profection.lordNatalHouse}하우스`, weight: 0.22 });
+  activations.personality = null; activations.timing = null;
+  return signal('astrology_classical', period, {
     activations, featureShift, evidence, resolution: 'month',
     domainAvailability: availabilityOf(activations),
   });

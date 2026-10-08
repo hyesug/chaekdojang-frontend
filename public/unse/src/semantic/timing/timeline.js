@@ -66,6 +66,26 @@ const DOMAIN_LEAD_MONTHS = { children: 9 };
 export function predictTimeline(o) {
   const { birth, from, to, currentState = null } = o;
   const want = o.domains ?? DOMAINS.filter((d) => d !== 'personality' && d !== 'timing');
+  // 리포트는 분야별로 이미 고른 체계 하나만 사용한다. 그때도 열다섯 체계를
+  // 전부 돌리면 화면을 여는 비용만 커진다. 검증·기본 호출은 옵션을 넘기지
+  // 않으므로 전체 체계를 그대로 계산한다.
+  const onlySystems = Array.isArray(o.onlySystems) && o.onlySystems.length
+    ? new Set(o.onlySystems) : null;
+  const useSystem = (id) => !onlySystems || onlySystems.has(id);
+  const auxIds = AUX_IDS.filter(useSystem);
+  // 검증기는 후보 조합을 같은 계산으로 견줘야 한다. 이 옵션은 사용자 입력이
+  // 아니라 검증·정책 층에서만 넘긴다. 없으면 지금 서비스의 기본 규칙 그대로다.
+  const requestedPolicy = o.timingPolicy ?? {};
+  const candidatePolicies = o.validationPolicies ?? {};
+  const normalizePolicy = (domain, source = {}) => {
+    const requested = source[domain] ?? {};
+    const systems = Array.isArray(requested.systems) && requested.systems.length
+      ? [...new Set(requested.systems)] : (DOMAIN_ONLY[domain] ?? null);
+    const leadMonths = Number.isInteger(requested.leadMonths) && requested.leadMonths >= 0
+      ? requested.leadMonths : (DOMAIN_LEAD_MONTHS[domain] ?? 0);
+    return { systems, leadMonths };
+  };
+  const policyOf = (domain) => normalizePolicy(domain, requestedPolicy);
 
   // ── 정적 해석 (한 번만) ──
   const natal = readPerson(birth, { domains: want });
@@ -73,7 +93,9 @@ export function predictTimeline(o) {
 
   const lo = monthNo(from), hi = monthNo(to);
   // 앞당겨 보는 분야(자녀)가 있으면 그만큼 앞의 달도 계산한다 — 사주만 쓴다
-  const lead = Math.max(0, ...want.map((d) => DOMAIN_LEAD_MONTHS[d] ?? 0));
+  const policySources = [requestedPolicy, ...Object.values(candidatePolicies)];
+  const lead = Math.max(0, ...policySources.flatMap((source) =>
+    want.map((d) => normalizePolicy(d, source).leadMonths)));
   const loCalc = lo - lead;
   const y0 = Math.floor(loCalc / 12);
   const y1 = Number(String(to).slice(0, 4));
@@ -98,7 +120,7 @@ export function predictTimeline(o) {
   }
   months.sort((a, b) => a.n - b.n);
 
-  const natalPack = safe(() => WS.natalPack(fortune.input));
+  const natalPack = useSystem('astrology') ? safe(() => WS.natalPack(fortune.input)) : null;
 
   // ── 분야마다 제 재료를 쓴다 ────────────────────────────────
   //
@@ -110,8 +132,8 @@ export function predictTimeline(o) {
   // 이 넷이면 열두 분야가 보는 궁을 모두 덮는다
   const PALACE_SETS = ['직업', '결혼', '자녀', '건강'];
   const VARGA_CODES = ['D1', 'D2', 'D4', 'D7', 'D9', 'D10'];
-  const vedicCharts = Object.fromEntries(
-    VARGA_CODES.map((c) => [c, safe(() => VEX.chart(fortune.input, c))]).filter(([, v]) => v));
+  const vedicCharts = useSystem('vedic') ? Object.fromEntries(
+    VARGA_CODES.map((c) => [c, safe(() => VEX.chart(fortune.input, c))]).filter(([, v]) => v)) : {};
   const vedicPacks = { d1: vedicCharts.D1 };
 
   const ctxOf = {};          // key → 어댑터에 넘길 보강 재료
@@ -160,7 +182,7 @@ export function predictTimeline(o) {
     const [yy, mm] = key.split('-').map(Number);
     const p = safe(() => makePeriod('month', { y: yy, m: mm, d: 15 }));
     if (!p) continue;
-    for (const id of AUX_IDS) {
+    for (const id of auxIds) {
       const sys = sysByType[id];
       if (!sys?.forecast) continue;
       if (sys.meta.requiresTime && !fortune.input.timeKnown) continue;
@@ -170,7 +192,7 @@ export function predictTimeline(o) {
   }
   // 그 사람의 그 기간 안에서의 분포 — 절대 점수가 아니라 상대 순위를 쓰려고
   const auxStats = {};
-  for (const id of AUX_IDS) {
+  for (const id of auxIds) {
     const rows = Object.values(auxRows[id]).filter(Boolean);
     if (!rows.length) { auxStats[id] = null; continue; }
     // **달을 가로지르는 흔들림**을 잰다. 영역끼리의 차이가 아니다 —
@@ -204,11 +226,11 @@ export function predictTimeline(o) {
   for (const { key, m } of months) {
     const c = ctxOf[key];
     const signals = [
-      sajuTiming(m, key, c),
-      ziweiTiming(m, key, stack, c),
-      westernTiming(m, key, natalPack, c),
-      vedicTiming(m, key, vedicPacks, c),
-      ...AUX_IDS.map((id) => otherTiming(id, key, auxRows[id][key], auxStats[id])),
+      ...(useSystem('saju') ? [sajuTiming(m, key, c)] : []),
+      ...(useSystem('jamidusu') ? [ziweiTiming(m, key, stack, c)] : []),
+      ...(useSystem('astrology') ? [westernTiming(m, key, natalPack, c)] : []),
+      ...(useSystem('vedic') ? [vedicTiming(m, key, vedicPacks, c)] : []),
+      ...auxIds.map((id) => otherTiming(id, key, auxRows[id][key], auxStats[id])),
     ];
     perMonth.push({ key, signals });
   }
@@ -224,20 +246,28 @@ export function predictTimeline(o) {
   }
 
   // ── 분야마다 합친다 ──
-  const pooled = {};   // domain → key → { activation, shift, consensus, contributors }
-  for (const d of want) {
-    pooled[d] = {};
-    const only = DOMAIN_ONLY[d];
-    const shiftBy = DOMAIN_LEAD_MONTHS[d] ?? 0;
+  const poolForPolicy = (domain, policy) => {
+    const byKey = {};
     for (const { key, signals } of perMonth) {
-      if (only?.length === 1 && only[0] === 'saju' && shiftBy) {
-        const src = sajuAt[monthKey(monthNo(key) - shiftBy)];
-        pooled[d][key] = poolDomainMonth(src ? [src] : [], d, RESOLUTION[d]);
+      // 선행개월 후보는 사주 신호를 옮겨 쓰는 규칙만 허용한다. 다른 체계에
+      // 같은 처리를 얹어 후보 수를 부풀리지 않는다.
+      if (policy.systems?.length === 1 && policy.systems[0] === 'saju' && policy.leadMonths) {
+        const src = sajuAt[monthKey(monthNo(key) - policy.leadMonths)];
+        byKey[key] = poolDomainMonth(src ? [src] : [], domain, RESOLUTION[domain]);
         continue;
       }
-      const use = only ? signals.filter((s) => only.includes(s.system)) : signals;
-      pooled[d][key] = poolDomainMonth(use, d, RESOLUTION[d]);
+      const use = policy.systems ? signals.filter((s) => policy.systems.includes(s.system)) : signals;
+      byKey[key] = poolDomainMonth(use, domain, RESOLUTION[domain]);
     }
+    return byKey;
+  };
+
+  const pooled = {};   // domain → key → { activation, shift, consensus, contributors }
+  const appliedPolicy = {};
+  for (const d of want) {
+    const policy = policyOf(d);
+    appliedPolicy[d] = { systems: policy.systems ? [...policy.systems] : null, leadMonths: policy.leadMonths };
+    pooled[d] = poolForPolicy(d, policy);
   }
 
   // ── 해상도에 맞춰 창으로 뭉갠다 ──
@@ -293,6 +323,19 @@ export function predictTimeline(o) {
     timeline[k].events = timeline[k].events.slice(0, 8);
   }
 
+  // 후보는 명반·천문 계산을 다시 돌리지 않고, 위에서 이미 계산한 체계별 신호를
+  // 같은 달 축에서 다시 합친 결과다. 검증 전용으로만 요청했을 때 반환한다.
+  const validationCandidates = {};
+  for (const [name, source] of Object.entries(candidatePolicies)) {
+    validationCandidates[name] = {};
+    for (const d of want) {
+      const series = smooth(perMonth.map((x) => x.key), poolForPolicy(d, normalizePolicy(d, source)),
+        WINDOW_MONTHS[RESOLUTION[d]] ?? 1);
+      validationCandidates[name][d] = Object.fromEntries(Object.entries(series)
+        .map(([key, value]) => [key, Number.isFinite(value.activation) ? value.activation : null]));
+    }
+  }
+
   // ── 여러 분야가 한꺼번에 켜지는 구간 ──
   const transitions = [];
   for (const k of Object.keys(timeline)) {
@@ -309,6 +352,7 @@ export function predictTimeline(o) {
       leading: natal.domains[d]?.leading ?? [], profile: natal.domains[d]?.profile ?? null,
     }])),
     timeline,
+    validationCandidates,
     transitions,
     // 체계별 결과를 그대로 남긴다 — 나중에 어느 체계가 어느 분야의 시기를
     // 잘 잡는지 재려면 이것이 있어야 한다
@@ -333,6 +377,7 @@ export function predictTimeline(o) {
       timeKnown: fortune.input.timeKnown,
       monthCount: perMonth.length,
       currentStateUsed: Boolean(currentState),
+      timingPolicy: appliedPolicy,
       note: 'activation 이 높다는 것은 그 분야가 시끄럽다는 뜻이지 좋은 일이 생긴다는 뜻이 아니다.',
       confidenceNote: '근거가 여러 독립 계보에서 겹치는 것(evidence confidence)과 실제로 맞는 것(prediction accuracy)은 다른 말이다.',
     },

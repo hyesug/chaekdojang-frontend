@@ -24,6 +24,8 @@ import { yearTimeline } from './reading.js';
 import { j } from './core/josa.js';
 import { yearDirections } from './systems/gujeong.js';
 import { timingFor } from './semantic/compose/timing.js';
+import { reportTimingPolicy } from './semantic/timing/policy.js';
+import { peakWindows, predictTimeline } from './semantic/timing/timeline.js';
 import { palaceStars, natureOf } from './semantic/structure/stars.js';
 import { readSpouse, spousePalaceStars, spouseVerdict } from './semantic/structure/spouse.js';
 import { readChildren, childPalaceStars, childrenVerdict } from './semantic/structure/children.js';
@@ -174,25 +176,58 @@ const sub = (n, title, body) => !body ? '' :
  * 문서의 "2027 丁未 | 丑未冲으로 직장·조직 변화" 가 이 모양이다. 주제와
  * 무관한 연운 문구를 쓰면 제목과 내용이 따로 논다.
  */
-// 자녀는 사주 신호가 임신 무렵에 켜진다(검증) — 출산은 그 뒤 아홉 달 안팎이다
+// 리포트의 한국어 제목과 15체계 공통 타임라인의 내부 분야를 잇는다.
+// 같은 분야에서 여러 산법을 평균내지 않고, policy.js 가 고른 하나의 체계만 준다.
+const REPORT_TIMING_DOMAIN = {
+  직업: 'career', 재물: 'wealth', 관계: 'relationship', 결혼: 'marriage',
+  자녀: 'children', 이사: 'movement', 주거: 'residence', 건강: 'health',
+  학업: 'education', '큰 전환': 'majorChange',
+};
 const TIMING_LABEL = { 결혼: '결혼·인연', 자녀: '자녀가 들어오는(임신)', 이사: '이사·이동', 직업: '일의 변화', 재물: '목돈' };
-/** "2027~2028년 (35~36세)" → "2027~2028년(35~36세)" */
-const spanText = (w) => `${w.span}${w.ageLabel ? `(${w.ageLabel})` : ''}`;
+const reportTimelineCache = new WeakMap();
 
-/**
- * 1위 창이 2위보다 **더 많은 체계**의 동의를 받았는가.
- *
- * 같은 수의 체계가 짚은 창이 여럿이면 순서는 표 수·연도로 갈린 것일 뿐이다.
- * 그때 "가장 유력"이라 쓰면 근거 없는 단정이 된다(scenario/composer 의 규칙과 같다).
- * 시기 검증(npm run unse:timing-validate)에서 연·월 적중이 우연과 구별되지 않았으므로
- * 가르지 못한 경우는 가르지 못했다고 쓴다.
- */
-function isDecisive(windows, sajuOnly = false) {
-  if (!windows?.length) return false;
-  // 사주 단독 분야(자녀)는 체계 수가 늘 1 이다 — 천간·지지가 함께 든 해(n=2)가 하나뿐일 때만 앞선다고 본다
-  if (sajuOnly) return windows[0].n > (windows[1]?.n ?? 0);
-  if (windows.length === 1) return windows[0].systems.length >= 2;
-  return windows[0].systems.length > windows[1].systems.length;
+function reportTimeline(r) {
+  const cached = reportTimelineCache.get(r);
+  if (cached) return cached;
+  const from = Number(r.input.currentYear);
+  const timingPolicy = {};
+  for (const [label, domain] of Object.entries(REPORT_TIMING_DOMAIN)) {
+    const policy = reportTimingPolicy(label);
+    if (policy) timingPolicy[domain] = policy;
+  }
+  try {
+    const onlySystems = [...new Set(Object.values(timingPolicy).flatMap((policy) => policy.systems ?? []))];
+    const value = predictTimeline({
+      birth: r.input, from: `${from}-01`, to: `${from + 14}-12`,
+      domains: [...new Set(Object.values(REPORT_TIMING_DOMAIN))], timingPolicy, onlySystems,
+    });
+    reportTimelineCache.set(r, value);
+    return value;
+  } catch { return null; }
+}
+
+/** 한 체계 안에서도 점수가 높은 순서만 뽑되, 표시 범위를 벗어난 창은 버린다. */
+function selectedWindows(r, label, span = 15, count = 3) {
+  const domain = REPORT_TIMING_DOMAIN[label];
+  const policy = reportTimingPolicy(label);
+  const result = domain && policy ? reportTimeline(r) : null;
+  if (!result) return [];
+  const until = `${Number(r.input.currentYear) + span - 1}-12`;
+  return peakWindows(result, domain, 12, 80)
+    .filter((w) => w.from <= until)
+    .slice(0, count);
+}
+
+/** "2027-03~2027-05" → "2027년 3~5월(37세)" */
+function selectedSpan(r, w) {
+  const [fy, fm] = w.from.split('-').map(Number);
+  const [ty, tm] = w.to.split('-').map(Number);
+  const when = fy === ty
+    ? (fm === tm ? `${fy}년 ${fm}월` : `${fy}년 ${fm}~${tm}월`)
+    : `${fy}년 ${fm}월~${ty}년 ${tm}월`;
+  const fromAge = fy - r.input.year;
+  const toAge = ty - r.input.year;
+  return `${when}(${fromAge === toAge ? `${fromAge}세` : `${fromAge}~${toAge}세`})`;
 }
 
 /** 이미 결혼했다고 고른 사람인가. 고르지 않았으면 false — 추측하지 않는다 */
@@ -203,26 +238,18 @@ function timingOf(r, domain, span = 10) {
   if (domain === '결혼' && isMarried(r)) {
     return '<p class="rp-t rp-when">이미 결혼하셨다고 입력하셔서 결혼 시기는 따로 짚지 않았습니다. 위 풀이는 배우자와의 관계를 읽는 데 참고하세요.</p>';
   }
-  let t = null;
-  try {
-    const from = r.input.currentYear;
-    t = timingFor(r.input, { ...r.chart, gender: r.input.gender }, domain,
-      { from, to: from + span - 1 });
-  } catch { return ''; }
-  if (!t) return '';
-
-  // 해마다의 근거(간지·사화·다샤)는 전문 계산이라 싣지 않는다. 여러 점술이 겹쳐 짚은 시기를
-  // 순서대로 "가장 유력 → 그다음"으로 한 문장에 적는다 ("2가지 방식이…"는 뜻이 안 읽혔다)
-  const spans = (t.windows ?? []).slice(0, 3).map(spanText);
-  if (!spans.length) return '';
+  const policy = reportTimingPolicy(domain);
   const label = TIMING_LABEL[domain] ?? domain;
-  if (!isDecisive(t.windows, t.sajuOnly)) {
-    return `<p class="rp-t rp-when">${esc(label)} 쪽은 <strong>${esc(spans.join(', '))}</strong>에 신호가 비슷하게 걸려 있어, 한 해를 꼽기 어렵습니다.</p>`;
+  // 실제 사례에서 기존 방식보다 나은 규칙을 아직 확인하지 못한 분야에는
+  // 그럴듯한 연도를 찍지 않는다. 구조 해석을 흐리지 않되, 맞는 척하는 시기
+  // 문장만 멈춘다. 검증을 통과한 정책이 생기면 아래 계산이 다시 열린다.
+  if (!policy) {
+    return `<p class="rp-t rp-when">${esc(label)} 시기는 현재 실제 사례 검증에서 이 분야가 기존 방식보다 더 맞는 시기 규칙을 확인하지 못했습니다. 날짜를 제시하지 않습니다.</p>`;
   }
-  const first = (t.windows ?? [])[0];
-  const josa = j(first.span, '이').slice(first.span.length);
-  const rest = spans.length > 1 ? `가장 두드러지고, 그다음은 ${esc(spans.slice(1).join(', '))}입니다` : '가장 두드러집니다';
-  return `<p class="rp-t rp-when">${esc(label)} 시기는 <strong>${esc(spans[0])}</strong>${josa} ${rest}.</p>`;
+  const spans = selectedWindows(r, domain, span).map((w) => selectedSpan(r, w));
+  if (!spans.length) return '';
+  const rest = spans.length > 1 ? `가장 높고, 그다음은 ${esc(spans.slice(1).join(', '))}입니다` : '가장 높습니다';
+  return `<p class="rp-t rp-when">${esc(label)} 신호는 <strong>${esc(spans[0])}</strong>에 ${rest}.</p>`;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -264,6 +291,9 @@ const YEAR_GOD = {
  * — 같은 문장이 해마다 되풀이되면 무엇이 다른 해인지 알 수 없다는 피드백을 받았다.
  */
 function s11(v, r) {
+  if (!reportTimingPolicy('직업') && !reportTimingPolicy('재물')) {
+    return '<p class="rp-t rp-when">직업·재물의 연도별 시기는 현재 실제 사례 검증에서 기존 방식보다 나은 규칙을 확인하지 못했습니다. 그럴듯한 연도표는 제시하지 않습니다.</p>';
+  }
   const rows = [];
   const said = new Set();
   const once = (t) => (t && !said.has(t) ? (said.add(t), t) : '');
@@ -272,7 +302,9 @@ function s11(v, r) {
     const chart = { ...r.chart, gender: r.input.gender };
     const godOf = new Map();
     for (const domain of ['직업', '재물']) {
-      for (const x of timingFor(r.input, chart, domain, { from, to: from + 9 }).rows ?? []) {
+      const policy = reportTimingPolicy(domain);
+      if (!policy) continue;
+      for (const x of timingFor(r.input, chart, domain, { from, to: from + 9, policy }).rows ?? []) {
         for (const w of x.why) {
           const m = w.match(/(정관|편관|정재|편재|식신|상관|정인|편인|비견|겁재)/);
           if (m && !godOf.has(x.year)) godOf.set(x.year, TEN_GOD_GROUP[m[1]]);
@@ -538,17 +570,13 @@ function finale(r) {
     ['이사', '🏠', '이사·이동하기 가장 좋은 때'],
   ]) {
     if (domain === '결혼' && isMarried(r)) continue;
-    try {
-      const from = r.input.currentYear;
-      const t = timingFor(r.input, { ...r.chart, gender: r.input.gender }, domain,
-        { from, to: from + 14 });
-      const ws = t.windows ?? [];
-      if (!ws.length) continue;
-      const text = isDecisive(ws, t.sajuOnly)
-        ? `${esc(what)}는 <strong>${esc(spanText(ws[0]))}</strong>입니다.`
-        : `${esc(what)}는 <strong>${esc(ws.slice(0, 2).map(spanText).join(', '))}</strong>로 나뉘어 한쪽을 꼽기 어렵습니다.`;
-      items.push(`<li><span class="rp-ic" aria-hidden="true">${icon}</span><div><p>${text}</p></div></li>`);
-    } catch { /* */ }
+    const windows = selectedWindows(r, domain, 15, 2);
+    if (!windows.length) continue;
+    const spans = windows.map((w) => selectedSpan(r, w));
+    const text = spans.length === 1
+      ? `${esc(what)}는 <strong>${esc(spans[0])}</strong>에 신호가 가장 높습니다.`
+      : `${esc(what)}는 <strong>${esc(spans.join(', '))}</strong> 순으로 신호가 높습니다.`;
+    items.push(`<li><span class="rp-ic" aria-hidden="true">${icon}</span><div><p>${text}</p></div></li>`);
   }
   const principles = [
     '한 번에 크게 키우는 일은 하나만 둡니다.',
@@ -558,8 +586,11 @@ function finale(r) {
     '관계는 말보다 생활과 책임에서 실제 행동이 바뀌는지를 봅니다.',
     '운세는 선택을 대신하는 도구가 아니라, 되풀이되는 패턴을 점검하는 보조 자료입니다.',
   ];
-  return sub('', '앞으로 15년, 분야마다 신호가 모이는 때', (items.length ? `<ul class="rp-bul">${items.join('')}</ul>` : '')
-      + '<p class="rp-fine">시기는 참고로만 보세요. 실제 사례로 맞혀 봤을 때 자녀(임신) 시기는 비교적 잘 짚었지만 사례가 아직 적고, 다른 분야는 연도·달을 짚는 정확도가 높지 않았습니다.</p>')
+  const timingNotice = items.length
+    ? `<ul class="rp-bul">${items.join('')}</ul>`
+    : '<p class="rp-t rp-when">이 명반에서는 선택된 체계가 기간 안에서 서로 다른 달을 가르지 못했습니다.</p>';
+  return sub('', '앞으로 15년, 분야마다 신호가 모이는 때', timingNotice
+      + '<p class="rp-fine">분야마다 현재 사례에서 가장 높았던 체계 하나만 적용했습니다. 사례가 늘면 이 선택은 다시 비교해 바뀔 수 있습니다.</p>')
     + sub('', '실행 원칙', `<ul class="rp-ul">${principles.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`);
 }
 
@@ -724,8 +755,16 @@ function lifeReport(form, r, f, v) {
 
   const s = lifeSeasons(r);
   const yearText = withSrc(v.now?.year);
+  const signature = (v.signature ?? []).map((item) =>
+    `<article class="rp-signature">` +
+      `<h4 class="rp-h4">${esc(item.title)}</h4>` +
+      `<p>${esc(item.conclusion)}</p>` +
+      `<p class="rp-fine"><b>이 힘이 흔들리는 조건</b> — ${esc(item.condition)}</p>` +
+    `</article>`
+  ).join('');
 
-  return card('⚡', '한눈에 보는 내 인생의 핵심 키워드',
+  return card('🧭', '명반을 가르는 핵심 구조', signature)
+    + card('⚡', '한눈에 보는 내 인생의 핵심 키워드',
       (kw.length ? `<p class="rp-chips">${kw.map((k) => `<span>#${esc(k)}</span>`).join('')}</p>` : '')
       + (essence ? `<blockquote class="rp-quote">${esc(essence)}</blockquote>` : '')
       + bullets(

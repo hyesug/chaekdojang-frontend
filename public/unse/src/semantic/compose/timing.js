@@ -27,6 +27,7 @@ import { buildBoard, decadeLimits, annualLayer, sihwaOn, palaceBranch, DOMAIN_PA
   from '../../hires/ziwei.js';
 import { dashaTree, dashaChanges } from '../../hires/vedic.js';
 import { packFor } from '../../hires/vedicExt.js';
+import { reportTimingPolicy } from '../timing/policy.js';
 
 /** 시기 순위에 반드시 따라붙는 실측. **답 전체에서 한 번만** 쓴다 */
 export const MEASURED =
@@ -167,22 +168,25 @@ function vedicYears(input, domain, from, to) {
  * 여러 표를 몰아줘서 이기지 못하게 하려는 것이다 — 이 저장소에서 수가 많은
  * 쪽(간접 11개)이 이겨 버린 적이 있다.
  */
-export function timingFor(input, chart, domain, { from, to } = {}) {
+export function timingFor(input, chart, domain, { from, to, policy: requestedPolicy = null } = {}) {
   const y0 = from ?? input.currentYear;
   const y1 = to ?? (y0 + 15);
 
   // 자녀는 사주 단독 — 검증에서 자미·베딕을 섞으면 사주 신호가 지워졌다
   // (semantic/timing/timeline.js 의 DOMAIN_ONLY 설명). 사주 신호는 출산보다
   // **임신 무렵**에 켜지므로 리포트는 이 해를 "자녀가 들어오는 해"로 읽는다.
-  const sajuOnly = domain === '자녀';
-  const all = sajuOnly
-    ? sajuYears(input, chart, domain, y0, y1)
-    : [
-      ...sajuYears(input, chart, domain, y0, y1),
-      ...ziweiYears(input, domain, y0, y1),
-      ...vedicYears(input, domain, y0, y1),
-    ];
-  if (!all.length) return { rows: [], windows: [], measured: MEASURED };
+  const defaultSystems = domain === '자녀' ? ['saju'] : ['saju', 'jamidusu', 'vedic'];
+  const selectedPolicy = requestedPolicy ?? reportTimingPolicy(domain);
+  const systems = Array.isArray(selectedPolicy?.systems) && selectedPolicy.systems.length
+    ? [...new Set(selectedPolicy.systems)] : defaultSystems;
+  const policy = { systems };
+  const singleSystem = systems.length === 1;
+  const all = [
+    ...(systems.includes('saju') ? sajuYears(input, chart, domain, y0, y1) : []),
+    ...(systems.includes('jamidusu') ? ziweiYears(input, domain, y0, y1) : []),
+    ...(systems.includes('vedic') ? vedicYears(input, domain, y0, y1) : []),
+  ];
+  if (!all.length) return { rows: [], windows: [], measured: MEASURED, policy };
 
   const byYear = new Map();
   for (const r of all) {
@@ -202,10 +206,11 @@ export function timingFor(input, chart, domain, { from, to } = {}) {
   return {
     rows,
     // 체계가 하나뿐이면 "두 체계 이상 동의" 조건을 걸 수 없다 — 천간·지지가 함께 든 해를 앞에 둔다
-    windows: windowsOf(rows, sajuOnly ? 1 : 2, input.year),
-    sajuOnly,
-    background: ziweiBackground(input, domain, y0, y1),
+    windows: windowsOf(rows, singleSystem ? 1 : 2, input.year),
+    sajuOnly: singleSystem && systems[0] === 'saju',
+    background: systems.includes('jamidusu') ? ziweiBackground(input, domain, y0, y1) : [],
     measured: MEASURED,
+    policy,
   };
 }
 

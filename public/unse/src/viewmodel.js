@@ -15,7 +15,7 @@
 import { AREAS } from './forecast.js';
 import { traitLenses, verdictSummary, compatAxes } from './lens.js';
 import { lifeReading, yearTimeline, consensusReading, areaProse,
-         monthDays, luckyDays, compatReading,
+         monthDays, luckyDays, compatReading, signatureReading,
          PAIR_WEIGHT, PAIR_AREAS } from './reading.js';
 
 /**
@@ -283,6 +283,7 @@ export function buildView(form, r, f) {
     ahead: { timeline, bond: timeline.filter((x) => x.bond).map((x) => x.year) },
     month: { days, lucky, label: `${f.today.m}월` },
     life,
+    signature: signatureReading(r.input, r.chart),
     raw: { r, f },
   };
 }

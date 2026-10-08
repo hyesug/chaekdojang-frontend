@@ -68,6 +68,31 @@ test('개인 리포트는 핵심 키워드·커리어·타임라인·실행 순�
   }
 });
 
+test('개인 리포트는 키워드보다 먼저 명반 고유의 핵심 구조와 경계를 보여준다', () => {
+  const r = readFortune(A);
+  const f = readForecast(A);
+  const v = buildView(A, r, f);
+  const html = renderReport(A, r, f, v);
+
+  const heading = html.indexOf('명반을 가르는 핵심 구조');
+  assert.ok(heading >= 0, '첫머리에 핵심 구조가 없다');
+  assert.ok(heading < html.indexOf('한눈에 보는 내 인생의 핵심 키워드'));
+  for (const item of v.signature) {
+    assert.match(html, rx(item.title));
+    assert.match(html, rx(item.conclusion));
+    assert.match(html, rx(item.condition));
+  }
+});
+
+test('분야별로 채택한 체계의 시기만 리포트에 제시한다', () => {
+  const html = personal(A);
+
+  assert.doesNotMatch(html, /날짜를 제시하지 않습니다/);
+  assert.match(html, /일에서 가장 큰 기회와 변화가 오는 때는 <strong>/);
+  assert.match(html, /돈이 가장 크게 들어오는 때는 <strong>/);
+  assert.match(html, /인연·관계가 가장 무르익는 때는 <strong>/);
+});
+
 test('개인 리포트 화면 글에는 전문용어·한자·강조 표시가 남지 않는다', () => {
   for (const form of [A, { ...A, gender: 'female' }, { ...B, hour: null }]) {
     const text = visible(personal(form));

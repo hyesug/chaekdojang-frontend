@@ -1749,3 +1749,56 @@ export function patternReading(input, chart) {
   }
   return lines;
 }
+
+/**
+ * 리포트 첫머리에 놓을 명반 고유의 구조를 고른다.
+ *
+ * 전체 풀이에 모든 해석을 한꺼번에 놓으면, 서로 다른 명반도 같은 오행·십신
+ * 설명을 반복해서 받는다. 여기서는 실제 자리 관계와 조합을 먼저, 그다음
+ * 치우친 힘과 내면 순으로 골라 **이 명반에서 결론을 바꾸는 것**만 남긴다.
+ * `condition` 은 결론을 흐리는 단서가 아니라 그 힘이 약점으로 바뀌는 실제
+ * 경계다. 그래서 "A일 수도 B일 수도" 대신 "A로 가되 이때는 멈춘다"가 된다.
+ */
+export function signatureReading(input, chart) {
+  const patterns = patternReading(input, chart);
+  const structure = structureReading(input, chart);
+  const inner = innerReading(input, chart);
+  const taboo = tabooReading(input, chart);
+  const cautions = taboo.map((item) => `${item.head}을 피하세요. ${item.text}`);
+  const fallbackCaution = '강한 쪽만 밀어붙이지 말고, 중요한 결정은 실제 조건을 따져보세요.';
+  const out = [];
+  const add = (title, conclusion, condition = null) => {
+    const cleanTitle = String(title ?? '').trim();
+    const cleanConclusion = String(conclusion ?? '').trim();
+    if (!cleanTitle || !cleanConclusion || out.some((x) => x.title === cleanTitle)) return;
+    out.push({
+      title: cleanTitle,
+      conclusion: cleanConclusion,
+      condition: condition ?? cautions[out.length] ?? cautions[0] ?? fallbackCaution,
+    });
+  };
+
+  // 실제 기둥의 자리 관계와 십신 조합은 다른 명반과 갈리는 정보량이 가장 크다.
+  for (const item of patterns.slice(0, 2)) add(item.name, item.text);
+
+  // 조합이 적은 명반도 반드시 한쪽 힘의 쓰임과 경계를 남긴다.
+  if (out.length < 2 && structure.lines.length) {
+    add('이 명반에서 가장 강하게 쏠린 힘', structure.lines[0]);
+  }
+  if (out.length < 2 && inner.length) {
+    add(inner[0].title, inner[0].text);
+  }
+
+  // 두 개를 확보한 뒤에도 한 장만 더 허용한다. 모든 근거를 늘어놓지 않는다.
+  if (out.length < 3 && structure.lines.length > 1) {
+    add('이 힘이 과해질 때의 모습', structure.lines[1]);
+  }
+  if (out.length < 3 && inner.length > 1) {
+    add(inner[1].title, inner[1].text);
+  }
+  if (out.length < 3 && taboo.length > 1) {
+    add(`반드시 지킬 경계: ${taboo[1].head}`, taboo[1].text, cautions[1]);
+  }
+
+  return out.slice(0, 3);
+}

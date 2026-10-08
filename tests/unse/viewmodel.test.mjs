@@ -49,6 +49,38 @@ test('상세 성향은 여러 체계에서 실제로 반복된 것만 남긴다'
   }
 });
 
+test('리포트 첫머리는 명반마다 다른 핵심 구조를 세 가지 이하로 고른다', () => {
+  const other = {
+    ...FORM,
+    name: '다른 구조',
+    year: 1985,
+    month: 11,
+    day: 3,
+    hour: 3,
+    minute: 40,
+    birthPlace: '부산',
+    homePlace: '부산',
+    gender: 'male',
+  };
+  const view = (form) => {
+    const r = readFortune(form, { now: NOW });
+    return buildView(form, r, readForecast(form, NOW));
+  };
+  const a = view(FORM).signature;
+  const b = view(other).signature;
+
+  for (const signatures of [a, b]) {
+    assert.ok(signatures.length >= 2 && signatures.length <= 3, '핵심 구조는 두세 개만 보여준다');
+    assert.ok(signatures.every((x) => x.title && x.conclusion && x.condition));
+    assert.equal(new Set(signatures.map((x) => x.title)).size, signatures.length, '같은 근거를 반복하지 않는다');
+  }
+  assert.notDeepEqual(
+    a.map((x) => x.title),
+    b.map((x) => x.title),
+    '명반이 달라졌는데 첫 리딩의 핵심 구조가 같다',
+  );
+});
+
 test('개인 화면은 명반 · 오늘/이달 · AI 질문 · 프로필 저장 · 통합 문서를 둔다', async () => {
   const ui = await readFile(
     new URL('../../public/unse/src/ui.js', import.meta.url),

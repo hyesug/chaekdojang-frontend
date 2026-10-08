@@ -36,7 +36,7 @@
  */
 
 import { build, context } from 'esbuild';
-import { readdirSync, statSync, existsSync, readFileSync, unlinkSync } from 'node:fs';
+import { readdirSync, statSync, existsSync, readFileSync, unlinkSync, mkdirSync, copyFileSync, writeFileSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
@@ -79,6 +79,40 @@ const sourcemap = process.argv.includes('--sourcemap');
 function sweep() {
   for (const name of readdirSync(siteDir)) {
     if (/^app-.*\.js(\.map)?$/.test(name)) unlinkSync(join(siteDir, name));
+  }
+}
+
+/**
+ * 책도장 본 사이트와 같은 글꼴(Pretendard, Noto Serif KR)을 운세 폴더로 복사한다.
+ *
+ * 운세는 Next 가 아니라 정적 페이지라 app/layout.tsx 가 싣는 글꼴을 받지 못한다.
+ * 외부 글꼴 서버는 CSP 가 막으므로 같은 도메인(public/<운세>/assets/fonts)에 둔다.
+ * 두 글꼴 모두 글자 범위별로 쪼개진 파일이라, 브라우저는 화면에 쓰인 조각만 받는다.
+ * 복사본은 빌드마다 다시 만들어지는 물건이라 저장소에는 올리지 않는다(.gitignore).
+ */
+function copyFonts() {
+  const nm = join(ROOT, 'node_modules');
+  const out = join(siteDir, 'assets', 'fonts');
+  rmSync(out, { recursive: true, force: true });
+
+  // Pretendard: CSS 가 ./woff2-dynamic-subset/ 를 상대 경로로 부른다 — 모양 그대로 옮긴다
+  const pre = join(nm, 'pretendard', 'dist', 'web', 'variable');
+  const preOut = join(out, 'pretendard');
+  mkdirSync(join(preOut, 'woff2-dynamic-subset'), { recursive: true });
+  copyFileSync(join(pre, 'pretendardvariable-dynamic-subset.css'), join(preOut, 'pretendard.css'));
+  for (const f of readdirSync(join(pre, 'woff2-dynamic-subset'))) {
+    copyFileSync(join(pre, 'woff2-dynamic-subset', f), join(preOut, 'woff2-dynamic-subset', f));
+  }
+
+  // Noto Serif KR 700(제목·간지용): woff2 만 옮기고 CSS 에서 woff 대체 경로는 지운다
+  const noto = join(nm, '@fontsource', 'noto-serif-kr');
+  const notoOut = join(out, 'noto-serif-kr');
+  mkdirSync(join(notoOut, 'files'), { recursive: true });
+  const css = readFileSync(join(noto, 'korean-700.css'), 'utf8')
+    .replace(/,\s*url\([^)]*\.woff\) format\('woff'\)/g, '');
+  writeFileSync(join(notoOut, 'noto-serif-kr.css'), css);
+  for (const m of css.matchAll(/url\(\.\/files\/([^)]+\.woff2)\)/g)) {
+    copyFileSync(join(noto, 'files', m[1]), join(notoOut, 'files', m[1]));
   }
 }
 
@@ -164,6 +198,8 @@ const options = {
     js: '/* 종합 운세 — public/' + slug + '/src 를 묶은 것입니다. 원본이 진짜이고 이 파일은 만들어진 것입니다. */',
   },
 };
+
+copyFonts();
 
 if (watch) {
   sweep();

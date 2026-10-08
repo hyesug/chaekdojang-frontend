@@ -20,6 +20,13 @@ import { loadCreditStatus } from './credits.js';
 
 const ENDPOINT = '/fortune-ai';
 
+/**
+ * AI 질문을 받을지. 결제(질문권 구매)가 붙기 전까지는 닫아 둔다.
+ * false 면 질문 영역은 그대로 보여 주되 버튼·입력칸을 막고 "준비 중"을 띄운다.
+ * 서버 쪽도 막으려면 Vercel 환경변수 FORTUNE_AI_DISABLED=1 을 함께 둔다.
+ */
+export const AI_OPEN = false;
+
 /** 결제 안내는 서버가 잔액 부족으로 확정한 경우에만 연다. */
 export function isCreditExhausted(error) {
   return error?.status === 402;
@@ -155,17 +162,26 @@ export function aiSection(mode = 'solo', view = null) {
   const target = mode === 'pair'
     ? `${view?.who?.a ?? '첫 번째 사람'} · ${view?.who?.b ?? '두 번째 사람'}`
     : `${view?.who?.name ?? '내'} 명반`;
+  const off = AI_OPEN ? '' : ' disabled';
   return `
-    <div class="card ai">
+    <div class="card ai${AI_OPEN ? '' : ' ai-closed'}">
       <div class="ai-record-head">
         <div><p class="ai-kicker">AI 명반 해석</p><p class="ai-target">현재 분석 대상: ${esc(target)}</p></div>
-        <p class="ai-credit" id="ai-credit-status" role="status">질문권을 확인하는 중입니다.</p>
+        ${AI_OPEN
+          ? '<p class="ai-credit" id="ai-credit-status" role="status">질문권을 확인하는 중입니다.</p>'
+          : '<p class="ai-badge">준비 중</p>'}
       </div>
+      ${AI_OPEN ? '' : `
+      <div class="ai-soon" role="status">
+        <p class="ai-soon-title">AI 질문은 준비 중이에요</p>
+        <p class="ai-soon-body">질문권 결제 기능을 붙이는 중입니다. 열리면 이 명반으로 바로 물어볼 수 있어요.
+        위의 명반 계산과 풀이는 지금도 그대로 볼 수 있습니다.</p>
+      </div>`}
       <div class="ai-quick">
-        ${quick.map((q, i) => `<button type="button" data-q="${i}">${esc(q[0])}</button>`).join('')}
+        ${quick.map((q, i) => `<button type="button" data-q="${i}"${off}>${esc(q[0])}</button>`).join('')}
       </div>
       <div id="ai-log" class="ai-log" aria-live="polite" aria-relevant="additions text"></div>
-      <div class="ai-quick"><select id="ai-tier" aria-label="AI 풀이 모델">
+      <div class="ai-quick"><select id="ai-tier" aria-label="AI 풀이 모델"${off}>
         <option value="CLAUDE_SONNET">Claude 균형 풀이 · 1 질문권</option>
         <option value="GPT_SOL">GPT 균형 풀이 · 1 질문권</option>
         <option value="CLAUDE_OPUS">Claude 심층 풀이 · 2 질문권</option>
@@ -173,8 +189,8 @@ export function aiSection(mode = 'solo', view = null) {
       </select></div>
       <div class="ai-input">
         <label class="sr-only" for="ai-q">명반에 관해 질문하기</label>
-        <textarea id="ai-q" rows="3" placeholder="궁금한 걸 물어보세요 (Ctrl+Enter 로 보내기)"></textarea>
-        <button type="button" id="ai-send">보내기</button>
+        <textarea id="ai-q" rows="3" placeholder="${AI_OPEN ? '궁금한 걸 물어보세요 (Ctrl+Enter 로 보내기)' : 'AI 질문은 준비 중이에요'}"${off}></textarea>
+        <button type="button" id="ai-send"${off}>${AI_OPEN ? '보내기' : '준비 중'}</button>
       </div>
       <p class="ai-note" id="ai-note">
         위의 열다섯 체계 계산 결과와 앞으로 120일치 일진을 그대로 넘겨서 묻습니다.
@@ -296,6 +312,8 @@ function wire(context, calc = null, compat = null) {
   const tier = document.querySelector('#ai-tier');
   const credit = document.querySelector('#ai-credit-status');
   if (!log) return;
+  // 닫혀 있으면 질문권 조회도, 버튼 배선도 하지 않는다 — 막힌 단추가 눌려도 아무 요청이 나가지 않게
+  if (!AI_OPEN) return;
   let creditStatus = { kind: 'unavailable' };
 
   const paintCredit = (status) => {

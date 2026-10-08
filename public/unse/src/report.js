@@ -18,7 +18,7 @@
  * 고르고 배열만 한다. 새로 지으면 어느 계산에서 나온 말인지 추적할 수 없다.
  */
 import { areaText } from './forecast.js';
-import { currentDaeun, computeDaeun, TEN_GOD_GROUP, elementDistribution, tenGod, branchRelations } from './core/ganzhi.js';
+import { currentDaeun, computeDaeun, TEN_GOD_GROUP, elementDistribution, tenGod, tenGodDistribution, branchRelations } from './core/ganzhi.js';
 import { buildBoard, decadeLimits } from './hires/ziwei.js';
 import { yearTimeline } from './reading.js';
 import { j } from './core/josa.js';
@@ -209,6 +209,32 @@ function reportTimeline(r) {
 /** 이미 결혼했다고 고른 사람인가. 고르지 않았으면 false — 추측하지 않는다 */
 const isMarried = (r) => r.input?.marital === 'married';
 
+/**
+ * 지나온 때의 결혼·인연 신호. 결혼한 사람은 실제 결혼 시기와 대어 볼 수 있고,
+ * 아닌 사람도 지난 인연의 때를 확인할 수 있다. 만 18세부터 — 결혼한 사람은 올해까지,
+ * 아닌 사람은 앞으로의 신호와 겹치지 않게 작년까지 본다.
+ */
+const pastMarriageCache = new WeakMap();
+function pastMarriageWindows(r, count = 3) {
+  if (!pastMarriageCache.has(r)) {
+    const policy = reportTimingPolicy('결혼');
+    const from = Number(r.input.year) + 18;
+    const to = Number(r.input.currentYear) - (isMarried(r) ? 0 : 1);
+    let windows = [];
+    if (policy && from <= to) {
+      try {
+        const result = predictTimeline({
+          birth: r.input, from: `${from}-01`, to: `${to}-12`, domains: ['marriage'],
+          timingPolicy: { marriage: policy }, onlySystems: policy.systems ?? [],
+        });
+        windows = peakWindows(result, 'marriage', 12, 80);
+      } catch { /* 계산 실패 시 과거 신호는 생략 */ }
+    }
+    pastMarriageCache.set(r, windows);
+  }
+  return pastMarriageCache.get(r).slice(0, count);
+}
+
 /** 한 체계 안에서도 점수가 높은 순서만 뽑되, 표시 범위를 벗어난 창은 버린다. */
 function selectedWindows(r, label, span = 15, count = 3) {
   const domain = REPORT_TIMING_DOMAIN[label];
@@ -258,9 +284,14 @@ function selectedSpan(r, w) {
 }
 
 function timingOf(r, domain, span = 10) {
-  // 이미 결혼한 사람에게 "결혼 시기는 ○년이 유력"은 틀린 말이다
+  // 이미 결혼한 사람에게 "결혼 시기는 ○년이 유력"은 틀린 말이다 — 지나온 신호를 보여 준다
   if (domain === '결혼' && isMarried(r)) {
-    return '<p class="rp-t rp-when">이미 결혼하셨다고 입력하셔서 결혼 시기는 따로 짚지 않았습니다. 위 풀이는 배우자와의 관계를 읽는 데 참고하세요.</p>';
+    const past = pastMarriageWindows(r).map((w) => selectedSpan(r, w));
+    if (!past.length) {
+      return '<p class="rp-t rp-when">이미 결혼하셨다고 입력하셔서 앞으로의 결혼 시기는 따로 짚지 않았습니다. 위 풀이는 배우자와의 관계를 읽는 데 참고하세요.</p>';
+    }
+    const rest = past.length > 1 ? `가장 높았고, 그다음은 ${esc(past.slice(1).join(', '))}입니다` : '가장 높았습니다';
+    return `<p class="rp-t rp-when">지나온 때 중 결혼·인연 신호는 <strong>${esc(past[0])}</strong>에 ${rest}. 실제로 결혼하신 때와 견주어 보세요.</p>`;
   }
   const policy = reportTimingPolicy(domain);
   const label = TIMING_LABEL[domain] ?? domain;
@@ -274,7 +305,10 @@ function timingOf(r, domain, span = 10) {
   const spans = windows.map((w) => selectedSpan(r, w));
   if (!spans.length) return '';
   const rest = spans.length > 1 ? `가장 높고, 그다음은 ${esc(spans.slice(1).join(', '))}입니다` : '가장 높습니다';
-  return `<p class="rp-t rp-when">${esc(label)} 신호는 <strong>${esc(spans[0])}</strong>에 ${rest}.</p>`;
+  // 결혼은 지나온 신호도 함께 — 지난 인연의 때와 견주어 보면 앞의 신호를 읽기 쉽다
+  const past = domain === '결혼' ? pastMarriageWindows(r, 2).map((w) => selectedSpan(r, w)) : [];
+  const pastLine = past.length ? ` 지나온 때 중에서는 ${esc(past.join(', '))}에 신호가 높았습니다.` : '';
+  return `<p class="rp-t rp-when">${esc(label)} 신호는 <strong>${esc(spans[0])}</strong>에 ${rest}.${pastLine}</p>`;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -596,6 +630,47 @@ function inner(r) {
     + sub('', '타로 카드', readings(r, '타로', 2));
 }
 
+/* ── 실행 원칙 — 사람마다 다르게 ───────────────────────────
+   예전에는 모든 사람에게 같은 여섯 줄을 보였다(피드백: "다 똑같이 나온다").
+   타고난 십신 구성에서 가장 강한 쪽·가장 빈 쪽, 지금 대운의 십신으로 고른다. */
+const STRONG_RULE = {
+  비겁: '내 방식이 강한 만큼, 큰 결정 전에는 반대 의견을 한 사람에게 꼭 들어 봅니다.',
+  식상: '아이디어를 늘리기보다 하나를 끝까지 완성해 밖에 내놓습니다.',
+  재성: '일을 벌이는 속도보다 정리하는 속도를 먼저 맞춥니다. 새 일을 하나 받으면 기존 일 하나를 닫습니다.',
+  관성: '책임을 다 떠안지 말고, 맡을 일과 거절할 일의 기준을 미리 정해 둡니다.',
+  인성: '배우고 준비하는 기간에 기한을 두고, 정한 날이 오면 부족해도 실행합니다.',
+};
+const EMPTY_RULE = {
+  비겁: '혼자 버티지 말고 같은 편이 되어 줄 사람을 일부러 곁에 둡니다.',
+  식상: '생각을 결과물로 꺼내는 연습을 합니다. 작게라도 정기적으로 밖에 보여 줍니다.',
+  재성: '돈 흐름을 감으로 두지 말고 숫자로 적어 둡니다. 한 달에 한 번은 들어오고 나간 돈을 확인합니다.',
+  관성: '스스로 마감과 규칙을 정해 두어야 흐트러지지 않습니다.',
+  인성: '실전으로 배우는 만큼, 배운 것을 기록으로 남겨 쌓습니다.',
+};
+const SEASON_RULE = {
+  비겁: '지금 시기에는 동업·공동 투자처럼 몫을 나누는 약속을 반드시 문서로 남깁니다.',
+  식상: '지금 시기에는 말과 결과물이 곧 실력입니다. 만든 것을 꾸준히 공개합니다.',
+  재성: '지금 시기에는 들어오는 만큼 나가기 쉽습니다. 수입의 일정 몫을 먼저 떼어 둡니다.',
+  관성: '지금 시기에는 책임과 평가가 커집니다. 맡은 일의 기준과 기한부터 확인합니다.',
+  인성: '지금 시기에는 자격·공부·문서가 힘이 됩니다. 증빙이 남는 방식으로 쌓습니다.',
+};
+function personalPrinciples(r) {
+  const out = [];
+  try {
+    const g = tenGodDistribution(r.chart.pillars, r.chart.dayStem).groups;
+    const order = Object.keys(g).sort((a, b) => g[b] - g[a]);
+    out.push(STRONG_RULE[order[0]]);
+    const empty = order.at(-1);
+    if (empty !== order[0]) out.push(EMPTY_RULE[empty]);
+  } catch { /* */ }
+  try {
+    const dae = currentDaeun(computeDaeun(r.chart, r.input.isMale, r.input.jdUT), r.input.age);
+    const rule = dae ? SEASON_RULE[TEN_GOD_GROUP[dae.god]] : null;
+    if (rule) out.push(rule);
+  } catch { /* */ }
+  return [...new Set(out.filter(Boolean))];
+}
+
 /* ── 6. 시기 한눈에 보기 ────────────────────────────────── */
 
 function finale(r) {
@@ -617,14 +692,8 @@ function finale(r) {
       : `${esc(what)}는 <strong>${esc(spans.join(', '))}</strong> 순으로 신호가 높습니다.`);
     items.push(`<li><span class="rp-ic" aria-hidden="true">${icon}</span><div><p>${text}</p></div></li>`);
   }
-  const principles = [
-    '한 번에 크게 키우는 일은 하나만 둡니다.',
-    '분석은 기한을 두고 끝냅니다. 충분히 모였다고 판단되면 실행합니다.',
-    '능력은 숫자·문서·결과물처럼 밖에 보이는 증거로 남깁니다.',
-    '재물은 횡재보다 본업 경쟁력 → 추가 현금흐름 → 자산 축적 순서로 키웁니다.',
-    '관계는 말보다 생활과 책임에서 실제 행동이 바뀌는지를 봅니다.',
-    '운세는 선택을 대신하는 도구가 아니라, 되풀이되는 패턴을 점검하는 보조 자료입니다.',
-  ];
+  const principles = [...personalPrinciples(r),
+    '운세는 선택을 대신하는 도구가 아니라, 되풀이되는 패턴을 점검하는 보조 자료입니다.'];
   const timingNotice = items.length
     ? `<ul class="rp-bul">${items.join('')}</ul>`
     : '<p class="rp-t rp-when">이 명반에서는 선택된 체계가 기간 안에서 서로 다른 달을 가르지 못했습니다.</p>';

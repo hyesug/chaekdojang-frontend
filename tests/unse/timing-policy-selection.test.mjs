@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { selectTimingPolicy } from '../../public/unse/src/validation/timingPolicy.js';
+import { reportTimingPolicy } from '../../public/unse/src/semantic/timing/policy.js';
 
 const row = (person, baseline, candidate, precision = 'month') => ({
   person, precision, scores: { baseline, candidate },
@@ -44,4 +45,31 @@ test('사건이 많아도 사람이 한 명이면 시기 정책을 학습하지 
 
   assert.equal(verdict.promote, false);
   assert.match(verdict.reason, /사람/);
+});
+
+test('쌍 후보가 단독 후보보다 LOO 성적이 낮으면 채택하지 않는다', () => {
+  const rows = [
+    { person: 'A', precision: 'month', scores: { baseline: 40, vedic: 80, saju_vedic: 70 } },
+    { person: 'B', precision: 'month', scores: { baseline: 40, vedic: 80, saju_vedic: 70 } },
+    { person: 'C', precision: 'month', scores: { baseline: 40, vedic: 80, saju_vedic: 70 } },
+    { person: 'D', precision: 'month', scores: { baseline: 40, vedic: 80, saju_vedic: 70 } },
+    { person: 'E', precision: 'month', scores: { baseline: 40, vedic: 80, saju_vedic: 70 } },
+    { person: 'F', precision: 'month', scores: { baseline: 40, vedic: 80, saju_vedic: 70 } },
+    { person: 'G', precision: 'month', scores: { baseline: 40, vedic: 80, saju_vedic: 70 } },
+    { person: 'H', precision: 'month', scores: { baseline: 40, vedic: 80, saju_vedic: 70 } },
+  ];
+  const verdict = selectTimingPolicy(rows, {
+    baseline: 'baseline', shuffledSelectedScores: Array(100).fill(40),
+    candidateSystems: { vedic: ['vedic'], saju_vedic: ['saju', 'vedic'] },
+  });
+  assert.equal(verdict.selected, 'vedic');
+  assert.equal(verdict.scope, 'service');
+  assert.equal(verdict.pairComparison, null);
+});
+
+test('개인 사례로 얻은 결과는 서비스용 정책을 덮어쓰지 않는다', () => {
+  const personalOnly = {
+    직업: { scope: 'personal', systems: ['vedic'], basis: 'personal-development' },
+  };
+  assert.equal(reportTimingPolicy('직업', personalOnly), null);
 });

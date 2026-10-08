@@ -1,12 +1,15 @@
 /**
- * /unse 리포트의 연도 시기 규칙을 실제 사례로 고른다.
+ * /unse 시기 정책 학습기.
  *
- * 결과가 좋아 보이는 후보를 그대로 채택하지 않는다. 사람 하나를 통째로 뺀
- * LOO와 사건 연도를 섞은 기준선을 모두 통과한 후보만 policy.js에 옮길 수 있다.
+ * 모든 15체계 단독과, 계산 재료가 다른 사전등록 쌍만 비교한다. 개인 이력은
+ * 진단에는 쓰되 서비스 규칙을 자동으로 바꾸지 않는다.
  */
 import { existsSync, readFileSync } from 'node:fs';
-import { timingFor } from '../public/unse/src/semantic/compose/timing.js';
-import { scoreEventYearly } from '../public/unse/src/validation/timingMetrics.js';
+import { predictTimeline } from '../public/unse/src/semantic/timing/timeline.js';
+import { SYSTEM_IDS } from '../public/unse/src/semantic/extract.js';
+import { lineageOf } from '../public/unse/src/semantic/lineage.js';
+import { groupTimingEvents } from '../public/unse/src/validation/timingCaseWindows.js';
+import { scoreEvent, scoreEventYearly } from '../public/unse/src/validation/timingMetrics.js';
 import { selectTimingPolicy } from '../public/unse/src/validation/timingPolicy.js';
 import { seededRandom } from '../public/unse/src/semantic/timing/schema.js';
 
@@ -16,98 +19,124 @@ if (!existsSync(file)) {
   process.exit(1);
 }
 
-const DOMAIN = { 직업: '직업', 재물: '재물', 관계: '관계', 결혼: '결혼', 주거: '주거', 이사: '이사', 건강: '건강', 학업: '학업', 자녀: '자녀' };
-const CANDIDATES = {
-  baseline: null,
-  saju: { systems: ['saju'] },
-  jamidusu: { systems: ['jamidusu'] },
-  vedic: { systems: ['vedic'] },
-  saju_jamidusu: { systems: ['saju', 'jamidusu'] },
-  saju_vedic: { systems: ['saju', 'vedic'] },
-  jamidusu_vedic: { systems: ['jamidusu', 'vedic'] },
-  all: { systems: ['saju', 'jamidusu', 'vedic'] },
+const DOMAIN_OF = {
+  직업: 'career', 재물: 'wealth', 관계: 'relationship', 결혼: 'marriage', 자녀: 'children',
+  주거: 'residence', 이사: 'movement', 건강: 'health', 학업: 'education', '큰 전환': 'majorChange',
 };
-const names = Object.keys(CANDIDATES);
-const mean = (xs) => xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
+const DOMAIN_LABEL = Object.fromEntries(Object.entries(DOMAIN_OF).map(([label, id]) => [id, label]));
+const ASTRO_CANDIDATES = ['astrology_modern', 'astrology_classical'];
+const SYSTEM_CANDIDATES = [...SYSTEM_IDS, ...ASTRO_CANDIDATES];
+const lineage = (id) => id.startsWith('astrology_') ? 'tropical' : lineageOf(id);
 
-function seriesFor(birth, domain, from, to, policy) {
-  const input = { ...birth, currentYear: from };
-  const chart = { gender: birth.gender };
-  const output = timingFor(input, chart, domain, { from, to, policy });
-  const byYear = new Map(output.rows.map((row) => [row.year, row.systems.length * 10 + row.n]));
-  return Array.from({ length: to - from + 1 }, (_, i) => {
-    const year = from + i;
-    return { k: String(year), v: byYear.get(year) ?? 0 };
-  });
-}
-
-function scoreSeries(series, year) {
-  const score = scoreEventYearly(series, year);
-  return score.unscorable ? null : score.eventPercentile;
-}
-
-const groups = new Map();
-for (const person of JSON.parse(readFileSync(file, 'utf8'))) {
-  for (const event of person.events ?? []) {
-    const domain = DOMAIN[event.domain];
-    if (!domain || !Number.isInteger(event.year)) continue;
-    const key = `${person.id}\u0000${domain}`;
-    const group = groups.get(key) ?? { person: person.id, birth: person.birth, domain, events: [] };
-    group.events.push(event);
-    groups.set(key, group);
+// 같은 계보(예: 현대·고전 점성)를 섞은 쌍은 독립 확인이 아니므로 후보에 넣지 않는다.
+const candidateSystems = { baseline: null };
+for (const id of SYSTEM_CANDIDATES) candidateSystems[id] = [id];
+for (let i = 0; i < SYSTEM_CANDIDATES.length; i++) {
+  for (let j = i + 1; j < SYSTEM_CANDIDATES.length; j++) {
+    const [a, b] = [SYSTEM_CANDIDATES[i], SYSTEM_CANDIDATES[j]];
+    if (lineage(a) === lineage(b)) continue;
+    candidateSystems[`${a}+${b}`] = [a, b];
   }
 }
 
-const rowsByDomain = new Map();
-for (const group of groups.values()) {
-  const years = group.events.map((event) => event.year);
-  const from = Math.min(...years) - 3;
-  const to = Math.max(...years) + 3;
-  const series = Object.fromEntries(names.map((name) => [name,
-    seriesFor(group.birth, group.domain, from, to, CANDIDATES[name]) ]));
-  for (const event of group.events) {
-    const scores = Object.fromEntries(names.map((name) => [name, scoreSeries(series[name], event.year)]));
-    const row = {
-      person: group.person,
-      precision: event.month == null ? 'year' : 'month',
-      scores, series, from, to,
-    };
-    const list = rowsByDomain.get(group.domain) ?? [];
-    list.push(row);
-    rowsByDomain.set(group.domain, list);
+const candidatePolicy = (domain) => Object.fromEntries(Object.entries(candidateSystems).map(([name, systems]) => [
+  name, systems ? { [domain]: { systems } } : {},
+]));
+
+const seriesOf = (result, candidate, domain) => Object.entries(result.validationCandidates[candidate]?.[domain] ?? {})
+  .map(([k, v]) => ({ k, v }));
+const score = (series, event) => {
+  const measured = event.month == null ? scoreEventYearly(series, event.year) : scoreEvent(series,
+    `${event.year}-${String(event.month).padStart(2, '0')}`);
+  return measured.unscorable ? null : measured.eventPercentile;
+};
+
+/** 같은 원인에서 갈린 급여·직급 기록은 후보별 평균 하나로 접는다. */
+function collapseFamilies(rows) {
+  const grouped = new Map();
+  for (const row of rows) {
+    const family = row.event.eventFamily ?? `event:${row.event.year}-${row.event.month ?? 'year'}-${row.event.what ?? ''}`;
+    const key = `${row.person}\u0000${row.domain}\u0000${family}`;
+    const bucket = grouped.get(key) ?? { ...row, family, members: [] };
+    bucket.members.push(row);
+    grouped.set(key, bucket);
   }
+  return [...grouped.values()].map((bucket) => ({
+    person: bucket.person, precision: bucket.members.every((row) => row.precision === 'month') ? 'month' : 'year',
+    eventFamily: bucket.family,
+    scores: Object.fromEntries(Object.keys(candidateSystems).map((candidate) => {
+      const values = bucket.members.map((row) => row.scores[candidate]).filter(Number.isFinite);
+      return [candidate, values.length ? values.reduce((a, b) => a + b, 0) / values.length : null];
+    })),
+    seriesByCandidate: bucket.members[0].seriesByCandidate,
+  }));
 }
 
 function shuffledRows(rows, random) {
   return rows.map((row) => {
-    const year = row.from + Math.floor(random() * (row.to - row.from + 1));
-    return {
-      ...row,
-      scores: Object.fromEntries(names.map((name) => [name, scoreSeries(row.series[name], year)])),
-    };
+    const scores = Object.fromEntries(Object.entries(row.seriesByCandidate).map(([candidate, series]) => {
+      const keys = series.map((entry) => entry.k);
+      const key = keys[Math.floor(random() * keys.length)];
+      const event = row.precision === 'month'
+        ? { year: Number(key.slice(0, 4)), month: Number(key.slice(5, 7)) }
+        : { year: Number(key.slice(0, 4)) };
+      return [candidate, score(series, event)];
+    }));
+    return { ...row, scores };
   });
 }
 
+const cases = JSON.parse(readFileSync(file, 'utf8'));
+const rowsByDomain = new Map();
+for (const group of groupTimingEvents(cases, DOMAIN_OF, { paddingYears: 3 })) {
+  const result = predictTimeline({
+    birth: group.birth, from: group.from, to: group.to, domains: [group.domain],
+    validationPolicies: candidatePolicy(group.domain),
+  });
+  for (const event of group.events) {
+    const precision = event.month == null ? 'year' : 'month';
+    const seriesByCandidate = Object.fromEntries(Object.keys(candidateSystems).map((candidate) => [
+      candidate, seriesOf(result, candidate, group.domain),
+    ]));
+    const row = {
+      person: group.person, domain: group.domain, event, precision, seriesByCandidate,
+      scores: Object.fromEntries(Object.entries(seriesByCandidate).map(([candidate, series]) => [candidate, score(series, event)])),
+    };
+    const rows = rowsByDomain.get(group.domain) ?? [];
+    rows.push(row); rowsByDomain.set(group.domain, rows);
+  }
+}
+
 console.log('# 리포트 시기 정책 학습');
-console.log('사례에 맞춘 점수가 아니라, 사람 단위 LOO와 날짜 섞기 검증을 통과한 후보만 제안합니다.');
-const promoted = {};
-for (const [domain, rows] of rowsByDomain) {
-  const preliminary = selectTimingPolicy(rows, { baseline: 'baseline' });
+console.log(`단독 ${SYSTEM_CANDIDATES.length}개 + 독립 계보 쌍 ${Object.keys(candidateSystems).length - 1 - SYSTEM_CANDIDATES.length}개를 비교합니다.`);
+console.log('사람 단위 LOO·날짜 섞기·쌍 대 단독 비교를 모두 통과해야 서비스 정책이 됩니다.');
+const service = {};
+const personal = {};
+for (const [domain, rawRows] of rowsByDomain) {
+  const rows = collapseFamilies(rawRows);
+  const preliminary = selectTimingPolicy(rows, { baseline: 'baseline', candidateSystems });
   const random = seededRandom(20261008);
   const shuffled = [];
   if (preliminary.loo?.selected != null) {
     for (let i = 0; i < 200; i++) {
-      const verdict = selectTimingPolicy(shuffledRows(rows, random), { baseline: 'baseline' });
+      const verdict = selectTimingPolicy(shuffledRows(rows, random), { baseline: 'baseline', candidateSystems });
       if (verdict.loo?.selected != null) shuffled.push(verdict.loo.selected);
     }
   }
-  const verdict = selectTimingPolicy(rows, { baseline: 'baseline', shuffledSelectedScores: shuffled });
-  const loo = verdict.loo ? `${verdict.loo.baseline?.toFixed(1)} → ${verdict.loo.selected?.toFixed(1)}` : '—';
-  const p = verdict.permutation?.p == null ? '—' : verdict.permutation.p.toFixed(3);
-  console.log(`- ${domain}: ${verdict.promote ? '승격' : '유지'} · 후보 ${verdict.selected} · LOO ${loo} · 섞기 p=${p}`);
-  console.log(`  ${verdict.reason}`);
-  if (verdict.promote) promoted[domain] = CANDIDATES[verdict.selected];
+  const verdict = selectTimingPolicy(rows, {
+    baseline: 'baseline', shuffledSelectedScores: shuffled, candidateSystems,
+  });
+  const selectedSystems = candidateSystems[verdict.promote ? verdict.selected : verdict.personalSelected] ?? null;
+  const label = DOMAIN_LABEL[domain] ?? domain;
+  console.log(`- ${label}: ${verdict.scope} · ${verdict.promote ? '서비스 승격' : '개인 진단'} · ${verdict.personalSelected}`);
+  console.log(`  ${verdict.reason} · 사람 ${verdict.people}명 · 월 사건 ${verdict.monthlyEvents}건`);
+  if (verdict.pairComparison) console.log(`  쌍 ${verdict.pairComparison.pair}: ${verdict.pairComparison.pairScore?.toFixed(1)} vs 단독 ${verdict.pairComparison.bestMember} ${verdict.pairComparison.bestMemberScore?.toFixed(1)}`);
+  const proposal = { scope: verdict.scope, systems: selectedSystems, basis: 'loo-and-shuffle', evidence: {
+    people: verdict.people, monthlyEvents: verdict.monthlyEvents, reason: verdict.reason,
+  } };
+  (verdict.promote ? service : personal)[label] = proposal;
 }
-console.log('');
-console.log('## policy.js에 반영할 제안');
-console.log(JSON.stringify(promoted, null, 2));
+console.log('\n## 서비스에 반영 가능한 제안');
+console.log(JSON.stringify(service, null, 2));
+console.log('\n## 개인 진단용 제안 (자동 반영 금지)');
+console.log(JSON.stringify(personal, null, 2));

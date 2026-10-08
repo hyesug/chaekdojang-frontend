@@ -41,20 +41,23 @@ function heldOutScore(rows, candidate) {
  * @param {Array<{person:string, precision:'month'|'year', scores:Record<string,number>}>} rows
  * @param {{baseline:string, shuffledSelectedScores?:number[]}} options
  */
-export function selectTimingPolicy(rows, { baseline, shuffledSelectedScores = [] } = {}) {
+export function selectTimingPolicy(rows, { baseline, shuffledSelectedScores = [], candidateSystems = {} } = {}) {
   if (!baseline) throw new Error('baseline 후보가 필요합니다');
   const people = [...new Set(rows.map((row) => row.person).filter(Boolean))];
   const monthlyEvents = rows.filter((row) => row.precision === 'month').length;
   const full = pick(rows, baseline);
 
   if (people.length < 6) {
-    return { promote: false, selected: baseline, reason: `사람 ${people.length}명 — 최소 6명이 필요합니다`, people: people.length, monthlyEvents };
+    return { promote: false, scope: 'personal', selected: baseline, personalSelected: full.candidate,
+      reason: `사람 ${people.length}명 — 최소 6명이 필요합니다`, people: people.length, monthlyEvents, pairComparison: null };
   }
   if (monthlyEvents < 8) {
-    return { promote: false, selected: baseline, reason: `월 정밀 사건 ${monthlyEvents}건 — 최소 8건이 필요합니다`, people: people.length, monthlyEvents };
+    return { promote: false, scope: 'personal', selected: baseline, personalSelected: full.candidate,
+      reason: `월 정밀 사건 ${monthlyEvents}건 — 최소 8건이 필요합니다`, people: people.length, monthlyEvents, pairComparison: null };
   }
   if (full.candidate === baseline) {
-    return { promote: false, selected: baseline, reason: '기존 방식보다 나은 후보가 없습니다', people: people.length, monthlyEvents };
+    return { promote: false, scope: 'personal', selected: baseline, personalSelected: full.candidate,
+      reason: '기존 방식보다 나은 후보가 없습니다', people: people.length, monthlyEvents, pairComparison: null };
   }
 
   const selectedScores = [];
@@ -77,16 +80,34 @@ export function selectTimingPolicy(rows, { baseline, shuffledSelectedScores = []
   const permutationP = nulls.length
     ? (nulls.filter((score) => score >= loo.selected).length + 1) / (nulls.length + 1)
     : null;
-  const promote = stable && gain != null && gain >= 5 && permutationP != null && permutationP <= 0.1;
+  const selectedSystems = candidateSystems[full.candidate] ?? [];
+  const isPair = selectedSystems.length === 2;
+  const memberNames = isPair ? Object.entries(candidateSystems)
+    .filter(([, systems]) => systems.length === 1 && selectedSystems.includes(systems[0]))
+    .map(([name]) => name) : [];
+  const fixedLoo = (candidate) => mean(people.map((person) =>
+    heldOutScore(rows.filter((row) => row.person === person), candidate)).filter(Number.isFinite));
+  const memberScores = memberNames.map((name) => ({ candidate: name, score: fixedLoo(name) }))
+    .filter((x) => x.score != null).sort((a, b) => b.score - a.score);
+  const pairScore = isPair ? fixedLoo(full.candidate) : null;
+  const pairComparison = isPair ? {
+    pair: full.candidate, pairScore, bestMember: memberScores[0]?.candidate ?? null,
+    bestMemberScore: memberScores[0]?.score ?? null,
+    beatsBestMember: memberScores.length ? pairScore > memberScores[0].score : true,
+  } : null;
+  const pairWins = pairComparison?.beatsBestMember ?? true;
+  const promote = stable && pairWins && gain != null && gain >= 5 && permutationP != null && permutationP <= 0.1;
   const reason = !stable ? '사람 하나를 빼면 고르는 후보가 흔들립니다'
+    : !pairWins ? '쌍 후보가 사람 단위 LOO에서 가장 나은 단독 후보를 이기지 못합니다'
     : gain == null || gain < 5 ? '사람을 빼고 보면 기존 방식보다 충분히 낫지 않습니다'
       : permutationP == null ? '사건 날짜를 섞은 기준선 검증이 없습니다'
         : permutationP > 0.1 ? '사건 날짜를 섞어도 비슷하게 나와 우연과 구별되지 않습니다'
           : '사람 단위 LOO·날짜 섞기 기준을 통과했습니다';
 
   return {
-    promote, selected: promote ? full.candidate : baseline, reason,
+    promote, scope: promote ? 'service' : 'personal',
+    selected: promote ? full.candidate : baseline, personalSelected: full.candidate, reason,
     people: people.length, monthlyEvents, full, loo, gain, stable, folds,
-    permutation: { p: permutationP, rounds: nulls.length },
+    permutation: { p: permutationP, rounds: nulls.length }, pairComparison,
   };
 }

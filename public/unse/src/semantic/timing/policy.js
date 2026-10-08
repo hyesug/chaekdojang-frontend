@@ -12,20 +12,24 @@
 export const VALIDATED_REPORT_TIMING_POLICY = Object.freeze({
   // 현재 사건 기록에서의 최고 후보 (직업 3건, 이동 3건, 관계 1건,
   // 결혼 6건, 자녀 10건). 표본의 한계는 basis 로 보존한다.
-  직업: Object.freeze({ systems: ['vedic'], basis: 'observed' }),
-  이사: Object.freeze({ systems: ['vedic'], basis: 'observed' }),
-  관계: Object.freeze({ systems: ['vedic'], basis: 'observed' }),
-  결혼: Object.freeze({ systems: ['yukim'], basis: 'observed' }),
+  직업: Object.freeze({ scope: 'service', systems: ['vedic'], basis: 'observed' }),
+  이사: Object.freeze({ scope: 'service', systems: ['vedic'], basis: 'observed' }),
+  관계: Object.freeze({ scope: 'service', systems: ['vedic'], basis: 'observed' }),
+  결혼: Object.freeze({ scope: 'service', systems: ['yukim'], basis: 'observed' }),
   // 출산일보다 약 아홉 달 앞의 사주 신호가 현재 사례에서 더 일관됐다.
-  자녀: Object.freeze({ systems: ['saju'], leadMonths: 9, basis: 'observed' }),
+  자녀: Object.freeze({ scope: 'service', systems: ['saju'], leadMonths: 9, basis: 'observed' }),
 
   // 아직 날짜가 붙은 사례가 없거나 너무 적은 분야. 각 체계의 전용 자리
   // (재성·전택궁·질액궁·인성)을 가진 체계 하나만 임시로 쓴다.
-  재물: Object.freeze({ systems: ['vedic'], basis: 'inferred' }),
-  주거: Object.freeze({ systems: ['jamidusu'], basis: 'inferred' }),
-  건강: Object.freeze({ systems: ['jamidusu'], basis: 'inferred' }),
-  학업: Object.freeze({ systems: ['saju'], basis: 'inferred' }),
-  '큰 전환': Object.freeze({ systems: ['saju'], basis: 'inferred' }),
+  재물: Object.freeze({ scope: 'service', systems: ['vedic'], basis: 'inferred' }),
+  주거: Object.freeze({ scope: 'service', systems: ['jamidusu'], basis: 'inferred' }),
+  건강: Object.freeze({ scope: 'service', systems: ['jamidusu'], basis: 'inferred' }),
+  학업: Object.freeze({ scope: 'service', systems: ['saju'], basis: 'inferred' }),
+  '큰 전환': Object.freeze({ scope: 'service', systems: ['saju'], basis: 'inferred' }),
 });
 
-export const reportTimingPolicy = (domain) => VALIDATED_REPORT_TIMING_POLICY[domain] ?? null;
+/** 개인 사례에서 나온 정책은 진단용이며 서비스 공통 리포트에 쓰지 않는다. */
+export const reportTimingPolicy = (domain, policy = VALIDATED_REPORT_TIMING_POLICY) => {
+  const entry = policy[domain] ?? null;
+  return entry?.scope === 'service' ? entry : null;
+};

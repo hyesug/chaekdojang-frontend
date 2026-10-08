@@ -24,6 +24,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { predictTimeline } from '../public/unse/src/semantic/timing/timeline.js';
 import { DOMAIN_LABEL } from '../public/unse/src/semantic/timing/schema.js';
 import { SYSTEM_NAME, SYSTEM_IDS } from '../public/unse/src/semantic/extract.js';
+import { groupTimingEvents } from '../public/unse/src/validation/timingCaseWindows.js';
 import {
   scoreEvent, scoreEventYearly, scoreAtResolution, aggregateNull, nullPosition,
   personWeighted, personBootstrap,
@@ -44,19 +45,15 @@ const DOMAIN_OF = {
 // ── 사건을 모은다. **월을 모르면 지어내지 않는다** ──
 const rows = [];
 let skipped = 0;
-for (const c of cases) {
-  const evs = (c.events ?? []).filter((e) => e.year && DOMAIN_OF[e.domain]);
-  if (!evs.length) continue;
-  const years = evs.map((e) => e.year);
+for (const group of groupTimingEvents(cases, DOMAIN_OF, { paddingYears: 3 })) {
   let r;
-  try {
-    r = predictTimeline({ birth: c.birth, from: `${Math.min(...years) - 3}-01`, to: `${Math.max(...years) + 3}-12` });
-  } catch (err) { console.error(`  ! ${c.id} ${err.message}`); skipped += evs.length; continue; }
-  for (const e of evs) {
+  try { r = predictTimeline({ birth: group.birth, from: group.from, to: group.to }); }
+  catch (err) { console.error(`  ! ${group.person} ${group.domain} ${err.message}`); skipped += group.events.length; continue; }
+  for (const e of group.events) {
     // 정밀도를 명시한다. 없으면 month 유무로 정한다 — 없는 정밀도를 만들지 않는다
     const precision = e.datePrecision ?? (e.month != null ? 'month' : 'year');
     rows.push({
-      person: c.id, domain: DOMAIN_OF[e.domain], what: e.what,
+      person: group.person, domain: group.domain, what: e.what,
       year: e.year, month: e.month ?? null, precision,
       key: e.month != null ? `${e.year}-${String(e.month).padStart(2, '0')}` : null,
       result: r,

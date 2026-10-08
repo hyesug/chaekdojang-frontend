@@ -38,30 +38,34 @@
     <a class="cd-logo" href="/" aria-label="책도장 홈으로 이동">
       <span class="cd-stamp" aria-hidden="true">冊</span>책도장
     </a>
-    <nav class="cd-nav">
+    <nav class="cd-nav" aria-label="주요 메뉴">
       <a href="/">피드</a>
       <a href="/search?tab=books">검색</a>
       <a href="/library">서재</a>
-      <a href="/write">독후감 쓰기</a>
+      <a href="/groups">독서모임</a>
       <a href="/dojangdan">도장단</a>
       <a href="/contests">공모전</a>
-      <a href="/groups">독서모임</a>
       <a href="/stats">독서 인생지도</a>
-      <a href="/cs">고객센터</a>
+      <a href="/unse" class="on" aria-current="page">운세</a>
     </nav>
+    <a class="cd-write" href="/write">독후감 쓰기</a>
     <button type="button" class="cd-burger" id="cdBurger"
-            aria-label="메뉴 열기" aria-expanded="false" aria-controls="cdMenu">☰</button>
+            aria-label="메뉴 열기" aria-expanded="false" aria-controls="cdMenu">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
   </div>
   <div class="cd-menu" id="cdMenu" hidden>
     <a href="/">피드</a>
     <a href="/search?tab=books">검색</a>
     <a href="/library">서재</a>
-    <a href="/write">독후감 쓰기</a>
+    <a href="/groups">독서모임</a>
     <a href="/dojangdan">도장단</a>
     <a href="/contests">공모전</a>
-    <a href="/groups">독서모임</a>
     <a href="/stats">독서 인생지도</a>
+    <a href="/unse" class="on" aria-current="page">운세</a>
+    <a href="/write">독후감 쓰기</a>
     <a href="/cs">고객센터</a>
+    <a href="/install">앱처럼 사용하기</a>
   </div>
 </header>
 <script>

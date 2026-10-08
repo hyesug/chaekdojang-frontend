@@ -13,10 +13,47 @@ import { scoreEvent, scoreEventYearly } from '../public/unse/src/validation/timi
 import { selectTimingPolicy, selectProvisionalPolicy } from '../public/unse/src/validation/timingPolicy.js';
 import { seededRandom } from '../public/unse/src/semantic/timing/schema.js';
 
-const file = process.argv[2] ?? 'validation/cases.json';
-if (!existsSync(file)) {
-  console.error(`${file} 이 없습니다.`);
+// 사례는 여러 파일에 나뉘어 있다(모두 .gitignore — 개인정보). 인자를 주면 그 파일만 쓴다.
+//   validation/cases.json             지인 사례 (birth · events[year, month])
+//   validation-data/cases.json        유명인 사례 — 생시 출처 미검증 (profile · events[date 'YYYY-MM'])
+//   validation-data/people.json       지인 사례 (같은 형식)
+//   validation-data/profile-cases.json 지인 사례 (같은 형식)
+const DEFAULT_FILES = ['validation/cases.json', 'validation-data/cases.json',
+  'validation-data/people.json', 'validation-data/profile-cases.json'];
+const files = process.argv[2] ? [process.argv[2]] : DEFAULT_FILES.filter((f) => existsSync(f));
+if (!files.length || !files.every((f) => existsSync(f))) {
+  console.error(`${files.join(', ') || DEFAULT_FILES[0]} 이 없습니다.`);
   process.exit(1);
+}
+
+/** 형식을 하나로 맞추고, 같은 사람(생년월일시·성별)과 같은 사건(분야·연·월)은 한 번만 센다 */
+function loadCases(paths) {
+  const byBirth = new Map();
+  const sources = [];
+  for (const path of paths) {
+    const raw = JSON.parse(readFileSync(path, 'utf8'));
+    let added = 0;
+    for (const c of Array.isArray(raw) ? raw : []) {
+      const b = c.birth ?? c.profile;
+      if (!b?.year || b.hour == null) continue;           // 시각이 없으면 월 단위 시기를 잴 수 없다
+      const key = `${b.gender}|${b.year}-${b.month}-${b.day} ${b.hour}:${b.minute ?? 0}`;
+      const person = byBirth.get(key) ?? { id: c.id, birth: { name: c.id, ...b }, events: [], sources: [] };
+      person.sources.push(path);
+      const seen = new Set(person.events.map((e) => `${e.domain}|${e.year}|${e.month ?? ''}`));
+      for (const e of c.events ?? []) {
+        const [y, m] = e.date ? e.date.split('-').map(Number) : [e.year, e.month];
+        if (!Number.isInteger(y)) continue;
+        const ev = { domain: e.domain, year: y, ...(Number.isInteger(m) ? { month: m } : {}),
+          what: e.what ?? e.type, ...(e.eventFamily ? { eventFamily: e.eventFamily } : {}) };
+        const k = `${ev.domain}|${ev.year}|${ev.month ?? ''}`;
+        if (seen.has(k)) continue;
+        seen.add(k); person.events.push(ev); added++;
+      }
+      byBirth.set(key, person);
+    }
+    sources.push({ path, added });
+  }
+  return { cases: [...byBirth.values()].filter((p) => p.events.length), sources };
 }
 
 const DOMAIN_OF = {
@@ -86,13 +123,23 @@ function shuffledRows(rows, random) {
   });
 }
 
-const cases = JSON.parse(readFileSync(file, 'utf8'));
+const { cases, sources } = loadCases(files);
+console.log('## 사례');
+for (const s of sources) console.log(`  ${s.path}: 새 사건 ${s.added}건`);
+console.log(`  합계: 사람 ${cases.length}명 · 사건 ${cases.reduce((a, c) => a + c.events.length, 0)}건 (같은 사람·같은 사건은 한 번만)`);
 const rowsByDomain = new Map();
 for (const group of groupTimingEvents(cases, DOMAIN_OF, { paddingYears: 3 })) {
-  const result = predictTimeline({
-    birth: group.birth, from: group.from, to: group.to, domains: [group.domain],
-    validationPolicies: candidatePolicy(group.domain),
-  });
+  let result;
+  try {
+    result = predictTimeline({
+      birth: group.birth, from: group.from, to: group.to, domains: [group.domain],
+      validationPolicies: candidatePolicy(group.domain),
+    });
+  } catch (err) {
+    // 목록에 없는 출생지 등 — 그 사람만 건너뛰고 알린다
+    console.log(`  ! ${group.person} ${DOMAIN_LABEL[group.domain] ?? group.domain}: ${err.message.slice(0, 60)}`);
+    continue;
+  }
   for (const event of group.events) {
     const precision = event.month == null ? 'year' : 'month';
     const seriesByCandidate = Object.fromEntries(Object.keys(candidateSystems).map((candidate) => [
@@ -146,7 +193,7 @@ for (const [domain, rawRows] of rowsByDomain) {
   report[label] = {
     scope: verdict.promote ? 'service' : 'provisional',
     systems: systemsOf(chosen),
-    basis: verdict.promote ? 'loo-and-shuffle' : prov.adopt ? 'cv-provisional' : 'cv-baseline',
+    basis: verdict.promote ? 'loo-and-shuffle' : prov.method === 'loo-vote' ? 'loo-vote' : 'single-case',
   };
   table.push({
     label, people: verdict.people, events: rows.length,
@@ -155,13 +202,14 @@ for (const [domain, rawRows] of rowsByDomain) {
     cv: prov?.cv ? `${fmt(prov.cv.selected)} vs ${fmt(prov.cv.baseline)}`
       : verdict.loo ? `${fmt(verdict.loo.selected)} vs ${fmt(verdict.loo.baseline)}` : '—',
     agreement: prov?.agreement != null ? `${Math.round(prov.agreement * 100)}%` : '—',
-    decision: verdict.promote ? `service: ${chosen}` : prov.adopt ? `잠정 채택: ${chosen}` : '기본 방식(15체계)',
+    decision: verdict.promote ? `service: ${chosen}` : `${prov.method === 'loo-vote' ? '빼고 고르기' : '사례 1건'}: ${chosen}`,
+    votes: prov?.votes ? Object.entries(prov.votes).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}×${v}`).join(', ') : '',
   });
 }
 
-console.log('\n## 분야별 결과 — 전체 사례 최고 조합 vs 빼고 고르기');
-console.log('분야 | 사람 | 사건 | 전체 사례 최고 조합(점수) | 빼는 단위 | 빼고 고른 조합 vs 기본 방식 (빠진 쪽 점수) | 접힘 일치 | 결정');
-for (const t of table) console.log(`${t.label} | ${t.people} | ${t.events} | ${t.inSample} | ${t.unit} | ${t.cv} | ${t.agreement} | ${t.decision}`);
+console.log('\n## 분야별 결과 — 빼고 고르기로 가장 많이 뽑힌 후보');
+console.log('분야 | 사람 | 사건 | 사례 전체 최고(점수) | 빼는 단위 | 이 방법의 빠진 쪽 점수 vs 기본 방식 (참고) | 표 비율 | 결정 | 표');
+for (const t of table) console.log(`${t.label} | ${t.people} | ${t.events} | ${t.inSample} | ${t.unit} | ${t.cv} | ${t.agreement} | ${t.decision} | ${t.votes}`);
 console.log('\n## 리포트 정책 제안 (policy.js 에 옮길 값)');
 console.log(JSON.stringify(report, null, 2));
 console.log('\n## 서비스에 반영 가능한 제안');

@@ -38,18 +38,16 @@ function heldOutScore(rows, candidate) {
 }
 
 /**
- * 잠정 정책 고르기 — **빼고 고른 조합이 빠진 것을 맞히는가**로 고른다.
+ * 잠정 정책 고르기 — **빼고 고르기로 늘 하나를 고른다** (통과/불통과 없음).
  *
- * 전체 사례에서 점수가 가장 높은 조합을 그대로 쓰면, 수백 개 조합 중 우연히 이
- * 사례들에만 맞은 것이 뽑힌다(2026-10 점검: 결혼에서 사례 전체 72~80%, 빠진
- * 사람에게는 42%). 그래서 한 단위를 가려 두고 나머지로 고른 뒤 가려 둔 것에
- * 채점하기를 모든 단위에 반복한다.
+ * 한 단위를 가려 두고 나머지로 최고 후보를 고르기를 모든 단위에 반복한 뒤,
+ * **가장 많이 뽑힌 후보**를 최종으로 쓴다. 동률이면 사례 전체 점수가 높은 쪽.
+ * 사례 하나 덕분에 1등이 된 후보는 그 사례를 빼면 뽑히지 않으므로 표가 갈리고,
+ * 어느 것을 빼도 계속 뽑히는 후보가 남는다. 후보는 17체계 단독(15체계 + 현대·고전 점성),
+ * 계보가 다른 두 체계의 쌍, 그리고 15체계 전체(baseline)다.
  *
  *  · 단위 — 사람이 3명 이상이면 사람, 그보다 적으면(한 사람 이력뿐인 분야) 사건
- *  · 채택 — 이렇게 고른 조합들의 빠진 쪽 점수가 기본 방식의 빠진 쪽 점수보다 높을 때,
- *           접힘(fold)에서 가장 자주 뽑힌 조합을 쓴다. 아니면 기본 방식을 쓴다.
- * service 승격(selectTimingPolicy)보다 느슨한 잠정 기준이다 — 사례가 적어도
- * 실제 사례로 고르되, 빠진 사례에 대해 기본 방식보다 나았던 것만 남긴다.
+ *  · cv — 이렇게 고르는 방법이 빠진 쪽을 얼마나 맞혔는지(참고값). 선택을 막지 않는다.
  *
  * @param {Array<{person:string, scores:Record<string,number>}>} rows
  * @param {{baseline:string}} options
@@ -60,9 +58,10 @@ export function selectProvisionalPolicy(rows, { baseline } = {}) {
   const byPerson = people.length >= 3;
   const units = byPerson ? people : rows.map((_, i) => i);
   const full = pick(rows, baseline);
-  if (units.length < 3) {
-    return { adopt: false, selected: baseline, unit: byPerson ? 'person' : 'event', units: units.length, full,
-      cv: null, folds: [], agreement: null, reason: `빼고 고를 단위가 ${units.length}개뿐입니다` };
+  if (units.length < 2) {
+    return { selected: full.candidate, method: 'single', unit: byPerson ? 'person' : 'event', units: units.length,
+      full, cv: null, folds: [], votes: null, agreement: null,
+      reason: `사례가 ${units.length}건뿐이라 빼고 고를 수 없어 그 사례 최고를 씁니다` };
   }
 
   const folds = [];
@@ -74,21 +73,17 @@ export function selectProvisionalPolicy(rows, { baseline } = {}) {
   }
   const scored = folds.filter((f) => Number.isFinite(f.candidateScore) && Number.isFinite(f.baselineScore));
   const cv = { selected: mean(scored.map((f) => f.candidateScore)), baseline: mean(scored.map((f) => f.baselineScore)) };
-  const counts = new Map();
-  for (const f of folds) counts.set(f.selected, (counts.get(f.selected) ?? 0) + 1);
-  const [modal, modalCount] = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
-  const agreement = modalCount / folds.length;
-  const adopt = cv.selected != null && cv.baseline != null && cv.selected > cv.baseline && modal !== baseline;
+  const votes = new Map();
+  for (const f of folds) votes.set(f.selected, (votes.get(f.selected) ?? 0) + 1);
+  const fullScore = (c) => personMean(rows, c) ?? -Infinity;
+  const [selected, count] = [...votes.entries()]
+    .sort((a, b) => b[1] - a[1] || fullScore(b[0]) - fullScore(a[0]) || a[0].localeCompare(b[0]))[0];
   return {
-    adopt, selected: adopt ? modal : baseline, unit: byPerson ? 'person' : 'event', units: units.length,
-    full, cv, folds, agreement,
-    reason: adopt
-      ? `빼고 고른 조합이 빠진 쪽에서 기본 방식보다 낫습니다 (${cv.selected.toFixed(1)} > ${cv.baseline.toFixed(1)})`
-      : cv.selected == null ? '빠진 쪽 점수를 매길 수 없습니다'
-        : `빼고 고르면 기본 방식보다 낫지 않습니다 (${cv.selected.toFixed(1)} ≤ ${cv.baseline.toFixed(1)})`,
+    selected, method: 'loo-vote', unit: byPerson ? 'person' : 'event', units: units.length,
+    full, cv, folds, votes: Object.fromEntries(votes), agreement: count / folds.length,
+    reason: `${folds.length}번 빼고 고르기 중 ${count}번 뽑혔습니다`,
   };
 }
-
 /**
  * @param {Array<{person:string, precision:'month'|'year', scores:Record<string,number>}>} rows
  * @param {{baseline:string, shuffledSelectedScores?:number[]}} options
@@ -135,7 +130,7 @@ export function selectTimingPolicy(rows, { baseline, shuffledSelectedScores = []
   const selectedSystems = candidateSystems[full.candidate] ?? [];
   const isPair = selectedSystems.length === 2;
   const memberNames = isPair ? Object.entries(candidateSystems)
-    .filter(([, systems]) => systems.length === 1 && selectedSystems.includes(systems[0]))
+    .filter(([, systems]) => Array.isArray(systems) && systems.length === 1 && selectedSystems.includes(systems[0]))
     .map(([name]) => name) : [];
   const fixedLoo = (candidate) => mean(people.map((person) =>
     heldOutScore(rows.filter((row) => row.person === person), candidate)).filter(Number.isFinite));

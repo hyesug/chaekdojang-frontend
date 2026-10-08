@@ -8,7 +8,7 @@ test('리포트의 모든 시기 분야는 한 개 이상의 채택 체계를 �
     const policy = reportTimingPolicy(domain);
     assert.ok(policy, `${domain} 정책이 없다`);
     assert.ok(policy.systems.length >= 1, `${domain} 체계가 비어 있다`);
-    // service 는 관측·추정·LOO 통과, provisional 은 빼고 고르기로 고른 조합(cv-provisional) 또는 기본 방식(cv-baseline)
-    assert.ok(['observed', 'inferred', 'loo-and-shuffle', 'cv-provisional', 'cv-baseline'].includes(policy.basis), `${domain} 채택 근거가 없다`);
+    // service 는 관측·추정·LOO 통과, provisional 은 빼고 고르기 득표(loo-vote) 또는 사례 1건 최고(single-case)
+    assert.ok(['observed', 'inferred', 'loo-and-shuffle', 'loo-vote', 'single-case'].includes(policy.basis), `${domain} 채택 근거가 없다`);
   }
 });

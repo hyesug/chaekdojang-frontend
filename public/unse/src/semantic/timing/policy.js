@@ -1,36 +1,32 @@
 /**
  * 리포트에서 분야별로 실제 사용할 시기 체계.
  *
- * 다인 교차검증·날짜 섞기를 통과한 것은 `service`, 사례가 부족한 분야는 `provisional` 이다.
- * provisional 은 `npm run unse:timing-learn` 의 **빼고 고르기**로 정한다 —
- * 한 단위(사람 3명 이상이면 사람, 아니면 사건)를 가려 두고 나머지로 조합을 고른 뒤
- * 가려 둔 쪽을 맞히는지 본다. 그렇게 고른 조합이 기본 방식(15체계 전체)보다
- * 빠진 쪽을 더 잘 맞히면 `cv-provisional` 로 채택하고, 아니면 `cv-baseline` 으로
- * 기본 방식을 쓴다. 전체 사례 점수가 가장 높은 조합을 그대로 쓰지 않는 이유는
- * 수백 개 조합 중 우연히 그 사례들에만 맞은 것이 뽑히기 때문이다(2026-10 점검:
- * 직업 베딕+토정은 사례 전체 80%였지만 빠진 사건 46%, 기본 방식 69%).
+ * `npm run unse:timing-learn` 이 모든 사례 파일(지인·유명인)을 합쳐 고른 값이다.
+ *  · service      — 사람 6명·월 사건 8건 이상, 한 사람씩 빼도 같은 후보, 날짜 섞기보다 확실히 나음
+ *  · provisional  — 위 기준에 못 미치는 분야. **빼고 고르기**로 하나를 고른다:
+ *                   한 단위(사람 3명 이상이면 사람, 아니면 사건)를 가려 두고 나머지로 최고
+ *                   후보를 고르기를 반복해 가장 많이 뽑힌 후보(loo-vote). 사례가 한 건뿐이면
+ *                   그 사례 최고(single-case).
+ * 후보는 17체계 단독(15체계 + 현대·고전 점성), 계보가 다른 두 체계의 쌍, 15체계 전체다.
  *
  * 이 표는 미래 사건의 보증이 아니다. 결과 화면에서는 "신호가 높은 구간"으로만 읽는다.
  */
-// 기본 방식 = 예측기가 따로 고르지 않을 때 쓰는 15체계 전체
-const ALL_SYSTEMS = Object.freeze(['saju', 'jamidusu', 'astrology', 'vedic', 'juyeok', 'yukim', 'hongguk',
-  'taeeul', 'gujeong', 'sukyo', 'tojeong', 'kabbalah', 'mahabote', 'thai', 'tarot']);
-
 export const VALIDATED_REPORT_TIMING_POLICY = Object.freeze({
-  // 2026-10-08 학습(사람 8명·사건 42건). 괄호는 빠진 쪽 점수: 고른 조합 vs 기본 방식
-  직업: Object.freeze({ scope: 'provisional', systems: ALL_SYSTEMS, basis: 'cv-baseline' }),            // 46% vs 69%
-  재물: Object.freeze({ scope: 'provisional', systems: ['vedic', 'mahabote'], basis: 'cv-provisional' }), // 52% vs 44%
-  이사: Object.freeze({ scope: 'provisional', systems: ALL_SYSTEMS, basis: 'cv-baseline' }),            // 57% vs 74%
-  관계: Object.freeze({ scope: 'provisional', systems: ['saju', 'sukyo'], basis: 'cv-provisional' }),     // 58% vs 52%
-  학업: Object.freeze({ scope: 'provisional', systems: ['gujeong', 'thai'], basis: 'cv-provisional' }),   // 47% vs 34%
-  결혼: Object.freeze({ scope: 'provisional', systems: ['yukim', 'hongguk'], basis: 'cv-provisional' }),  // 66% vs 38%
-  // 출산일보다 약 아홉 달 앞의 사주 신호 — 사람 단위 교차검증에서 유지됐다(빠진 쪽 76%)
+  // 2026-10-08 학습: 사람 34명·사건 87건 (유명인 생시는 출처 미검증)
+  // 결혼 — 사람 9명·월 사건 12건, 사람 단위 LOO·날짜 섞기 통과 (75% vs 기본 43%)
+  결혼: Object.freeze({ scope: 'service', systems: ['yukim', 'sukyo'], basis: 'loo-and-shuffle' }),
+  // 출산일보다 약 아홉 달 앞의 사주 신호 — 사람 7명 빼고 고르기에서 7번 모두 뽑혔다(빠진 쪽 77%)
   자녀: Object.freeze({ scope: 'service', systems: ['saju'], leadMonths: 9, basis: 'observed' }),
 
-  // 날짜가 붙은 사례가 없거나 한 건뿐이라 빼고 고르기를 할 수 없는 분야. 각 체계의
-  // 전용 자리(전택궁·질액궁·대운 전환)를 가진 체계 하나만 임시로 쓴다.
-  주거: Object.freeze({ scope: 'service', systems: ['jamidusu'], basis: 'inferred' }),
-  건강: Object.freeze({ scope: 'service', systems: ['jamidusu'], basis: 'inferred' }),
+  직업: Object.freeze({ scope: 'provisional', systems: ['vedic', 'tarot'], basis: 'loo-vote' }),          // 사람 24명 중 14표
+  재물: Object.freeze({ scope: 'provisional', systems: ['vedic', 'mahabote'], basis: 'loo-vote' }),       // 사건 5건 중 3표
+  이사: Object.freeze({ scope: 'provisional', systems: ['jamidusu'], basis: 'loo-vote' }),                // 사람 3명, 1:1:1 → 사례 점수
+  관계: Object.freeze({ scope: 'provisional', systems: ['sukyo', 'astrology_classical'], basis: 'loo-vote' }), // 사람 3명, 1:1:1 → 사례 점수
+  학업: Object.freeze({ scope: 'provisional', systems: ['gujeong', 'thai'], basis: 'loo-vote' }),         // 사건 5건 중 3표
+  건강: Object.freeze({ scope: 'provisional', systems: ['gujeong', 'mahabote'], basis: 'single-case' }),  // 사례 1건
+  주거: Object.freeze({ scope: 'provisional', systems: ['saju'], basis: 'single-case' }),                 // 사례 1건
+
+  // 날짜가 붙은 사례가 없는 분야 — 대운 전환을 보는 사주 하나를 임시로 쓴다
   '큰 전환': Object.freeze({ scope: 'service', systems: ['saju'], basis: 'inferred' }),
 });
 

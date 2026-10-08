@@ -81,30 +81,39 @@ test('사례가 부족할 때의 잠정 분야 정책은 리포트에서 사용�
   assert.deepEqual(reportTimingPolicy('이사', provisional), provisional.이사);
 });
 
-test('잠정 정책은 전체 사례 최고가 아니라 빼고 고른 조합이 빠진 쪽에서 나을 때만 채택한다', () => {
-  // lucky 는 사례 전체 평균(70)이 기본(60)보다 높지만 한 사건 덕분이다.
-  // 그 사건을 빼고 고르면 기본 방식이 뽑히고, 다른 사건을 빼면 lucky 가 뽑혀도 빠진 쪽 점수가 낮다.
+test('잠정 정책은 빼고 고르기에서 가장 많이 뽑힌 후보를 늘 하나 고른다', () => {
+  // 사건 하나를 뺄 때마다 최고 후보를 다시 고른다. lucky 는 첫 사건이 빠지면 밀리지만
+  // 나머지 두 번은 뽑혀 2표, baseline 1표 → lucky
   const fluke = [0, 1, 2].map((i) => ({ person: 'P', precision: 'month',
     scores: { baseline: 60, lucky: [100, 55, 55][i] } }));
   const a = selectProvisionalPolicy(fluke, { baseline: 'baseline' });
-  assert.equal(a.full.candidate, 'lucky', '전체 사례로만 보면 lucky 가 1등이다');
   assert.equal(a.unit, 'event', '한 사람뿐이면 사건 단위로 뺀다');
-  assert.equal(a.adopt, false);
-  assert.equal(a.selected, 'baseline');
+  assert.equal(a.method, 'loo-vote');
+  assert.deepEqual(a.votes, { baseline: 1, lucky: 2 });
+  assert.equal(a.selected, 'lucky');
 
-  // good 은 어느 사건을 빼도 뽑히고 빠진 쪽에서도 기본보다 낫다
+  // 어느 사건을 빼도 뽑히는 후보는 만장일치다
   const steady = [0, 1, 2].map((i) => ({ person: 'P', precision: 'month',
     scores: { baseline: 60, good: [80, 75, 85][i] } }));
   const b = selectProvisionalPolicy(steady, { baseline: 'baseline' });
-  assert.equal(b.adopt, true);
   assert.equal(b.selected, 'good');
   assert.equal(b.agreement, 1);
+
+  // 표가 같으면 사례 전체 점수가 높은 쪽
+  const tie = [0, 1].map((i) => ({ person: 'P', precision: 'month',
+    scores: { baseline: 50, x: [90, 40][i], y: [40, 80][i] } }));
+  const c = selectProvisionalPolicy(tie, { baseline: 'baseline' });
+  assert.deepEqual(c.votes, { x: 1, y: 1 });
+  assert.equal(c.selected, 'x', 'x 65 > y 60');
 });
 
-test('사람이 세 명 이상이면 사람 단위로 빼고 고른다', () => {
+test('사람이 세 명 이상이면 사람 단위로 빼고 고르고, 사례가 한 건이면 그 사례 최고를 쓴다', () => {
   const rows = ['A', 'B', 'C', 'D'].map((person) => ({ person, precision: 'month', scores: { baseline: 50, good: 70 } }));
   const v = selectProvisionalPolicy(rows, { baseline: 'baseline' });
   assert.equal(v.unit, 'person');
   assert.equal(v.units, 4);
   assert.equal(v.selected, 'good');
+  const one = selectProvisionalPolicy([{ person: 'A', precision: 'month', scores: { baseline: 40, z: 90 } }], { baseline: 'baseline' });
+  assert.equal(one.method, 'single');
+  assert.equal(one.selected, 'z');
 });

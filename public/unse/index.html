@@ -12,13 +12,48 @@
 <meta name="referrer" content="no-referrer">
 <title>종합 운세 — 책도장</title>
 <meta name="description" content="사주·자미두수·점성술·베딕 등 열다섯 가지 점술 체계를 한 번에 돌려, 겹치는 것과 갈리는 것을 함께 봅니다. 생년월일만 있으면 됩니다.">
-<link rel="canonical" href="https://chaekdojang.com/unse/">
+<!-- 정식 주소는 사이트맵·사이트 주소(www)와 같아야 한다. 색인 여부는 next.config.ts 가 운영에서만 연다 -->
+<link rel="canonical" href="https://www.chaekdojang.com/unse">
 
 <!-- 카카오톡 등으로 링크를 보냈을 때 뜨는 미리보기 -->
 <meta property="og:type" content="website">
-<meta property="og:title" content="종합 운세">
+<meta property="og:url" content="https://www.chaekdojang.com/unse">
+<meta property="og:site_name" content="책도장">
+<meta property="og:title" content="종합 운세 — 15가지 점술을 한 번에">
 <meta property="og:description" content="열다섯 가지 점술 체계를 한 번에 돌려, 겹치는 것과 갈리는 것을 함께 봅니다">
 <meta property="og:locale" content="ko_KR">
+
+<!-- 검색엔진·AI 검색이 읽는 구조화 데이터. FAQ 문장은 아래 '자주 묻는 질문'과 글자까지 같아야 한다 -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebApplication",
+      "name": "종합 운세 — 책도장",
+      "url": "https://www.chaekdojang.com/unse",
+      "applicationCategory": "LifestyleApplication",
+      "operatingSystem": "Web",
+      "inLanguage": "ko-KR",
+      "description": "생년월일시로 사주·자미두수·서양 점성술·베딕 점성술 등 15가지 점술 체계를 한 번에 계산해, 겹치는 것과 갈리는 것을 함께 보여주는 무료 운세 도구입니다.",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "KRW" },
+      "publisher": { "@type": "Organization", "name": "책도장", "url": "https://www.chaekdojang.com" }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        { "@type": "Question", "name": "무료인가요?", "acceptedAnswer": { "@type": "Answer", "text": "명반 계산과 15가지 체계의 풀이는 무료입니다. 명반을 두고 AI에게 질문하는 기능은 준비 중입니다." } },
+        { "@type": "Question", "name": "태어난 시간을 모르면 어떻게 하나요?", "acceptedAnswer": { "@type": "Answer", "text": "'태어난 시간을 모릅니다'를 고르면 시간이 없어도 되는 체계로 계산합니다. 시간이 꼭 필요한 자미두수와 상승점 같은 항목은 빠집니다." } },
+        { "@type": "Question", "name": "음력 생일로도 볼 수 있나요?", "acceptedAnswer": { "@type": "Answer", "text": "양력과 음력(평달·윤달)을 고를 수 있습니다. 음력은 역법 규칙으로 양력으로 바꾼 뒤 계산합니다." } },
+        { "@type": "Question", "name": "서머타임이 있던 해에 태어났으면요?", "acceptedAnswer": { "@type": "Answer", "text": "한국 출생이면 1948~1960년과 1987~1988년의 서머타임, 1954~1961년의 동경 127.5도 표준시를 자동으로 반영합니다. 해외 출생은 입력란에서 서머타임 여부를 직접 고릅니다." } },
+        { "@type": "Question", "name": "체계마다 결과가 다른 이유는 무엇인가요?", "acceptedAnswer": { "@type": "Answer", "text": "체계마다 보는 재료가 다르기 때문입니다. 사주는 간지를, 점성술은 행성 위치를, 자미두수는 별의 배치를 봅니다. 여러 체계가 함께 가리키는 주제와 서로 갈리는 지점을 나란히 보여드립니다." } },
+        { "@type": "Question", "name": "결과는 얼마나 정확한가요?", "acceptedAnswer": { "@type": "Answer", "text": "절기와 천체 위치 같은 계산은 천문 계산으로 분 단위까지 맞춥니다. 다만 풀이와 시기는 참고용입니다. 시기는 실제 사례로 검증해 분야마다 더 잘 맞았던 체계를 골라 씁니다." } },
+        { "@type": "Question", "name": "입력한 출생 정보는 저장되나요?", "acceptedAnswer": { "@type": "Answer", "text": "명반 계산은 이용자의 기기 안에서 진행됩니다. 로그인한 뒤 저장을 직접 선택했을 때만 출생 정보를 보관합니다." } }
+      ]
+    }
+  ]
+}
+</script>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🔮</text></svg>">
 <!-- 웹폰트를 쓰지 않는다. 책도장은 CSP 가 외부 스타일시트를 막고,
      바깥 호스트에 요청이 나가면 이 페이지를 봤다는 사실이 그쪽에 남는다.
@@ -199,6 +234,43 @@
   </form>
 
   <div id="result" aria-live="polite" aria-atomic="false" aria-busy="false" tabindex="-1"></div>
+
+  <!-- 결과를 보기 전에도 읽히는 안내. 검색엔진·AI 검색은 이 글로 페이지를 이해한다 -->
+  <section class="about" aria-labelledby="about-title">
+    <h2 id="about-title">종합 운세는 무엇을 보나요</h2>
+    <p>
+      생년월일시 하나로 아래 열다섯 가지 점술 체계를 한 번에 계산합니다.
+      한 체계의 말만 듣는 대신, 여러 체계가 함께 가리키는 주제와 서로 갈리는 지점을 나란히 봅니다.
+    </p>
+    <dl class="about-systems">
+      <div><dt>사주</dt><dd>태어난 연·월·일·시의 간지 여덟 글자로 타고난 기질과 십 년 단위 흐름(대운)을 봅니다.</dd></div>
+      <div><dt>자미두수</dt><dd>음력 생년월일시로 열두 궁에 별을 놓아 일·돈·배우자·건강 같은 삶의 영역을 나눠 봅니다.</dd></div>
+      <div><dt>서양 점성술</dt><dd>태어난 순간의 행성 위치와 상승점·하우스로 성향과 시기를 봅니다.</dd></div>
+      <div><dt>베딕 점성술</dt><dd>인도 전통 점성술입니다. 달이 머문 별자리(나크샤트라)와 다샤 주기로 시기를 봅니다.</dd></div>
+      <div><dt>주역</dt><dd>예순네 괘로 지금 처한 상황과 변화의 방향을 읽습니다.</dd></div>
+      <div><dt>육임</dt><dd>시간의 간지로 판을 세워 일이 어떻게 전개되고 마무리되는지 봅니다.</dd></div>
+      <div><dt>홍국기문</dt><dd>아홉 칸에 문·별·신을 배치해 방향과 시기의 좋고 나쁨을 봅니다.</dd></div>
+      <div><dt>태을신수</dt><dd>여러 해에 걸친 큰 주기로 흐름을 봅니다.</dd></div>
+      <div><dt>구성학</dt><dd>아홉 별(구성)로 해마다의 기운과 방위를 봅니다.</dd></div>
+      <div><dt>숙요</dt><dd>달이 머무는 스물일곱 수로 기질과 사람 사이의 궁합을 봅니다.</dd></div>
+      <div><dt>토정비결</dt><dd>한 해의 운을 괘 하나로 풀어 보는 우리 전통 신수입니다.</dd></div>
+      <div><dt>카발라(수비학)</dt><dd>생년월일의 숫자로 성향과 해마다의 주기를 봅니다.</dd></div>
+      <div><dt>마하보테</dt><dd>미얀마 전통으로, 태어난 요일과 해로 기질과 시기를 봅니다.</dd></div>
+      <div><dt>태국 점성술</dt><dd>태어난 요일에 붙은 행성과 색으로 성향을 봅니다.</dd></div>
+      <div><dt>타로</dt><dd>생년월일에서 뽑은 카드로 올해의 주제를 봅니다.</dd></div>
+    </dl>
+
+    <h2 class="about-faq-title">자주 묻는 질문</h2>
+    <div class="about-faq">
+      <details><summary>무료인가요?</summary><p>명반 계산과 15가지 체계의 풀이는 무료입니다. 명반을 두고 AI에게 질문하는 기능은 준비 중입니다.</p></details>
+      <details><summary>태어난 시간을 모르면 어떻게 하나요?</summary><p>'태어난 시간을 모릅니다'를 고르면 시간이 없어도 되는 체계로 계산합니다. 시간이 꼭 필요한 자미두수와 상승점 같은 항목은 빠집니다.</p></details>
+      <details><summary>음력 생일로도 볼 수 있나요?</summary><p>양력과 음력(평달·윤달)을 고를 수 있습니다. 음력은 역법 규칙으로 양력으로 바꾼 뒤 계산합니다.</p></details>
+      <details><summary>서머타임이 있던 해에 태어났으면요?</summary><p>한국 출생이면 1948~1960년과 1987~1988년의 서머타임, 1954~1961년의 동경 127.5도 표준시를 자동으로 반영합니다. 해외 출생은 입력란에서 서머타임 여부를 직접 고릅니다.</p></details>
+      <details><summary>체계마다 결과가 다른 이유는 무엇인가요?</summary><p>체계마다 보는 재료가 다르기 때문입니다. 사주는 간지를, 점성술은 행성 위치를, 자미두수는 별의 배치를 봅니다. 여러 체계가 함께 가리키는 주제와 서로 갈리는 지점을 나란히 보여드립니다.</p></details>
+      <details><summary>결과는 얼마나 정확한가요?</summary><p>절기와 천체 위치 같은 계산은 천문 계산으로 분 단위까지 맞춥니다. 다만 풀이와 시기는 참고용입니다. 시기는 실제 사례로 검증해 분야마다 더 잘 맞았던 체계를 골라 씁니다.</p></details>
+      <details><summary>입력한 출생 정보는 저장되나요?</summary><p>명반 계산은 이용자의 기기 안에서 진행됩니다. 로그인한 뒤 저장을 직접 선택했을 때만 출생 정보를 보관합니다.</p></details>
+    </div>
+  </section>
 
   <footer>
     <p>

@@ -5,6 +5,10 @@ const DEFAULT_BACKEND_URL =
     ? "http://localhost:8080"
     : "https://api.chaekdojang.com";
 
+// 운영 배포인가. Vercel 이 빌드 때 넣어 준다 — 운영은 production, staging 은 preview.
+// 검색 공개(운세 색인·AI 수집 허용·llms.txt)는 운영에서만 켠다.
+const IS_PRODUCTION = process.env.VERCEL_ENV === "production";
+
 const BACKEND_URL = (
   process.env.BACKEND_URL ??
   process.env.NEXT_PUBLIC_API_BASE_URL ??
@@ -55,11 +59,13 @@ const nextConfig: NextConfig = {
         source: "/:path*",
         headers: securityHeaders,
       },
-      // 운세는 다시 색인에서 뺀다. 메뉴에서만 감추면 구글로 들어온 사람이
-      // 그대로 쓸 수 있어 감춘 뜻이 없어진다 — AI 질문 한 번에 수백 원이 든다.
-      // 공개할 때 이 블록을 지우면 원래대로 돌아온다.
-      { source: "/unse", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
-      { source: "/unse/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
+      // 운세는 **운영에서만** 검색에 연다. AI 질문은 결제 전까지 화면에서 막혀 있어
+      // 열어도 비용이 들지 않는다. staging·개발에서는 계속 색인하지 않는다.
+      ...(IS_PRODUCTION ? [] : [
+        { source: "/unse", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
+        { source: "/unse/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
+        { source: "/llms.txt", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
+      ]),
     ];
   },
   async rewrites() {

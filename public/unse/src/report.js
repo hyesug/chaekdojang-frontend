@@ -668,7 +668,7 @@ function personalPrinciples(r) {
     if (empty !== order[0]) out.push(EMPTY_RULE[empty]);
   } catch { /* */ }
   try {
-    const dae = currentDaeun(computeDaeun(r.chart, r.input.isMale, r.input.jdUT), r.input.age);
+    const dae = currentDaeun(computeDaeun(r.chart, r.input.isMale, r.input.jdUT), r.input.elapsedYears ?? r.input.age);
     const rule = dae ? SEASON_RULE[TEN_GOD_GROUP[dae.god]] : null;
     if (rule) out.push(rule);
   } catch { /* */ }
@@ -796,13 +796,17 @@ const ELEM_KEYS = ['목', '화', '토', '금', '수'];
 
 function lifeSeasons(r) {
   let ds = null, dae = null;
-  try { ds = computeDaeun(r.chart, r.input.isMale, r.input.jdUT); dae = currentDaeun(ds, r.input.age); } catch { /* */ }
+  // 대운 경계는 소수 나이로 떨어진다 — 정수 만 나이로 고르면 지난 시즌이 '지금'으로 잡힌다
+  try { ds = computeDaeun(r.chart, r.input.isMale, r.input.jdUT); dae = currentDaeun(ds, r.input.elapsedYears ?? r.input.age); } catch { /* */ }
   let years = [];
   try { years = yearTimeline(r.input, r.chart, r.input.currentYear, r.input.currentYear + 9); } catch { /* */ }
   const ageOf = (year) => year - r.input.year;
   const group = dae ? TEN_GOD_GROUP[dae.god] : null;
   const info = group ? SEASON[group] : null;
-  const fromYear = dae ? r.input.year + dae.fromAge : null;
+  // 시즌의 연도는 실제 경계(출생 순간 + 소수 나이)로 센다. '만 나이 + 9'로 세면 끝 해가 한 해 앞당겨졌다
+  const yearAt = (exact) => new Date((r.input.jdUT - 2440587.5 + exact * 365.2425) * 864e5).getUTCFullYear();
+  const fromYear = dae ? yearAt(dae.fromExact) : null;
+  const toYear = dae ? yearAt(dae.toExact) : null;
   const next = dae && ds?.list ? ds.list.find((x) => x.fromAge > dae.fromAge) : null;
   const nextInfo = next ? SEASON[TEN_GOD_GROUP[next.god]] : null;
 
@@ -818,7 +822,7 @@ function lifeSeasons(r) {
   const check = years.filter((y) => y.hit && !y.hit.good).slice(0, 3);
   return {
     season: info
-      ? `${dae.fromAge}~${dae.toAge}세(${fromYear}~${fromYear + 9}년)는 '${GOD_FIELD[group]}'의 라이프 시즌입니다. ${info.what}`
+      ? `${dae.fromAge}~${dae.toAge}세(${fromYear}~${toYear}년)는 '${GOD_FIELD[group]}'의 라이프 시즌입니다. ${info.what}`
       : '',
     seasonTips: info ? [['👍', '이 시즌을 잘 쓰는 법', info.good], ['🧭', '이 시즌에 조심할 점', info.watch]] : [],
     next: next && nextInfo ? `${next.fromAge}세부터는 '${GOD_FIELD[TEN_GOD_GROUP[next.god]]}'의 시즌으로 넘어갑니다. ${firstOf(nextInfo.what)}` : '',

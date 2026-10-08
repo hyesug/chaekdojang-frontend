@@ -52,7 +52,8 @@ export { SIX_EVIL, LUCKY, STAR_MEANING, trineSquare, flanking };
 export function auxStars(input) {
   const b = buildBoard(input);
   const yearStem = b.yearStem;
-  const yearBranch = mod12(input.sajuYear - 4);
+  // 연지도 설날 기준 해 (engine.js ziweiLunarOf)
+  const yearBranch = mod12((input.ziweiYear ?? input.sajuYear) - 4);
   const h = input.hourBranch;
 
   const at = {

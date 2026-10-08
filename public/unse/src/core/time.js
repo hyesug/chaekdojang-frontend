@@ -29,6 +29,8 @@ const KR_TZ_PERIODS = [
 
 // 한국 서머타임 시행 구간 (시작일 ~ 종료일, 양끝 포함).
 // 1960년 이전 구간은 관보 기준 날짜라 하루 정도 이설이 있을 수 있다.
+// 날짜 뒤 네 번째 값은 벽시계 시각 경계다 — 시작은 그 시각부터, 끝은 그 시각 전까지.
+// 1987·1988년은 새벽 2시에 시작해 종료일 새벽 3시에 끝났다. 1960년 이전은 자정 전환이라 생략한다.
 const KR_DST_PERIODS = [
   [[1948, 6, 1], [1948, 9, 12]],
   [[1949, 4, 3], [1949, 9, 10]],
@@ -40,8 +42,8 @@ const KR_DST_PERIODS = [
   [[1958, 5, 4], [1958, 9, 20]],
   [[1959, 5, 3], [1959, 9, 19]],
   [[1960, 5, 1], [1960, 9, 17]],
-  [[1987, 5, 10], [1987, 10, 11]],
-  [[1988, 5, 8], [1988, 10, 9]],
+  [[1987, 5, 10, 2], [1987, 10, 11, 3]],
+  [[1988, 5, 8, 2], [1988, 10, 9, 3]],
 ];
 
 const dayNum = ([y, m, d]) => toJDN(y, m, d);
@@ -56,10 +58,20 @@ export function koreaStandardOffset(y, m, d) {
   return tz;
 }
 
-/** 그 날짜가 한국 서머타임 기간인가 */
-export function koreaDST(y, m, d) {
+/**
+ * 그 벽시계 시각이 한국 서머타임 기간인가.
+ * 시각을 주지 않으면 그 날 정오로 본다. 시작·종료 당일은 시각 경계(위 표의 네 번째 값)를 따른다.
+ */
+export function koreaDST(y, m, d, h = 12, mi = 0) {
   const n = toJDN(y, m, d);
-  return KR_DST_PERIODS.some(([a, b]) => n >= dayNum(a) && n <= dayNum(b));
+  const minute = h * 60 + mi;
+  return KR_DST_PERIODS.some(([a, b]) => {
+    const from = dayNum(a), to = dayNum(b);
+    if (n < from || n > to) return false;
+    if (n === from && minute < (a[3] ?? 0) * 60) return false;
+    if (n === to && minute >= (b[3] ?? 24) * 60) return false;
+    return true;
+  });
 }
 
 /**
@@ -102,7 +114,7 @@ export function normalizeBirth(input) {
   }
 
   // 2) 서머타임
-  const dstActive = place.kr ? koreaDST(year, month, day) : !!input.dst;
+  const dstActive = place.kr ? koreaDST(year, month, day, hour, minute) : !!input.dst;
   if (dstActive) {
     corrections.push('서머타임 시행 기간 → 1시간 차감');
   }

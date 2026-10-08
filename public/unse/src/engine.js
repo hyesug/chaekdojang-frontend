@@ -143,6 +143,7 @@ export function prepareInput(form, opts = {}) {
   // 2) 모든 체계가 공유하는 계산
   const lunar = solarToLunar(form.year, form.month, form.day);
   const chart = computeFourPillars(birth.jdUT, birth.jdTST, { timeKnown });
+  const ziweiLunar = ziweiLunarOf(birth, timeKnown, lunar);
 
   const at = opts.now instanceof Date ? opts.now : new Date();
   const currentYear = currentSajuYear(at);
@@ -160,6 +161,9 @@ export function prepareInput(form, opts = {}) {
     jdTST: birth.jdTST,
     tst: birth.tst,
     lunar,
+    // 자미두수가 쓰는 음력 — 사주 일주와 같은 날, 설날 기준 연도, 윤달 보정 (ziweiLunarOf)
+    ziweiLunar,
+    ziweiYear: ziweiLunar.year,
     sajuYear: chart.sajuYear,
     sectorIndex: chart.sector.index,
     // 간지 여덟 글자 — 육임·홍국기문·자미두수가 낱낱이 쓴다
@@ -185,6 +189,32 @@ export function prepareInput(form, opts = {}) {
   };
 
   return { input, birth, lunar, chart };
+}
+
+/**
+ * 자미두수의 음력 생일.
+ *
+ *  · 날짜 — 사주 일주와 같은 날을 쓴다. 진태양시로 날짜를 잡고 23시 이후는 다음 날
+ *    (computeFourPillars 의 lateZiNextDay 와 같은 규칙). 전에는 벽시계 날짜를 그대로 써서
+ *    23시대 출생자가 사주는 다음 날, 자미두수는 그날로 갈렸다.
+ *  · 연도 — **설날 기준**. 자미두수의 연간·연지(오호둔, 사화, 보조성)는 음력 해를 따른다.
+ *    전에는 입춘 기준 사주 연도를 써서 입춘과 설날 사이 출생자(해마다 7일 안팎)의
+ *    오행국·자미성·사화가 통째로 달라졌다.
+ *  · 윤달 — 1~15일은 그 달, 16일부터는 다음 달로 본다(자미두수에서 흔히 쓰는 처리).
+ * 시간을 모르면 벽시계 날짜의 음력을 그대로 쓴다.
+ */
+function ziweiLunarOf(birth, timeKnown, clockLunar) {
+  let l = clockLunar;
+  if (timeKnown) {
+    const t = birth.tst;
+    const dayJDN = toJDN(t.y, t.m, t.d) + (t.h >= 23 ? 1 : 0);
+    const d = fromJD(dayJDN);           // JDN 은 그 날 정오
+    l = solarToLunar(d.y, d.m, d.d);
+  }
+  const shift = Boolean(l.isLeap) && l.day > 15;
+  const month = shift ? (l.month % 12) + 1 : l.month;
+  const year = shift && l.month === 12 ? l.year + 1 : l.year;
+  return { year, month, day: l.day, isLeap: Boolean(l.isLeap), leapShifted: shift, sourceMonth: l.month };
 }
 
 /**

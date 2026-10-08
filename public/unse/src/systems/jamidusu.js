@@ -156,8 +156,12 @@ const WEALTH_STAR = {
 };
 
 export function analyze(input) {
-  const { lunar, hourBranch, timeKnown, yearBranch, sajuYear } = input;
+  const { hourBranch, timeKnown } = input;
   if (!timeKnown) throw new Error('자미두수는 태어난 시각이 있어야 판을 세울 수 있습니다');
+  // 설날 기준 해·사주 일주와 같은 날·윤달 보정 (engine.js ziweiLunarOf)
+  const lunar = input.ziweiLunar ?? input.lunar;
+  const sajuYear = input.ziweiYear ?? input.sajuYear;   // 이름은 그대로 두고 값만 음력 해로
+  const yearBranch = ((sajuYear - 4) % 12 + 12) % 12;
 
   const lm = lunar.month;
   const ld = lunar.day;
@@ -452,9 +456,10 @@ export function analyze(input) {
 // 내가 마음속에 그리는 짝의 모습이 상대의 실제 모습과 겹치는지를 보는 것이다.
 
 function chartOf(x) {
-  const lm = x.lunar.month, ld = x.lunar.day;
+  const xl = x.ziweiLunar ?? x.lunar;
+  const lm = xl.month, ld = xl.day;
   const myeong = ((2 + lm - 1 - x.hourBranch) % 12 + 12) % 12;
-  const yearStem = ((x.sajuYear - 4) % 10 + 10) % 10;
+  const yearStem = (((x.ziweiYear ?? x.sajuYear) - 4) % 10 + 10) % 10;
   const inStem = ((yearStem % 5) * 2 + 2) % 10;
   const myeongStem = ((inStem + myeong - 2) % 10 + 10) % 10;
   let sexa = 0;
@@ -548,7 +553,8 @@ export const STAR_AREA = {
 
 export function forecast(input, chart, period) {
   if (!input.timeKnown) return null;
-  const lm = input.lunar.month;
+  const zl = input.ziweiLunar ?? input.lunar;
+  const lm = zl.month;
   const myeong = ((2 + lm - 1 - input.hourBranch) % 12 + 12) % 12;
 
   // 흘러가는 궁 — 그 시기의 지지가 원국의 어느 궁에 얹히는가
@@ -556,15 +562,15 @@ export function forecast(input, chart, period) {
   const idx = ((flowing - myeong) % 12 + 12) % 12;
   const palace = PALACES[idx][0];
 
-  const yearStem = ((chart.sajuYear - 4) % 10 + 10) % 10;
+  const yearStem = (((input.ziweiYear ?? chart.sajuYear) - 4) % 10 + 10) % 10;
   const inStem = ((yearStem % 5) * 2 + 2) % 10;
   const myeongStem = ((inStem + myeong - 2) % 10 + 10) % 10;
   let sexa = 0;
   for (let i = 0; i < 60; i++) if (i % 10 === myeongStem && i % 12 === myeong) { sexa = i; break; }
   const guk = GUK[NAYEUM[Math.floor(sexa / 2)]];
 
-  const mok = Math.ceil(input.lunar.day / guk.n);
-  const rem = mok * guk.n - input.lunar.day;
+  const mok = Math.ceil(zl.day / guk.n);
+  const rem = mok * guk.n - zl.day;
   const ziwei = ((2 + mok - 1 + (rem % 2 === 0 ? rem : -rem)) % 12 + 12) % 12;
   const tianfu = ((4 - ziwei) % 12 + 12) % 12;
   const board = Array.from({ length: 12 }, () => []);

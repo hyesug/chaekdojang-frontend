@@ -68,14 +68,17 @@ function sexagenary(stem, branch) {
  * 되돌려 준다는 점뿐이다.
  */
 export function buildBoard(input) {
-  const { lunar, hourBranch, sajuYear } = input;
+  const { hourBranch } = input;
+  // 자미두수는 설날 기준 해·사주 일주와 같은 날·윤달 보정을 쓴다 (engine.js ziweiLunarOf)
+  const lunar = input.ziweiLunar ?? input.lunar;
+  const birthYear = input.ziweiYear ?? input.sajuYear;
   const lm = lunar.month;
   const ld = lunar.day;
 
   const myeong = mod12(2 + lm - 1 - hourBranch);
   const sin = mod12(2 + lm - 1 + hourBranch);
 
-  const yearStem = mod10(sajuYear - 4);
+  const yearStem = mod10(birthYear - 4);
   const stems = palaceStems(yearStem);
   const guk = GUK[NAYEUM[Math.floor(sexagenary(stems[myeong], myeong) / 2)]];
 
@@ -145,9 +148,9 @@ export function decadeLimits(input, b) {
     out.push({
       n, branch, forward,
       fromAge, toAge: fromAge + 9,
-      // 허세 1 = 태어난 사주 연도. 달력 연도로 옮겨 둔다
-      fromYear: input.sajuYear + fromAge - 1,
-      toYear: input.sajuYear + fromAge + 8,
+      // 허세 1 = 태어난 음력 해. 달력 연도로 옮겨 둔다
+      fromYear: (input.ziweiYear ?? input.sajuYear) + fromAge - 1,
+      toYear: (input.ziweiYear ?? input.sajuYear) + fromAge + 8,
       palaceOfNatal: natalMap[branch],            // 원국에서는 무슨 궁이었나
       stem: b.stems[branch],
       stars: b.board[branch],
@@ -180,7 +183,7 @@ export function annualLayer(b, sajuYear) {
  */
 export function monthLayers(input, b, sajuYear) {
   const taesui = mod12(sajuYear - 4);
-  const ducun = mod12(taesui - (input.lunar.month - 1) + input.hourBranch);
+  const ducun = mod12(taesui - ((input.ziweiLunar ?? input.lunar).month - 1) + input.hourBranch);
 
   const out = [];
   for (let m = 1; m <= 12; m++) {

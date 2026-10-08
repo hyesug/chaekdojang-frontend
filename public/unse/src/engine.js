@@ -172,6 +172,8 @@ export function prepareInput(form, opts = {}) {
     hourStem: timeKnown ? chart.pillars.hour.stem : null,
     hourBranch: timeKnown ? chart.pillars.hour.branch : null,
     isMale: form.gender === 'male',
+    // 'married' | 'single' | null. 기혼이면 리포트가 결혼 시기를 내지 않는다
+    marital: form.marital === 'married' || form.marital === 'single' ? form.marital : null,
     age,
     // 입춘에 바뀌는 해. 세운·구성학 연반·태을이 쓴다
     currentYear,

@@ -178,7 +178,28 @@ const TIMING_LABEL = { 결혼: '결혼·인연', 자녀: '자녀', 이사: '이�
 /** "2027~2028년 (35~36세)" → "2027~2028년(35~36세)" */
 const spanText = (w) => `${w.span}${w.ageLabel ? `(${w.ageLabel})` : ''}`;
 
+/**
+ * 1위 창이 2위보다 **더 많은 체계**의 동의를 받았는가.
+ *
+ * 같은 수의 체계가 짚은 창이 여럿이면 순서는 표 수·연도로 갈린 것일 뿐이다.
+ * 그때 "가장 유력"이라 쓰면 근거 없는 단정이 된다(scenario/composer 의 규칙과 같다).
+ * 시기 검증(npm run unse:timing-validate)에서 연·월 적중이 우연과 구별되지 않았으므로
+ * 가르지 못한 경우는 가르지 못했다고 쓴다.
+ */
+function isDecisive(windows) {
+  if (!windows?.length) return false;
+  if (windows.length === 1) return windows[0].systems.length >= 2;
+  return windows[0].systems.length > windows[1].systems.length;
+}
+
+/** 이미 결혼했다고 고른 사람인가. 고르지 않았으면 false — 추측하지 않는다 */
+const isMarried = (r) => r.input?.marital === 'married';
+
 function timingOf(r, domain, span = 10) {
+  // 이미 결혼한 사람에게 "결혼 시기는 ○년이 유력"은 틀린 말이다
+  if (domain === '결혼' && isMarried(r)) {
+    return '<p class="rp-t rp-when">이미 결혼하셨다고 입력하셔서 결혼 시기는 따로 짚지 않았습니다. 위 풀이는 배우자와의 관계를 읽는 데 참고하세요.</p>';
+  }
   let t = null;
   try {
     const from = r.input.currentYear;
@@ -192,9 +213,13 @@ function timingOf(r, domain, span = 10) {
   const spans = (t.windows ?? []).slice(0, 3).map(spanText);
   if (!spans.length) return '';
   const label = TIMING_LABEL[domain] ?? domain;
+  if (!isDecisive(t.windows)) {
+    return `<p class="rp-t rp-when">${esc(label)} 쪽은 <strong>${esc(spans.join(', '))}</strong>에 신호가 비슷하게 걸려 있어, 한 해를 꼽기 어렵습니다.</p>`;
+  }
   const first = (t.windows ?? [])[0];
   const josa = j(first.span, '이').slice(first.span.length);
-  return `<p class="rp-t rp-when"><span aria-hidden="true">📌</span> ${esc(label)} 시기는 <strong>${esc(spans[0])}</strong>${josa} 가장 유력하고${spans.length > 1 ? `, 그다음은 ${esc(spans.slice(1).join(', '))}` : ''}입니다.</p>`;
+  const rest = spans.length > 1 ? `가장 두드러지고, 그다음은 ${esc(spans.slice(1).join(', '))}입니다` : '가장 두드러집니다';
+  return `<p class="rp-t rp-when">${esc(label)} 시기는 <strong>${esc(spans[0])}</strong>${josa} ${rest}.</p>`;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -353,7 +378,7 @@ function relations(v, r) {
     chv = childrenVerdict(ch);
   } catch { /* */ }
 
-  return sub('', '배우자 — 어떤 사람이고 언제인가',
+  return sub('', isMarried(r) ? '배우자 — 어떤 사람인가' : '배우자 — 어떤 사람이고 언제인가',
       para(withSrc(v.life?.spouse)) + verdictLines(spv.lines, '배우자').map(para).join('') + personOf(sp, '배우자') + timingOf(r, '결혼'))
     + sub('', '자녀',
       para(withSrc(v.life?.child)) + verdictLines(chv.lines, '자녀').map(para).join('') + personOf(ch, '자녀') + timingOf(r, '자녀'))
@@ -509,12 +534,17 @@ function finale(r) {
     ['자녀', '👶', '자녀 인연이 가장 강한 때'],
     ['이사', '🏠', '이사·이동하기 가장 좋은 때'],
   ]) {
+    if (domain === '결혼' && isMarried(r)) continue;
     try {
       const from = r.input.currentYear;
       const t = timingFor(r.input, { ...r.chart, gender: r.input.gender }, domain,
         { from, to: from + 14 });
-      const w = (t.windows ?? [])[0];
-      if (w) items.push(`<li><span class="rp-ic" aria-hidden="true">${icon}</span><div><p>${esc(what)}는 <strong>${esc(spanText(w))}</strong>입니다.</p></div></li>`);
+      const ws = t.windows ?? [];
+      if (!ws.length) continue;
+      const text = isDecisive(ws)
+        ? `${esc(what)}는 <strong>${esc(spanText(ws[0]))}</strong>입니다.`
+        : `${esc(what)}는 <strong>${esc(ws.slice(0, 2).map(spanText).join(', '))}</strong>로 나뉘어 한쪽을 꼽기 어렵습니다.`;
+      items.push(`<li><span class="rp-ic" aria-hidden="true">${icon}</span><div><p>${text}</p></div></li>`);
     } catch { /* */ }
   }
   const principles = [
@@ -525,8 +555,8 @@ function finale(r) {
     '관계는 말보다 생활과 책임에서 실제 행동이 바뀌는지를 봅니다.',
     '운세는 선택을 대신하는 도구가 아니라, 되풀이되는 패턴을 점검하는 보조 자료입니다.',
   ];
-  return sub('', '앞으로 15년, 분야마다 가장 유력한 때', (items.length ? `<ul class="rp-bul">${items.join('')}</ul>` : '')
-      + '<p class="rp-fine">시기는 참고로만 보세요. 실제 사례로 맞혀 봤을 때 연도를 짚는 정확도는 높지 않았습니다.</p>')
+  return sub('', '앞으로 15년, 분야마다 신호가 모이는 때', (items.length ? `<ul class="rp-bul">${items.join('')}</ul>` : '')
+      + '<p class="rp-fine">시기는 참고로만 보세요. 실제 사례로 맞혀 봤을 때 연도·달을 짚는 정확도는 우연과 구별되지 않았습니다.</p>')
     + sub('', '실행 원칙', `<ul class="rp-ul">${principles.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`);
 }
 

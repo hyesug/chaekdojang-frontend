@@ -123,6 +123,8 @@ function collect(p, mode) {
     homePlace: $(`#${p}homePlace`).value.trim() || '서울',
     dst: $(`#${p}dst`).checked,
     inputCalendar: cal,
+    // 결혼 여부는 첫 사람 칸에만 있다(궁합의 두 번째 사람 칸에는 없다). 고르지 않으면 null
+    marital: $(`#${p}marital`)?.value || null,
   };
 }
 
@@ -471,6 +473,7 @@ export function restoreFromHash() {
     set('birthPlace', f.birthPlace);
     set('homePlace', f.homePlace);
     $(`#${p}dst`).checked = !!f.dst;
+    if ($(`#${p}marital`)) set('marital', f.marital ?? '');
   };
 
   if (st.mode === 'pair') document.querySelector('[data-mode="pair"]').click();

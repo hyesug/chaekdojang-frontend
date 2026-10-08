@@ -2,7 +2,7 @@
  * answer.mjs — **한 질문에 열다섯이 각각 뭐라 하는지 전부 적는다**
  *
  *   node scripts/answer.mjs --id P01
- *   node scripts/answer.mjs 1992-01-30 16:28 여주 대전 female
+ *   node scripts/answer.mjs 1993-03-17 10:08 여주 대전 female
  *
  * 화면이나 AI 를 거치지 않고 **엔진이 실제로 가진 말**을 그대로 펼친다.
  * "왜 이 답이 안 나오지"를 따질 때 여기부터 본다 — 엔진에 없는 것인지,

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { timingFor } from '../../public/unse/src/semantic/compose/timing.js';
 
 const INPUT = {
-  gender: 'female', year: 1992, month: 1, day: 30, hour: 16, minute: 28,
+  gender: 'female', year: 1993, month: 3, day: 17, hour: 15, minute: 42,
   birthPlace: '여주', homePlace: '대전', currentYear: 2026,
 };
 

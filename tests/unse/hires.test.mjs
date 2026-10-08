@@ -31,12 +31,12 @@ const NOW = new Date('2026-09-19T00:00:00Z');
 
 const FORM = {
   name: '고해상도 A', gender: 'female',
-  year: 1992, month: 1, day: 30, hour: 16, minute: 28,
+  year: 1993, month: 3, day: 17, hour: 15, minute: 42,
   birthPlace: '여주', homePlace: '대전',
 };
 const FORM_M = {
   name: '고해상도 B', gender: 'male',
-  year: 1999, month: 4, day: 28, hour: 10, minute: 15,
+  year: 1998, month: 8, day: 21, hour: 9, minute: 35,
   birthPlace: '대전', homePlace: '서울',
 };
 
@@ -62,12 +62,12 @@ test('고해상도 계산은 기존 원국 계산을 바꾸지 않는다', () =>
   const { r } = load(FORM);
   assert.equal(
     ['year', 'month', 'day', 'hour'].map((k) => r.chart.pillars[k].hanja).join(' '),
-    '辛未 辛丑 乙巳 甲申'
+    '癸酉 乙卯 丁酉 戊申'
   );
   assert.deepEqual(r.errors, []);
   // 새 모듈을 돌린 뒤에도 값이 그대로여야 한다
   buildHiRes(r, load(FORM).f, defaultPlan(2026));
-  assert.equal(r.chart.pillars.day.hanja, '乙巳');
+  assert.equal(r.chart.pillars.day.hanja, '丁酉');
 });
 
 // ─────────────────────────────────────────────────────────────

@@ -28,8 +28,8 @@ import { yearDirections } from '../../public/unse/src/systems/gujeong.js';
 import kabbalah from '../../public/unse/src/systems/kabbalah.js';
 
 const BIRTH = {
-  name: '테스트', gender: 'female', year: 1992, month: 1, day: 30,
-  hour: 16, minute: 28, birthPlace: '여주', homePlace: '서울',
+  name: '테스트', gender: 'female', year: 1986, month: 5, day: 9,
+  hour: 10, minute: 8, birthPlace: '여주', homePlace: '서울',
 };
 const NOW = new Date('2026-09-25T03:00:00Z');
 

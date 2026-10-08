@@ -1,7 +1,7 @@
 /**
  * inspect-person.mjs — **한 사람에 대해 열다섯이 각각 뭐라고 하는가**
  *
- *   node scripts/inspect-person.mjs 1992-01-30 16:28 여주 대전 female
+ *   node scripts/inspect-person.mjs 1993-03-17 10:08 여주 대전 female
  *   node scripts/inspect-person.mjs --id P01          (정답표에서 불러오기)
  *
  * 합친 값만 보면 "왜 이 답이 나왔는지"를 알 수 없다. 체계마다 무엇을 읽어
@@ -40,7 +40,7 @@ if (idArg >= 0) {
   who = `${p.id} — ${p.labels?.career?.occupationKey ?? ''}`;
 } else {
   const [date, time, bp, hp, gender] = args;
-  if (!date) { console.error('사용법: node scripts/inspect-person.mjs 1992-01-30 16:28 여주 대전 female'); process.exit(1); }
+  if (!date) { console.error('사용법: node scripts/inspect-person.mjs 1993-03-17 10:08 여주 대전 female'); process.exit(1); }
   const [y, m, d] = date.split('-').map(Number);
   const [hh, mm] = (time ?? '').split(':').map(Number);
   birth = { name: '조회', gender: gender ?? 'female', year: y, month: m, day: d,

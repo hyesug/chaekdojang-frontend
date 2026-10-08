@@ -18,7 +18,7 @@ test('같은 달에 다른 사건 후보가 더 높으면 상황 적중으로 �
 
 test('타임라인은 잘린 화면 후보와 별개로 모든 사건 후보 점수를 남긴다', () => {
   const result = predictTimeline({
-    birth: { gender: 'female', year: 1992, month: 1, day: 30, hour: 16, minute: 28, birthPlace: '여주' },
+    birth: { gender: 'female', year: 1993, month: 3, day: 17, hour: 15, minute: 42, birthPlace: '여주' },
     from: '2028-01', to: '2028-03', domains: ['career'],
   });
 

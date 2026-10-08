@@ -15,7 +15,7 @@ node scripts/analyze-career.mjs --loo   # 체계 × 속성 성능 + 사람 단�
 ```json
 {
   "id": "P01",
-  "birth": { "gender": "female", "year": 1992, "month": 1, "day": 30,
+  "birth": { "gender": "female", "year": 1993, "month": 3, "day": 17,
              "hour": 16, "minute": 28, "birthPlace": "여주", "homePlace": "대전" },
   "labels": { "...": "아래" },
   "plannedFutureEvents": []

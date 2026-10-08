@@ -3,7 +3,7 @@
  *
  *   node scripts/compose-all.mjs              (열한 명 한눈에)
  *   node scripts/compose-all.mjs --id P01     (한 사람 자세히)
- *   node scripts/compose-all.mjs 1992-01-30 16:28 여주 대전 female   (모르는 사람)
+ *   node scripts/compose-all.mjs 1993-03-17 10:08 여주 대전 female   (모르는 사람)
  *
  * ── 무엇을 재는가 ──────────────────────────────────────────
  * 이건 **맞았나를 세는 자리가 아니다.** 칸 배치가 쓸 만한지 보는 자리다.

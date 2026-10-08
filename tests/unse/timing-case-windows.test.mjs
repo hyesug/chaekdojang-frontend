@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { groupTimingEvents } from '../../public/unse/src/validation/timingCaseWindows.js';
 
 const DOMAIN_OF = { 직업: 'career', 관계: 'relationship' };
-const birth = { gender: 'female', year: 1992, month: 1, day: 30, hour: 16, minute: 28, birthPlace: '여주' };
+const birth = { gender: 'female', year: 1993, month: 3, day: 17, hour: 15, minute: 42, birthPlace: '여주' };
 const career = [
   { domain: '직업', year: 2021, month: 10 },
   { domain: '직업', year: 2024, month: 11 },

@@ -9,7 +9,7 @@ import { buildContext, buildCompatContext } from '../../public/unse/src/aiContex
 import * as PAIR from '../../public/unse/src/hires/pair.js';
 
 // 개인정보처리방침: 이름은 AI 요청에 넣지 않는다. 궁합은 두 사람 모두.
-const A = { name: '홍길순', gender: 'female', year: 1992, month: 1, day: 30, hour: 16, minute: 28, birthPlace: '여주', homePlace: '대전' };
+const A = { name: '홍길순', gender: 'female', year: 1993, month: 3, day: 17, hour: 15, minute: 42, birthPlace: '여주', homePlace: '대전' };
 const B = { name: '김철수', gender: 'male', year: 1990, month: 5, day: 5, hour: 7, minute: 0, birthPlace: '서울', homePlace: '서울' };
 const NOW = { now: new Date('2026-10-06T00:00:00Z') };
 

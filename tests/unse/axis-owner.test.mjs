@@ -15,8 +15,8 @@ import * as IN from '../../public/unse/src/hires/interpret.js';
 import * as ZW from '../../public/unse/src/hires/ziwei.js';
 
 const person = (over = {}) => readFortune({
-  name: '테스트', gender: 'female', year: 1992, month: 1, day: 30,
-  hour: 16, minute: 28, birthPlace: '여주', homePlace: '대전', ...over,
+  name: '테스트', gender: 'female', year: 1986, month: 5, day: 9,
+  hour: 10, minute: 8, birthPlace: '여주', homePlace: '대전', ...over,
 });
 
 const readsOf = (r) => {

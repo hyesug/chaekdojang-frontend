@@ -44,7 +44,7 @@ test('자미두수의 해는 설날 기준이다 — 입춘과 설날 사이 출
   assert.equal(b.ziweiYear, 2025);
   assert.equal(buildBoard(b).yearStem, 1, '乙');
   // 둘이 같은 날은 바뀌지 않는다
-  const c = prepareInput(form({ year: 1992, month: 1, day: 30, hour: 16, minute: 28, birthPlace: '여주', homePlace: '대전' })).input;
+  const c = prepareInput(form({ year: 1993, month: 3, day: 17, hour: 15, minute: 42, birthPlace: '여주', homePlace: '대전' })).input;
   assert.equal(c.ziweiYear, c.sajuYear);
 });
 

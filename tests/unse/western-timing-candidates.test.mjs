@@ -8,8 +8,8 @@ import {
 import { predictTimeline } from '../../public/unse/src/semantic/timing/timeline.js';
 
 const BIRTH = {
-  name: 'P01', gender: 'female', year: 1992, month: 1, day: 30,
-  hour: 16, minute: 28, birthPlace: '여주', homePlace: '대전',
+  name: 'P01', gender: 'female', year: 1993, month: 3, day: 17,
+  hour: 15, minute: 42, birthPlace: '여주', homePlace: '대전',
 };
 
 const CANDIDATES = {

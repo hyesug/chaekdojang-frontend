@@ -134,8 +134,8 @@ test('오차가 실제로 결론을 바꾸는 자리에는 가드가 있다', as
   const { charaKarakas } = await import('../../public/unse/src/hires/vedicExt.js');
   const { readFortune } = await import('../../public/unse/src/engine.js');
   const r = readFortune({
-    name: '오차', gender: 'female', year: 1992, month: 1, day: 30,
-    hour: 16, minute: 28, birthPlace: '여주', homePlace: '대전',
+    name: '오차', gender: 'female', year: 1993, month: 3, day: 17,
+    hour: 15, minute: 42, birthPlace: '여주', homePlace: '대전',
   }, { now: new Date('2026-09-20T00:00:00Z') });
 
   const k = charaKarakas(r.input);

@@ -18,8 +18,8 @@ import { LEVELS } from '../../public/unse/src/semantic/scenario/specificity.js';
 import { predictTimeline } from '../../public/unse/src/semantic/timing/timeline.js';
 
 const BIRTH = {
-  name: 'x', gender: 'female', year: 1992, month: 1, day: 30,
-  hour: 16, minute: 28, birthPlace: '여주', homePlace: '대전',
+  name: 'x', gender: 'female', year: 1993, month: 3, day: 17,
+  hour: 15, minute: 42, birthPlace: '여주', homePlace: '대전',
 };
 const NOW = new Date('2026-09-24T00:00:00Z');
 

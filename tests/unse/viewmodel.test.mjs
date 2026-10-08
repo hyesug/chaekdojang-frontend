@@ -8,11 +8,11 @@ import { buildView } from '../../public/unse/src/viewmodel.js';
 
 const FORM = {
   name: '구조 테스트',
-  year: 1992,
-  month: 1,
-  day: 30,
-  hour: 16,
-  minute: 28,
+  year: 1993,
+  month: 3,
+  day: 17,
+  hour: 15,
+  minute: 42,
   birthPlace: '여주',
   homePlace: '대전',
   gender: 'female',

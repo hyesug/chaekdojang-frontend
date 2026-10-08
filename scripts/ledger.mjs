@@ -2,7 +2,7 @@
  * ledger.mjs — **학습 장부: 열다섯이 한 말을 한 줄에 하나씩 펼친다**
  *
  *   node scripts/ledger.mjs --id P01
- *   node scripts/ledger.mjs 1992-01-30 16:28 여주 대전 female
+ *   node scripts/ledger.mjs 1993-03-17 10:08 여주 대전 female
  *
  * ── 왜 만들었나 ────────────────────────────────────────────
  * 이 저장소는 열다섯 체계의 말을 스무 개 축의 숫자로 바꿔서 합쳐 왔다.
@@ -58,7 +58,7 @@ if (idArg >= 0) {
   const [date, time, bp, hp, gender] = args;
   if (!date) {
     console.error('사용법: node scripts/ledger.mjs --id P01');
-    console.error('       node scripts/ledger.mjs 1992-01-30 16:28 여주 대전 female');
+    console.error('       node scripts/ledger.mjs 1993-03-17 10:08 여주 대전 female');
     process.exit(1);
   }
   const [y, m, d] = date.split('-').map(Number);

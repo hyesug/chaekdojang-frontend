@@ -27,8 +27,8 @@ import { routeQuestion } from '../../public/unse/src/hires/router.js';
 import { buildHiRes } from '../../public/unse/src/hires/context.js';
 
 const NOW = new Date('2026-09-20T00:00:00Z');
-const FORM = { name: '재물 A', gender: 'female', year: 1992, month: 1, day: 30, hour: 16, minute: 28, birthPlace: '여주', homePlace: '대전' };
-const FORM_B = { name: '재물 B', gender: 'male', year: 1999, month: 4, day: 28, hour: 10, minute: 15, birthPlace: '대전', homePlace: '서울' };
+const FORM = { name: '재물 A', gender: 'female', year: 1993, month: 3, day: 17, hour: 15, minute: 42, birthPlace: '여주', homePlace: '대전' };
+const FORM_B = { name: '재물 B', gender: 'male', year: 1998, month: 8, day: 21, hour: 9, minute: 35, birthPlace: '대전', homePlace: '서울' };
 const FORM_C = { name: '재물 C', gender: 'male', year: 1985, month: 11, day: 3, hour: 3, minute: 40, birthPlace: '부산', homePlace: '부산' };
 
 const R = readFortune(FORM, { now: NOW });

@@ -7,7 +7,7 @@ import { buildContext } from '../../public/unse/src/aiContext.js';
 import { analyze as gujeongAnalyze, yearDirections } from '../../public/unse/src/systems/gujeong.js';
 
 const NOW = new Date('2026-09-24T03:00:00Z');
-const A = { name: '가', gender: 'female', year: 1992, month: 1, day: 30, hour: 16, minute: 28, birthPlace: '여주', homePlace: '서울' };
+const A = { name: '가', gender: 'female', year: 1993, month: 3, day: 17, hour: 15, minute: 42, birthPlace: '여주', homePlace: '서울' };
 
 const context = (form) =>
   buildContext(form, readFortune(form, { now: NOW }), readForecast(form, NOW));
@@ -35,7 +35,7 @@ test('개인 문맥에 체계별 해석과 방위 도시 후보가 실린다', (
 test('AI 문맥은 이름·출생일시·출생지를 원문으로 전송하지 않는다', () => {
   const c = context(A);
   assert.doesNotMatch(c, /## 기본\n가/);
-  assert.doesNotMatch(c, /1992년 1월 30일/);
+  assert.doesNotMatch(c, /1993년 3월 17일/);
   assert.doesNotMatch(c, /16시 28분/);
   assert.doesNotMatch(c, /출생 여주 · 거주 서울/);
   assert.match(c, /브라우저에서 계산했고, AI에는 계산 결과만 전송/);

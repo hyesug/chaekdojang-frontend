@@ -25,8 +25,8 @@ import { buildDictionary, byAxis } from '../../public/unse/src/semantic/dictiona
 import { narrate, narrateCareer } from '../../public/unse/src/semantic/narrate.js';
 
 const BIRTH = {
-  gender: 'female', year: 1992, month: 1, day: 30,
-  hour: 16, minute: 28, birthPlace: '여주', homePlace: '대전',
+  gender: 'female', year: 1993, month: 3, day: 17,
+  hour: 15, minute: 42, birthPlace: '여주', homePlace: '대전',
 };
 const AS_OF = '2026-09-21';
 
@@ -175,7 +175,7 @@ test('속성별 보정 무게가 좁은 범위 안에 머문다', () => {
   const rows = [
     { id: 'A', truth: OCCUPATIONS.개발자.features, systems: interpretCareer(...Object.values(runOf(BIRTH))) },
     { id: 'B', truth: OCCUPATIONS.미용사.features,
-      systems: interpretCareer(...Object.values(runOf({ ...BIRTH, year: 1990, month: 10, day: 6 }))) },
+      systems: interpretCareer(...Object.values(runOf({ ...BIRTH, year: 1989, month: 11, day: 23 }))) },
   ];
   const w = weightsFrom(measure(rows));
   for (const perAxis of Object.values(w)) {

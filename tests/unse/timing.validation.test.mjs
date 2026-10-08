@@ -19,8 +19,8 @@ import { scoreEvents } from '../../public/unse/src/semantic/timing/events.js';
 import { SYSTEM_IDS } from '../../public/unse/src/semantic/extract.js';
 
 const BIRTH = {
-  name: 'x', gender: 'female', year: 1992, month: 1, day: 30,
-  hour: 16, minute: 28, birthPlace: '여주', homePlace: '대전',
+  name: 'x', gender: 'female', year: 1993, month: 3, day: 17,
+  hour: 15, minute: 42, birthPlace: '여주', homePlace: '대전',
 };
 let cached = null;
 const run = () => (cached ??= predictTimeline({ birth: BIRTH, from: '2028-01', to: '2029-12' }));

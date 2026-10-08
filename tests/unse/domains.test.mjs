@@ -17,8 +17,8 @@ import { AXES } from '../../public/unse/src/semantic/axes.js';
 import { PROJECTION, TRAIT_LABEL, projectNature, TRIGRAM_NATURE } from '../../public/unse/src/semantic/tables/nature.js';
 
 const BIRTH = {
-  gender: 'female', year: 1992, month: 1, day: 30,
-  hour: 16, minute: 28, birthPlace: '여주', homePlace: '대전',
+  gender: 'female', year: 1993, month: 3, day: 17,
+  hour: 15, minute: 42, birthPlace: '여주', homePlace: '대전',
 };
 
 test('열두 분야가 모두 있고 축이 비어 있지 않다', () => {

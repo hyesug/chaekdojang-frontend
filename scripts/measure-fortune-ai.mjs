@@ -21,7 +21,7 @@ const TTL = process.argv[4] === '1h' ? 'w1h' : 'w5m';   // 지금 구조의 캐�
 const P = { in: 4, out: 20, read: 0.2, w5m: 5, w1h: 8 };
 
 const NOW = new Date('2026-09-24T03:00:00Z');
-const form = { name: '가', gender: 'female', year: 1992, month: 1, day: 30, hour: 16, minute: 28, birthPlace: '여주', homePlace: '서울' };
+const form = { name: '가', gender: 'female', year: 1993, month: 3, day: 17, hour: 15, minute: 42, birthPlace: '여주', homePlace: '서울' };
 const fortune = readFortune(form, { now: NOW });
 const forecast = readForecast(form, NOW);
 const context = buildContext(form, fortune, forecast);

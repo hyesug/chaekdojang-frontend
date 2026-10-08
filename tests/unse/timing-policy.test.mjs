@@ -4,8 +4,8 @@ import assert from 'node:assert/strict';
 import { predictTimeline } from '../../public/unse/src/semantic/timing/timeline.js';
 
 const BIRTH = {
-  name: 'policy-test', gender: 'female', year: 1992, month: 1, day: 30,
-  hour: 16, minute: 28, birthPlace: '여주', homePlace: '대전',
+  name: 'policy-test', gender: 'female', year: 1993, month: 3, day: 17,
+  hour: 15, minute: 42, birthPlace: '여주', homePlace: '대전',
 };
 
 test('시기 정책은 어떤 체계와 선행 개월을 써서 계산했는지 결과에 남긴다', () => {

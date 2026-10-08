@@ -79,10 +79,12 @@ export function predictTimeline(o) {
   // 아니라 검증·정책 층에서만 넘긴다. 없으면 지금 서비스의 기본 규칙 그대로다.
   const requestedPolicy = o.timingPolicy ?? {};
   const candidatePolicies = o.validationPolicies ?? {};
+  const requestedSystemIds = new Set(Object.values(requestedPolicy)
+    .flatMap((rule) => rule?.systems ?? []));
   const validationSystemIds = new Set(Object.values(candidatePolicies)
     .flatMap((policy) => Object.values(policy ?? {}).flatMap((rule) => rule?.systems ?? [])));
-  const needsModernCandidate = validationSystemIds.has('astrology_modern');
-  const needsClassicalCandidate = validationSystemIds.has('astrology_classical');
+  const needsModernCandidate = requestedSystemIds.has('astrology_modern') || validationSystemIds.has('astrology_modern');
+  const needsClassicalCandidate = requestedSystemIds.has('astrology_classical') || validationSystemIds.has('astrology_classical');
   const needsAstrology = useSystem('astrology') || needsModernCandidate || needsClassicalCandidate;
   const normalizePolicy = (domain, source = {}) => {
     const requested = source[domain] ?? {};

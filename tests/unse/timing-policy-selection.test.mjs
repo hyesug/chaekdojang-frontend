@@ -73,3 +73,10 @@ test('개인 사례로 얻은 결과는 서비스용 정책을 덮어쓰지 않�
   };
   assert.equal(reportTimingPolicy('직업', personalOnly), null);
 });
+
+test('사례가 부족할 때의 잠정 분야 정책은 리포트에서 사용할 수 있다', () => {
+  const provisional = {
+    이사: { scope: 'provisional', systems: ['jamidusu', 'astrology_classical'], basis: 'personal-development' },
+  };
+  assert.deepEqual(reportTimingPolicy('이사', provisional), provisional.이사);
+});

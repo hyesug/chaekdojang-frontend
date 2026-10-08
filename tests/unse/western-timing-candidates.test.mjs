@@ -47,3 +47,13 @@ test('출생 시각이 없으면 현대·고전 점성 후보 모두 사용할 �
     assert.ok(Object.values(candidate.career).every((score) => score == null));
   }
 });
+
+test('고전 점성 후보는 잠정 리포트 정책에서도 실제 계산에 포함된다', () => {
+  const result = predictTimeline({
+    birth: BIRTH, from: '2028-01', to: '2028-06', domains: ['movement'],
+    timingPolicy: { movement: { systems: ['astrology_classical'] } },
+    onlySystems: ['astrology_classical'],
+  });
+  const values = Object.values(result.timeline).map((month) => month.domains.movement.rawActivation);
+  assert.ok(values.some(Number.isFinite));
+});

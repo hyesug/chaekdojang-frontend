@@ -8,6 +8,7 @@ test('리포트의 모든 시기 분야는 한 개 이상의 채택 체계를 �
     const policy = reportTimingPolicy(domain);
     assert.ok(policy, `${domain} 정책이 없다`);
     assert.ok(policy.systems.length >= 1, `${domain} 체계가 비어 있다`);
-    assert.ok(['observed', 'inferred'].includes(policy.basis), `${domain} 채택 근거가 없다`);
+    // service 는 관측·추정, provisional 은 개인 이력·사례 부족 다인 검증에서 고른 잠정 조합이다
+    assert.ok(['observed', 'inferred', 'personal-development', 'underpowered-multiperson'].includes(policy.basis), `${domain} 채택 근거가 없다`);
   }
 });

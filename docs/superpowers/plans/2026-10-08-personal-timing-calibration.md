@@ -40,11 +40,11 @@
 - Produces `groupTimingEvents(cases, domainOf, { paddingYears })`, yielding `{ person, domain, birth, events, from, to }` once per person-domain.
 - `validate-timing.mjs` consumes each group to call `predictTimeline` independently.
 
-- [ ] Write a failing test proving a P01 career group keeps the same `from` and `to` when an unrelated 2010 relationship event is added.
-- [ ] Run the new test and confirm it fails because `groupTimingEvents` is missing.
-- [ ] Implement `groupTimingEvents` and change the validator to calculate one timeline per person-domain group.
-- [ ] Run the focused test and `npm run unse:timing-validate`; confirm the career window is no longer expanded by relationship history.
-- [ ] Commit with `fix(unse): 분야별 검증 창 분리`.
+- [x] Write a failing test proving a P01 career group keeps the same `from` and `to` when an unrelated 2010 relationship event is added.
+- [x] Run the new test and confirm it fails because `groupTimingEvents` is missing.
+- [x] Implement `groupTimingEvents` and change the validator to calculate one timeline per person-domain group.
+- [x] Run the focused test and `npm run unse:timing-validate`; confirm the career window is no longer expanded by relationship history.
+- [x] Commit with `fix(unse): 분야별 검증 창 분리`.
 
 ### Task 2: Situation-and-direction validation
 
@@ -57,10 +57,10 @@
 - Case events may declare `eventKind` from `EVENT_CANDIDATES[domain]` and optional `eventFamily` for correlated job/salary changes.
 - Produces `scoreEventKind(series, eventKey)`, using the same ranking semantics as `scoreEvent` but over the declared candidate's score.
 
-- [ ] Write a failing test where a high activation month is not a situation hit when `breakup` outranks the recorded `new_relationship`.
-- [ ] Run the focused test and confirm `scoreEventKind` is missing.
-- [ ] Add event-kind and event-family handling to the private case reader; report timing accuracy and situation-match accuracy separately, collapsing one event family to one effective observation for policy learning.
-- [ ] Run the focused test and `npm run unse:timing-validate`; confirm the output distinguishes “when” from “what happened.”
+- [x] Write a failing test where a high activation month is not a situation hit when `breakup` outranks the recorded `new_relationship`.
+- [x] Run the focused test and confirm `scoreEventKind` is missing.
+- [x] Add event-kind and event-family handling to the private case reader; report timing accuracy and situation-match accuracy separately; policy learning consumes families in Task 4.
+- [x] Run the focused test and `npm run unse:timing-validate`; confirm the output distinguishes “when” from “what happened.”
 - [ ] Commit with `feat(unse): 사건 성격까지 시기 검증`.
 
 ### Task 3: Classical and modern Western timing candidates

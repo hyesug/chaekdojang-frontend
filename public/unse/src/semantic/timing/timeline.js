@@ -273,7 +273,7 @@ export function predictTimeline(o) {
   // ── 해상도에 맞춰 창으로 뭉갠다 ──
   const timeline = {};
   for (const { key } of perMonth) {
-    timeline[key] = { period: key, domains: {}, featureShift: {}, events: [] };
+    timeline[key] = { period: key, domains: {}, featureShift: {}, eventScores: {}, events: [] };
   }
   for (const d of want) {
     const months = WINDOW_MONTHS[RESOLUTION[d]] ?? 1;
@@ -311,6 +311,9 @@ export function predictTimeline(o) {
 
       const events = scoreEvents(d, a.activation, a.direction,
         natal.domains[d]?.profile ?? null, a.consensus, currentState, a.magnitude);
+      // 화면에는 상위 여덟 후보만 보이지만, 검증에는 실제 사건 후보 전부가
+      // 필요하다. 반올림한 score 가 아니라 원값을 남겨 동점을 만들지 않는다.
+      timeline[k].eventScores[d] = Object.fromEntries(events.map((e) => [e.type, e.rawScore]));
       for (const e of events) {
         if (e.score <= 0.02) continue;
         timeline[k].events.push({ domain: d, ...e });

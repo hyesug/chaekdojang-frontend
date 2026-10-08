@@ -27,7 +27,7 @@ import { SYSTEM_NAME, SYSTEM_IDS } from '../public/unse/src/semantic/extract.js'
 import { groupTimingEvents } from '../public/unse/src/validation/timingCaseWindows.js';
 import {
   scoreEvent, scoreEventYearly, scoreAtResolution, aggregateNull, nullPosition,
-  personWeighted, personBootstrap,
+  personWeighted, personBootstrap, scoreEventKind,
 } from '../public/unse/src/validation/timingMetrics.js';
 
 const file = process.argv[2] ?? 'validation/cases.json';
@@ -55,6 +55,7 @@ for (const group of groupTimingEvents(cases, DOMAIN_OF, { paddingYears: 3 })) {
     rows.push({
       person: group.person, domain: group.domain, what: e.what,
       year: e.year, month: e.month ?? null, precision,
+      eventKind: e.eventKind ?? null, eventFamily: e.eventFamily ?? null,
       key: e.month != null ? `${e.year}-${String(e.month).padStart(2, '0')}` : null,
       result: r,
     });
@@ -70,6 +71,12 @@ const seriesOf = (r, domain, sysId = null) => Object.keys(r.timeline).sort().map
     : (r.timeline[k]?.domains?.[domain]?.rawActivation ?? null),
   // 스무딩 창이 덜 찬 달은 창 지표의 null 후보에서 뺀다 (체계별 시계열은 스무딩하지 않는다)
   full: sysId ? true : (r.timeline[k]?.domains?.[domain]?.windowFull !== false),
+}));
+
+/** 화면에서 자른 상위 후보가 아니라, 실제 사건 후보 전부의 원점수다. */
+const eventSeriesOf = (r, domain) => Object.keys(r.timeline).sort().map((k) => ({
+  k,
+  scores: r.timeline[k]?.eventScores?.[domain] ?? {},
 }));
 
 /** 사건월이 시계열 양 끝에서 몇 달 떨어져 있는가 — null 후보 제한과 같은 자로 잰다 */
@@ -108,7 +115,7 @@ console.log('');
 // ── 사건별 ──
 console.log('## 사건별 (합친 결과)');
 console.log('');
-console.log('사람  분야    사건      정밀도  순위/전체   백분위  Top3±1 Top3±3 Top3±6  ±3창최고  최고점오차');
+console.log('사람  분야    사건      정밀도  순위/전체   백분위  상황    Top3±1 Top3±3 Top3±6  ±3창최고  최고점오차');
 const scored = [];
 for (const row of rows) {
   const series = seriesOf(row.result, row.domain);
@@ -116,18 +123,30 @@ for (const row of rows) {
     ? scoreEvent(series, row.key)
     : scoreEventYearly(series, row.year);
   row.score = s;
+  row.situation = row.eventKind && row.precision === 'month'
+    ? scoreEventKind(eventSeriesOf(row.result, row.domain), row.key, row.eventKind) : null;
   if (s.unscorable) {
     console.log(`${pad(row.person, 5)} ${pad(DOMAIN_LABEL[row.domain], 6)} ${pad(row.key ?? row.year, 9)} ${pad(row.precision, 6)}  채점 불가 — ${s.unscorable}${s.note ? ` (${s.note})` : ''}`);
     continue;
   }
   scored.push(row);
   if (row.precision === 'month') {
-    console.log(`${pad(row.person, 5)} ${pad(DOMAIN_LABEL[row.domain], 6)} ${pad(row.key, 9)} ${pad('월', 6)}  ${pad(`${s.rank}/${s.n}`, 10)} ${pad(s.eventPercentile + '%', 7)} ${pad(s.top3Within1 ? 'O' : '·', 6)} ${pad(s.top3Within3 ? 'O' : '·', 6)} ${pad(s.top3Within6 ? 'O' : '·', 7)} ${pad(s.bestPercentileWithin3 + '%', 9)} ${s.peakErrorMonths}달`);
+    const situation = row.situation ? (row.situation.kindMatch ? 'O' : `×${row.situation.leadingType ?? '?'}`) : '—';
+    console.log(`${pad(row.person, 5)} ${pad(DOMAIN_LABEL[row.domain], 6)} ${pad(row.key, 9)} ${pad('월', 6)}  ${pad(`${s.rank}/${s.n}`, 10)} ${pad(s.eventPercentile + '%', 7)} ${pad(situation, 8)} ${pad(s.top3Within1 ? 'O' : '·', 6)} ${pad(s.top3Within3 ? 'O' : '·', 6)} ${pad(s.top3Within6 ? 'O' : '·', 7)} ${pad(s.bestPercentileWithin3 + '%', 9)} ${s.peakErrorMonths}달`);
   } else {
     console.log(`${pad(row.person, 5)} ${pad(DOMAIN_LABEL[row.domain], 6)} ${pad(row.year, 9)} ${pad('연', 6)}  ${pad(`${s.rank}/${s.n}`, 10)} ${pad(s.eventPercentile + '%', 7)} (연 단위 — 월 지표 해당 없음)`);
   }
 }
 console.log('');
+
+const typed = scored.filter((row) => row.situation?.kindMatch != null);
+if (typed.length) {
+  const matched = typed.filter((row) => row.situation.kindMatch).length;
+  console.log('## 사건 성격 일치');
+  console.log(`  실제 사건 후보가 그 달의 1위(동점 포함): ${matched}/${typed.length}건 (${Math.round(matched / typed.length * 100)}%)`);
+  console.log('  날짜 순위와 별도 지표다. 날짜가 맞아도 사건 성격이 다르면 통과로 세지 않는다.');
+  console.log('');
+}
 
 // ── 앙상블 ──
 const M = scored.filter((r) => r.precision === 'month');

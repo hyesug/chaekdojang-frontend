@@ -283,10 +283,11 @@ export function scoreEvents(domain, activation, direction, natalProfile, consens
     const directionMatch = match(direction, cand.needs) * penalty(direction, cand.avoid);
     const susc = susceptibility(natalProfile, cand.natal);
     const mag = clamp01(magnitude);
-    const score = activation * susc * directionMatch * mag * c.factor * (0.6 + 0.4 * consensus);
+    const rawScore = activation * susc * directionMatch * mag * c.factor * (0.6 + 0.4 * consensus);
     out.push({
       type: cand.key, label: cand.label,
-      score: Math.round(score * 1000) / 1000,
+      score: Math.round(rawScore * 1000) / 1000,
+      rawScore,
       parts: {
         activation: Math.round(activation * 1000) / 1000,
         natalSusceptibility: Math.round(susc * 1000) / 1000,

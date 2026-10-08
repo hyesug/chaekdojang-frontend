@@ -73,6 +73,25 @@ export function scoreEvent(series, eventKey) {
 }
 
 /**
+ * 같은 달에 분야가 움직였더라도, 실제 사건과 반대되는 후보가 앞서면
+ * “상황까지 맞혔다”고 하지 않는다. 날짜 순위는 `score`, 사건 성격은
+ * `kindMatch` 로 분리해 보고한다.
+ *
+ * @param {Array<{k:string, scores:Record<string, number|null>}>} series
+ */
+export function scoreEventKind(series, eventKey, eventKind) {
+  const activationSeries = series.map((row) => ({ k: row.k, v: row.scores?.[eventKind] ?? null }));
+  const score = scoreEvent(activationSeries, eventKey);
+  const at = series.find((row) => row.k === eventKey);
+  if (!at) return { score, leadingType: null, kindMatch: null };
+  const entries = Object.entries(at.scores ?? {}).filter(([, value]) => Number.isFinite(value));
+  if (!entries.length) return { score, leadingType: null, kindMatch: null };
+  const top = Math.max(...entries.map(([, value]) => value));
+  const leaders = entries.filter(([, value]) => value === top).map(([type]) => type);
+  return { score, leadingType: leaders.length === 1 ? leaders[0] : null, kindMatch: leaders.includes(eventKind) };
+}
+
+/**
  * 달 시계열을 해 시계열로 접는다.
  *
  * 해 단위로만 바뀌는 체계를 달 눈금으로 재면, 같은 값 열두 개를 열두 개의

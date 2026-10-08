@@ -210,30 +210,34 @@ function reportTimeline(r) {
 const isMarried = (r) => r.input?.marital === 'married';
 
 /**
- * 지나온 때의 결혼·인연 신호. 결혼한 사람은 실제 결혼 시기와 대어 볼 수 있고,
- * 아닌 사람도 지난 인연의 때를 확인할 수 있다. 만 18세부터 — 결혼한 사람은 올해까지,
- * 아닌 사람은 앞으로의 신호와 겹치지 않게 작년까지 본다.
+ * 지나온 때의 결혼·자녀 신호. 이미 겪은 사람은 실제 시기와 대어 볼 수 있고,
+ * 아닌 사람도 지난 인연·계획의 때를 확인할 수 있다. 만 18세부터 — 결혼한 사람의
+ * 결혼 신호는 올해까지, 나머지는 앞으로의 신호와 겹치지 않게 작년까지 본다.
  */
-const pastMarriageCache = new WeakMap();
-function pastMarriageWindows(r, count = 3) {
-  if (!pastMarriageCache.has(r)) {
-    const policy = reportTimingPolicy('결혼');
+const pastCache = new WeakMap();
+function pastWindows(r, label, count = 3) {
+  const domain = REPORT_TIMING_DOMAIN[label];
+  const cache = pastCache.get(r) ?? new Map();
+  pastCache.set(r, cache);
+  if (!cache.has(label)) {
+    const policy = reportTimingPolicy(label);
     const from = Number(r.input.year) + 18;
-    const to = Number(r.input.currentYear) - (isMarried(r) ? 0 : 1);
+    const to = Number(r.input.currentYear) - (label === '결혼' && isMarried(r) ? 0 : 1);
     let windows = [];
-    if (policy && from <= to) {
+    if (domain && policy && from <= to) {
       try {
         const result = predictTimeline({
-          birth: r.input, from: `${from}-01`, to: `${to}-12`, domains: ['marriage'],
-          timingPolicy: { marriage: policy }, onlySystems: policy.systems ?? [],
+          birth: r.input, from: `${from}-01`, to: `${to}-12`, domains: [domain],
+          timingPolicy: { [domain]: policy }, onlySystems: policy.systems ?? [],
         });
-        windows = peakWindows(result, 'marriage', 12, 80);
+        windows = peakWindows(result, domain, 12, 80);
       } catch { /* 계산 실패 시 과거 신호는 생략 */ }
     }
-    pastMarriageCache.set(r, windows);
+    cache.set(label, windows);
   }
-  return pastMarriageCache.get(r).slice(0, count);
+  return cache.get(label).slice(0, count);
 }
+const PAST_DOMAINS = new Set(['결혼', '자녀']);
 
 /** 한 체계 안에서도 점수가 높은 순서만 뽑되, 표시 범위를 벗어난 창은 버린다. */
 function selectedWindows(r, label, span = 15, count = 3) {
@@ -286,7 +290,7 @@ function selectedSpan(r, w) {
 function timingOf(r, domain, span = 10) {
   // 이미 결혼한 사람에게 "결혼 시기는 ○년이 유력"은 틀린 말이다 — 지나온 신호를 보여 준다
   if (domain === '결혼' && isMarried(r)) {
-    const past = pastMarriageWindows(r).map((w) => selectedSpan(r, w));
+    const past = pastWindows(r, '결혼').map((w) => selectedSpan(r, w));
     if (!past.length) {
       return '<p class="rp-t rp-when">이미 결혼하셨다고 입력하셔서 앞으로의 결혼 시기는 따로 짚지 않았습니다. 위 풀이는 배우자와의 관계를 읽는 데 참고하세요.</p>';
     }
@@ -305,8 +309,8 @@ function timingOf(r, domain, span = 10) {
   const spans = windows.map((w) => selectedSpan(r, w));
   if (!spans.length) return '';
   const rest = spans.length > 1 ? `가장 높고, 그다음은 ${esc(spans.slice(1).join(', '))}입니다` : '가장 높습니다';
-  // 결혼은 지나온 신호도 함께 — 지난 인연의 때와 견주어 보면 앞의 신호를 읽기 쉽다
-  const past = domain === '결혼' ? pastMarriageWindows(r, 2).map((w) => selectedSpan(r, w)) : [];
+  // 결혼·자녀는 지나온 신호도 함께 — 실제로 겪은 때와 견주어 보면 앞의 신호를 읽기 쉽다
+  const past = PAST_DOMAINS.has(domain) ? pastWindows(r, domain, 2).map((w) => selectedSpan(r, w)) : [];
   const pastLine = past.length ? ` 지나온 때 중에서는 ${esc(past.join(', '))}에 신호가 높았습니다.` : '';
   return `<p class="rp-t rp-when">${esc(label)} 신호는 <strong>${esc(spans[0])}</strong>에 ${rest}.${pastLine}</p>`;
 }

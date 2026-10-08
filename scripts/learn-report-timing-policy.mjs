@@ -79,12 +79,30 @@ for (let i = 0; i < SYSTEM_CANDIDATES.length; i++) {
   }
 }
 
+// 자녀는 출산 달 그대로와 '아홉 달 앞(임신 무렵)' 둘 다 모든 후보에 똑같이 잰다.
+// 전에는 사주만 아홉 달 앞을 보고 나머지는 출산 달로 재서 사주에 유리했다.
+// '후보@9' = 그 후보의 신호를 아홉 달 뒤로 옮겨 출산 달과 맞춘 것. baseline 은 현재 규칙(사주·아홉 달 앞).
+const CHILD_LEAD = 9;
+const isChildren = (domain) => domain === 'children';
 const candidatePolicy = (domain) => Object.fromEntries(Object.entries(candidateSystems).map(([name, systems]) => [
-  name, systems ? { [domain]: { systems } } : {},
+  name, systems ? { [domain]: { systems, ...(isChildren(domain) ? { leadMonths: 0 } : {}) } } : {},
 ]));
+const shiftKey = (key, d) => {
+  const n = Number(key.slice(0, 4)) * 12 + Number(key.slice(5, 7)) - 1 + d;
+  return `${Math.floor(n / 12)}-${String((n % 12) + 1).padStart(2, '0')}`;
+};
+for (const [name, systems] of Object.entries(candidateSystems)) {
+  if (systems) candidateSystems[`${name}@${CHILD_LEAD}`] = systems;
+}
 
-const seriesOf = (result, candidate, domain) => Object.entries(result.validationCandidates[candidate]?.[domain] ?? {})
-  .map(([k, v]) => ({ k, v }));
+const seriesOf = (result, candidate, domain, fromKey = null) => {
+  const lead = candidate.endsWith(`@${CHILD_LEAD}`);
+  const base = lead ? candidate.slice(0, -`@${CHILD_LEAD}`.length) : candidate;
+  if (lead && !isChildren(domain)) return [];
+  return Object.entries(result.validationCandidates[base]?.[domain] ?? {})
+    .map(([k, v]) => ({ k: lead ? shiftKey(k, CHILD_LEAD) : k, v }))
+    .filter((e) => !fromKey || e.k >= fromKey);
+};
 const score = (series, event) => {
   const measured = event.month == null ? scoreEventYearly(series, event.year) : scoreEvent(series,
     `${event.year}-${String(event.month).padStart(2, '0')}`);
@@ -135,7 +153,9 @@ for (const group of groupTimingEvents(cases, DOMAIN_OF, { paddingYears: 3 })) {
   let result;
   try {
     result = predictTimeline({
-      birth: group.birth, from: group.from, to: group.to, domains: [group.domain],
+      birth: group.birth, domains: [group.domain],
+      // 자녀는 아홉 달 앞까지 계산해 두어야 옮긴 신호가 기간 첫 달부터 찬다
+      from: isChildren(group.domain) ? shiftKey(group.from, -CHILD_LEAD) : group.from, to: group.to,
       validationPolicies: candidatePolicy(group.domain),
     });
   } catch (err) {
@@ -146,8 +166,8 @@ for (const group of groupTimingEvents(cases, DOMAIN_OF, { paddingYears: 3 })) {
   for (const event of group.events) {
     const precision = event.month == null ? 'year' : 'month';
     const seriesByCandidate = Object.fromEntries(Object.keys(candidateSystems).map((candidate) => [
-      candidate, seriesOf(result, candidate, group.domain),
-    ]));
+      candidate, seriesOf(result, candidate, group.domain, isChildren(group.domain) ? group.from : null),
+    ]).filter(([, series]) => series.length));
     const row = {
       person: group.person, domain: group.domain, event, precision, seriesByCandidate,
       scores: Object.fromEntries(Object.entries(seriesByCandidate).map(([candidate, series]) => [candidate, score(series, event)])),
@@ -196,6 +216,7 @@ for (const [domain, rawRows] of rowsByDomain) {
   report[label] = {
     scope: verdict.promote ? 'service' : 'provisional',
     systems: systemsOf(chosen),
+    ...(String(chosen).endsWith(`@${CHILD_LEAD}`) ? { leadMonths: CHILD_LEAD } : {}),
     basis: verdict.promote ? 'loo-and-shuffle' : prov.method === 'loo-vote' ? 'loo-vote' : 'single-case',
   };
   table.push({

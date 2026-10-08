@@ -124,6 +124,8 @@ export function predictTimeline(o) {
     ctxOf[key] = {
       palaceRows, transits, dashaChanged,
       timeKnown: fortune.input.timeKnown,
+      // 사주에서 자녀·배우자를 보는 십성은 성별로 갈린다 (adapters.js 의 seatGodsOf)
+      isMale: fortune.input.isMale,
       vedic: vedicCharts,
       year: yearRow[m.year] ?? null,
       daeun: safe(() => daeunAt(fortune.input, fortune.chart, m.jd)),

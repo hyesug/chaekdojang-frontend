@@ -110,6 +110,30 @@ const SAJU_SEAT_GODS = {
 };
 
 /**
+ * 성별로 갈리는 자리 — 명리 표준 배당 (compose/timing.js 의 DOMAIN_GOD 와 같은 규칙).
+ *
+ *   자녀  여: 식상(내가 낳는 것)   남: 관성(나를 이끄는 것 = 자식)
+ *   배우자 여: 관성               남: 재성
+ *
+ * 전에는 자녀를 성별 없이 식상으로만 봤다. 그러면 **모든 남성의 자녀 시기가
+ * 교과서와 다른 십성으로 계산된다.** 연 단위 리포트(compose/timing.js)는 이미
+ * 성별로 갈랐는데 월 단위 시기만 빠져 있었다 — 같은 규칙을 두 곳에서 다르게 쓴 것이다.
+ * 성별을 모르면(ctx 없음) 예전처럼 두 무리를 함께 본다.
+ */
+const SAJU_GENDERED_SEAT = {
+  children: { female: ['식신', '상관'], male: ['정관', '편관'] },
+  // 결혼·관계도 교과서로는 성별로 갈리지만(여 관성·남 재성) 검증 사례 3건에서
+  // 한 건은 나아지고 한 건은 크게 나빠졌다(관계 83%→39%). 근거가 모자라 아직
+  // 두 무리를 함께 보는 예전 방식을 둔다. 사례가 쌓이면 다시 잰다.
+};
+
+export function seatGodsOf(domain, isMale = null) {
+  const g = SAJU_GENDERED_SEAT[domain];
+  if (!g || isMale == null) return SAJU_SEAT_GODS[domain];
+  return isMale ? g.male : g.female;
+}
+
+/**
  * 근묘화실 — 원국의 어느 기둥이 그 분야의 자리인가.
  *
  * 년주=뿌리·조상, 월주=부모·사회·직업, 일주=자신과 배우자, 시주=자녀·말년.
@@ -161,7 +185,7 @@ export function sajuTiming(month, period, ctx = null) {
   const daeunTurn = Number.isFinite(toTurn) && toTurn < 1;
 
   for (const d of DOMAINS) {
-    const seat = SAJU_SEAT_GODS[d];
+    const seat = seatGodsOf(d, ctx?.isMale ?? null);
     if (!seat) { activations[d] = null; continue; }
 
     const onMonth = monthGods.filter((g) => seat.includes(g)).length;

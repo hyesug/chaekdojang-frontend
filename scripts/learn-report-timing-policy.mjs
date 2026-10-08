@@ -13,16 +13,19 @@ import { scoreEvent, scoreEventYearly } from '../public/unse/src/validation/timi
 import { selectTimingPolicy, selectProvisionalPolicy } from '../public/unse/src/validation/timingPolicy.js';
 import { seededRandom } from '../public/unse/src/semantic/timing/schema.js';
 
-// 사례는 여러 파일에 나뉘어 있다(모두 .gitignore — 개인정보). 인자를 주면 그 파일만 쓴다.
+// 사례는 여러 파일에 나뉘어 있다(모두 .gitignore — 개인정보). 인자를 주면 그 파일들만 쓴다.
 //   validation/cases.json             지인 사례 (birth · events[year, month])
-//   validation-data/cases.json        유명인 사례 — 생시 출처 미검증 (profile · events[date 'YYYY-MM'])
-//   validation-data/people.json       지인 사례 (같은 형식)
+//   validation-data/people.json       지인 사례 (profile · events[date 'YYYY-MM'])
 //   validation-data/profile-cases.json 지인 사례 (같은 형식)
-const DEFAULT_FILES = ['validation/cases.json', 'validation-data/cases.json',
-  'validation-data/people.json', 'validation-data/profile-cases.json'];
-const files = process.argv[2] ? [process.argv[2]] : DEFAULT_FILES.filter((f) => existsSync(f));
+//   validation-data/cases.json        유명인 사례 — 생시 출처 미검증
+// 체계 선택은 본인·지인이 확인한 사례로만 한다. 유명인은 생시가 불확실해 따로 검증한다(--celebs).
+const REAL_FILES = ['validation/cases.json', 'validation-data/people.json', 'validation-data/profile-cases.json'];
+const CELEB_FILES = ['validation-data/cases.json'];
+const args = process.argv.slice(2);
+const files = args.includes('--celebs') ? CELEB_FILES
+  : args.length ? args : REAL_FILES.filter((f) => existsSync(f));
 if (!files.length || !files.every((f) => existsSync(f))) {
-  console.error(`${files.join(', ') || DEFAULT_FILES[0]} 이 없습니다.`);
+  console.error(`${files.join(', ') || REAL_FILES[0]} 이 없습니다.`);
   process.exit(1);
 }
 

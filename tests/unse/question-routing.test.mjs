@@ -136,7 +136,8 @@ test('숙요 관계가 문맥에 실린다', () => {
 });
 
 test('현재 다샤가 날짜와 함께 실린다', () => {
-  const c = payload('언제 이직해?');
+  // 시기 체계에 베딕이 들어간 분야(재물 = 베딕+마하보테)로 묻는다 — policy.js 가 분야별 체계를 고른다
+  const c = payload('언제 목돈이 들어와?');
   assert.match(c, /다샤|MD |Mahadasha/i);
   assert.match(c, /(MD|AD) \S+ 시작 \(\d{4}년 \d{1,2}월/, '다샤 전환에 날짜가 붙어야 한다');
 });

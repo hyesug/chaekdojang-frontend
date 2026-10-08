@@ -22,7 +22,8 @@
     "unse:dictionary": "node scripts/build-dictionary.mjs validation/people.json",
     "unse:timing": "node scripts/timing-coverage.mjs",
     "unse:timing-validate": "node scripts/validate-timing.mjs",
-    "unse:timing-learn": "node scripts/learn-report-timing-policy.mjs"
+    "unse:timing-learn": "node scripts/learn-report-timing-policy.mjs",
+    "unse:timing-learn:celebs": "node scripts/learn-report-timing-policy.mjs --celebs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

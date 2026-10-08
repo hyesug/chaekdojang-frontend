@@ -216,25 +216,9 @@ function selectedWindows(r, label, span = 15, count = 3) {
   const result = domain && policy ? reportTimeline(r) : null;
   if (!result) return [];
   const until = `${Number(r.input.currentYear) + span - 1}-12`;
-  let windows = peakWindows(result, domain, 12, 80).filter((w) => w.from <= until);
-  // 결혼과 자녀 신호의 순서가 뒤집혀 읽히지 않게 맞춘다. 기준은 **자녀 신호** —
-  // 검증에서 더 단단했다(사람 7명 빼고 고르기 7번 모두 사주+9개월, 가설 뒤 사례도 적중).
-  // 아직 결혼하지 않았거나 모르는 사람에게는 가장 높은 자녀 신호보다 앞선 결혼 신호를 앞에 둔다.
-  // 단, 보여 줄 상위 창 안에서만 순서를 바꾼다 — 5위 같은 약한 창을 1위로 끌어올리면
-  // "올해 말 결혼 신호가 가장 높다"처럼 근거 없는 말이 된다(99년생 사례 피드백).
-  let afterChildren = false;
-  if (label === '결혼' && !isMarried(r)) {
-    const child = selectedWindows(r, '자녀', span, 1)[0];
-    if (child) {
-      const top = windows.slice(0, count);
-      const before = top.filter((w) => w.from <= child.to);
-      if (before.length) windows = [...before, ...top.filter((w) => !before.includes(w))];
-      afterChildren = !before.length;
-    }
-  }
-  const picked = windows.slice(0, count);
-  picked.afterChildren = afterChildren;
-  return picked;
+  // 결혼과 자녀는 서로 다른 체계로 따로 고른 신호다. 순서를 서로 맞추지 않는다 —
+  // 맞추려고 끼워 넣으면 검증된 순위가 아닌 약한 창이 앞에 나왔다(99년생 사례 피드백).
+  return peakWindows(result, domain, 12, 80).filter((w) => w.from <= until).slice(0, count);
 }
 
 const monthsBetween = (a, b) => {
@@ -290,8 +274,7 @@ function timingOf(r, domain, span = 10) {
   const spans = windows.map((w) => selectedSpan(r, w));
   if (!spans.length) return '';
   const rest = spans.length > 1 ? `가장 높고, 그다음은 ${esc(spans.slice(1).join(', '))}입니다` : '가장 높습니다';
-  const order = windows.afterChildren ? ' 이 신호는 자녀 신호보다 뒤에 나옵니다. 자녀 시기와 함께 보세요.' : '';
-  return `<p class="rp-t rp-when">${esc(label)} 신호는 <strong>${esc(spans[0])}</strong>에 ${rest}.${order}</p>`;
+  return `<p class="rp-t rp-when">${esc(label)} 신호는 <strong>${esc(spans[0])}</strong>에 ${rest}.</p>`;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -631,8 +614,7 @@ function finale(r) {
     const spans = windows.map((w) => selectedSpan(r, w));
     const text = (spans.length === 1
       ? `${esc(what)}는 <strong>${esc(spans[0])}</strong>에 신호가 가장 높습니다.`
-      : `${esc(what)}는 <strong>${esc(spans.join(', '))}</strong> 순으로 신호가 높습니다.`)
-      + (windows.afterChildren ? ' 자녀 신호보다 뒤에 나오는 신호입니다.' : '');
+      : `${esc(what)}는 <strong>${esc(spans.join(', '))}</strong> 순으로 신호가 높습니다.`);
     items.push(`<li><span class="rp-ic" aria-hidden="true">${icon}</span><div><p>${text}</p></div></li>`);
   }
   const principles = [

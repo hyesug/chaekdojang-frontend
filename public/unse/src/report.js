@@ -174,7 +174,8 @@ const sub = (n, title, body) => !body ? '' :
  * 문서의 "2027 丁未 | 丑未冲으로 직장·조직 변화" 가 이 모양이다. 주제와
  * 무관한 연운 문구를 쓰면 제목과 내용이 따로 논다.
  */
-const TIMING_LABEL = { 결혼: '결혼·인연', 자녀: '자녀', 이사: '이사·이동', 직업: '일의 변화', 재물: '목돈' };
+// 자녀는 사주 신호가 임신 무렵에 켜진다(검증) — 출산은 그 뒤 아홉 달 안팎이다
+const TIMING_LABEL = { 결혼: '결혼·인연', 자녀: '자녀가 들어오는(임신)', 이사: '이사·이동', 직업: '일의 변화', 재물: '목돈' };
 /** "2027~2028년 (35~36세)" → "2027~2028년(35~36세)" */
 const spanText = (w) => `${w.span}${w.ageLabel ? `(${w.ageLabel})` : ''}`;
 
@@ -186,8 +187,10 @@ const spanText = (w) => `${w.span}${w.ageLabel ? `(${w.ageLabel})` : ''}`;
  * 시기 검증(npm run unse:timing-validate)에서 연·월 적중이 우연과 구별되지 않았으므로
  * 가르지 못한 경우는 가르지 못했다고 쓴다.
  */
-function isDecisive(windows) {
+function isDecisive(windows, sajuOnly = false) {
   if (!windows?.length) return false;
+  // 사주 단독 분야(자녀)는 체계 수가 늘 1 이다 — 천간·지지가 함께 든 해(n=2)가 하나뿐일 때만 앞선다고 본다
+  if (sajuOnly) return windows[0].n > (windows[1]?.n ?? 0);
   if (windows.length === 1) return windows[0].systems.length >= 2;
   return windows[0].systems.length > windows[1].systems.length;
 }
@@ -213,7 +216,7 @@ function timingOf(r, domain, span = 10) {
   const spans = (t.windows ?? []).slice(0, 3).map(spanText);
   if (!spans.length) return '';
   const label = TIMING_LABEL[domain] ?? domain;
-  if (!isDecisive(t.windows)) {
+  if (!isDecisive(t.windows, t.sajuOnly)) {
     return `<p class="rp-t rp-when">${esc(label)} 쪽은 <strong>${esc(spans.join(', '))}</strong>에 신호가 비슷하게 걸려 있어, 한 해를 꼽기 어렵습니다.</p>`;
   }
   const first = (t.windows ?? [])[0];
@@ -531,7 +534,7 @@ function finale(r) {
     ['직업', '💼', '일에서 가장 큰 기회와 변화가 오는 때'],
     ['재물', '💰', '돈이 가장 크게 들어오는 때'],
     ['결혼', '💞', '인연·관계가 가장 무르익는 때'],
-    ['자녀', '👶', '자녀 인연이 가장 강한 때'],
+    ['자녀', '👶', '자녀가 들어오기(임신) 쉬운 때'],
     ['이사', '🏠', '이사·이동하기 가장 좋은 때'],
   ]) {
     if (domain === '결혼' && isMarried(r)) continue;
@@ -541,7 +544,7 @@ function finale(r) {
         { from, to: from + 14 });
       const ws = t.windows ?? [];
       if (!ws.length) continue;
-      const text = isDecisive(ws)
+      const text = isDecisive(ws, t.sajuOnly)
         ? `${esc(what)}는 <strong>${esc(spanText(ws[0]))}</strong>입니다.`
         : `${esc(what)}는 <strong>${esc(ws.slice(0, 2).map(spanText).join(', '))}</strong>로 나뉘어 한쪽을 꼽기 어렵습니다.`;
       items.push(`<li><span class="rp-ic" aria-hidden="true">${icon}</span><div><p>${text}</p></div></li>`);
@@ -556,7 +559,7 @@ function finale(r) {
     '운세는 선택을 대신하는 도구가 아니라, 되풀이되는 패턴을 점검하는 보조 자료입니다.',
   ];
   return sub('', '앞으로 15년, 분야마다 신호가 모이는 때', (items.length ? `<ul class="rp-bul">${items.join('')}</ul>` : '')
-      + '<p class="rp-fine">시기는 참고로만 보세요. 실제 사례로 맞혀 봤을 때 연도·달을 짚는 정확도는 우연과 구별되지 않았습니다.</p>')
+      + '<p class="rp-fine">시기는 참고로만 보세요. 실제 사례로 맞혀 봤을 때 자녀(임신) 시기는 비교적 잘 짚었지만 사례가 아직 적고, 다른 분야는 연도·달을 짚는 정확도가 높지 않았습니다.</p>')
     + sub('', '실행 원칙', `<ul class="rp-ul">${principles.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`);
 }
 

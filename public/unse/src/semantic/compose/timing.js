@@ -171,11 +171,17 @@ export function timingFor(input, chart, domain, { from, to } = {}) {
   const y0 = from ?? input.currentYear;
   const y1 = to ?? (y0 + 15);
 
-  const all = [
-    ...sajuYears(input, chart, domain, y0, y1),
-    ...ziweiYears(input, domain, y0, y1),
-    ...vedicYears(input, domain, y0, y1),
-  ];
+  // 자녀는 사주 단독 — 검증에서 자미·베딕을 섞으면 사주 신호가 지워졌다
+  // (semantic/timing/timeline.js 의 DOMAIN_ONLY 설명). 사주 신호는 출산보다
+  // **임신 무렵**에 켜지므로 리포트는 이 해를 "자녀가 들어오는 해"로 읽는다.
+  const sajuOnly = domain === '자녀';
+  const all = sajuOnly
+    ? sajuYears(input, chart, domain, y0, y1)
+    : [
+      ...sajuYears(input, chart, domain, y0, y1),
+      ...ziweiYears(input, domain, y0, y1),
+      ...vedicYears(input, domain, y0, y1),
+    ];
   if (!all.length) return { rows: [], windows: [], measured: MEASURED };
 
   const byYear = new Map();
@@ -195,7 +201,9 @@ export function timingFor(input, chart, domain, { from, to } = {}) {
 
   return {
     rows,
-    windows: windowsOf(rows, 2, input.year),
+    // 체계가 하나뿐이면 "두 체계 이상 동의" 조건을 걸 수 없다 — 천간·지지가 함께 든 해를 앞에 둔다
+    windows: windowsOf(rows, sajuOnly ? 1 : 2, input.year),
+    sajuOnly,
     background: ziweiBackground(input, domain, y0, y1),
     measured: MEASURED,
   };

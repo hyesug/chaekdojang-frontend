@@ -39,6 +39,22 @@ const safe = (fn) => { try { return fn(); } catch { return null; } };
 const AUX_IDS = SYSTEM_IDS.filter((id) => !['saju', 'jamidusu', 'astrology', 'vedic'].includes(id));
 
 /**
+ * 자녀 시기 — **사주 단독, 아홉 달 앞의 신호로 출산 달을 본다.**
+ *
+ * 검증 사례(사람 6명·출산 9건, validation/cases.json)를 체계마다 따로 재 보니
+ *   · 출산 달에서는 어느 체계도 우연(50%)과 구별되지 않았다(44~57%).
+ *   · 사주의 자녀 신호는 출산 **아홉 달 전**(임신 무렵)에 가장 높았다 — 평균 73%,
+ *     9건 중 7건에서 출산 달보다 높았다.
+ *   · 네 체계를 섞으면 그 신호가 지워졌다(임신 무렵 38%). 자미·점성은 32% 안팎.
+ *   · 한 사람씩 빼고 나머지로 조합을 골라도 매번 "사주 단독"이 뽑혔고, 뺀 사람에게도
+ *     평균 73% 가 유지됐다. 가설을 세운 뒤 들어온 사례(P04)도 56% 로 같은 쪽이었다.
+ * 그래서 자녀는 사주 하나만 쓰고, 그 신호를 아홉 달 뒤의 출산으로 옮긴다.
+ * **잠정 규칙이다.** 사례가 30건쯤 모이면 다시 잰다(npm run unse:timing-validate).
+ */
+const DOMAIN_ONLY = { children: ['saju'] };
+const DOMAIN_LEAD_MONTHS = { children: 9 };
+
+/**
  * 시기별 해석.
  *
  * @param {object} o
@@ -55,12 +71,16 @@ export function predictTimeline(o) {
   const natal = readPerson(birth, { domains: want });
   const { fortune, stack } = natalFortune(birth);
 
-  const y0 = Number(String(from).slice(0, 4));
-  const y1 = Number(String(to).slice(0, 4));
   const lo = monthNo(from), hi = monthNo(to);
+  // 앞당겨 보는 분야(자녀)가 있으면 그만큼 앞의 달도 계산한다 — 사주만 쓴다
+  const lead = Math.max(0, ...want.map((d) => DOMAIN_LEAD_MONTHS[d] ?? 0));
+  const loCalc = lo - lead;
+  const y0 = Math.floor(loCalc / 12);
+  const y1 = Number(String(to).slice(0, 4));
 
   // ── 네 체계의 시기 재료 — grid 가 절기월 축 위에 놓아 둔다 ──
   const months = [];
+  const leadMonths = [];     // lo 앞쪽 — 사주 신호만 쓴다
   let board = null;
   const yearRow = {};        // 연도 → annualTrack 행 (세운 십성·환갑)
   for (let y = y0; y <= y1; y += 6) {
@@ -72,8 +92,8 @@ export function predictTimeline(o) {
     for (const m of g?.months ?? []) {
       const key = `${m.from.y}-${String(m.from.m).padStart(2, '0')}`;
       const n = monthNo(key);
-      if (n < lo || n > hi) continue;
-      months.push({ key, n, m });
+      if (n < loCalc || n > hi) continue;
+      (n < lo ? leadMonths : months).push({ key, n, m });
     }
   }
   months.sort((a, b) => a.n - b.n);
@@ -193,12 +213,30 @@ export function predictTimeline(o) {
     perMonth.push({ key, signals });
   }
 
+  // 앞쪽 달의 사주 신호 — 자녀처럼 앞당겨 보는 분야만 쓴다
+  const sajuAt = Object.fromEntries(perMonth.map(({ key, signals }) => [key, signals[0]]));
+  for (const { key, m } of leadMonths) {
+    sajuAt[key] = safe(() => sajuTiming(m, key, {
+      isMale: fortune.input.isMale,
+      year: yearRow[m.year] ?? null,
+      daeun: safe(() => daeunAt(fortune.input, fortune.chart, m.jd)),
+    }));
+  }
+
   // ── 분야마다 합친다 ──
   const pooled = {};   // domain → key → { activation, shift, consensus, contributors }
   for (const d of want) {
     pooled[d] = {};
+    const only = DOMAIN_ONLY[d];
+    const shiftBy = DOMAIN_LEAD_MONTHS[d] ?? 0;
     for (const { key, signals } of perMonth) {
-      pooled[d][key] = poolDomainMonth(signals, d, RESOLUTION[d]);
+      if (only?.length === 1 && only[0] === 'saju' && shiftBy) {
+        const src = sajuAt[monthKey(monthNo(key) - shiftBy)];
+        pooled[d][key] = poolDomainMonth(src ? [src] : [], d, RESOLUTION[d]);
+        continue;
+      }
+      const use = only ? signals.filter((s) => only.includes(s.system)) : signals;
+      pooled[d][key] = poolDomainMonth(use, d, RESOLUTION[d]);
     }
   }
 

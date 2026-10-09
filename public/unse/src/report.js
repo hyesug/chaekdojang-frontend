@@ -271,16 +271,16 @@ function s13(r) {
     + para(nextLine);
 }
 
-/** 사례로 검증된 직업 범주 — 자미두수·육임·숙요 (docs/unse/rebuild-result.md) */
+/** 가능성이 높은 직업 범주 — 자미두수·육임·숙요 (docs/unse/rebuild-result.md) */
 function verifiedCareerLine(r) {
   let vc = null;
   try { vc = verifiedCareer(r.input); } catch { /* */ }
   if (!vc?.available) return '';
-  return para(`가장 잘 맞는 직업 분야는 ${vc.top.map((x) => x.label).join(', ')} 순입니다.`);
+  return para(`가능성이 높은 직업 분야는 ${vc.top.map((x) => x.label).join(', ')} 쪽입니다.`);
 }
 
 const careerLife = (v, r) =>
-  sub('', '잘 맞는 직업 분야', verifiedCareerLine(r))
+  sub('', '가능성이 높은 직업 분야', verifiedCareerLine(r))
   + sub('', '내 커리어 무기와 자산 스타일', s13(r))
   + sub('', '사회에서 보이는 나', s12(r))
   + sub('', '타고난 성향', readings(r, '사주', 3));
@@ -674,13 +674,13 @@ function actionItems(r, v, me, s) {
     if (t) used.add(t);
     return t ?? '';
   };
-  const strip = (t) => String(t ?? '').replace(/^다만s+/, '');
+  const strip = (t) => String(t ?? '').replace(/^다만\s+/, '');
   const natOf = (palace, who) => { try { return natureOf(palaceStars(r.input, palace), who); } catch { return null; } };
 
   // DO — 일할 때의 나(관록궁 별)가 자라는 방향. 별 조합이라 사람마다 갈린다. 시각이 없으면 지금 시즌
   const work = natOf('관록궁', '일할 때의 나');
   const grow = String(work?.text ?? '').replace(/\*\*/g, '').match(/자라는 방향은 ([^.]+?)입니다/)?.[1];
-  const doHead = grow ? `${grow.replace(/s*쪽$/, '')} 쪽으로 움직이세요.` : (s.act ? `${s.act}.` : '');
+  const doHead = grow ? `${grow.replace(/\s*쪽$/, '')} 쪽으로 움직이세요.` : (s.act ? `${s.act}.` : '');
   const doWhy = grow && work?.traits?.length
     ? `일할 때의 나는 ${work.traits.slice(0, 3).join(', ')} 쪽이라, 이 힘이 그대로 쓰이는 자리에서 성과가 납니다.`
     : [take(pickOf(withSrc(v.work?.job), /편이 낫|잘 됩니다|좋습니다/)), s.seasonTips?.[0]?.[2] ? take(s.seasonTips[0][2]) : ''].filter(Boolean).join(' ');
@@ -817,30 +817,29 @@ function lifeFlow(r) {
       { from: now, to: now + 30, minSystems: 2, birthYear: r.input.year }).slice(0, 4);
   } catch { /* */ }
   // 그 해에 **무엇이** 바뀌는지 — 주기마다 쉬운 이름과, 새로 시작되는 구간의 뜻
+  // 그 해에 삶의 무엇이 바뀌는지만 말한다 — 어느 체계의 어떤 주기인지는 손님이 알 필요가 없다
   const startLine = (st) => {
     if (st.system === '사주') {
-      const g = TEN_GOD_GROUP[String(st.detail ?? '').replace(/^천간s*/, '')];
-      return g ? `사주로 보는 10년 운이 바뀌어 '${GOD_FIELD[g]}'의 십 년이 시작됩니다` : '사주로 보는 10년 운이 바뀝니다';
+      const g = TEN_GOD_GROUP[String(st.detail ?? '').replace(/^천간\s*/, '')];
+      return g ? `'${GOD_FIELD[g]}'이 삶의 중심 주제로 올라옵니다` : '';
     }
     if (st.system === '자미두수') {
-      const pal = String(st.label ?? '').match(/원국의s*(S+궁)/)?.[1];
-      return pal && AREA[pal] ? `별자리판으로 보는 10년 운이 바뀌어 '${AREA[pal]}' 쪽이 삶의 앞자리로 나옵니다` : '별자리판으로 보는 10년 운이 바뀝니다';
+      const pal = String(st.label ?? '').match(/원국의\s*(\S+궁)/)?.[1];
+      return pal && AREA[pal] ? `'${AREA[pal]}' 쪽이 삶의 앞자리로 나옵니다` : '';
     }
     if (st.system === '베딕') {
       const p = String(st.label ?? '').split(' ')[0];
-      return PLANET_TERM[p] ? `인도 점성의 행성 주기가 ${p}의 ${st.toAge - st.fromAge + 1}년으로 바뀌어 ${j(PLANET_TERM[p], '이')} 주제가 됩니다` : '인도 점성의 행성 주기가 바뀝니다';
+      return PLANET_TERM[p] ? `${j(PLANET_TERM[p], '이')} 오래 이어질 주제가 됩니다` : '';
     }
-    if (st.system === '구성학') return '9년마다 도는 주기가 새로 시작돼, 씨를 뿌리는 해부터 다시 셉니다';
-    if (st.system === '카발라') return '숫자로 보는 9년 주기가 새로 시작됩니다';
-    if (st.system === '고전 서양') return `서양 고전 점성의 큰 구간이 ${st.toAge - st.fromAge + 1}년짜리 새 구간으로 넘어갑니다`;
-    if (st.system === '태을신수') return '24년마다 도는 큰 주기가 한 바퀴를 새로 돕니다';
+    if (st.system === '구성학' || st.system === '카발라') return '하나를 매듭짓고 새로 씨를 뿌리는 시기가 시작됩니다';
+    if (st.system === '고전 서양') return '삶의 큰 무대가 바뀝니다';
+    if (st.system === '태을신수') return '오래 이어진 흐름이 한 바퀴를 돌아 새로 시작됩니다';
     return '';
   };
   const turnRows = turns.map((t) => {
     const what = [...new Set(t.starts.map(startLine).filter(Boolean))];
     return [`${t.year}년 (${t.age}세)`,
-      `이 해에 큰 주기 ${t.systems.length}개가 함께 바뀝니다. ${what.join('. ')}.`
-      + ' 둘 이상이 한 해에 겹쳐 바뀌어, 하던 일의 방향이나 생활의 틀을 다시 짜게 되기 쉬운 때입니다.'];
+      `${what.length ? `${what.join('. ')}. ` : ''}하던 일의 방향이나 생활의 틀을 다시 짜게 되기 쉬운 때입니다.`];
   });
 
   return (rows.length ? timeline(rows) : '')

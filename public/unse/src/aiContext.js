@@ -147,14 +147,14 @@ function formatSpouse(input, chart, fortune) {
 }
 
 /**
- * 직업 종합 — 리포트의 "잘 맞는 직업 분야"와 같은 계산(자미두수·육임·숙요 합산 상위 3범주).
+ * 직업 종합 — 리포트의 "가능성이 높은 직업 분야"와 같은 계산(자미두수·육임·숙요 합산 상위 3범주).
  * 출생 시각이 없으면 셋을 다 세울 수 없어 분야를 단정하지 않는다.
  */
 function careerVerdict(input) {
   let vc = null;
   try { vc = verifiedCareer(input); } catch { /* */ }
   if (!vc?.available) return ['직업 분야는 단정하지 말고 위 전통 읽기의 성향으로만 답할 것.'];
-  return [`가장 잘 맞는 직업 분야: ${vc.top.map((x) => `${x.label}(예: ${x.examples.join('·')})`).join(', ')} 순.`,
+  return [`가능성이 높은 직업 분야(단정하지 말고 '가능성이 높다'로 말할 것): ${vc.top.map((x) => `${x.label}(예: ${x.examples.join('·')})`).join(', ')} 순.`,
     '직업 분야는 이 순서를 그대로 쓸 것. "이직할 사람인지 한 우물 팔 사람인지"는 단정하지 말 것.'];
 }
 

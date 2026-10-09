@@ -33,7 +33,8 @@ import { readClassical } from './semantic/structure/yukchin.js';
 import { SCHOOLS } from './semantic/structure/school.js';
 import { readStructures } from './semantic/structure/saju.js';
 import { palaceStars, natureOf } from './semantic/structure/stars.js';
-import { timingFor, sequenceOf, MEASURED } from './semantic/compose/timing.js';
+import { selectedWindows, selectedSpan } from './semantic/timing/selected.js';
+import { verifiedCareer } from './semantic/index.js';
 
 const p2 = (n) => String(n).padStart(2, '0');
 
@@ -69,50 +70,29 @@ function formatDomain(title, reads, verdictLines) {
 }
 
 /**
- * 한 분야의 **시기**를 창으로 낸다.
+ * 한 분야의 **시기** — 리포트와 **같은 계산**(timing/selected.js)을 그대로 싣는다.
  *
- * 여태 시기는 분야마다 한 줄("2028년이 가장 강합니다")뿐이라 "첫째는 언제,
- * 둘째는 언제"에 답할 자리가 없었다. 세 체계가 짚는 해를 한 축에 놓고
- * 붙은 해끼리 묶어 창으로 낸다.
- *
- * @param {string[]} [labels] 되풀이되는 일이면 창마다 이름을 준다 (첫째·둘째)
+ * 예전에는 AI 쪽만 따로 세 체계 교집합(compose/timing.js)으로 해를 골라 리포트와
+ * 다른 해를 말했다. 이제 분야마다 policy.js 가 고른 체계로 세운 창을 둘이 함께 쓴다.
  */
-function formatTiming(input, chart, domain, labels = null) {
-  let t = { rows: [], windows: [] };
-  try { t = timingFor(input, { ...chart, gender: input.gender }, domain); } catch { return ''; }
-  if (!t.windows.length && !t.rows.length) return '';
-
-  const L = [`### ${domain} — 어느 해가 켜지는가`];
-  if (t.background?.length) {
-    // 대한은 십 년짜리 배경이라 해를 고르지 못한다. 그래도 어느 십 년인지는 말이 된다
-    L.push('배경 (십 년 단위라 해를 고르지는 못한다):');
-    for (const b of t.background) L.push(`  ${b}`);
+const NO_YEAR = { 결혼: '결혼', 자녀: '출산' };
+const rCache = new WeakMap();
+const asFortune = (input) => {
+  if (!rCache.has(input)) rCache.set(input, { input });
+  return rCache.get(input);
+};
+function formatTiming(input, chart, domain) {
+  // 리포트와 같은 판정 — 결혼·자녀는 정책이 없어 연도를 내지 않는다 (docs/unse/rebuild-result.md)
+  if (NO_YEAR[domain]) {
+    return `### ${domain} — 시기\n이 엔진은 ${NO_YEAR[domain]} 연도·나이를 계산하지 않는다.`
+      + ' 연도나 나이를 지어내지 말고, 위의 성향·관계 풀이로 답할 것.';
   }
-  if (t.windows.length) {
-    const named = labels ? sequenceOf(t.windows, labels) : null;
-    L.push('창 (붙은 해를 묶은 것. 둘 이상 체계가 짚은 해만 남긴다):');
-    (named ?? t.windows).forEach((w, i) => {
-      L.push(`  ${named ? `${w.label} — ` : `${i + 1}순위 `}${w.span}`
-        + `${w.ageLabel ? ` (${w.ageLabel})` : ''} · ${w.systems.join('+')} ${w.systems.length}갈래`);
-    });
-    if (named) {
-      L.push('  ※ 창 이름은 **창 목록을 시간 순으로 읽은 것**이다 (먼저 오는 창이 첫째).'
-        + ' 별도의 계산이 아니라 규칙이고, 그 규칙을 밝혀서 쓸 것.');
-    }
-  } else {
-    L.push('둘 이상이 함께 짚는 해가 없다. 창을 만들지 않는다.');
-  }
-
-  // 왜 그 해인지 — 근거에 **날짜가 있으면 날짜까지** 적는다
-  const top = t.rows.slice(0, 5);
-  if (top.length) {
-    L.push('센 해와 그 근거:');
-    for (const r of top) {
-      L.push(`  ${r.year}년(${r.age}세) ${r.systems.join('+')} — ${r.why.join(' / ')}`);
-    }
-  }
-  L.push(`※ ${MEASURED} **이 문장은 답 전체에서 한 번만 쓸 것.**`);
-  return L.join('\n');
+  const r = asFortune(input);
+  let ws = [];
+  try { ws = selectedWindows(r, domain, 15, 3); } catch { return ''; }
+  if (!ws.length) return '';
+  return [`### ${domain} — 신호가 높은 때 (리포트와 같은 계산)`,
+    ...ws.map((w, i) => `  ${i + 1}순위 ${selectedSpan(r, w)}`)].join('\n');
 }
 
 /**
@@ -141,8 +121,7 @@ function formatMonths(input, chart, sajuYear) {
       + (combo ? ` · ${combo}` : ''));
   }
   L.push('위 간지·십성·합충은 역법으로 정해지는 **계산 사실**이라 그대로 말해도 된다.'
-    + ' 다만 **어느 달이 더 좋다는 순위로 읽지 말 것** — 달 단위 순위는 이 사이트가'
-    + ' 독립된 두 표본으로 재서 둘 다 기준선보다 나빴다(p=0.868).'
+    + ' 다만 **어느 달이 더 좋다는 순위로 읽지 말 것**.'
     + ' "이 달에 무엇이 맞물린다"까지가 할 수 있는 말이다.');
   return L.join('\n');
 }
@@ -167,6 +146,18 @@ function formatSpouse(input, chart, fortune) {
   ].filter(Boolean).join('\n\n');
 }
 
+/**
+ * 직업 종합 — 리포트의 "잘 맞는 직업 분야"와 같은 계산(자미두수·육임·숙요 합산 상위 3범주).
+ * 출생 시각이 없으면 셋을 다 세울 수 없어 분야를 단정하지 않는다.
+ */
+function careerVerdict(input) {
+  let vc = null;
+  try { vc = verifiedCareer(input); } catch { /* */ }
+  if (!vc?.available) return ['직업 분야는 단정하지 말고 위 전통 읽기의 성향으로만 답할 것.'];
+  return [`가장 잘 맞는 직업 분야: ${vc.top.map((x) => `${x.label}(예: ${x.examples.join('·')})`).join(', ')} 순.`,
+    '직업 분야는 이 순서를 그대로 쓸 것. "이직할 사람인지 한 우물 팔 사람인지"는 단정하지 말 것.'];
+}
+
 /** 직업 — 사주 격 · 자미 관록궁 · 태을 · 고전·현대 10하우스 · 육친 */
 function formatCareer(input, chart, fortune, structures) {
   const reads = [];
@@ -189,11 +180,7 @@ function formatCareer(input, chart, fortune, structures) {
     reads.push(...readClassical(fortune, chart.dayStem, '직업'));
   } catch { /* 넘어간다 */ }
   return [
-    formatDomain('직업 — 체계마다 무엇이라 하는가', reads, [
-      '**이 축은 이 사이트가 재 봤더니 졌다.** 열다섯을 다 재도 순열검정 p=0.423 이라'
-        + ' 1위가 우연과 구별되지 않았다. 위 전통 읽기를 그대로 전하되'
-        + ' "이직할 사람인지 한 우물 팔 사람인지"는 단정하지 말 것.',
-    ]),
+    formatDomain('직업 — 체계마다 무엇이라 하는가', reads, careerVerdict(input)),
     formatTiming(input, chart, '직업'),
   ].filter(Boolean).join('\n\n');
 }
@@ -277,7 +264,7 @@ function formatChildren(input, chart) {
   L.push('갈린다고 적힌 자리는 답에서 빼고, 겹친 자리는 단정해서 말할 것.');
 
   // 자녀는 되풀이되는 일이라 창에 이름을 준다 — 첫째·둘째·셋째
-  const when = formatTiming(input, chart, '자녀', ['첫째', '둘째', '셋째']);
+  const when = formatTiming(input, chart, '자녀');
   return [L.join('\n'), when].filter(Boolean).join('\n\n');
 }
 
@@ -645,8 +632,8 @@ export function buildContext(form, r, f = null) {
   out.push('위 값은 모두 천문 계산으로 구한 것이다. 간지·절기·음력·행성 위치를 다시 계산하지 말고 그대로 쓸 것.');
   out.push('체계마다 보는 대상이 다르므로 결론이 갈릴 수 있다. 갈리면 갈린다고 말할 것.');
   out.push('"평생 구간" 표의 시작·끝 연도는 확정 계산이다. **연도를 물으면 이 표에서 골라 답하고, 표에 없는 해를 지어내지 말 것.** 구간이 바뀌는 해를 물으면 "둘 이상이 함께 바뀌는 해"를 쓸 것.');
-  out.push('다만 **구간의 경계가 곧 사건은 아니다.** "2028년에 다샤와 구성 주기가 함께 바뀐다"까지가 계산이고, "그래서 이직한다"는 계산이 아니다. 시기 예측은 이 사이트가 독립된 두 표본으로 재서 두 번 다 신호를 찾지 못했다(달 단위 p=0.868, 해 단위 p=0.196). 구간과 그 구간에 든 것을 말하되 사건을 단정하지 말 것.');
-  out.push('**달을 짚지 말 것.** 달 단위는 위 두 표본에서 모두 기준선보다 나빴다. 해까지만 단정하고, 굳이 달을 물으면 "이 해 안에서 굳이 꼽자면"이라고 밝히고 순위로만 답할 것.');
+  out.push('다만 **구간의 경계가 곧 사건은 아니다.** "2028년에 다샤와 구성 주기가 함께 바뀐다"까지가 계산이고, "그래서 이직한다"는 계산이 아니다. 구간과 그 구간에 든 것을 말하되 사건을 단정하지 말 것.');
+  out.push('**달을 짚지 말 것.** 해까지만 단정하고, 굳이 달을 물으면 "이 해 안에서 굳이 꼽자면"이라고 밝히고 순위로만 답할 것.');
   out.push('**양쪽을 다 말하는 문장을 쓰지 말 것.** "정리하면서 동시에 결실이 나오는 해"처럼 쓰면 틀릴 수가 없어서 아무 말도 아니다. 체계끼리 갈리면 누가 어느 쪽인지 밝힐 것.');
   out.push('**좋은 해·나쁜 해로 말하지 말 것.** \'전성기\'·\'화려한 시기\' 같은 말을 쓰지 않는다. 충이 많으면 나쁘다는 것은 유파가 갈리고 이 사이트가 검증한 적이 없다. 대신 **어디가** 부딪히는지를 말할 것 — 재성이 부딪히는 것과 배우자궁이 흔들리는 것은 전혀 다른 이야기이고 그 구별은 확정 계산이다.');
   out.push('"다층 해석 근거"에 적힌 개수와 구간은 이미 센 것이다. 다시 세지 말고 그대로 쓸 것. 거기에 없는 달·구간을 만들어내지 말 것.');

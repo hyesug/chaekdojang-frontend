@@ -236,6 +236,12 @@ export function readChildren(chart, ziweiChildStars = [], vedic = null, allStars
  * 만드는 것이 아니라 **갈렸다고 적고 수를 말하지 않는다.** 2명과 5명의 평균
  * 3.5명은 어느 전통의 말도 아니다.
  */
+/**
+ * 자녀 수를 말해도 되는가. 2026-10-09 사례 측정에서 자미 자녀궁 수 표가 확정된 7명 중 4명으로
+ * "2명"으로 찍기(8명 중 4명)와 같았다(docs/unse/rebuild-result.md). 사례가 쌓여 넘어서면 켠다.
+ */
+const COUNT_VERIFIED = false;
+
 export function childrenVerdict(reads) {
   const c = consensusOf(reads.filter((x) => x.topicKey === '열림'));
   const r = consensusRange(reads.filter((x) => x.range).map((x) => ({ system: x.system, n: x.range })));
@@ -252,14 +258,15 @@ export function childrenVerdict(reads) {
   }
 
   // **범위가 아니라 순위로 낸다.** "2~5명"은 답이 아니다 — 범위는 넓어질수록
-  // 뜻이 없어지지만 순위는 넓어져도 1위가 남는다
+  // 뜻이 없어지지만 순위는 넓어져도 1위가 남는다.
+  // 지금은 수를 내지 않는다(COUNT_VERIFIED) — 리포트·AI 모두 이 판정을 따른다
   const rank = rankRange(reads.flatMap((x) => x.rows ?? []), '명');
-  if (rank.top) {
+  if (!COUNT_VERIFIED) {
+    // 말하지 않는다
+  } else if (rank.top) {
     lines.push(`수는 **${rank.top.label}이 가장 유력**합니다 — ${rank.say}.`
       + ` (별마다의 표를 겹쳐 득표로 줄 세운 것이고, 확률이 아닙니다.`
-      + ` 이 사이트는 별의 밝기를 계산하지 않아 표 그대로 셉니다.)`
-      // 2026-10-09 사례 측정: 확정된 7명 중 4명 — "2명"으로 찍기(8명 중 4명)와 같았다
-      + ' 다만 실제 사례로 재 봤을 때 이 수 표는 그냥 찍는 것보다 낫지 않아, 참고로만 보세요.');
+      + ` 이 사이트는 별의 밝기를 계산하지 않아 표 그대로 셉니다.)`);
   } else if (r.verdict === '겹침') {
     lines.push(`수는 **${r.n[0] === r.n[1] ? `${r.n[0]}명` : `${r.n[0]}~${r.n[1]}명`}** — ${r.say}`);
   } else if (r.verdict === '갈림') {

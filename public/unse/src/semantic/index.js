@@ -111,7 +111,7 @@ export function verifiedCareer(birth) {
   for (const s of reads) for (const [k, v] of Object.entries(s.features)) sum[k] = (sum[k] ?? 0) + v / reads.length;
   const top = categorizeCareer(sum)?.levelC?.ranked?.slice(0, 3) ?? [];
   return { available: top.length > 0, top: top.map((x) => ({ key: x.key, label: x.label, examples: x.examples.slice(0, 3) })),
-    systems: reads.map((s) => s.systemName), measured: '사례 11명 중 8명 적중' };
+    systems: reads.map((s) => s.systemName) };
 }
 
 /**

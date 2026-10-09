@@ -897,8 +897,7 @@ function dictPrinciples(r) {
 }
 
 /**
- * 한눈에 보는 나 — 그 사람의 사전 항목 가운데 가장 드문 세 가지와, 그 셋이 한 사람에게 함께 있을 비율.
- * 비율은 무작위 2천 명에서 잰 각 항목의 비율을 곱한 대략값이다(체계끼리 서로 독립이라고 보고).
+ * 한눈에 보는 나 — 그 사람의 사전 항목 가운데 가장 드문 세 가지.
  * 세 문장은 "나는 어떤 사람인가"의 성격 칸이 다시 쓰지 않는다(SUMMARY_N 만큼 건너뛴다).
  */
 const SUMMARY_N = 3;
@@ -907,14 +906,7 @@ function atAGlance(r) {
   try { es = dictEntries(r); } catch { /* */ }
   const top = dictField(es, 'p', SUMMARY_N);
   if (!top.length) return '';
-  const odds = Math.round(1 / top.reduce((a, x) => a * Math.max(x.share, 0.001), 1));
-  // 독립이라고 본 곱셈이라 큰 값일수록 믿을 자릿수가 적다 — 만 명을 넘으면 자릿수를 말하지 않는다
-  const oddsText = odds >= 10000 ? '만 명 중 한 명도 나오기 어려운 조합입니다'
-    : `대략 ${(odds >= 1000 ? Math.round(odds / 1000) * 1000 : Math.round(odds / 10) * 10).toLocaleString('ko-KR')}명 중 1명꼴입니다`;
-  const oddsLine = top.length >= 2 && odds >= 20
-    ? `<p class="rp-fine">이 ${top.length}가지가 한 사람에게 함께 있는 경우는 ${oddsText}.</p>`
-    : '';
-  return `<ul class="rp-ul">${top.map((x) => `<li><b>${esc(x.text)}</b></li>`).join('')}</ul>` + oddsLine;
+  return `<ul class="rp-ul">${top.map((x) => `<li><b>${esc(x.text)}</b></li>`).join('')}</ul>`;
 }
 
 function lifeReport(form, r, f, v) {

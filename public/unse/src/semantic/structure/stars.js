@@ -133,6 +133,7 @@ export const HELPER_NATURE = {
 
 /** 한 궁에 든 별을 판에서 그대로 꺼낸다 (주성·보조 구분 없이) */
 export function palaceStars(input, palaceName) {
+  if (input?.timeKnown === false) return [];
   try {
     const b = buildBoard(input);
     const idx = PALACES.findIndex(([kr]) => kr === palaceName);

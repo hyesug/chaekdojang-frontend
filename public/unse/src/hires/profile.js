@@ -26,6 +26,7 @@ import { j } from '../core/josa.js';
 import * as VE from './vedicExt.js';
 import * as ZE from './ziweiExt.js';
 import { HOUSE_TOPIC } from './westernExt.js';
+import { partnerAgeLean } from '../semantic/structure/spouse.js';
 
 // ─────────────────────────────────────────────────────────────
 // 단언의 등급 — 근거가 얼마나 모였는가
@@ -216,10 +217,14 @@ export function spouseProfile(input, st = null) {
     older += 1.5; ageBasis.push('토성이 7궁에 들거나 7궁을 본다 — 나이차가 벌어지는 쪽');
   }
 
-  const ageValue = older === 0 && younger === 0 ? null
-    : older > younger + 1 ? '연상 쪽이 자연스럽다. 두세 살에서 예닐곱 살 위까지가 가장 무난한 범위'
-    : younger > older + 1 ? '동갑이나 연하 쪽이 자연스럽다. 동갑에서 서너 살 아래까지'
-    : '나이차가 크지 않은 쪽. 동갑 앞뒤 세 살 안쪽';
+  // 위 베딕·자미 신호는 근거로만 남기고, 답은 리포트와 같은 규칙(사주 일지)으로 낸다.
+  // 베딕·자미로 낸 답은 실제 사례 10명 중 1명만 맞았다(2026-10-09)
+  const ageLean = partnerAgeLean(input);
+  if (ageLean) ageBasis.unshift(ageLean.why);
+  const ageValue = !ageLean ? null
+    : ageLean.stance === '연상'
+      ? (ageLean.fallback ? '연상 쪽일 가능성이 높다(명반 근거가 아닌 일반 경향)' : '연상 쪽이 자연스럽다. 두세 살에서 예닐곱 살 위까지가 가장 무난한 범위')
+      : (ageLean.fallback ?'동갑이나 연하 쪽일 가능성이 높다(명반 근거가 아닌 일반 경향)' : '동갑이나 연하 쪽이 자연스럽다. 동갑에서 서너 살 아래까지');
 
   // ── 경제력 방향 ── 우파파다 2궁(UL2)이 배우자의 재물 자리다
   const ul2 = mp.upapada2;

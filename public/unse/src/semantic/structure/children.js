@@ -33,6 +33,7 @@ import { natureOf } from './stars.js';
  * 실제로 그렇게 비어서 공궁으로 잘못 읽었다. 판에서 가져온다.
  */
 export function childPalaceStars(input) {
+  if (input?.timeKnown === false) return [];
   try {
     const b = buildBoard(input);
     const idx = PALACES.findIndex(([kr]) => kr === '자녀궁');

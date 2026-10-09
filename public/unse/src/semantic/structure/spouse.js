@@ -44,8 +44,9 @@ const SPOUSE_STAR = {
   파군: { trade: '틀을 갈아엎는 일 — 변동이 큰 쪽', older: -1, stable: -2 },
 };
 
-/** 부처궁에 든 주성 */
+/** 부처궁에 든 주성 — 자미는 시각 없이 명궁을 못 세운다 */
 export function spousePalaceStars(input) {
+  if (input?.timeKnown === false) return [];
   try {
     const b = buildBoard(input);
     const idx = PALACES.findIndex(([kr]) => kr === '부처궁');
@@ -69,6 +70,25 @@ function spouseSeat(chart) {
     인성: { text: '인성이 앉았습니다. 기댈 언덕으로 삼거나 나이 차가 나는 쪽, 보살핌을 주고받는 관계입니다.', older: 1 },
   };
   return { god, branch: BRANCHES_KR[d.branch], ...KO[grp] };
+}
+
+/**
+ * 나이차 한 줄 — 리포트(readSpouse)와 AI 맥락(hires/profile.js)이 같은 답을 내도록
+ * 판정 규칙을 여기 하나에 둔다. 일지 십성이 말하면 그것, 아니면 성별 경향.
+ *
+ * @param {{dayStem:number, dayBranch:number, gender?:string}} p
+ * @returns {{stance:'연상'|'연하', fallback:boolean, why:string}|null}
+ */
+export function partnerAgeLean({ dayStem, dayBranch, gender }) {
+  if (dayStem == null || dayBranch == null) return null;
+  const god = tenGod(dayStem, MAIN_HIDDEN[dayBranch]);
+  const older = { 관성: 1, 인성: 1, 식상: -1 }[TEN_GOD_GROUP[god]] ?? 0;
+  if (older) {
+    return { stance: older > 0 ? '연상' : '연하', fallback: false, why: `사주 일지 ${god} (사례 6명 중 5 적중)` };
+  }
+  if (gender !== 'female' && gender !== 'male') return null;
+  return { stance: gender === 'female' ? '연상' : '연하', fallback: true,
+    why: `일지 ${god}은 나이차를 가리지 않아 성별 경향으로 채움 (사례 10명 중 8)` };
 }
 
 /**
@@ -106,13 +126,17 @@ export function readSpouse(chart, stars = [], vedic = null, allStars = []) {
       stance: null,
       trade: rows.map((r) => r.trade),
     });
+    // 나이차 판정에는 쓰지 않는다 — 실제 사례 10명에 대 보니 말한 5명 중 3명만
+    // 맞았다(2026-10-09). 전통이 뭐라 하는지만 참고로 남긴다
     out.push({
-      system: '자미두수', topicKey: '나이차', what: `부처궁 ${stars.join('·')}`,
-      text: older > 0 ? `나이는 **연상 쪽**으로 봅니다(${stars.join('·')}).`
-        : older < 0 ? `나이는 **연하 쪽**으로 봅니다(${stars.join('·')}).`
-        : `나이차는 한쪽으로 기울지 않습니다(${stars.join('·')}).`,
-      source: '자미두수 — 부처궁 주성의 연상·연하 배당',
-      stance: older > 0 ? '연상' : older < 0 ? '연하' : null,
+      system: '자미두수', topicKey: '나이차참고', what: `부처궁 ${stars.join('·')}`,
+      text: (older > 0 ? `전통적으로는 **연상 쪽**으로 봅니다(${stars.join('·')}).`
+        : older < 0 ? `전통적으로는 **연하 쪽**으로 봅니다(${stars.join('·')}).`
+        : `나이차는 한쪽으로 기울지 않습니다(${stars.join('·')}).`)
+        + ' 저희 사례에서는 다섯 중 셋만 맞아 판정에는 쓰지 않습니다.',
+      source: '자미두수 — 부처궁 주성의 연상·연하 배당 · 측정: 5명 중 3',
+      stance: null,
+      measured: '판정 제외',
     });
     // **재 봤더니 진 축.** 그래도 내되 결과를 함께 적는다
     out.push({
@@ -124,7 +148,7 @@ export function readSpouse(chart, stars = [], vedic = null, allStars = []) {
       stance: null,
       measured: '영점보다 나쁨',
     });
-  } else {
+  } else if (chart.timeKnown !== false) {
     out.push({
       system: '자미두수', topicKey: '직업', what: '부처궁 공궁',
       text: '부처궁에 주성이 없습니다(공궁). 마주 보는 궁을 빌려 읽는 자리라 직업을 표에서 뽑지 않습니다.',
@@ -141,14 +165,28 @@ export function readSpouse(chart, stars = [], vedic = null, allStars = []) {
       source: '연해자평 — 日支는 配偶宮이다',
       stance: null,
     });
+    // 나이차는 이 자리가 결정한다 — 사례 10명 중 이 자리가 말한 6명에서 5명 적중,
+    // 성별 경향과 합치면 10명 중 9명(한 사람 빼기 교차검증도 9/10, 2026-10-09).
+    // 일지가 말하지 않으면(비겁·재성) 성별 경향으로 채운다 — 그 자체로 10명 중 8명이다
     if (seat.older) {
       out.push({
         system: '사주', topicKey: '나이차', what: `일지 ${seat.god}`,
         text: `일지 ${seat.god}은 ${seat.older > 0 ? '연상' : '연하'} 쪽으로 봅니다.`,
-        source: '연해자평 — 日支 十星의 연상·연하 배당',
+        source: '연해자평 — 日支 十星의 연상·연하 배당 · 측정: 6명 중 5',
         stance: seat.older > 0 ? '연상' : '연하',
       });
     }
+  }
+  if (!seat?.older && (chart.gender === 'female' || chart.gender === 'male')) {
+    const stance = chart.gender === 'female' ? '연상' : '연하';
+    out.push({
+      system: '일반 경향', topicKey: '나이차', what: '체계가 나이차를 가리지 않는 경우',
+      text: `명반이 나이차를 따로 가리키지 않아, ${chart.gender === 'female' ? '여성은 연상' : '남성은 연하'}과`
+        + ' 맺어지는 경우가 많다는 일반적인 경향으로 봅니다.',
+      source: '사례 측정 — 성별 경향만으로 10명 중 8명',
+      stance,
+      fallback: true,
+    });
   }
 
   // ── 베딕 — 7하우스와 D9 ──
@@ -188,8 +226,17 @@ export function spouseVerdict(reads) {
       + ` 자미두수 부처궁 한 곳에서만 나온 값입니다.`);
   }
 
-  const age = consensusOf(reads.filter((r) => r.topicKey === '나이차'));
-  if (age.verdict === '겹침') {
+  // 나이차는 합의가 아니라 측정으로 고른 한 자리(사주 일지)가 정한다.
+  // 다른 체계를 섞으면 10명 중 5명으로 떨어졌다
+  const ageReads = reads.filter((r) => r.topicKey === '나이차' && r.stance);
+  const pick = ageReads.find((r) => r.system === '사주') ?? ageReads.find((r) => r.fallback);
+  const age = consensusOf(pick ? [pick] : []);
+  if (pick?.fallback) {
+    lines.push(`나이는 ${pick.stance} 쪽으로 봅니다. ${pick.text} 명반 근거가 아니라 경향이라 세게 말하지 않겠습니다.`);
+  } else if (pick) {
+    lines.push(`나이는 **${pick.stance}** 쪽입니다. 사주 배우자 자리(${pick.what})에서 나온 답이고,`
+      + ' 저희 사례에서 이 자리가 말한 여섯 명 중 다섯 명이 맞았습니다.');
+  } else if (age.verdict === '겹침') {
     lines.push(`나이는 **${age.stance}** 쪽입니다. ${age.say}`);
   } else if (age.verdict === '하나') {
     lines.push(`나이는 ${age.stance} 쪽으로 나옵니다.`

@@ -183,7 +183,7 @@ const REPORT_TIMING_DOMAIN = {
   자녀: 'children', 이사: 'movement', 주거: 'residence', 건강: 'health',
   학업: 'education', '큰 전환': 'majorChange',
 };
-const TIMING_LABEL = { 결혼: '결혼·인연', 자녀: '자녀가 들어오는(임신)', 이사: '이사·이동', 직업: '일의 변화', 재물: '목돈' };
+const TIMING_LABEL = { 결혼: '결혼식·인연', 자녀: '출산·가족 확장', 이사: '이사·이동', 직업: '일의 변화', 재물: '목돈' };
 const reportTimelineCache = new WeakMap();
 
 function reportTimeline(r) {
@@ -683,7 +683,7 @@ function finale(r) {
     ['직업', '💼', '일에서 가장 큰 기회와 변화가 오는 때'],
     ['재물', '💰', '돈이 가장 크게 들어오는 때'],
     ['결혼', '💞', '인연·관계가 가장 무르익는 때'],
-    ['자녀', '👶', '자녀가 들어오기(임신) 쉬운 때'],
+    ['자녀', '👶', '출산·가족 확장 신호가 높은 때'],
     ['이사', '🏠', '이사·이동하기 가장 좋은 때'],
     ['건강', '🩺', '몸에 일이 생기기 쉬워 특히 챙겨야 하는 때'],
   ]) {

@@ -32,7 +32,7 @@ import { readChildren, childPalaceStars, childrenVerdict } from './semantic/stru
 import { childrenPack, marriagePack } from './hires/vedicExt.js';
 import { verifiedCareer } from './semantic/index.js';
 import { distinctReadings, ownSentences } from './semantic/distinct.js';
-import { dictEntries, dictField } from './semantic/dict.js';
+import { dictEntries, dictField, daeunEntry } from './semantic/dict.js';
 import { lifeChapters, chapterTurns } from './semantic/compose/life.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
@@ -797,12 +797,13 @@ function lifeFlow(r) {
     for (const key of ['day', 'year', 'hour']) {
       const p = r.chart.pillars[key];
       if (!p) continue;
-      for (const rel of branchRelations(p.branch, d.branch)) {
-        if (rel.minor) continue;
-        if (rel.kind === '충') moves.push(`${PILLAR_AREA[key]} 쪽이 크게 바뀌거나 자리를 옮기기 쉽습니다`);
-        else if (/합/.test(rel.kind)) moves.push(`${PILLAR_AREA[key]} 쪽에 새 인연·협력이 붙기 쉽습니다`);
-        else if (/형/.test(rel.kind)) moves.push(`${PILLAR_AREA[key]} 쪽에서 같은 문제가 되풀이되기 쉽습니다`);
-      }
+      // 한 기둥에는 가장 센 관계 하나만 — 합과 형이 함께 걸리면 서로 반대 말이 나란히 나온다
+      const rels = branchRelations(p.branch, d.branch).filter((x) => !x.minor);
+      const rel = rels.find((x) => x.kind === '충') ?? rels.find((x) => /형/.test(x.kind)) ?? rels.find((x) => /합/.test(x.kind));
+      if (!rel) continue;
+      if (rel.kind === '충') moves.push(`${PILLAR_AREA[key]} 쪽이 크게 바뀌거나 자리를 옮기기 쉽습니다`);
+      else if (/형/.test(rel.kind)) moves.push(`${PILLAR_AREA[key]} 쪽에서 같은 문제가 되풀이되기 쉽습니다`);
+      else moves.push(`${PILLAR_AREA[key]} 쪽에 새 인연·협력이 붙기 쉽습니다`);
     }
     if (moves.length) parts.push(`${[...new Set(moves)].slice(0, 2).join('. ')}.`);
     // 그 십 년의 기운이 타고난 오행의 빈 곳을 채우는가, 넘치는 곳을 더 키우는가 — 원국마다 다르다
@@ -820,12 +821,22 @@ function lifeFlow(r) {
       parts.push(`이 시기의 나는 ${nat.traits.slice(0, 3).join(', ')} 쪽이 두드러집니다.`
         + (nat.risk?.[0] ? ` 걸림돌은 ${nat.risk[0].replace(/다$/, '다는 것')}입니다.` : ''));
     }
+    const nowMark = (x, y) => (x <= now && now <= y ? ' · 지금' : '');
+    // 사전이 있으면 전통대로 앞 다섯 해(천간)·뒤 다섯 해(지지)를 따로 쓴다 — 일간과 대운의 짝이라 사람마다 갈린다
+    const de = daeunEntry(r.chart.dayStem, d.stem, d.branch);
+    if (de.front && de.back) {
+      const mid = from + 5;
+      const half = (e) => `${e.h} 잘 되는 것 — ${e.g} 조심할 것 — ${e.c}`;
+      const extra = parts.filter((p) => !p.startsWith('\x27') || !p.includes('의 시기입니다'));
+      rows.push([`${d.fromAge}~${d.fromAge + 4}세 (${from}~${mid - 1}년)${nowMark(from, mid - 1)}`, [half(de.front), ...extra.slice(0, 2)].join(' ')]);
+      rows.push([`${d.fromAge + 5}~${d.toAge}세 (${mid}~${to}년)${nowMark(mid, to)}`, [half(de.back), ...extra.slice(2)].join(' ')]);
+      continue;
+    }
     if (info && !seenGroup.has(group)) {
       seenGroup.add(group);
       parts.push(`잘 쓰려면 — ${info.good} 조심할 점 — ${info.watch}`);
     }
-    const nowMark = from <= now && now <= to ? ' · 지금' : '';
-    rows.push([`${d.fromAge}~${d.toAge}세 (${from}~${to}년)${nowMark}`, parts.join(' ')]);
+    rows.push([`${d.fromAge}~${d.toAge}세 (${from}~${to}년)${nowMark(from, to)}`, parts.join(' ')]);
   }
 
   let turns = [];

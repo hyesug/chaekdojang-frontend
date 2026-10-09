@@ -23,6 +23,7 @@ export const DICT_FILES = [
   'saju-stem-month-1', 'saju-stem-month-2', 'saju-stem-month-3', 'saju-stem-month-4',
   'saju-ilju-1', 'saju-ilju-2', 'ziwei-ming', 'western', 'vedic', 'mansion',
   'gujeong', 'juyeok', 'kabbalah', 'tarot', 'weekday', 'boards',
+  'daeun-stem', 'daeun-branch-1', 'daeun-branch-2',
 ];
 /** 파일 → 사전 묶음 이름 */
 const GROUP = (file) => file.replace(/-\d+$/, '');
@@ -154,4 +155,18 @@ export function dictField(entries, field, max = 4) {
     if (out.length >= max) break;
   }
   return out;
+}
+
+/**
+ * 10년 운(대운) 한 칸의 해석 — 전통대로 천간은 앞 다섯 해, 지지는 뒤 다섯 해를 맡는다.
+ * 일간 × 대운 천간(100) · 일간 × 대운 지지(120) 사전에서 고른다.
+ * @returns {{front: {h,g,c}|null, back: {h,g,c}|null}}
+ */
+export function daeunEntry(dayStem, stem, branch) {
+  if (!DICT) return { front: null, back: null };
+  const me = STEMS_KR[dayStem];
+  return {
+    front: DICT['daeun-stem']?.[`${me}|${STEMS_KR[stem]}`] ?? null,
+    back: DICT['daeun-branch']?.[`${me}|${BRANCHES_KR[branch]}`] ?? null,
+  };
 }

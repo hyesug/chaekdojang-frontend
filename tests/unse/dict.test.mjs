@@ -9,10 +9,11 @@ import { DICT_SHARE } from '../../public/unse/src/semantic/data/rarity.js';
 
 const dict = await loadDicts();
 
-test('모든 항목이 성격·일·돈·관계·조심 다섯 칸을 채운다', () => {
+test('모든 항목이 칸을 채운다 — 성향 사전은 다섯 칸, 10년 운 사전은 세 칸', () => {
   for (const [group, entries] of Object.entries(dict)) {
+    const fields = group.startsWith('daeun') ? ['h', 'g', 'c'] : ['p', 'w', 'm', 'r', 'c'];
     for (const [key, e] of Object.entries(entries)) {
-      for (const f of ['p', 'w', 'm', 'r', 'c']) assert.ok(e[f]?.length > 5, `${group}|${key} 의 ${f} 칸이 비었다`);
+      for (const f of fields) assert.ok(e[f]?.length > 5, `${group}|${key} 의 ${f} 칸이 비었다`);
     }
   }
 });
@@ -25,9 +26,11 @@ test('무작위 2천 명에서 나온 열쇠가 모두 사전에 있다', () => 
   assert.deepEqual(miss, []);
 });
 
-test('사주는 일간×태어난 달 120개와 일주 60개를 다 갖춘다', () => {
+test('사주는 일간×태어난 달 120·일주 60, 10년 운은 일간×천간 100·일간×지지 120을 다 갖춘다', () => {
   assert.equal(Object.keys(dict['saju-stem-month']).length, 120);
   assert.equal(Object.keys(dict['saju-ilju']).length, 60);
+  assert.equal(Object.keys(dict['daeun-stem']).length, 100);
+  assert.equal(Object.keys(dict['daeun-branch']).length, 120);
 });
 
 test('출생 시각을 알면 열 갈래 넘게, 사람마다 다른 조합을 받는다', () => {

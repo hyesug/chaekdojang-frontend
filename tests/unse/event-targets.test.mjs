@@ -17,11 +17,16 @@ test('결혼식과 출산은 구체 사건 목표로 정규화한다', () => {
   assert.equal(isRegisteredEventKind('marriage', 'wedding_ceremony'), true);
 });
 
-test('구체 사건 종류가 없는 기존 결혼·자녀 행은 검증 목표에서 제외한다', () => {
-  const event = normalizeTimingEvent({ year: 2021, month: 5 }, 'marriage');
+test('기존 사례집의 결혼·자녀 행은 각각 결혼식·출산으로 정규화한다', () => {
+  const marriage = normalizeTimingEvent({ year: 2021, month: 5 }, 'marriage');
+  const children = normalizeTimingEvent({ year: 2023, month: 2 }, 'children');
 
-  assert.equal(event.eligible, false);
-  assert.match(event.reason, /eventKind/);
+  assert.equal(marriage.eventKind, 'wedding_ceremony');
+  assert.equal(marriage.candidateKind, 'marriage');
+  assert.equal(marriage.eligible, true);
+  assert.equal(children.eventKind, 'birth');
+  assert.equal(children.candidateKind, 'birth');
+  assert.equal(children.eligible, true);
 });
 
 test('등록되지 않은 사건과 관찰 종료 뒤의 사실을 추정하지 않는다', () => {

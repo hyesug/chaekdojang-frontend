@@ -1,8 +1,8 @@
 /**
  * Private timing casebook event-target normalization.
  *
- * Historical facts may be incomplete, but validation must never turn a
- * generic domain label into a concrete outcome. The aliases below bridge
+ * The casebook owner has defined its legacy domain labels: marriage means a
+ * wedding ceremony and children means a birth date. The aliases below bridge
  * the existing event-score key with the product's explicit event definition.
  */
 import { candidatesOf } from '../semantic/timing/events.js';
@@ -11,6 +11,7 @@ const CONCRETE_TARGETS = Object.freeze({
   marriage: Object.freeze({ wedding_ceremony: 'marriage' }),
   children: Object.freeze({ birth: 'birth' }),
 });
+const LEGACY_DOMAIN_TARGETS = Object.freeze({ marriage: 'wedding_ceremony', children: 'birth' });
 
 const END_REASONS = new Set(['death', 'lost_contact', 'unknown_history']);
 const MONTH_KEY = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -31,7 +32,7 @@ export function eventCandidateKind(domain, eventKind) {
  * @param {string} domain
  */
 export function normalizeTimingEvent(event = {}, domain) {
-  const eventKind = event.eventKind ?? null;
+  const eventKind = event.eventKind ?? LEGACY_DOMAIN_TARGETS[domain] ?? null;
   const candidateKind = eventCandidateKind(domain, eventKind);
   const precision = event.datePrecision ?? (Number.isInteger(event.month) ? 'month' : 'year');
   const observedThrough = event.observedThrough ?? null;

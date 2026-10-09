@@ -15,10 +15,10 @@
  * 이 표는 미래 사건의 보증이 아니다. 결과 화면에서는 "신호가 높은 구간"으로만 읽는다.
  */
 export const VALIDATED_REPORT_TIMING_POLICY = Object.freeze({
-  // 2026-10-09 학습: 확인된 사람 9명·사건 47건. eventKind가 없는 과거 기록은
-  // 구체 사건 학습에 쓰지 않았으므로 결혼식·출산은 사전 후보로 남긴다.
-  결혼: Object.freeze({ scope: 'prior', systems: ['saju', 'jamidusu', 'astrology_modern', 'vedic'], eventKind: 'wedding_ceremony', basis: 'direct-domain-rule-tie' }),
-  자녀: Object.freeze({ scope: 'prior', systems: ['saju', 'jamidusu', 'astrology_modern', 'vedic'], eventKind: 'birth', leadMonths: 0, basis: 'direct-domain-rule-tie' }),
+  // 2026-10-09 학습: 확인된 사람 9명·사건 47건. 사례집의 기존 결혼·자녀는
+  // 사용자가 각각 결혼식·출산일로 확정했다.
+  결혼: Object.freeze({ scope: 'provisional', systems: ['taeeul'], eventKind: 'wedding_ceremony', resolution: 'year', basis: 'loo-vote' }),
+  자녀: Object.freeze({ scope: 'provisional', systems: ['saju'], eventKind: 'birth', resolution: 'month', leadMonths: 0, basis: 'loo-vote' }),
   주거: Object.freeze({ scope: 'prior', systems: ['saju', 'jamidusu', 'astrology_modern', 'vedic'], basis: 'direct-domain-rule-tie' }),
   건강: Object.freeze({ scope: 'prior', systems: ['saju', 'jamidusu', 'astrology_modern', 'vedic'], basis: 'direct-domain-rule-tie' }),
   '큰 전환': Object.freeze({ scope: 'prior', systems: ['saju', 'jamidusu', 'astrology_modern', 'vedic'], basis: 'direct-domain-rule-tie' }),

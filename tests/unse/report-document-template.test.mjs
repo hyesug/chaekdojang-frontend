@@ -84,10 +84,10 @@ test('개인 리포트는 키워드보다 먼저 명반 고유의 핵심 구조�
   }
 });
 
-test('사례 부족 시기 예측은 잠정 근거를 붙여 제시한다', () => {
+test('사례 부족 시기 예측은 근거 문구 없이 신호만 제시한다', () => {
   const html = personal(A);
 
-  assert.match(html, /잠정 선택/);
+  assert.doesNotMatch(html, /잠정 선택|사전 후보|사람별 검증/);
   assert.match(html, /일에서 가장 큰 기회와 변화가 오는 때는 <strong>/);
   assert.match(html, /돈이 가장 크게 들어오는 때는 <strong>/);
   assert.match(html, /인연·관계가 가장 무르익는 때는 <strong>/);

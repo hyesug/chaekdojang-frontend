@@ -158,7 +158,8 @@ export function dictEntries(r) {
  * 한 칸(성격·일·돈·관계·조심)을 여러 체계에서 모은다 — 드문 것부터, 같은 문장은 한 번만.
  * @param {'p'|'w'|'m'|'r'|'c'} field
  */
-export function dictField(entries, field, max = 4) {
+export function dictField(entries, field, max = 4, skip = 0) {
+  // skip — 앞 칸이 이미 쓴 문장 수. 같은 칸을 두 곳에서 쓸 때 겹치지 않게 그다음 문장부터 준다
   const seen = new Set();
   const out = [];
   for (const e of entries) {
@@ -166,9 +167,9 @@ export function dictField(entries, field, max = 4) {
     if (!t || seen.has(t)) continue;
     seen.add(t);
     out.push({ text: t, label: e.label, share: e.share });
-    if (out.length >= max) break;
+    if (out.length >= max + skip) break;
   }
-  return out;
+  return out.slice(skip);
 }
 
 /**

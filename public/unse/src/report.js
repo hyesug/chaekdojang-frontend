@@ -537,7 +537,7 @@ function finale(r) {
       : `${esc(what)}는 <strong>${esc(spans.join(', '))}</strong> 순으로 신호가 높습니다.`);
     items.push(`<li><span class="rp-ic" aria-hidden="true">${icon}</span><div><p>${text}</p></div></li>`);
   }
-  const principles = personalPrinciples(r);
+  const principles = dictPrinciples(r);
   const timingNotice = items.length
     ? `<ul class="rp-bul">${items.join('')}</ul>`
     : '<p class="rp-t rp-when">이 명반에서는 선택된 체계가 기간 안에서 서로 다른 달을 가르지 못했습니다.</p>';
@@ -891,6 +891,32 @@ function lifeFlow(r) {
     + (turnRows.length ? `<h4 class="rp-h4">🔀 흐름이 크게 꺾이는 해</h4>${timeline(turnRows)}` : '');
 }
 
+/**
+ * 대표 스킬 — "나는 어떤 사람인가"의 일할 때 칸 다음 문장(5~8번째).
+ * 같은 칸을 두 번 쓰지 않으려고 앞 네 문장은 건너뛴다. 사전이 없으면 예전 풀이로 물러선다.
+ */
+function skillLines(r, v) {
+  let es = [];
+  try { es = dictEntries(r); } catch { /* */ }
+  const more = dictField(es, 'w', 4, 4).map((x) => x.text);
+  if (!more.length) {
+    return [bullet('', '어떤 일을 할 때 빛나는가', firstOf(withSrc(v.life?.career), 2)),
+      bullet('', '성공 방정식', firstOf(withSrc(v.work?.job), 3))];
+  }
+  // 자미 관록궁 사전은 일과 돈 장의 "일하는 방식"이 이미 쓴다 — 여기서 되풀이하지 않는다
+  return [bullet('', '어떤 일을 할 때 빛나는가', more.join(' '))];
+}
+
+/**
+ * 실행 원칙 — 조심할 점 칸의 다음 문장(5~8번째)과 타고난 버릇. 없으면 예전 원칙표로.
+ */
+function dictPrinciples(r) {
+  let es = [];
+  try { es = dictEntries(r); } catch { /* */ }
+  const more = dictField(es, 'c', 4, 4).map((x) => x.text);
+  return more.length ? more : personalPrinciples(r);
+}
+
 function lifeReport(form, r, f, v) {
   const me = readingBy(r, '사주', /^일간/);
   const strong = readingBy(r, '사주', /우세/);
@@ -923,8 +949,7 @@ function lifeReport(form, r, f, v) {
     + card('🚀', '커리어 & 재물: 나의 시장 가치와 돈 버는 법',
       `<h4 class="rp-h4">🛠️ 내 대표 스킬 & 무기</h4>`
       + bullets(
-        bullet('', '어떤 일을 할 때 빛나는가', firstOf(withSrc(v.life?.career), 2)),
-        bullet('', '성공 방정식', firstOf(withSrc(v.work?.job), 3)),
+        ...skillLines(r, v),
       )
       + `<h4 class="rp-h4">💰 돈이 들어오는 흐름</h4>`
       + bullets(

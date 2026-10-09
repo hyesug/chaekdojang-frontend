@@ -146,6 +146,9 @@ console.log(`  합계: 사람 ${cases.length}명 · 사건 ${cases.reduce((a, c)
 const rowsByDomain = new Map();
 let skippedTargets = 0;
 for (const group of groupTimingEvents(cases, DOMAIN_OF, { paddingYears: 3 })) {
+  const targetedEvents = group.events.map((event) => ({ event, target: normalizeTimingEvent(event, group.domain) }));
+  const eligibleEvents = targetedEvents.filter(({ target }) => target.eligible);
+  if (!eligibleEvents.length) { skippedTargets += group.events.length; continue; }
   let result;
   try {
     result = predictTimeline({
@@ -158,9 +161,7 @@ for (const group of groupTimingEvents(cases, DOMAIN_OF, { paddingYears: 3 })) {
     console.log(`  ! ${group.person} ${DOMAIN_LABEL[group.domain] ?? group.domain}: ${err.message.slice(0, 60)}`);
     continue;
   }
-  for (const event of group.events) {
-    const target = normalizeTimingEvent(event, group.domain);
-    if (!target.eligible) { skippedTargets++; continue; }
+  for (const { event, target } of eligibleEvents) {
     const precision = target.datePrecision;
     const candidateMeta = Object.fromEntries(Object.keys(candidateSystems).map((candidate) => [
       candidate, result.validationCandidateMeta[candidate]?.[group.domain] ?? { resolution: 'none' },

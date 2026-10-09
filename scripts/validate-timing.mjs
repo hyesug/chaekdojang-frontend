@@ -107,9 +107,11 @@ console.log('');
 // ── 데이터 ──
 const monthly = rows.filter((r) => r.precision === 'month');
 const yearly = rows.filter((r) => r.precision === 'year');
+const qualifiedTargets = rows.filter((r) => r.eventTarget.eligible);
 console.log('## 데이터');
 console.log(`  사람 ${new Set(rows.map((r) => r.person)).size}명 · 사건 ${rows.length}건`);
 console.log(`  월 precision ${monthly.length}건 · 연 precision ${yearly.length}건 · 계산 실패 ${skipped}건`);
+console.log(`  구체 사건 목표 ${qualifiedTargets.length}건 · eventKind 없음/미등록 ${rows.length - qualifiedTargets.length}건`);
 const byDom = {};
 for (const r of rows) (byDom[r.domain] ??= []).push(r);
 console.log('  분야별: ' + Object.entries(byDom).map(([d, xs]) => `${DOMAIN_LABEL[d]} ${xs.length}`).join(' · '));
@@ -126,8 +128,8 @@ for (const row of rows) {
     ? scoreEvent(series, row.key)
     : scoreEventYearly(series, row.year);
   row.score = s;
-  row.situation = row.eventKind && row.precision === 'month'
-    ? scoreEventKind(eventSeriesOf(row.result, row.domain), row.key, row.eventKind) : null;
+  row.situation = row.eventTarget.eligible && row.eventCandidateKind && row.precision === 'month'
+    ? scoreEventKind(eventSeriesOf(row.result, row.domain), row.key, row.eventCandidateKind) : null;
   if (s.unscorable) {
     console.log(`${pad(row.person, 5)} ${pad(DOMAIN_LABEL[row.domain], 6)} ${pad(row.key ?? row.year, 9)} ${pad(row.precision, 6)}  채점 불가 — ${s.unscorable}${s.note ? ` (${s.note})` : ''}`);
     continue;

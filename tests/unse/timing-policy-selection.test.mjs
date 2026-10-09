@@ -74,11 +74,12 @@ test('개인 사례로 얻은 결과는 서비스용 정책을 덮어쓰지 않�
   assert.equal(reportTimingPolicy('직업', personalOnly), null);
 });
 
-test('잠정 정책은 구체 사건 예측으로 리포트에 쓸 수 없다', () => {
+test('잠정 정책은 근거 등급을 보존한 채 구체 사건 신호로 리포트에 쓸 수 있다', () => {
   const provisional = {
     결혼: { scope: 'provisional', systems: ['saju'], eventKind: 'wedding_ceremony', basis: 'personal-development' },
   };
-  assert.equal(reportTimingPolicy('결혼', 'wedding_ceremony', provisional), null);
+  assert.deepEqual(reportTimingPolicy('결혼', 'wedding_ceremony', provisional), provisional.결혼);
+  assert.equal(reportTimingPolicy('결혼', 'birth', provisional), null);
 });
 
 test('서비스 정책은 선언한 사건 종류와 일치할 때만 리포트에 쓸 수 있다', () => {
@@ -89,7 +90,7 @@ test('서비스 정책은 선언한 사건 종류와 일치할 때만 리포트�
   assert.equal(reportTimingPolicy('자녀', 'wedding_ceremony', service), null);
 });
 
-test('잠정 정책은 빼고 고르기에서 가장 많이 뽑힌 후보를 늘 하나 고른다', () => {
+test('잠정 정책은 빼고 고르기에서 가장 많이 뽑힌 후보를 고르고 동점은 함께 남긴다', () => {
   // 사건 하나를 뺄 때마다 최고 후보를 다시 고른다. lucky 는 첫 사건이 빠지면 밀리지만
   // 나머지 두 번은 뽑혀 2표, baseline 1표 → lucky
   const fluke = [0, 1, 2].map((i) => ({ person: 'P', precision: 'month',
@@ -107,12 +108,21 @@ test('잠정 정책은 빼고 고르기에서 가장 많이 뽑힌 후보를 늘
   assert.equal(b.selected, 'good');
   assert.equal(b.agreement, 1);
 
-  // 표가 같으면 사례 전체 점수가 높은 쪽
+  // 표가 같더라도 사례 전체 점수가 다르면 더 잘 맞은 쪽 하나를 쓴다
   const tie = [0, 1].map((i) => ({ person: 'P', precision: 'month',
     scores: { baseline: 50, x: [90, 40][i], y: [40, 80][i] } }));
   const c = selectProvisionalPolicy(tie, { baseline: 'baseline' });
   assert.deepEqual(c.votes, { x: 1, y: 1 });
   assert.equal(c.selected, 'x', 'x 65 > y 60');
+  assert.deepEqual(c.tied, ['x']);
+
+  // 표와 전체 점수까지 같으면 임의로 하나를 버리지 않고 함께 보여 준다
+  const exactTie = [0, 1].map((i) => ({ person: 'P', precision: 'month',
+    scores: { baseline: 50, x: [90, 40][i], y: [40, 90][i] } }));
+  const d = selectProvisionalPolicy(exactTie, { baseline: 'baseline' });
+  assert.equal(d.selected, 'x');
+  assert.deepEqual(d.tied, ['x', 'y']);
+  assert.match(d.reason, /동점/);
 });
 
 test('사람이 세 명 이상이면 사람 단위로 빼고 고르고, 사례가 한 건이면 그 사례 최고를 쓴다', () => {
@@ -124,4 +134,12 @@ test('사람이 세 명 이상이면 사람 단위로 빼고 고르고, 사례�
   const one = selectProvisionalPolicy([{ person: 'A', precision: 'month', scores: { baseline: 40, z: 90 } }], { baseline: 'baseline' });
   assert.equal(one.method, 'single');
   assert.equal(one.selected, 'z');
+});
+
+test('사례가 전혀 없으면 사전에 정한 분야 기본 체계를 잠정 후보로 쓴다', () => {
+  const prior = selectProvisionalPolicy([], { baseline: 'baseline', prior: 'saju' });
+  assert.equal(prior.method, 'prior');
+  assert.equal(prior.selected, 'saju');
+  assert.deepEqual(prior.tied, ['saju']);
+  assert.match(prior.reason, /사례가 없어/);
 });

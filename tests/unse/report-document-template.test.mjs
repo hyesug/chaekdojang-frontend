@@ -84,13 +84,13 @@ test('개인 리포트는 키워드보다 먼저 명반 고유의 핵심 구조�
   }
 });
 
-test('검증 전 시기 예측은 리포트에 제시하지 않는다', () => {
+test('사례 부족 시기 예측은 잠정 근거를 붙여 제시한다', () => {
   const html = personal(A);
 
-  assert.match(html, /날짜를 제시하지 않습니다/);
-  assert.doesNotMatch(html, /일에서 가장 큰 기회와 변화가 오는 때는 <strong>/);
-  assert.doesNotMatch(html, /돈이 가장 크게 들어오는 때는 <strong>/);
-  assert.doesNotMatch(html, /인연·관계가 가장 무르익는 때는 <strong>/);
+  assert.match(html, /잠정 선택/);
+  assert.match(html, /일에서 가장 큰 기회와 변화가 오는 때는 <strong>/);
+  assert.match(html, /돈이 가장 크게 들어오는 때는 <strong>/);
+  assert.match(html, /인연·관계가 가장 무르익는 때는 <strong>/);
 });
 
 test('개인 리포트 화면 글에는 전문용어·한자·강조 표시가 남지 않는다', () => {

@@ -38,10 +38,11 @@ function heldOutScore(rows, candidate) {
 }
 
 /**
- * 잠정 정책 고르기 — **빼고 고르기로 늘 하나를 고른다** (통과/불통과 없음).
+ * 잠정 정책 고르기 — 빼고 고르기 결과를 남긴다 (통과/불통과 없음).
  *
  * 한 단위를 가려 두고 나머지로 최고 후보를 고르기를 모든 단위에 반복한 뒤,
- * **가장 많이 뽑힌 후보**를 최종으로 쓴다. 동률이면 사례 전체 점수가 높은 쪽.
+ * **가장 많이 뽑힌 후보**를 최종으로 쓴다. 표와 사례 전체 점수까지 동률이면
+ * 하나를 임의로 버리지 않고 `tied`에 모두 남겨 함께 제시한다.
  * 사례 하나 덕분에 1등이 된 후보는 그 사례를 빼면 뽑히지 않으므로 표가 갈리고,
  * 어느 것을 빼도 계속 뽑히는 후보가 남는다. 후보는 17체계 단독(15체계 + 현대·고전 점성),
  * 계보가 다른 두 체계의 쌍, 그리고 15체계 전체(baseline)다.
@@ -50,16 +51,22 @@ function heldOutScore(rows, candidate) {
  *  · cv — 이렇게 고르는 방법이 빠진 쪽을 얼마나 맞혔는지(참고값). 선택을 막지 않는다.
  *
  * @param {Array<{person:string, scores:Record<string,number>}>} rows
- * @param {{baseline:string}} options
+ * @param {{baseline:string, prior?:string}} options
  */
-export function selectProvisionalPolicy(rows, { baseline } = {}) {
+export function selectProvisionalPolicy(rows, { baseline, prior = null } = {}) {
   if (!baseline) throw new Error('baseline 후보가 필요합니다');
+  if (!rows.length) {
+    if (!prior) throw new Error('사례가 없을 때는 사전 분야 후보가 필요합니다');
+    return { selected: prior, tied: [prior], method: 'prior', unit: null, units: 0,
+      full: null, cv: null, folds: [], votes: null, agreement: null,
+      reason: '사례가 없어 해당 분야의 고유 규칙을 갖춘 사전 후보를 씁니다' };
+  }
   const people = [...new Set(rows.map((row) => row.person).filter(Boolean))];
   const byPerson = people.length >= 3;
   const units = byPerson ? people : rows.map((_, i) => i);
   const full = pick(rows, baseline);
   if (units.length < 2) {
-    return { selected: full.candidate, method: 'single', unit: byPerson ? 'person' : 'event', units: units.length,
+    return { selected: full.candidate, tied: [full.candidate], method: 'single', unit: byPerson ? 'person' : 'event', units: units.length,
       full, cv: null, folds: [], votes: null, agreement: null,
       reason: `사례가 ${units.length}건뿐이라 빼고 고를 수 없어 그 사례 최고를 씁니다` };
   }
@@ -76,12 +83,17 @@ export function selectProvisionalPolicy(rows, { baseline } = {}) {
   const votes = new Map();
   for (const f of folds) votes.set(f.selected, (votes.get(f.selected) ?? 0) + 1);
   const fullScore = (c) => personMean(rows, c) ?? -Infinity;
-  const [selected, count] = [...votes.entries()]
-    .sort((a, b) => b[1] - a[1] || fullScore(b[0]) - fullScore(a[0]) || a[0].localeCompare(b[0]))[0];
+  const ranked = [...votes.entries()]
+    .sort((a, b) => b[1] - a[1] || fullScore(b[0]) - fullScore(a[0]) || a[0].localeCompare(b[0]));
+  const [selected, count] = ranked[0];
+  const tied = ranked
+    .filter(([candidate, votesForCandidate]) => votesForCandidate === count && fullScore(candidate) === fullScore(selected))
+    .map(([candidate]) => candidate);
+  const tieNote = tied.length > 1 ? `, ${tied.length}개 후보 동점이라 함께 제시합니다` : '';
   return {
-    selected, method: 'loo-vote', unit: byPerson ? 'person' : 'event', units: units.length,
+    selected, tied, method: 'loo-vote', unit: byPerson ? 'person' : 'event', units: units.length,
     full, cv, folds, votes: Object.fromEntries(votes), agreement: count / folds.length,
-    reason: `${folds.length}번 빼고 고르기 중 ${count}번 뽑혔습니다`,
+    reason: `${folds.length}번 빼고 고르기 중 ${count}번 뽑혔습니다${tieNote}`,
   };
 }
 /**

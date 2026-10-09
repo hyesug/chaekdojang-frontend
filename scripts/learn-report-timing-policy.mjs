@@ -69,6 +69,9 @@ const DOMAIN_OF = {
   주거: 'residence', 이사: 'movement', 건강: 'health', 학업: 'education', '큰 전환': 'majorChange',
 };
 const DOMAIN_LABEL = Object.fromEntries(Object.entries(DOMAIN_OF).map(([label, id]) => [id, label]));
+// 사례가 없는 분야를 결과에 맞춰 고르면 안 된다. 감사표에서 모든 분야에 전용 시기
+// 자리가 있고 월 단위까지 읽는 네 체계가 동점이므로 함께 사전 후보로 둔다.
+const DIRECT_DOMAIN_PRIOR = ['saju', 'jamidusu', 'astrology_modern', 'vedic'];
 const ASTRO_CANDIDATES = ['astrology_modern', 'astrology_classical'];
 const SYSTEM_CANDIDATES = [...SYSTEM_IDS, ...ASTRO_CANDIDATES];
 const lineage = (id) => id.startsWith('astrology_') ? 'tropical' : lineageOf(id);
@@ -189,7 +192,21 @@ const report = {};      // 리포트에 넣을 제안 — service, 아니면 빼
 const table = [];
 const fmt = (v) => (Number.isFinite(v) ? `${v.toFixed(0)}%` : '—');
 const systemsOf = (candidate) => candidateSystems[candidate] ?? [...SYSTEM_IDS];   // baseline = 15체계 전체
-for (const [domain, rawRows] of rowsByDomain) {
+const unionSystems = (candidates) => [...new Set(candidates.flatMap((candidate) => systemsOf(candidate)))];
+for (const domain of Object.values(DOMAIN_OF)) {
+  const rawRows = rowsByDomain.get(domain) ?? [];
+  const label = DOMAIN_LABEL[domain] ?? domain;
+  if (!rawRows.length) {
+    const prior = selectProvisionalPolicy([], { baseline: 'baseline', prior: 'direct-domain-prior' });
+    report[label] = {
+      scope: 'prior', systems: DIRECT_DOMAIN_PRIOR, eventKind: null, resolution: 'month',
+      basis: 'direct-domain-rule-tie', evidence: { people: 0, monthlyEvents: 0, reason: prior.reason },
+    };
+    console.log(`- ${label}: prior · 사례 없음 · ${DIRECT_DOMAIN_PRIOR.join('+')}`);
+    table.push({ label, people: 0, events: 0, inSample: '—', unit: '—', cv: '—', agreement: '—',
+      decision: '사전 후보 동점 조합', votes: '' });
+    continue;
+  }
   const rows = collapseFamilies(rawRows);
   const preliminary = selectTimingPolicy(rows, { baseline: 'baseline', candidateSystems });
   const random = seededRandom(20261008);
@@ -204,7 +221,6 @@ for (const [domain, rawRows] of rowsByDomain) {
     baseline: 'baseline', shuffledSelectedScores: shuffled, candidateSystems,
   });
   const selectedSystems = candidateSystems[verdict.promote ? verdict.selected : verdict.personalSelected] ?? null;
-  const label = DOMAIN_LABEL[domain] ?? domain;
   console.log(`- ${label}: ${verdict.scope} · ${verdict.promote ? '서비스 승격' : '개인 진단'} · ${verdict.personalSelected}`);
   console.log(`  ${verdict.reason} · 사람 ${verdict.people}명 · 월 사건 ${verdict.monthlyEvents}건`);
   if (verdict.pairComparison) console.log(`  쌍 ${verdict.pairComparison.pair}: ${verdict.pairComparison.pairScore?.toFixed(1)} vs 단독 ${verdict.pairComparison.bestMember} ${verdict.pairComparison.bestMemberScore?.toFixed(1)}`);
@@ -218,13 +234,18 @@ for (const [domain, rawRows] of rowsByDomain) {
 
   // 승격하지 못한 분야는 '빼고 고르기'로 잠정 조합을 고른다
   const prov = verdict.promote ? null : selectProvisionalPolicy(rows, { baseline: 'baseline' });
-  const chosen = verdict.promote ? verdict.selected : prov.selected;
+  const chosen = verdict.promote ? [verdict.selected] : prov.tied;
+  const chosenSystems = unionSystems(chosen);
+  const chosenResolutions = [...new Set(chosen.map((candidate) => rows[0]?.candidateMeta?.[candidate]?.resolution).filter(Boolean))];
   report[label] = {
     scope: verdict.promote ? 'service' : 'provisional',
-    systems: systemsOf(chosen),
+    systems: chosenSystems,
     eventKind: selectedTarget?.eventKind ?? null,
-    resolution: rows[0]?.candidateMeta?.[chosen]?.resolution ?? null,
-    basis: verdict.promote ? 'loo-and-shuffle' : prov.method === 'loo-vote' ? 'loo-vote' : 'single-case',
+    resolution: chosenResolutions.length === 1 ? chosenResolutions[0] : 'mixed',
+    basis: verdict.promote ? 'loo-and-shuffle'
+      : prov.method === 'loo-vote' && chosen.length > 1 ? 'loo-vote-tie-combination'
+        : prov.method === 'loo-vote' ? 'loo-vote'
+          : prov.method === 'single' ? 'single-case' : 'domain-rule-prior',
   };
   table.push({
     label, people: verdict.people, events: rows.length,

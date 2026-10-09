@@ -184,6 +184,9 @@ const REPORT_TIMING_DOMAIN = {
   학업: 'education', '큰 전환': 'majorChange',
 };
 const TIMING_LABEL = { 결혼: '결혼식·인연', 자녀: '출산·가족 확장', 이사: '이사·이동', 직업: '일의 변화', 재물: '목돈' };
+// 이 보고서가 실제로 시간 창을 표시하는 분야만 한 번에 계산한다. 나머지 분야도
+// policy.js와 학습기에는 남아 있으나, 숨은 분야까지 계산해 첫 화면을 느리게 만들지 않는다.
+const REPORT_VISIBLE_TIMING_LABELS = new Set(['직업', '재물', '결혼', '자녀', '이사', '건강']);
 const reportTimelineCache = new WeakMap();
 
 function reportTimeline(r) {
@@ -192,6 +195,7 @@ function reportTimeline(r) {
   const from = Number(r.input.currentYear);
   const timingPolicy = {};
   for (const [label, domain] of Object.entries(REPORT_TIMING_DOMAIN)) {
+    if (!REPORT_VISIBLE_TIMING_LABELS.has(label)) continue;
     const policy = reportTimingPolicy(label);
     if (policy) timingPolicy[domain] = policy;
   }
@@ -199,7 +203,7 @@ function reportTimeline(r) {
     const onlySystems = [...new Set(Object.values(timingPolicy).flatMap((policy) => policy.systems ?? []))];
     const value = predictTimeline({
       birth: r.input, from: `${from}-01`, to: `${from + 14}-12`,
-      domains: [...new Set(Object.values(REPORT_TIMING_DOMAIN))], timingPolicy, onlySystems,
+      domains: Object.keys(timingPolicy), timingPolicy, onlySystems,
     });
     reportTimelineCache.set(r, value);
     return value;
@@ -299,6 +303,13 @@ function timingOf(r, domain, span = 10) {
   }
   const policy = reportTimingPolicy(domain);
   const label = TIMING_LABEL[domain] ?? domain;
+  const evidence = policy?.scope === 'service'
+    ? '사람별 검증을 통과한 선택입니다.'
+    : policy?.scope === 'provisional'
+      ? '사례가 적어 잠정 선택한 신호입니다.'
+      : policy?.scope === 'prior'
+        ? '이 분야의 사건 사례가 없어 고유 규칙을 기준으로 정한 사전 후보입니다.'
+        : '';
   // 실제 사례에서 기존 방식보다 나은 규칙을 아직 확인하지 못한 분야에는
   // 그럴듯한 연도를 찍지 않는다. 구조 해석을 흐리지 않되, 맞는 척하는 시기
   // 문장만 멈춘다. 검증을 통과한 정책이 생기면 아래 계산이 다시 열린다.
@@ -310,9 +321,10 @@ function timingOf(r, domain, span = 10) {
   if (!spans.length) return '';
   const rest = spans.length > 1 ? `가장 높고, 그다음은 ${esc(spans.slice(1).join(', '))}입니다` : '가장 높습니다';
   // 결혼·자녀는 지나온 신호도 함께 — 실제로 겪은 때와 견주어 보면 앞의 신호를 읽기 쉽다
-  const past = PAST_DOMAINS.has(domain) ? pastWindows(r, domain, 2).map((w) => selectedSpan(r, w)) : [];
+  const past = PAST_DOMAINS.has(domain) && policy.scope !== 'prior'
+    ? pastWindows(r, domain, 2).map((w) => selectedSpan(r, w)) : [];
   const pastLine = past.length ? ` 지나온 때 중에서는 ${esc(past.join(', '))}에 신호가 높았습니다.` : '';
-  return `<p class="rp-t rp-when">${esc(label)} 신호는 <strong>${esc(spans[0])}</strong>에 ${rest}.${pastLine}</p>`;
+  return `<p class="rp-t rp-when">${esc(label)} 신호는 <strong>${esc(spans[0])}</strong>에 ${rest}.${pastLine} ${esc(evidence)}</p>`;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -357,6 +369,10 @@ function s11(v, r) {
   if (!reportTimingPolicy('직업') && !reportTimingPolicy('재물')) {
     return '<p class="rp-t rp-when">직업·재물의 연도별 시기는 현재 실제 사례 검증에서 기존 방식보다 나은 규칙을 확인하지 못했습니다. 그럴듯한 연도표는 제시하지 않습니다.</p>';
   }
+  const evidence = [reportTimingPolicy('직업'), reportTimingPolicy('재물')]
+    .some((policy) => policy?.scope === 'provisional')
+    ? '<p class="rp-fine">연도 신호는 지인 사례가 적어 잠정 선택한 체계를 기준으로 봅니다.</p>'
+    : '';
   const rows = [];
   const said = new Set();
   const once = (t) => (t && !said.has(t) ? (said.add(t), t) : '');
@@ -388,7 +404,7 @@ function s11(v, r) {
   } catch { /* 목록만 건너뛴다 */ }
 
   return rows.length
-    ? '<p class="rp-fine rp-fine-top">해마다 그 해의 분위기와 생기기 쉬운 일을 적었습니다. 🟢는 넓히기 좋은 해, 🟡는 한 번 더 따져볼 해입니다. 같은 설명은 처음 나온 해에만 적었습니다.</p>'
+    ? evidence + '<p class="rp-fine rp-fine-top">해마다 그 해의 분위기와 생기기 쉬운 일을 적었습니다. 🟢는 넓히기 좋은 해, 🟡는 한 번 더 따져볼 해입니다. 같은 설명은 처음 나온 해에만 적었습니다.</p>'
       + timeline(rows)
     : '';
 }

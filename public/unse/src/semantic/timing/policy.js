@@ -14,11 +14,10 @@
  */
 export const VALIDATED_REPORT_TIMING_POLICY = Object.freeze({
   // 2026-10-08 학습: 본인·지인 사람 9명·사건 47건 (유명인 제외)
-  // 결혼 — 사람 5명 빼고 고르기 5번 중 2표 (빠진 쪽 65% vs 기본 44%)
-  결혼: Object.freeze({ scope: 'provisional', systems: ['yukim', 'hongguk'], basis: 'loo-vote' }),
-  // 출산일보다 약 아홉 달 앞의 사주 신호 — 17체계·쌍 모두를 출산 달 그대로와 아홉 달 앞
-  // 두 가지로 똑같이 잰 뒤에도 사람 5명 빼고 고르기 5번 중 3표(사례 전체 76%)
-  자녀: Object.freeze({ scope: 'provisional', systems: ['saju'], leadMonths: 9, basis: 'loo-vote' }),
+  // 결혼식 — 사람 5명 빼고 고르기 5번 중 2표. 검증 전에는 리포트에 쓰지 않는다.
+  결혼: Object.freeze({ scope: 'provisional', systems: ['yukim', 'hongguk'], eventKind: 'wedding_ceremony', basis: 'loo-vote' }),
+  // 출산 — 임신 신호를 출산 시점으로 옮기지 않는다. 검증 전에는 리포트에 쓰지 않는다.
+  자녀: Object.freeze({ scope: 'provisional', systems: ['saju'], eventKind: 'birth', leadMonths: 0, basis: 'loo-vote' }),
 
   직업: Object.freeze({ scope: 'provisional', systems: ['jamidusu', 'hongguk'], basis: 'loo-vote' }),     // 1명·사건 5건 중 2표
   재물: Object.freeze({ scope: 'provisional', systems: ['vedic', 'mahabote'], basis: 'loo-vote' }),       // 사건 5건 중 3표
@@ -33,8 +32,12 @@ export const VALIDATED_REPORT_TIMING_POLICY = Object.freeze({
   '큰 전환': Object.freeze({ scope: 'service', systems: ['saju'], basis: 'inferred' }),
 });
 
-/** 개인 전용 결과는 막되, 사례 부족의 잠정 분야 정책은 리포트에 적용한다. */
-export const reportTimingPolicy = (domain, policy = VALIDATED_REPORT_TIMING_POLICY) => {
+/** 구체 사건은 서비스 검증 정책과 선언된 사건 종류가 모두 맞을 때만 리포트에 쓴다. */
+export const reportTimingPolicy = (domain, eventKind = null, policy = VALIDATED_REPORT_TIMING_POLICY) => {
+  // 기존 호출부의 reportTimingPolicy(domain, policy)도 안전하게 막는다.
+  if (eventKind && typeof eventKind === 'object') { policy = eventKind; eventKind = null; }
   const entry = policy[domain] ?? null;
-  return ['service', 'provisional'].includes(entry?.scope) ? entry : null;
+  if (entry?.scope !== 'service') return null;
+  if (eventKind != null && entry.eventKind !== eventKind) return null;
+  return entry;
 };

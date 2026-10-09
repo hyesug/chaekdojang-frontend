@@ -74,11 +74,19 @@ test('개인 사례로 얻은 결과는 서비스용 정책을 덮어쓰지 않�
   assert.equal(reportTimingPolicy('직업', personalOnly), null);
 });
 
-test('사례가 부족할 때의 잠정 분야 정책은 리포트에서 사용할 수 있다', () => {
+test('잠정 정책은 구체 사건 예측으로 리포트에 쓸 수 없다', () => {
   const provisional = {
-    이사: { scope: 'provisional', systems: ['jamidusu', 'astrology_classical'], basis: 'personal-development' },
+    결혼: { scope: 'provisional', systems: ['saju'], eventKind: 'wedding_ceremony', basis: 'personal-development' },
   };
-  assert.deepEqual(reportTimingPolicy('이사', provisional), provisional.이사);
+  assert.equal(reportTimingPolicy('결혼', 'wedding_ceremony', provisional), null);
+});
+
+test('서비스 정책은 선언한 사건 종류와 일치할 때만 리포트에 쓸 수 있다', () => {
+  const service = {
+    자녀: { scope: 'service', systems: ['saju'], eventKind: 'birth', resolution: 'year', basis: 'loo-and-shuffle' },
+  };
+  assert.deepEqual(reportTimingPolicy('자녀', 'birth', service), service.자녀);
+  assert.equal(reportTimingPolicy('자녀', 'wedding_ceremony', service), null);
 });
 
 test('잠정 정책은 빼고 고르기에서 가장 많이 뽑힌 후보를 늘 하나 고른다', () => {

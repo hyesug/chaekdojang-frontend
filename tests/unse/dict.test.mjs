@@ -44,3 +44,13 @@ test('출생 시각을 알면 열 갈래 넘게, 사람마다 다른 조합을 �
   const p = dictField(dictEntries(a), 'p', 4);
   assert.equal(new Set(p.map((x) => x.text)).size, p.length, '같은 문장이 두 번 나오면 안 된다');
 });
+
+test('AI 상담 문맥에도 리포트와 같은 사전 문장이 실린다', async () => {
+  const { buildContext } = await import('../../public/unse/src/aiContext.js');
+  const form = { gender: 'female', year: 1992, month: 1, day: 30, hour: 16, minute: 28, birthPlace: '여주', homePlace: '대전' };
+  const r = readFortune(form);
+  const ctx = buildContext(form, r);
+  assert.match(ctx, /## 이 사람의 해석/);
+  const first = dictField(dictEntries(r), 'p', 1)[0].text;
+  assert.ok(ctx.includes(first), '리포트 성격 첫 문장이 AI 문맥에 없다');
+});

@@ -15,7 +15,8 @@
  * 토큰을 아끼려고 줄임말을 쓰되, 모델이 알아볼 수 없을 만큼 줄이지는 않는다.
  */
 
-import { ELEMENTS, computeDaeun } from './core/ganzhi.js';
+import { ELEMENTS, computeDaeun, currentDaeun } from './core/ganzhi.js';
+import { dictEntries, dictField, daeunEntry, ziweiPalaceEntry } from './semantic/dict.js';
 import { AREAS } from './forecast.js';
 import { candidatesToward, DIR8 } from './hires/location.js';
 import { yearDirections } from './systems/gujeong.js';
@@ -366,6 +367,37 @@ export function monthSection(r) {
  * @param {object} r      readFortune 결과
  * @param {object} f      readForecast 결과 (없으면 생략)
  */
+/**
+ * 이 사람의 해석 — 리포트가 쓰는 **같은 사전**(semantic/dict.js)에서 고른 문장.
+ * AI가 리포트와 다른 말을 하지 않도록, 성향·일·돈·관계·조심할 점과 자미 네 자리,
+ * 지금의 10년 운을 그대로 싣는다. 사전을 못 불러왔으면 빈 문자열.
+ */
+function formatDict(r) {
+  let es = [];
+  try { es = dictEntries(r); } catch { return ''; }
+  if (!es.length) return '';
+  const L = ['## 이 사람의 해석 (리포트와 같은 사전 — 드문 특징 순)'];
+  for (const [f, name] of [['p', '성격'], ['w', '일할 때'], ['m', '돈'], ['r', '관계'], ['c', '조심할 점']]) {
+    const lines = dictField(es, f, 4);
+    if (lines.length) L.push(`${name}: ${lines.map((x) => x.text).join(' / ')}`);
+  }
+  for (const [which, name] of [['career', '일하는 방식'], ['money', '돈의 흐름'], ['spouse', '배우자'], ['children', '자녀']]) {
+    const e = ziweiPalaceEntry(r, which);
+    if (e) L.push(`${name}: ${e.h} 잘 되는 것 — ${e.g} 조심할 것 — ${e.c}`);
+  }
+  try {
+    const ds = computeDaeun(r.chart, r.input.isMale, r.input.jdUT);
+    const cur = currentDaeun(ds, r.input.elapsedYears ?? r.input.age);
+    const de = cur ? daeunEntry(r.chart.dayStem, cur.stem, cur.branch) : null;
+    if (de?.front && de?.back) {
+      L.push(`지금의 10년(${cur.fromAge}~${cur.toAge}세) 앞 다섯 해: ${de.front.h} 잘 되는 것 — ${de.front.g} 조심할 것 — ${de.front.c}`);
+      L.push(`지금의 10년 뒤 다섯 해: ${de.back.h} 잘 되는 것 — ${de.back.g} 조심할 것 — ${de.back.c}`);
+    }
+  } catch { /* 10년 운만 빠진다 */ }
+  L.push('위 문장은 손님이 받은 리포트에 실린 해석이다. 성향·일·돈·관계를 물으면 이것을 먼저 근거로 쓰고, 리포트와 반대되는 말을 하지 말 것. 문장을 그대로 베끼지 말고 질문에 맞게 풀어서 말할 것.');
+  return L.join('\n');
+}
+
 export function buildContext(form, r, f = null) {
   const out = [];
   const { chart, input, synthesis: s } = r;
@@ -386,6 +418,10 @@ export function buildContext(form, r, f = null) {
     out.push('※ 출생 시각을 몰라 시주가 없다. 자미두수·육임·홍국기문은 계산하지 않았고 나머지도 정확도가 떨어진다.');
   }
   out.push('');
+
+  // ── 리포트와 같은 해석 사전 ──
+  const dictText = formatDict(r);
+  if (dictText) { out.push(dictText); out.push(''); }
 
   // ── 체계별 ──
   out.push('## 열일곱 체계');

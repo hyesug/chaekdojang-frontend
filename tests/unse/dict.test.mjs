@@ -11,7 +11,7 @@ const dict = await loadDicts();
 
 test('모든 항목이 칸을 채운다 — 성향 사전은 다섯 칸, 10년 운 사전은 세 칸', () => {
   for (const [group, entries] of Object.entries(dict)) {
-    const fields = group.startsWith('daeun') ? ['h', 'g', 'c'] : ['p', 'w', 'm', 'r', 'c'];
+    const fields = group.startsWith('daeun') || (group.startsWith('ziwei-') && group !== 'ziwei-ming') ? ['h', 'g', 'c'] : ['p', 'w', 'm', 'r', 'c'];
     for (const [key, e] of Object.entries(entries)) {
       for (const f of fields) assert.ok(e[f]?.length > 5, `${group}|${key} 의 ${f} 칸이 비었다`);
     }
@@ -31,6 +31,7 @@ test('사주는 일간×태어난 달 120·일주 60, 10년 운은 일간×천�
   assert.equal(Object.keys(dict['saju-ilju']).length, 60);
   assert.equal(Object.keys(dict['daeun-stem']).length, 100);
   assert.equal(Object.keys(dict['daeun-branch']).length, 120);
+  for (const p of ['ming', 'career', 'money', 'spouse', 'children']) assert.equal(Object.keys(dict[`ziwei-${p}`]).length, 39, `자미 ${p}`);
 });
 
 test('출생 시각을 알면 열 갈래 넘게, 사람마다 다른 조합을 받는다', () => {

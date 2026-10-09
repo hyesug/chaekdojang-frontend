@@ -24,6 +24,7 @@ export const DICT_FILES = [
   'saju-ilju-1', 'saju-ilju-2', 'ziwei-ming', 'western', 'vedic', 'mansion',
   'gujeong', 'juyeok', 'kabbalah', 'tarot', 'weekday', 'boards',
   'daeun-stem', 'daeun-branch-1', 'daeun-branch-2',
+  'ziwei-career', 'ziwei-money', 'ziwei-spouse', 'ziwei-children',
 ];
 /** 파일 → 사전 묶음 이름 */
 const GROUP = (file) => file.replace(/-\d+$/, '');
@@ -169,4 +170,20 @@ export function daeunEntry(dayStem, stem, branch) {
     front: DICT['daeun-stem']?.[`${me}|${STEMS_KR[stem]}`] ?? null,
     back: DICT['daeun-branch']?.[`${me}|${BRANCHES_KR[branch]}`] ?? null,
   };
+}
+
+/**
+ * 자미두수 궁 하나의 해석 — 그 궁에 든 주성 조합(39가지)으로 고른다. 출생 시각이 없으면 null.
+ * @param {'career'|'money'|'spouse'|'children'} which 관록궁·재백궁·부처궁·자녀궁
+ * @returns {{h,g,c}|null}
+ */
+const PALACE_INDEX = { career: 8, money: 4, spouse: 2, children: 3 };
+export function ziweiPalaceEntry(r, which) {
+  if (!DICT || !r.input?.timeKnown) return null;
+  try {
+    const b = buildBoard(r.input);
+    const branch = (((b.myeong - PALACE_INDEX[which]) % 12) + 12) % 12;
+    const key = MAIN.filter((s) => b.board[branch].includes(s)).join('·') || '공궁';
+    return DICT[`ziwei-${which}`]?.[key] ?? null;
+  } catch { return null; }
 }

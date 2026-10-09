@@ -32,7 +32,7 @@ import { readChildren, childPalaceStars, childrenVerdict } from './semantic/stru
 import { childrenPack, marriagePack } from './hires/vedicExt.js';
 import { verifiedCareer } from './semantic/index.js';
 import { distinctReadings, ownSentences } from './semantic/distinct.js';
-import { dictEntries, dictField, daeunEntry } from './semantic/dict.js';
+import { dictEntries, dictField, daeunEntry, ziweiPalaceEntry } from './semantic/dict.js';
 import { lifeChapters, chapterTurns } from './semantic/compose/life.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
@@ -266,9 +266,11 @@ function s13(r) {
     if (area) nextLine = `다음 ${nxt.fromAge}~${nxt.toAge}세(${nxt.fromYear}~${nxt.toYear}년)에는 '${area}' 쪽이 삶의 앞으로 나옵니다.`;
   } catch { /* 생략 */ }
 
-  return labeled('커리어 무기', readingText(r, '자미두수', '관록궁'))
-    + labeled('자산 스타일', readingText(r, '자미두수', '재백궁'))
-    + labeled('일할 때 주의할 점', nat?.risk?.length ? `${nat.risk.join(', ')}.` : '')
+  // 자미 관록궁·재백궁 사전(별 조합 39가지)이 있으면 그것으로, 없으면 예전 풀이로
+  const work = ziweiPalaceEntry(r, 'career'), money = ziweiPalaceEntry(r, 'money');
+  return labeled('일하는 방식', work ? `${work.h} 잘 되는 것 — ${work.g}` : readingText(r, '자미두수', '관록궁'))
+    + labeled('돈의 흐름', money ? `${money.h} 잘 되는 것 — ${money.g} 조심할 것 — ${money.c}` : readingText(r, '자미두수', '재백궁'))
+    + labeled('일할 때 주의할 점', work?.c ?? (nat?.risk?.length ? `${nat.risk.join(', ')}.` : ''))
     + para(nextLine);
 }
 
@@ -385,6 +387,12 @@ function yearPalaces(r, yr) {
   return rows;
 }
 
+/** 자미 부처궁·자녀궁 사전 — 어떤 인연인지 · 잘 되는 것 · 조심할 것 */
+function palaceDict(r, which) {
+  const e = ziweiPalaceEntry(r, which);
+  return e ? para(e.h) + bullets(bullet('🟢', '잘 되는 것', e.g), bullet('⚠️', '조심할 것', e.c)) : '';
+}
+
 function relations(v, r) {
   const chart = { ...r.chart, gender: r.input.gender };
   let sp = [], spv = { lines: [] }, ch = [], chv = { lines: [] };
@@ -398,9 +406,9 @@ function relations(v, r) {
   } catch { /* */ }
 
   return sub('', '배우자 — 어떤 사람인가',
-      para(withSrc(v.life?.spouse)) + verdictLines(spv.lines, '배우자').map(para).join('') + personOf(sp, '배우자') + timingOf(r, '결혼'))
+      palaceDict(r, 'spouse') + para(withSrc(v.life?.spouse)) + verdictLines(spv.lines, '배우자').map(para).join('') + personOf(sp, '배우자') + timingOf(r, '결혼'))
     + sub('', '자녀',
-      para(withSrc(v.life?.child)) + verdictLines(chv.lines, '자녀').map(para).join('') + personOf(ch, '자녀') + timingOf(r, '자녀'))
+      palaceDict(r, 'children') + para(withSrc(v.life?.child)) + verdictLines(chv.lines, '자녀').map(para).join('') + personOf(ch, '자녀') + timingOf(r, '자녀'))
     + sub('', '형제·동료', palaceLine(r, '형제궁', '형제·동료') || para(withSrc(v.life?.sibling)))
     + sub('', '주변 사람', palaceLine(r, '노복궁', '주변 사람'));
 }

@@ -320,6 +320,17 @@ const PALACE_AREA = {
   9: { 총운: 11, 직장운: 9, 학업운: 10, 애정운: 7, 금전운: 4, 건강운: -3, name: '이궁 · 절정' },
 };
 
+/**
+ * 월명성 — 본명성 무리마다 寅월(입춘~)의 별이 정해져 있고 달마다 하나씩 내려간다.
+ *   一白·四緑·七赤 해 → 寅월 八白 / 三碧·六白·九紫 해 → 五黄 / 二黒·五黄·八白 해 → 二黒
+ * @param {number} honmei 본명성
+ * @param {number} sectorIndex 0 = 寅월
+ */
+export function getsumeiOf(honmei, sectorIndex) {
+  const start = [1, 4, 7].includes(honmei) ? 8 : [3, 6, 9].includes(honmei) ? 5 : 2;
+  return ((start - 1 - sectorIndex) % 9 + 9) % 9 + 1;
+}
+
 export function forecast(input, chart, period) {
   const honmei = starOfYear(chart.sajuYear);
   const center = starOfYear(period.sajuYear);
@@ -332,9 +343,17 @@ export function forecast(input, chart, period) {
   }
 
   const eff = PALACE_AREA[where];
+  // 월명성 — 구성학은 본명성(태어난 해)과 월명성(태어난 달)을 함께 본다.
+  // 본명성만 쓰면 같은 해에 난 사람의 답이 모두 같아진다(사례 6명 중 5명에게 2026년)
+  const getsu = getsumeiOf(honmei, chart.sector?.index ?? 0);
+  let whereG = 5;
+  for (const [d, n] of Object.entries(DIRS)) {
+    if ((d === '중앙' ? center : board[d]) === getsu) { whereG = n; break; }
+  }
+  const effG = PALACE_AREA[whereG];
   const areas = {};
   for (const a of ['총운', '애정운', '금전운', '직장운', '학업운', '건강운']) {
-    areas[a] = Math.max(8, Math.min(94, Math.round(50 + (eff[a] ?? 0))));
+    areas[a] = Math.max(8, Math.min(94, Math.round(50 + ((eff[a] ?? 0) + (effG[a] ?? 0)) / 2)));
   }
 
   const phase = ((period.sajuYear - chart.sajuYear) % 9 + 9) % 9;

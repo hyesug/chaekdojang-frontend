@@ -279,9 +279,13 @@ export function compare(a, b) {
 // 그 시점으로 괘를 다시 뽑는다. 시간점이라 시기마다 괘가 달라진다.
 
 export function forecast(input, chart, period) {
-  const base = period.ruling.branch + 1 + period.gz.month.branch + 1 + period.jdn % 30;
+  // 매화역수 연·월점 — 본괘와 같은 식에서 년지 자리에 그 해 태세, 그 달 월건을 넣는다.
+  // 예전 식은 사람 쪽 재료가 년지 하나뿐이라 같은 해에 난 사람은 결혼 시기 답이
+  // 모두 같았다(사례 6명 중 5명에게 2014년). 음력 생월·생일·생시를 넣어 사람마다 갈린다
+  const { lunar, hourBranch, timeKnown } = input;
+  const base = period.gz.year.branch + 1 + period.gz.month.branch + 1 + (lunar?.month ?? input.month) + (lunar?.day ?? input.day);
   const upper = modFrom1(base, 8) - 1;
-  const lower = modFrom1(base + input.yearBranch + 1, 8) - 1;
+  const lower = modFrom1(base + (timeKnown ? hourBranch + 1 : 1), 8) - 1;
   const num = HEXAGRAM_TABLE[upper][lower];
   const [name, kr, text] = HEXAGRAMS[num];
 
@@ -290,9 +294,11 @@ export function forecast(input, chart, period) {
   const tone = AUS.has(num) ? 13 : DIF.has(num) ? -13 : 0;
 
   const el = TRIGRAMS[upper].element;
+  // 혼인을 직접 말하는 괘 — 咸(감응)·恒(오래감)·家人(집안)·漸(女歸吉)·歸妹(시집감)
+  const MARRIAGE = new Set([31, 32, 37, 53, 54]);
   const areas = {
     총운: 50 + tone,
-    애정운: 50 + tone + (el === 4 ? 5 : 0),
+    애정운: 50 + (MARRIAGE.has(num) ? 25 : tone) + (el === 4 ? 5 : 0),
     금전운: 50 + tone + (el === 3 ? 6 : 0),
     직장운: 50 + tone + (el === 0 ? 5 : 0),
     학업운: 50 + tone + (el === 1 ? 5 : 0),

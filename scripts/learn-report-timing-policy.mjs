@@ -84,32 +84,20 @@ for (let i = 0; i < SYSTEM_CANDIDATES.length; i++) {
   }
 }
 
-// 자녀는 출산 달 그대로와 '아홉 달 앞(임신 무렵)' 둘 다 모든 후보에 똑같이 잰다.
-// 전에는 사주만 아홉 달 앞을 보고 나머지는 출산 달로 재서 사주에 유리했다.
-// '후보@9' = 그 후보의 신호를 아홉 달 뒤로 옮겨 출산 달과 맞춘 것. baseline 은 현재 규칙(사주·아홉 달 앞).
-const CHILD_LEAD = 9;
-const isChildren = (domain) => domain === 'children';
+// 출산은 출산 시점으로만 잰다. 임신 신호를 출산 달로 옮기는 보정은
+// 별도의 임신 예측이 검증되기 전에는 후보에 넣지 않는다.
 const candidatePolicy = (domain) => Object.fromEntries(Object.entries(candidateSystems).map(([name, systems]) => [
-  name, systems ? { [domain]: { systems, ...(isChildren(domain) ? { leadMonths: 0 } : {}) } } : {},
+  name, { [domain]: { systems: systems ?? null, leadMonths: 0 } },
 ]));
-const shiftKey = (key, d) => {
-  const n = Number(key.slice(0, 4)) * 12 + Number(key.slice(5, 7)) - 1 + d;
-  return `${Math.floor(n / 12)}-${String((n % 12) + 1).padStart(2, '0')}`;
-};
-for (const [name, systems] of Object.entries(candidateSystems)) {
-  if (systems) candidateSystems[`${name}@${CHILD_LEAD}`] = systems;
-}
 
-const seriesOf = (result, candidate, domain, fromKey = null) => {
-  const lead = candidate.endsWith(`@${CHILD_LEAD}`);
-  const base = lead ? candidate.slice(0, -`@${CHILD_LEAD}`.length) : candidate;
-  if (lead && !isChildren(domain)) return [];
-  return Object.entries(result.validationCandidates[base]?.[domain] ?? {})
-    .map(([k, v]) => ({ k: lead ? shiftKey(k, CHILD_LEAD) : k, v }))
-    .filter((e) => !fromKey || e.k >= fromKey);
+const seriesOf = (result, candidate, domain, target) => {
+  const eventScores = result.validationEventCandidates[candidate]?.[domain] ?? {};
+  return Object.entries(eventScores)
+    .map(([k, scores]) => ({ k, v: scores?.[target.candidateKind] ?? null }))
+    .filter((entry) => Number.isFinite(entry.v));
 };
-const score = (series, event) => {
-  const measured = event.month == null ? scoreEventYearly(series, event.year) : scoreEvent(series,
+const score = (series, event, resolution) => {
+  const measured = resolution === 'year' || event.month == null ? scoreEventYearly(series, event.year) : scoreEvent(series,
     `${event.year}-${String(event.month).padStart(2, '0')}`);
   return measured.unscorable ? null : measured.eventPercentile;
 };
@@ -119,7 +107,7 @@ function collapseFamilies(rows) {
   const grouped = new Map();
   for (const row of rows) {
     const family = row.event.eventFamily ?? `event:${row.event.year}-${row.event.month ?? 'year'}-${row.event.what ?? ''}`;
-    const key = `${row.person}\u0000${row.domain}\u0000${family}`;
+    const key = `${row.person}\u0000${row.domain}\u0000${row.target.eventKind}\u0000${family}`;
     const bucket = grouped.get(key) ?? { ...row, family, members: [] };
     bucket.members.push(row);
     grouped.set(key, bucket);
@@ -132,6 +120,8 @@ function collapseFamilies(rows) {
       return [candidate, values.length ? values.reduce((a, b) => a + b, 0) / values.length : null];
     })),
     seriesByCandidate: bucket.members[0].seriesByCandidate,
+    candidateMeta: bucket.members[0].candidateMeta,
+    target: bucket.members[0].target,
   }));
 }
 
@@ -143,7 +133,7 @@ function shuffledRows(rows, random) {
       const event = row.precision === 'month'
         ? { year: Number(key.slice(0, 4)), month: Number(key.slice(5, 7)) }
         : { year: Number(key.slice(0, 4)) };
-      return [candidate, score(series, event)];
+      return [candidate, score(series, event, row.candidateMeta[candidate]?.resolution)];
     }));
     return { ...row, scores };
   });
@@ -154,13 +144,13 @@ console.log('## 사례');
 for (const s of sources) console.log(`  ${s.path}: 새 사건 ${s.added}건`);
 console.log(`  합계: 사람 ${cases.length}명 · 사건 ${cases.reduce((a, c) => a + c.events.length, 0)}건 (같은 사람·같은 사건은 한 번만)`);
 const rowsByDomain = new Map();
+let skippedTargets = 0;
 for (const group of groupTimingEvents(cases, DOMAIN_OF, { paddingYears: 3 })) {
   let result;
   try {
     result = predictTimeline({
       birth: group.birth, domains: [group.domain],
-      // 자녀는 아홉 달 앞까지 계산해 두어야 옮긴 신호가 기간 첫 달부터 찬다
-      from: isChildren(group.domain) ? shiftKey(group.from, -CHILD_LEAD) : group.from, to: group.to,
+      from: group.from, to: group.to,
       validationPolicies: candidatePolicy(group.domain),
     });
   } catch (err) {
@@ -170,22 +160,28 @@ for (const group of groupTimingEvents(cases, DOMAIN_OF, { paddingYears: 3 })) {
   }
   for (const event of group.events) {
     const target = normalizeTimingEvent(event, group.domain);
+    if (!target.eligible) { skippedTargets++; continue; }
     const precision = target.datePrecision;
+    const candidateMeta = Object.fromEntries(Object.keys(candidateSystems).map((candidate) => [
+      candidate, result.validationCandidateMeta[candidate]?.[group.domain] ?? { resolution: 'none' },
+    ]));
     const seriesByCandidate = Object.fromEntries(Object.keys(candidateSystems).map((candidate) => [
-      candidate, seriesOf(result, candidate, group.domain, isChildren(group.domain) ? group.from : null),
+      candidate, seriesOf(result, candidate, group.domain, target),
     ]).filter(([, series]) => series.length));
     const row = {
-      person: group.person, domain: group.domain, event, target, precision, seriesByCandidate,
-      scores: Object.fromEntries(Object.entries(seriesByCandidate).map(([candidate, series]) => [candidate, score(series, event)])),
+      person: group.person, domain: group.domain, event, target, precision, seriesByCandidate, candidateMeta,
+      scores: Object.fromEntries(Object.entries(seriesByCandidate).map(([candidate, series]) => [candidate,
+        score(series, event, candidateMeta[candidate]?.resolution)])),
     };
     const rows = rowsByDomain.get(group.domain) ?? [];
     rows.push(row); rowsByDomain.set(group.domain, rows);
   }
 }
 
-console.log('# 리포트 시기 정책 학습');
+console.log('# 리포트 사건 시기 정책 학습');
 console.log(`단독 ${SYSTEM_CANDIDATES.length}개 + 독립 계보 쌍 ${Object.keys(candidateSystems).length - 1 - SYSTEM_CANDIDATES.length}개를 비교합니다.`);
 console.log('사람 단위 LOO·날짜 섞기·쌍 대 단독 비교를 모두 통과해야 서비스 정책이 됩니다.');
+console.log(`구체 사건 종류가 없는 행 ${skippedTargets}건은 사건 예측 채점에서 제외했습니다.`);
 const service = {};
 const personal = {};
 const report = {};      // 리포트에 넣을 제안 — service, 아니면 빼고 고르기(잠정), 아니면 기본 방식
@@ -211,7 +207,10 @@ for (const [domain, rawRows] of rowsByDomain) {
   console.log(`- ${label}: ${verdict.scope} · ${verdict.promote ? '서비스 승격' : '개인 진단'} · ${verdict.personalSelected}`);
   console.log(`  ${verdict.reason} · 사람 ${verdict.people}명 · 월 사건 ${verdict.monthlyEvents}건`);
   if (verdict.pairComparison) console.log(`  쌍 ${verdict.pairComparison.pair}: ${verdict.pairComparison.pairScore?.toFixed(1)} vs 단독 ${verdict.pairComparison.bestMember} ${verdict.pairComparison.bestMemberScore?.toFixed(1)}`);
-  const proposal = { scope: verdict.scope, systems: selectedSystems, basis: 'loo-and-shuffle', evidence: {
+  const selectedTarget = rows[0]?.target ?? null;
+  const selectedResolution = rows[0]?.candidateMeta?.[verdict.promote ? verdict.selected : verdict.personalSelected]?.resolution ?? null;
+  const proposal = { scope: verdict.scope, systems: selectedSystems, eventKind: selectedTarget?.eventKind ?? null,
+    resolution: selectedResolution, basis: 'loo-and-shuffle', evidence: {
     people: verdict.people, monthlyEvents: verdict.monthlyEvents, reason: verdict.reason,
   } };
   (verdict.promote ? service : personal)[label] = proposal;
@@ -222,7 +221,8 @@ for (const [domain, rawRows] of rowsByDomain) {
   report[label] = {
     scope: verdict.promote ? 'service' : 'provisional',
     systems: systemsOf(chosen),
-    ...(String(chosen).endsWith(`@${CHILD_LEAD}`) ? { leadMonths: CHILD_LEAD } : {}),
+    eventKind: selectedTarget?.eventKind ?? null,
+    resolution: rows[0]?.candidateMeta?.[chosen]?.resolution ?? null,
     basis: verdict.promote ? 'loo-and-shuffle' : prov.method === 'loo-vote' ? 'loo-vote' : 'single-case',
   };
   table.push({

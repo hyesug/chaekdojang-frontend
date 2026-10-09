@@ -89,7 +89,8 @@ export function predictTimeline(o) {
   const normalizePolicy = (domain, source = {}) => {
     const requested = source[domain] ?? {};
     const systems = Array.isArray(requested.systems) && requested.systems.length
-      ? [...new Set(requested.systems)] : (DOMAIN_ONLY[domain] ?? null);
+      ? [...new Set(requested.systems)]
+      : Object.hasOwn(requested, 'systems') ? null : (DOMAIN_ONLY[domain] ?? null);
     const leadMonths = Number.isInteger(requested.leadMonths) && requested.leadMonths >= 0
       ? requested.leadMonths : (DOMAIN_LEAD_MONTHS[domain] ?? 0);
     return { systems, leadMonths };
@@ -348,13 +349,37 @@ export function predictTimeline(o) {
   // 후보는 명반·천문 계산을 다시 돌리지 않고, 위에서 이미 계산한 체계별 신호를
   // 같은 달 축에서 다시 합친 결과다. 검증 전용으로만 요청했을 때 반환한다.
   const validationCandidates = {};
+  const validationEventCandidates = {};
+  const validationCandidateMeta = {};
+  const nativeResolutionOf = (domain, policy) => {
+    const resolutions = new Set();
+    for (const { signals } of perMonth) {
+      const selected = policy.systems ? signals.filter((signal) => policy.systems.includes(signal.system)) : signals;
+      for (const signal of selected) {
+        if (signal.available && ['month', 'year'].includes(signal.resolution)
+          && Number.isFinite(signal.activations?.[domain])) resolutions.add(signal.resolution);
+      }
+    }
+    return resolutions.has('year') ? 'year' : resolutions.has('month') ? 'month' : 'none';
+  };
   for (const [name, source] of Object.entries(candidatePolicies)) {
     validationCandidates[name] = {};
+    validationEventCandidates[name] = {};
+    validationCandidateMeta[name] = {};
     for (const d of want) {
-      const series = smooth(perMonth.map((x) => x.key), poolForPolicy(d, normalizePolicy(d, source)),
+      const policy = normalizePolicy(d, source);
+      const series = smooth(perMonth.map((x) => x.key), poolForPolicy(d, policy),
         WINDOW_MONTHS[RESOLUTION[d]] ?? 1);
       validationCandidates[name][d] = Object.fromEntries(Object.entries(series)
         .map(([key, value]) => [key, Number.isFinite(value.activation) ? value.activation : null]));
+      validationEventCandidates[name][d] = Object.fromEntries(Object.entries(series).map(([key, value]) => {
+        const events = Number.isFinite(value.activation)
+          ? scoreEvents(d, value.activation, value.direction, natal.domains[d]?.profile ?? null,
+            value.consensus, currentState, value.magnitude)
+          : [];
+        return [key, Object.fromEntries(events.map((event) => [event.type, event.rawScore]))];
+      }));
+      validationCandidateMeta[name][d] = { resolution: nativeResolutionOf(d, policy) };
     }
   }
 
@@ -375,6 +400,8 @@ export function predictTimeline(o) {
     }])),
     timeline,
     validationCandidates,
+    validationEventCandidates,
+    validationCandidateMeta,
     transitions,
     // 체계별 결과를 그대로 남긴다 — 나중에 어느 체계가 어느 분야의 시기를
     // 잘 잡는지 재려면 이것이 있어야 한다

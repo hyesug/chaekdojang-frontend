@@ -30,6 +30,7 @@ import { palaceStars, natureOf } from './semantic/structure/stars.js';
 import { readSpouse, spousePalaceStars, spouseVerdict } from './semantic/structure/spouse.js';
 import { readChildren, childPalaceStars, childrenVerdict } from './semantic/structure/children.js';
 import { childrenPack, marriagePack } from './hires/vedicExt.js';
+import { verifiedCareer } from './semantic/index.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -186,7 +187,7 @@ const REPORT_TIMING_DOMAIN = {
 const TIMING_LABEL = { 결혼: '결혼식·인연', 자녀: '출산·가족 확장', 이사: '이사·이동', 직업: '일의 변화', 재물: '목돈' };
 // 이 보고서가 실제로 시간 창을 표시하는 분야만 한 번에 계산한다. 나머지 분야도
 // policy.js와 학습기에는 남아 있으나, 숨은 분야까지 계산해 첫 화면을 느리게 만들지 않는다.
-const REPORT_VISIBLE_TIMING_LABELS = new Set(['직업', '재물', '결혼', '자녀', '이사', '건강']);
+const REPORT_VISIBLE_TIMING_LABELS = new Set(['직업', '재물', '이사', '건강']);
 const reportTimelineCache = new WeakMap();
 
 function reportTimeline(r) {
@@ -291,7 +292,16 @@ function selectedSpan(r, w) {
   return `${range}(${age})`;
 }
 
+/** 사례 검증에서 떨어진 분야 — 연도를 내지 않는다 (docs/unse/rebuild-result.md) */
+const UNVERIFIED_TIMING = {
+  결혼: '결혼하는 해는 저희가 실제 사례로 재 봤을 때 원전 규칙대로 계산해도 맞히지 못해, 연도를 제시하지 않습니다.',
+  자녀: '출산하는 해는 저희가 실제 사례로 재 봤을 때 원전 규칙대로 계산해도 맞히지 못해, 연도를 제시하지 않습니다.',
+};
+/** 한 사람 이력·사전 후보로만 고른 시기 — 연도 옆에 그렇다고 적는다 */
+const PENDING_NOTE = ' (아직 검증 중인 시기 규칙입니다)';
+
 function timingOf(r, domain, span = 10) {
+  if (UNVERIFIED_TIMING[domain]) return `<p class="rp-t rp-when">${esc(UNVERIFIED_TIMING[domain])}</p>`;
   // 이미 결혼한 사람에게 "결혼 시기는 ○년이 유력"은 틀린 말이다 — 지나온 신호를 보여 준다
   if (domain === '결혼' && isMarried(r)) {
     const past = pastWindows(r, '결혼').map((w) => selectedSpan(r, w));
@@ -317,7 +327,7 @@ function timingOf(r, domain, span = 10) {
   const past = PAST_DOMAINS.has(domain) && policy.scope !== 'prior'
     ? pastWindows(r, domain, 2).map((w) => selectedSpan(r, w)) : [];
   const pastLine = past.length ? ` 지나온 때 중에서는 ${esc(past.join(', '))}에 신호가 높았습니다.` : '';
-  return `<p class="rp-t rp-when">${esc(label)} 신호는 <strong>${esc(spans[0])}</strong>에 ${rest}.${pastLine}</p>`;
+  return `<p class="rp-t rp-when">${esc(label)} 신호는 <strong>${esc(spans[0])}</strong>에 ${rest}.${pastLine}${esc(policy.scope === 'service' ? '' : PENDING_NOTE)}</p>`;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -430,8 +440,18 @@ function s13(r) {
     + para(nextLine);
 }
 
+/** 사례로 검증된 직업 범주 — 자미두수·육임·숙요 (docs/unse/rebuild-result.md) */
+function verifiedCareerLine(r) {
+  let vc = null;
+  try { vc = verifiedCareer(r.input); } catch { /* */ }
+  if (!vc?.available) return vc?.why ? para(`검증된 직업 분야는 ${vc.why}.`) : '';
+  return para(`가장 잘 맞는 직업 분야는 ${vc.top.map((x) => x.label).join(', ')} 순입니다.`)
+    + para('세 가지 점술을 합친 판단으로, 실제 사례 11명에 대 봤을 때 8명의 실제 직업 분야가 이 셋 안에 들었습니다.');
+}
+
 const careerLife = (v, r) =>
-  sub('', '앞으로 십 년, 해마다', s11(v, r))
+  sub('', '검증된 직업 분야', verifiedCareerLine(r))
+  + sub('', '앞으로 십 년, 해마다', s11(v, r))
   + sub('', '내 커리어 무기와 자산 스타일', s13(r))
   + sub('', '사회에서 보이는 나', s12(r))
   + sub('', '타고난 성향', readings(r, '사주', 3))
@@ -469,6 +489,10 @@ function personOf(reads, who) {
   ]);
 }
 
+/** 자녀 수는 사례 검증에서 찍기와 같았다 — 수를 단정하는 줄을 빼고 그렇다고 적는다 */
+const childLines = (lines) => [...(lines ?? []).filter((l) => !/^수는/.test(String(l).replace(/\*\*/g, ''))),
+  '자녀 수는 실제 사례로 재 봤을 때 그냥 짐작하는 것보다 낫지 않아 말하지 않습니다.'];
+
 function relations(v, r) {
   const chart = { ...r.chart, gender: r.input.gender };
   let sp = [], spv = { lines: [] }, ch = [], chv = { lines: [] };
@@ -484,7 +508,7 @@ function relations(v, r) {
   return sub('', isMarried(r) ? '배우자 — 어떤 사람인가' : '배우자 — 어떤 사람이고 언제인가',
       para(withSrc(v.life?.spouse)) + verdictLines(spv.lines, '배우자').map(para).join('') + personOf(sp, '배우자') + timingOf(r, '결혼'))
     + sub('', '자녀',
-      para(withSrc(v.life?.child)) + verdictLines(chv.lines, '자녀').map(para).join('') + personOf(ch, '자녀') + timingOf(r, '자녀'))
+      para(withSrc(v.life?.child)) + verdictLines(childLines(chv.lines), '자녀').map(para).join('') + personOf(ch, '자녀') + timingOf(r, '자녀'))
     + sub('', '형제·동료', para(withSrc(v.life?.sibling)));
 }
 
@@ -687,12 +711,9 @@ function finale(r) {
   for (const [domain, icon, what] of [
     ['직업', '💼', '일에서 가장 큰 기회와 변화가 오는 때'],
     ['재물', '💰', '돈이 가장 크게 들어오는 때'],
-    ['결혼', '💞', '인연·관계가 가장 무르익는 때'],
-    ['자녀', '👶', '출산·가족 확장 신호가 높은 때'],
     ['이사', '🏠', '이사·이동하기 가장 좋은 때'],
     ['건강', '🩺', '몸에 일이 생기기 쉬워 특히 챙겨야 하는 때'],
   ]) {
-    if (domain === '결혼' && isMarried(r)) continue;
     const windows = selectedWindows(r, domain, 15, 2);
     if (!windows.length) continue;
     const spans = windows.map((w) => selectedSpan(r, w));
@@ -701,6 +722,7 @@ function finale(r) {
       : `${esc(what)}는 <strong>${esc(spans.join(', '))}</strong> 순으로 신호가 높습니다.`);
     items.push(`<li><span class="rp-ic" aria-hidden="true">${icon}</span><div><p>${text}</p></div></li>`);
   }
+  if (items.length) items.push(`<li><span class="rp-ic" aria-hidden="true">ℹ️</span><div><p>${esc('위 시기는 아직 검증 중인 규칙으로 고른 것입니다. 결혼·출산 연도는 실제 사례 검증에서 맞히지 못해 넣지 않았습니다.')}</p></div></li>`);
   const principles = [...personalPrinciples(r),
     '운세는 선택을 대신하는 도구가 아니라, 되풀이되는 패턴을 점검하는 보조 자료입니다.'];
   const timingNotice = items.length
@@ -820,10 +842,10 @@ function lifeSeasons(r) {
     // 그 해의 십성 풀이는 두 문장까지 — 첫 문장만 쓰면 '책임이 들어오는 해'처럼 제목만 남는다
     const head = firstOf(y.text, 2);
     const tip = y.hit?.kind && HIT_TIP[y.hit.kind] ? HIT_TIP[y.hit.kind](HIT_AREA[y.hit.at] ?? '주변') : '';
-    const bond = y.bond ? '연애·결혼처럼 사람과의 인연이 움직이기 쉬운 해이기도 합니다.' : '';
-    return [head, tip, bond].filter(Boolean).join(' ');
+    // 인연(결혼)이 움직이는 해는 말하지 않는다 — 결혼 연도는 사례 검증에서 떨어졌다
+    return [head, tip].filter(Boolean).join(' ');
   };
-  const good = years.filter((y) => y.hit?.good || y.bond).slice(0, 3);
+  const good = years.filter((y) => y.hit?.good).slice(0, 3);
   const check = years.filter((y) => y.hit && !y.hit.good).slice(0, 3);
   return {
     season: info

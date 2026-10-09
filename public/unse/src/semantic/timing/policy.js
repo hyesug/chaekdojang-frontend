@@ -15,18 +15,17 @@
  * 이 표는 미래 사건의 보증이 아니다. 결과 화면에서는 "신호가 높은 구간"으로만 읽는다.
  */
 export const VALIDATED_REPORT_TIMING_POLICY = Object.freeze({
-  // 2026-10-09 학습: 확인된 사람 9명·사건 47건. 사례집의 기존 결혼·자녀는
-  // 사용자가 각각 결혼식·출산일로 확정했다.
-  결혼: Object.freeze({ scope: 'provisional', systems: ['taeeul'], eventKind: 'wedding_ceremony', resolution: 'year', basis: 'loo-vote' }),
-  자녀: Object.freeze({ scope: 'provisional', systems: ['saju'], eventKind: 'birth', resolution: 'month', leadMonths: 0, basis: 'loo-vote' }),
+  // 2026-10-09 재구현 뒤 다시 학습(npm run unse:timing-learn). 결혼·자녀는 **뺐다** —
+  // 원전 규칙대로 다시 만들어도 사례에서 나이로 찍는 것보다 못했다(docs/unse/rebuild-result.md).
+  // 아래는 모두 한 사람 이력(P01)이나 사전 후보로 고른 것이라 화면에 "검증 중"을 붙인다.
   주거: Object.freeze({ scope: 'prior', systems: ['saju', 'jamidusu', 'astrology_modern', 'vedic'], basis: 'direct-domain-rule-tie' }),
   건강: Object.freeze({ scope: 'prior', systems: ['saju', 'jamidusu', 'astrology_modern', 'vedic'], basis: 'direct-domain-rule-tie' }),
   '큰 전환': Object.freeze({ scope: 'prior', systems: ['saju', 'jamidusu', 'astrology_modern', 'vedic'], basis: 'direct-domain-rule-tie' }),
 
   // 한 사람 이력만 있는 분야 — 사건을 하나씩 빼고도 가장 자주 남은 잠정 후보다.
   직업: Object.freeze({ scope: 'provisional', systems: ['yukim', 'mahabote'], eventKind: 'first_job', resolution: 'year', basis: 'loo-vote' }),
-  재물: Object.freeze({ scope: 'provisional', systems: ['yukim', 'mahabote'], eventKind: 'income_increase', resolution: 'year', basis: 'loo-vote' }),
-  관계: Object.freeze({ scope: 'provisional', systems: ['saju', 'tarot'], eventKind: 'new_relationship', resolution: 'month', basis: 'loo-vote' }),
+  재물: Object.freeze({ scope: 'provisional', systems: ['mahabote', 'tarot'], eventKind: 'income_increase', resolution: 'year', basis: 'loo-vote' }),
+  관계: Object.freeze({ scope: 'provisional', systems: ['saju', 'jamidusu'], eventKind: 'new_relationship', resolution: 'month', basis: 'loo-vote' }),
   이사: Object.freeze({ scope: 'provisional', systems: ['jamidusu'], eventKind: 'regional_move', resolution: 'month', basis: 'loo-vote' }),
   학업: Object.freeze({ scope: 'provisional', systems: ['taeeul', 'kabbalah'], eventKind: 'qualification_attempt', resolution: 'year', basis: 'loo-vote' }),
 });

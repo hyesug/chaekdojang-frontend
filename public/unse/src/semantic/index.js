@@ -92,6 +92,29 @@ export function leadingAxes(profile, n = 5, floor = 0.25) {
 }
 
 /**
+ * 사례로 검증된 직업 범주 — 자미두수·육임·숙요 셋의 직업 벡터를 같은 무게로 합쳐 상위 3범주.
+ *
+ * 2026-10-09 사례집 11명에서 실제 직업 범주가 상위 3범주(15개 중) 안에 든 사람이 8명,
+ * 한 명씩 빼고 조합을 골라도 8/11 (찍기 기대 2.2명). 15체계 전체 평균은 6/11 이었다
+ * (docs/unse/rebuild-result.md). 셋 중 하나라도 못 세우면(출생 시각 없음) 검증된 조합이
+ * 아니므로 내지 않는다.
+ */
+export const VERIFIED_CAREER_SYSTEMS = ['jamidusu', 'yukim', 'sukyo'];
+export function verifiedCareer(birth) {
+  const { fortune, stack } = natalFortune(birth);
+  const reads = interpretCareer(fortune, stack)
+    .filter((s) => VERIFIED_CAREER_SYSTEMS.includes(s.system) && s.features && s.status !== 'unavailable');
+  if (reads.length < VERIFIED_CAREER_SYSTEMS.length) {
+    return { available: false, why: '출생 시각이 있어야 검증된 세 체계(자미두수·육임·숙요)를 모두 세울 수 있습니다' };
+  }
+  const sum = {};
+  for (const s of reads) for (const [k, v] of Object.entries(s.features)) sum[k] = (sum[k] ?? 0) + v / reads.length;
+  const top = categorizeCareer(sum)?.levelC?.ranked?.slice(0, 3) ?? [];
+  return { available: top.length > 0, top: top.map((x) => ({ key: x.key, label: x.label, examples: x.examples.slice(0, 3) })),
+    systems: reads.map((s) => s.systemName), measured: '사례 11명 중 8명 적중' };
+}
+
+/**
  * 한 사람의 직업 성향을 읽는다.
  *
  * @param {object} birth `readFortune` 과 같은 입력

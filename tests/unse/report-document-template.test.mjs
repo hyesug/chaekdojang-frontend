@@ -90,7 +90,10 @@ test('사례 부족 시기 예측은 근거 문구 없이 신호만 제시한다
   assert.doesNotMatch(html, /잠정 선택|사전 후보|사람별 검증/);
   assert.match(html, /일에서 가장 큰 기회와 변화가 오는 때는 <strong>/);
   assert.match(html, /돈이 가장 크게 들어오는 때는 <strong>/);
-  assert.match(html, /인연·관계가 가장 무르익는 때는 <strong>/);
+  // 결혼·출산 연도는 검증에서 떨어져 내지 않는다 — 그렇다고 밝힌다
+  assert.doesNotMatch(html, /인연·관계가 가장 무르익는 때는 <strong>/);
+  assert.doesNotMatch(html, /출산·가족 확장 신호가 높은 때는 <strong>/);
+  assert.match(html, /결혼하는 해는 저희가 실제 사례로 재 봤을 때/);
 });
 
 test('개인 리포트 화면 글에는 전문용어·한자·강조 표시가 남지 않는다', () => {

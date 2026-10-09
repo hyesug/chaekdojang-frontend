@@ -71,7 +71,7 @@ npm run unse:validate
     "events": [
       { "domain": "직업", "year": 2015, "month": 4,  "what": "첫 직장 입사" },
       { "domain": "이사", "year": 2015, "month": 6,  "what": "서울로 이사" },
-      { "domain": "결혼", "year": 2019, "month": 10, "what": "결혼식" },
+      { "domain": "결혼", "eventKind": "wedding_ceremony", "year": 2019, "month": 10, "what": "결혼식" },
       { "domain": "주거", "year": 2021,               "what": "전세 계약" },
       { "domain": "직업", "year": 2023, "month": 11, "what": "이직" }
     ]
@@ -92,6 +92,22 @@ npm run unse:validate
 - `birthPlace`·`homePlace` — 시·군 이름. 목록에 없으면 **가장 가까운 시·군**으로 (경도가 가까우면 결과가 거의 같습니다)
 - `month` — 모르면 빼도 됩니다. 연도만으로도 채점됩니다
 - 쉼표·괄호를 빠뜨리면 파일이 안 읽힙니다. 붙여넣고 고치는 쪽이 안전합니다
+
+### 구체 사건 예측을 재려면
+
+`domain`만 있으면 그 분야가 움직인 시기만 점검합니다. 결혼식·출산처럼
+구체 사건을 LOO 검증으로 고르려면 `eventKind`를 반드시 적으세요. 기존 행에
+없던 종류를 `what` 문장으로 추측해 채우면 안 됩니다.
+
+- 결혼식: `"domain": "결혼", "eventKind": "wedding_ceremony"`
+- 출산: `"domain": "자녀", "eventKind": "birth"`
+- 다른 분야: `public/unse/src/semantic/timing/events.js`의 사건 키를 씁니다.
+
+사건이 실제로 일어난 월을 모르면 `month`를 빼고 연 단위로만 채점합니다.
+임신·혼인신고·동거는 결혼식이나 출산의 대체 정답이 아닙니다. 아직 사건이
+일어나지 않은 기간은 `observedThrough`에 마지막 확인 시점(`YYYY` 또는
+`YYYY-MM`)을, 이후 기록을 더 볼 수 없는 경우에는 `observationEnded`에
+`death`, `lost_contact`, `unknown_history` 중 하나를 적을 수 있습니다.
 
 ## 5. 돌리기
 

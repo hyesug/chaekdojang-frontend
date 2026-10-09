@@ -12,6 +12,7 @@ import { groupTimingEvents } from '../public/unse/src/validation/timingCaseWindo
 import { scoreEvent, scoreEventYearly } from '../public/unse/src/validation/timingMetrics.js';
 import { selectTimingPolicy, selectProvisionalPolicy } from '../public/unse/src/validation/timingPolicy.js';
 import { seededRandom } from '../public/unse/src/semantic/timing/schema.js';
+import { normalizeTimingEvent } from '../public/unse/src/validation/eventTargets.js';
 
 // 사례는 여러 파일에 나뉘어 있다(모두 .gitignore — 개인정보). 인자를 주면 그 파일들만 쓴다.
 //   validation/cases.json             지인 사례 (birth · events[year, month])
@@ -47,7 +48,11 @@ function loadCases(paths) {
         const [y, m] = e.date ? e.date.split('-').map(Number) : [e.year, e.month];
         if (!Number.isInteger(y)) continue;
         const ev = { domain: e.domain, year: y, ...(Number.isInteger(m) ? { month: m } : {}),
-          what: e.what ?? e.type, ...(e.eventFamily ? { eventFamily: e.eventFamily } : {}) };
+          what: e.what ?? e.type, ...(e.eventKind ? { eventKind: e.eventKind } : {}),
+          ...(e.datePrecision ? { datePrecision: e.datePrecision } : {}),
+          ...(e.eventFamily ? { eventFamily: e.eventFamily } : {}),
+          ...(e.observedThrough ? { observedThrough: e.observedThrough } : {}),
+          ...(e.observationEnded ? { observationEnded: e.observationEnded } : {}) };
         const k = `${ev.domain}|${ev.year}|${ev.month ?? ''}`;
         if (seen.has(k)) continue;
         seen.add(k); person.events.push(ev); added++;
@@ -164,12 +169,13 @@ for (const group of groupTimingEvents(cases, DOMAIN_OF, { paddingYears: 3 })) {
     continue;
   }
   for (const event of group.events) {
-    const precision = event.month == null ? 'year' : 'month';
+    const target = normalizeTimingEvent(event, group.domain);
+    const precision = target.datePrecision;
     const seriesByCandidate = Object.fromEntries(Object.keys(candidateSystems).map((candidate) => [
       candidate, seriesOf(result, candidate, group.domain, isChildren(group.domain) ? group.from : null),
     ]).filter(([, series]) => series.length));
     const row = {
-      person: group.person, domain: group.domain, event, precision, seriesByCandidate,
+      person: group.person, domain: group.domain, event, target, precision, seriesByCandidate,
       scores: Object.fromEntries(Object.entries(seriesByCandidate).map(([candidate, series]) => [candidate, score(series, event)])),
     };
     const rows = rowsByDomain.get(group.domain) ?? [];

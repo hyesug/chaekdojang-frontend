@@ -29,6 +29,7 @@ import {
   scoreEvent, scoreEventYearly, scoreAtResolution, aggregateNull, nullPosition,
   personWeighted, personBootstrap, scoreEventKind,
 } from '../public/unse/src/validation/timingMetrics.js';
+import { normalizeTimingEvent } from '../public/unse/src/validation/eventTargets.js';
 
 const file = process.argv[2] ?? 'validation/cases.json';
 if (!existsSync(file)) {
@@ -52,10 +53,12 @@ for (const group of groupTimingEvents(cases, DOMAIN_OF, { paddingYears: 3 })) {
   for (const e of group.events) {
     // 정밀도를 명시한다. 없으면 month 유무로 정한다 — 없는 정밀도를 만들지 않는다
     const precision = e.datePrecision ?? (e.month != null ? 'month' : 'year');
+    const target = normalizeTimingEvent(e, group.domain);
     rows.push({
       person: group.person, domain: group.domain, what: e.what,
       year: e.year, month: e.month ?? null, precision,
-      eventKind: e.eventKind ?? null, eventFamily: e.eventFamily ?? null,
+      eventKind: target.eventKind, eventCandidateKind: target.candidateKind,
+      eventTarget: target, eventFamily: e.eventFamily ?? null,
       key: e.month != null ? `${e.year}-${String(e.month).padStart(2, '0')}` : null,
       result: r,
     });

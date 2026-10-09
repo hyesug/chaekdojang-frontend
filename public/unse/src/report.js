@@ -32,6 +32,7 @@ import { readChildren, childPalaceStars, childrenVerdict } from './semantic/stru
 import { childrenPack, marriagePack } from './hires/vedicExt.js';
 import { verifiedCareer } from './semantic/index.js';
 import { distinctReadings, ownSentences } from './semantic/distinct.js';
+import { dictEntries, dictField } from './semantic/dict.js';
 import { lifeChapters, chapterTurns } from './semantic/compose/life.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
@@ -282,8 +283,7 @@ function verifiedCareerLine(r) {
 const careerLife = (v, r) =>
   sub('', '가능성이 높은 직업 분야', verifiedCareerLine(r))
   + sub('', '내 커리어 무기와 자산 스타일', s13(r))
-  + sub('', '사회에서 보이는 나', s12(r))
-  + sub('', '타고난 성향', readings(r, '사주', 3));
+  + sub('', '사회에서 보이는 나', s12(r));
 
 /* ── 2. 사랑과 가족 ─────────────────────────────────────── */
 
@@ -722,6 +722,23 @@ const DISTINCT_LABEL = {
   구성학: '타고난 별', 숙요: '달이 머문 자리', 토정비결: '타고난 수', 카발라: '생명의 숫자',
   마하보테: '태어난 요일의 자리', '태국 점성술': '태어난 요일', 타로: '생일 카드',
 };
+/**
+ * 나는 어떤 사람인가 — 17체계 해석 사전(semantic/dict.js)에서 그 사람의 항목을 모아
+ * 성격·일·돈·관계·조심할 점으로 묶는다. 사람들 사이에서 드문 특징의 문장이 먼저 온다.
+ * 사전을 아직 불러오지 못했으면(오프라인 등) 예전의 드문 풀이 카드로 물러선다.
+ */
+const WHO_FIELDS = [['p', '🙂', '성격'], ['w', '💼', '일할 때'], ['m', '💰', '돈'], ['r', '💞', '관계'], ['c', '⚠️', '조심할 점']];
+function whoAmI(r) {
+  let es = [];
+  try { es = dictEntries(r); } catch { /* */ }
+  if (!es.length) return distinctCard(r);
+  return WHO_FIELDS.map(([f, icon, title]) => {
+    const lines = dictField(es, f, 4);
+    if (!lines.length) return '';
+    return `<h4 class="rp-h4">${icon} ${esc(title)}</h4><ul class="rp-ul">${lines.map((x) => `<li>${esc(x.text)}</li>`).join('')}</ul>`;
+  }).join('');
+}
+
 function distinctCard(r) {
   let rows = [];
   try { rows = distinctReadings(r, { max: 6 }); } catch { /* */ }
@@ -865,7 +882,7 @@ function lifeReport(form, r, f, v) {
     `</article>`
   ).join('');
 
-  return card('🔍', '나만의 특징 — 사람들 사이에서 드문 것부터', distinctCard(r))
+  return card('🔍', '나는 어떤 사람인가', whoAmI(r))
     + card('🧭', '명반을 가르는 핵심 구조', signature)
     + card('⚡', '한눈에 보는 내 인생의 핵심 키워드',
       (kw.length ? `<p class="rp-chips">${kw.map((k) => `<span>#${esc(k)}</span>`).join('')}</p>` : '')

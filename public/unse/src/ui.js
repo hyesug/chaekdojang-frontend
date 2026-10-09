@@ -10,6 +10,7 @@
  */
 
 import { readFortune, prepareInput } from './engine.js';
+import { loadDicts } from './semantic/dict.js';
 import { compareFortune } from './compat.js';
 import { lunarToSolar } from './core/lunar.js';
 import { elementDistribution } from './core/ganzhi.js';
@@ -65,6 +66,8 @@ export async function run(mode, box, next) {
     const r = readFortune(form);
     await next();
     const f = readForecast(form);
+    // 17체계 해석 사전 — 리포트 "나는 어떤 사람인가" 가 쓴다. 못 불러와도 리포트는 그려진다
+    await loadDicts().catch(() => null);
     await next();
     box.innerHTML = render(form, r, f);
     initAI(form, r, f);

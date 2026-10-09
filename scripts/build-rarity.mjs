@@ -11,6 +11,7 @@
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { readFortune } from '../public/unse/src/engine.js';
 import { rarityKey, sentenceKeys, slotOf } from '../public/unse/src/semantic/distinct.js';
+import { dictKeys } from '../public/unse/src/semantic/dict.js';
 
 const N = Number(process.argv[2] ?? 2000);
 let seed = 7;
@@ -21,6 +22,7 @@ const count = {};
 // 같은 자리(예: 점성 '달')의 서로 다른 값(게자리·사자자리…)에 똑같이 붙는 문장 = 그 자리의 정의.
 // 값마다 다른 문장(그 사람의 내용)과 가르려고 자리별로 값의 종류를 센다
 const slotSentences = {};   // slot → sentence → Set(value)
+const dictCount = {};       // 해석 사전 열쇠(묶음|열쇠)가 나오는 사람 수
 let done = 0;
 for (let i = 0; i < N; i++) {
   const form = {
@@ -38,6 +40,7 @@ for (let i = 0; i < N; i++) {
     const [slot, value] = slotOf(s.name, x.title);
     for (const sen of sentenceKeys(x.text)) ((slotSentences[slot] ??= {})[sen] ??= new Set()).add(value);
   }
+  for (const [g, k] of dictKeys(r)) dictCount[`${g}|${k}`] = (dictCount[`${g}|${k}`] ?? 0) + 1;
   done++;
   if (done % 250 === 0) process.stdout.write(`  ${done}/${N}\n`);
 }
@@ -48,5 +51,8 @@ writeFileSync('public/unse/src/semantic/data/rarity.js',
   + `export const SAMPLE = ${done};\nexport const RARITY = ${JSON.stringify(table)};\n`
   // 같은 자리의 값 셋 이상에 똑같이 붙은 문장 — 그 사람의 내용이 아니라 자리의 정의다
   + `export const DEFINITIONS = new Set(${JSON.stringify([...new Set(Object.values(slotSentences)
-    .flatMap((m) => Object.entries(m).filter(([, vals]) => vals.size >= 3).map(([sen]) => sen)))].sort())});\n`);
+    .flatMap((m) => Object.entries(m).filter(([, vals]) => vals.size >= 3).map(([sen]) => sen)))].sort())});\n`
+  // 해석 사전 열쇠마다 나오는 사람의 비율 — 리포트가 드문 특징부터 쓰는 데 쓴다
+  + `export const DICT_SHARE = ${JSON.stringify(Object.fromEntries(Object.entries(dictCount).sort()
+    .map(([k, v]) => [k, Math.round((v / done) * 10000) / 10000])))};\n`);
 console.log(`표본 ${done}명 · 항목 ${Object.keys(table).length}개`);

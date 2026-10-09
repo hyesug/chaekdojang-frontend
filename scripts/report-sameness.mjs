@@ -12,6 +12,9 @@ import { readFortune } from '../public/unse/src/engine.js';
 import { readForecast } from '../public/unse/src/forecast.js';
 import { buildView } from '../public/unse/src/viewmodel.js';
 import { renderReport } from '../public/unse/src/report.js';
+import { loadDicts } from '../public/unse/src/semantic/dict.js';
+
+await loadDicts();
 
 const N = Number(process.argv[2] ?? 60);
 let seed = 20261009;

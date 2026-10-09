@@ -7,6 +7,10 @@ import { compareFortune } from '../../public/unse/src/compat.js';
 import { elementDistribution } from '../../public/unse/src/core/ganzhi.js';
 import { buildCompatView, buildView } from '../../public/unse/src/viewmodel.js';
 import { renderPairReport, renderReport } from '../../public/unse/src/report.js';
+import { loadDicts } from '../../public/unse/src/semantic/dict.js';
+
+// 화면과 같이 해석 사전을 먼저 불러온다 (ui.js run)
+await loadDicts();
 
 const A = {
   name: '보고서 개인', year: 1990, month: 6, day: 15, hour: 12, minute: 0,
@@ -43,7 +47,7 @@ test('개인 리포트는 나만의 특징·키워드·커리어·인생 흐름�
   const html = personal(A);
   const order = [
     '보고서 개인님의 인생 데이터 분석 리포트',
-    '나만의 특징 — 사람들 사이에서 드문 것부터',
+    '나는 어떤 사람인가', '성격', '일할 때', '조심할 점',
     '한눈에 보는 내 인생의 핵심 키워드',
     '타고난 강점', '사회적 역할', '주의할 패턴',
     '커리어 &amp; 재물: 나의 시장 가치와 돈 버는 법',

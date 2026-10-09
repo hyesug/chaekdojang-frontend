@@ -18,6 +18,13 @@ const BIRTH = {
 const NOW = new Date('2026-09-24T00:00:00Z');
 
 let cached = null;
+let cachedMismatch = null;
+/** 질문과 엇갈리고 체계 방향도 갈리는 실제 시나리오 — 23·24 번이 그 문장을 본다.
+ *  (숫자 우연에 기대던 이직 질문은 무작위 시기 체계를 뺀 뒤 더 이상 갈리지 않는다) */
+const mismatch = () => (cachedMismatch ??= answerScenario({
+  birth: BIRTH, question: '2027년에 창업해도 될까?', now: NOW,
+  currentState: { employmentType: 'employed', occupation: '개발자' },
+}));
 const career = () => (cached ??= answerScenario({
   birth: BIRTH, question: '2027년부터 2030년 사이에 어디로 이직할까?', now: NOW,
   currentState: { employmentType: 'employed', occupation: '개발자' },
@@ -354,7 +361,7 @@ test('22. 알려준 값을 말한 문장은 context 근거를 가진다', () => 
 });
 
 test('23. 불일치 문장이 사건·시기를 말하면 그 근거를 가진다', () => {
-  const { scenario, narration: n } = career();
+  const { scenario, narration: n } = mismatch();
   assert.equal(scenario.questionAnswer.answersQuestion, false);
   const ms = n.sentences.filter((x) => x.kind === 'mismatch');
   assert.ok(ms.length >= 2);
@@ -374,7 +381,7 @@ test('23. 불일치 문장이 사건·시기를 말하면 그 근거를 가진�
 });
 
 test('24. 갈림 문장은 양쪽 근거를 모두 가진다', () => {
-  const { scenario, narration: n } = career();
+  const { scenario, narration: n } = mismatch();
   const sc = scenario.primary.selectionConflict;
   assert.equal(sc.agreement, false);
   assert.ok(sc.provenance.length >= 2, '갈림 근거가 둘이 아니다');

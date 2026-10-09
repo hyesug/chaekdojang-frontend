@@ -719,7 +719,18 @@ function periodSymbol(system, row) {
  * @param {object} row  그 체계의 `forecast()` 결과
  * @param {object} stats {mean, sd} — 그 사람의 그 기간 안에서의 분포
  */
+/**
+ * 달 표본이 그 달 **15일 하루**의 달 위치·일진·요일이라 사실상 무작위인 체계.
+ * 원전의 연·월운 방식을 아직 세우지 못했으므로 시기를 말하지 않는다 (rebuild-audit.md).
+ */
+const NO_TIMING = {
+  sukyo: '달마다 15일 하루의 달 자리로 판정해 시기를 가르지 못한다 — 숙요 연운(구요성) 미구현',
+  hongguk: '달마다 15일 하루의 일진을 섞어 시기를 가르지 못한다 — 홍국 연·월국 미구현',
+  thai: '달마다 15일 하루의 요일로 판정해 시기를 가르지 못한다 — 마하탁사는 사건 규칙에서 쓴다',
+};
+
 export function otherTiming(system, period, row, stats) {
+  if (NO_TIMING[system]) return unavailable(system, period, NO_TIMING[system]);
   if (!row) return unavailable(system, period, '그 시기를 계산하지 못했다');
   // 말할 근거가 없는 분야는 **0 이 아니라 null** 이다. 0 으로 두면
   // "계산했는데 낮다"가 되어 앙상블 분모에 들어가고, 없는 정보가 결과를

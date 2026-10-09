@@ -554,8 +554,9 @@ test('26. 없는 근거를 가리키거나 남의 국면 근거를 쓰면 감사
   if (broken.branches[0]?.steps?.[1]) {
     broken.branches[0].steps[1].state = { sourceType: 'context', conditionalOn: [], kind: 'observed' };
   }
-  // 갈렸는데 같다고 적으면 잡는다
-  if (broken.primary.selectionConflict) {
+  // 갈렸는데 같다고 적으면 잡는다 — 실제로 갈린 시나리오에서만 성립한다
+  const split = s.primary.selectionConflict && s.primary.selectionConflict.agreement === false;
+  if (split) {
     broken.primary.selectionConflict.agreement = true;
     broken.primary.direction = { key: broken.primary.selectionConflict.lineageVoteWinner, competing: [] };
   }
@@ -566,7 +567,7 @@ test('26. 없는 근거를 가리키거나 남의 국면 근거를 쓰면 감사
   if (s.alternatives.length && s.alternatives[0].phaseId !== s.primary.phaseId) {
     assert.ok(codes.includes('foreign_phase_ref') || codes.includes('alternative_copies_primary'), codes.join(','));
   }
-  if (s.primary.selectionConflict) {
+  if (split) {
     assert.ok(codes.includes('selection_conflict_mislabeled'), codes.join(','));
     assert.ok(codes.includes('conflicting_direction_leaked'), codes.join(','));
   }

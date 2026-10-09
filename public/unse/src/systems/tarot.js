@@ -262,12 +262,11 @@ const CARD_AREA = {
 };
 
 export function forecast(input, chart, period) {
-  const seed = (period.jdn * 2654435761 + input.year * 40503 + input.month * 97 + input.day) >>> 0;
-  let a = seed;
-  a = (a + 0x6D2B79F5) >>> 0;
-  let t = Math.imul(a ^ (a >>> 15), 1 | a);
-  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-  const idx = ((t ^ (t >>> 14)) >>> 0) % 22;
+  // 연간 카드(Year Card) — 생월 + 생일 + 그 해를 22 이하로 줄인다. 월간 카드는 연간 카드 + 그 달.
+  // 예전에는 달마다 해시 난수로 카드를 뽑아 시기 근거가 없었다(docs/unse/rebuild-audit.md)
+  const reduce = (n) => { while (n > 22) n = String(n).split('').reduce((s, c) => s + Number(c), 0); return n === 22 ? 0 : n; };
+  const yearCard = reduce(input.month + input.day + (period.on?.y ?? period.sajuYear));
+  const idx = period.kind === 'year' ? yearCard : reduce((yearCard || 22) + (period.on?.m ?? 1));
   const [kr, en, text] = MAJOR[idx];
   const base = CARD_AREA[idx] ?? 0;
 

@@ -112,7 +112,7 @@ test('17. 보조 체계가 못 말하는 분야에 가짜 성능이 생기지 �
       const m = r.systemResults[id].months[k];
       if (!m?.rawActivations) continue;
       for (const d of ['movement', 'residence', 'children']) {
-        assert.equal(m.rawActivations[d], null, `${id} 가 ${d} 시기를 말하면 안 된다`);
+        assert.ok(m.rawActivations[d] == null, `${id} 가 ${d} 시기를 말하면 안 된다`);
       }
     }
   }

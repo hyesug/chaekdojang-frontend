@@ -7,7 +7,7 @@ import AdminNavLink from "./AdminNavLink";
 import HeaderNav, { type NavItem } from "./HeaderNav";
 
 // external: Next 라우트가 아닌 정적 페이지(운세)는 일반 링크로 이동한다.
-// "독후감 쓰기"는 메뉴가 아니라 오른쪽 주요 버튼으로, "고객센터"는 푸터와 모바일 메뉴로 옮겼다.
+// "독후감 쓰기"는 메뉴가 아니라 오른쪽 주요 버튼으로 둔다. "고객센터"는 메뉴 끝에 둔다.
 // **메뉴를 고칠 때는 public/unse/index.html 의 헤더도 함께** 고쳐야 한다.
 const navLinks: NavItem[] = [
   { href: "/", label: "피드" },
@@ -18,12 +18,12 @@ const navLinks: NavItem[] = [
   { href: "/contests", label: "공모전" },
   { href: "/stats", label: "독서 인생지도" },
   { href: "/unse", label: "운세", external: true },
+  { href: "/cs", label: "고객센터" },
 ];
 
 const mobileLinks: NavItem[] = [
   ...navLinks,
   { href: "/write", label: "독후감 쓰기" },
-  { href: "/cs", label: "고객센터" },
 ];
 
 export default function Header() {

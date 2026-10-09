@@ -46,16 +46,16 @@ test('결과는 계산값·오늘/이달·통합 리포트·AI 순서로 읽게 
   const ai = personalRender.indexOf('AI 명반 해석');
   assert.ok(interpretation >= 0 && calculation > interpretation && reportAt > calculation && ai > reportAt);
   assert.match(ui, /계산값 · 명반 요약/);
-  // 요약 카드는 늘 보이고, 자세한 장만 접어 둔다
+  // 요약 카드는 늘 보이고, 자세한 장은 펼친 채로 두되 접을 수 있다
   assert.match(report, /더 자세히 보기/);
-  assert.match(report, /<details class="rp-ch">/);
+  assert.match(report, /<details class="rp-ch" open>/);
 
   const pairReportAt = pairRender.indexOf('${renderPairReport(');
   const pairAi = pairRender.indexOf('AI 명반 해석');
   assert.ok(pairReportAt >= 0 && pairAi > pairReportAt);
   const pairDetail = pairRender.indexOf('관계 축별 해석');
   assert.ok(pairAi >= 0 && pairDetail > pairAi);
-  assert.match(pairRender, /<details class="compat-details">/);
+  assert.match(pairRender, /<details class="compat-details" open>/);
 });
 
 test('AI 영역은 질문권 상태와 소진 paywall을 기록 안에서 표시한다', async () => {

@@ -163,7 +163,7 @@ const para = (t) => { const x = plain(t); return x ? `<p class="rp-t">${esc(x)}<
 
 /** 장 — 제목과 한 줄 안내만 보이고 누르면 펼친다. 문서 전체가 한 덩어리로 이어지지 않게 한다 */
 const sec = (n, title, body, lead = '') => !body ? '' : `
-  <details class="rp-ch">
+  <details class="rp-ch" open>
     <summary><span class="rp-no" aria-hidden="true">${esc(n)}</span><span class="rp-ch-t">${esc(title)}${lead ? `<small>${esc(lead)}</small>` : ''}</span></summary>
     <div class="rp-ch-body">${body}</div>
   </details>`;
@@ -872,103 +872,52 @@ function pRead(c, name, max = 2) {
   return readItems(s.readings.slice(0, max).map((x) => [x.title, x.text]));
 }
 
-function pFirstText(c, name) {
-  const item = pSys(c, name)?.readings?.[0];
-  if (!item) return '';
-  return [item.title, item.text].filter(Boolean).join(' — ');
-}
-
-/** 한 체계 절 — 쉬운 제목 + 풀이 */
-const pBlock = (c, n, title, name, max = 2) => sub(n, title, pRead(c, name, max));
-
-const pairAxisText = (v, key) => {
-  const axis = v?.eightAxes?.find((item) => item.key === key);
-  if (!axis) return '';
-  return [axis.conclusion, axis.reality, axis.good, axis.bad].filter(Boolean).join(' ');
-};
-
-function pairCommonYear(v, year) {
-  const lifeRows = [
-    ['생활의 기준', pairAxisText(v, '생활')],
-    ['돈·일의 조율', pairAxisText(v, '돈')],
-    ['역할 나누기', pairAxisText(v, '역할분담')],
-  ].filter(([, value]) => value);
-  const impactRows = [
-    ['끌림', pairAxisText(v, '끌림')],
-    ['감정', pairAxisText(v, '감정')],
-    ['대화', pairAxisText(v, '대화')],
-  ].filter(([, value]) => value);
-
-  return sub('', '결혼·생활 계획',
-    table2(['공동 과제', `${year}년 해석`], lifeRows)
-    + `<p class="rp-fine">실제 결혼·주거·재정 일정은 두 사람의 합의와 현실 조건으로 정해야 합니다. 관계 명반에서 반복되는 점검 항목입니다.</p>`)
-    + sub('', '서로에게 미치는 영향',
-      table2(['관계 축', '관계에서 읽힌 축'], impactRows));
-}
-
-function pairCurrentChecklist(c, v) {
-  const rows = [
-    ['생활', pairAxisText(v, '생활')],
-    ['돈', pairAxisText(v, '돈')],
-    ['대화', pairAxisText(v, '대화')],
-    ['오래 가려면', pairAxisText(v, '장기유지')],
-  ];
-  return table2(['관계 축', '지금 확인할 점'], rows)
-    + `<p class="rp-fine">달별 관계 예측은 계산하지 않습니다. 지금의 관계에서 확인할 축을 모은 것입니다.</p>`;
-}
-
-function pairGoodTime(c) {
-  return pRead(c, '주역', 1) + pRead(c, '카발라', 1)
-    + `<p class="rp-fine">날짜를 길일로 판정하는 별도 계산은 하지 않습니다. 실제 일정은 건강·계약·가족 상황을 먼저 확인하세요.</p>`;
+/** 관계 축 하나 — 실제로 어떤 모습인지 · 잘 되려면 · 조심할 점 */
+const pairAxis = (v, key) => v?.eightAxes?.find((item) => item.key === key) ?? null;
+function axisBlock(v, key) {
+  const x = pairAxis(v, key);
+  if (!x) return '';
+  return sub('', x.label, para([x.conclusion, x.reality].filter(Boolean).join(' '))
+    + bullets(bullet('🟢', '잘 되려면', x.good), bullet('⚠️', '조심할 점', x.bad)));
 }
 
 export function renderPairReport(formA, formB, c, v, elementDist) {
   const A = c.A?.input?.name ?? formA.name;
   const B = c.B?.input?.name ?? formB.name;
-  const s = c.synthesis ?? {};
   const today = new Date();
   const stamp = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
-  const year = c.A?.input?.currentYear ?? today.getFullYear();
 
   // 오행 보완성 — 두 사람 수치를 나란히 놓고 적은 쪽을 짚는다(수치는 싣지 않고 결론만)
   const ea = elementDist?.a, eb = elementDist?.b;
   const elemRows = (ea && eb) ? ['목', '화', '토', '금', '수'].map((e, i) => {
     const x = Math.round(ea[i] * 10) / 10, y = Math.round(eb[i] * 10) / 10;
-    // 0.8 이상 벌어지면 한쪽으로 기운 것으로 본다. 오행 수치는 지장간까지
-    // 가중해 더한 값이라 1.0 을 문턱으로 잡으면 눈에 띄는 차이도 '비슷함'이 된다
+    // 0.8 이상 벌어지면 한쪽으로 기운 것으로 본다
     const note = (x < 1 && y < 1) ? '두 사람 모두 약합니다. 서로 채워주지 못하는 기운입니다.'
       : x - y >= 0.8 ? `${A}님 쪽이 강합니다.` : y - x >= 0.8 ? `${B}님 쪽이 강합니다.` : '두 사람이 비슷합니다.';
     return [`${ELEM[e]} 기운`, note];
   }) : [];
 
-  const omen = [['주역', '주역 점괘'], ['토정비결', '토정비결'], ['타로', '타로']]
-    .filter(([name]) => pSys(c, name))
-    .map(([name, label]) => [label, pFirstText(c, name).split(' — ').slice(1).join(' — ') || pFirstText(c, name)]);
-  const count = (k) => s.buckets?.[k]?.length ?? 0;
+  // 한눈에 — 잘 맞는 축 · 부딪치기 쉬운 축 · 오래 가려면. 체계 표 수는 싣지 않는다
+  const axes = v?.eightAxes ?? [];
+  const hi = axes.filter((x) => x.band === 'hi');
+  const lo = axes.filter((x) => x.band === 'lo');
+  const keep = pairAxis(v, '장기유지');
+  const glance = bullets(
+    bullet('🟢', `잘 맞는 점${hi.length ? ` — ${hi.map((x) => x.label).join('·')}` : ''}`,
+      hi[0] ? [hi[0].conclusion, hi[0].reality].join(' ') : ''),
+    bullet('⚠️', `부딪치기 쉬운 점${lo.length ? ` — ${lo.map((x) => x.label).join('·')}` : ''}`,
+      lo[0] ? [lo[0].conclusion, lo[0].bad].join(' ') : ''),
+    bullet('🔑', '오래 가려면', keep ? [keep.conclusion, keep.good].join(' ') : ''),
+  );
 
   const chapters = [
     sec(1, '두 사람의 기본 성향',
       sub('', '성격이 맞물리는 방식', pRead(c, '사주'))
-      + sub('', '서로 채워주는 기운', table2(['기운', '두 사람'], elemRows)
-        + (elemRows.length ? '<p class="rp-fine">두 사람 모두 약한 기운은 상대가 채워주지 못합니다. 생활 습관으로 의식해서 메워 주세요.</p>' : '')),
-      '성격과 기운의 궁합'),
-    sec(2, '감정과 끌림',
-      pBlock(c, '', '서로 끌리는 방식', '점성술')
-      + pBlock(c, '', '함께 사는 모습', '자미두수')
-      + pBlock(c, '', '타고난 별자리로 본 사이', '숙요'),
-      '끌림·감정·대화'),
-    sec(3, '생활의 궁합',
-      pBlock(c, '', '태어난 요일로 본 사이', '태국 점성술', 1)
-      + pBlock(c, '', '인도식 궁합', '베딕')
-      + pBlock(c, '', '생활 리듬', '구성학')
-      + pBlock(c, '', '생일 숫자로 본 사이', '카발라'),
-      '돈·역할·생활 리듬'),
-    sec(4, `${year}년 두 사람`,
-      pairCommonYear(v, year)
-      + sub('', '지금 확인할 점', pairCurrentChecklist(c, v))
-      + sub('', '화합하기 좋은 흐름', pairGoodTime(c))
-      + sub('', '올해의 점괘', readItems(omen)),
-      '함께 맞이할 올해'),
+      + sub('', '서로 채워주는 기운', table2(['기운', '두 사람'], elemRows)),
+      '성격과 기운'),
+    sec(2, '감정과 끌림', axisBlock(v, '끌림') + axisBlock(v, '감정') + axisBlock(v, '대화'), '끌림·감정·대화'),
+    sec(3, '생활의 궁합', axisBlock(v, '생활') + axisBlock(v, '돈') + axisBlock(v, '역할분담'), '생활·돈·역할'),
+    sec(4, '다툼과 오래 가기', axisBlock(v, '갈등') + axisBlock(v, '장기유지'), '부딪칠 때와 오래 갈 때'),
   ].filter(Boolean).join('');
 
   return `
@@ -976,15 +925,9 @@ export function renderPairReport(formA, formB, c, v, elementDist) {
       <header class="rp-cover">
         <p class="rp-kicker">관계 데이터 분석 · ${esc(stamp)}</p>
         <h2 class="rp-title" id="rp-title"><span aria-hidden="true">💞</span> ${esc(A)} · ${esc(B)} 관계 분석 리포트</h2>
-        <p class="rp-lead">두 사람의 출생 정보를 열다섯 가지 점술로 맞대어 본 결과를 한 장으로 정리했습니다.</p>
+        <p class="rp-lead">두 사람의 출생 정보를 맞대어 본 결과를 한 장으로 정리했습니다.</p>
       </header>
-      ${card('⚡', '한눈에 보는 두 사람', (s.verdict ? `<p class="rp-verdict">${esc(s.verdict)}</p>` : '')
-        + para(firstOf([s.summary].flat().filter(Boolean).join(' '), 2))
-        + bullets(
-          bullet('🟢', '잘 맞는다고 본 점술', count('좋음') ? `${count('좋음')}가지` : ''),
-          bullet('⚪', '무난하다고 본 점술', count('무난') ? `${count('무난')}가지` : ''),
-          bullet('🟡', '어렵다고 본 점술', count('어려움') ? `${count('어려움')}가지 — 여기서 짚는 점이 실제로 부딪칠 자리일 가능성이 큽니다.` : ''),
-        ))}
+      ${card('⚡', '한눈에 보는 두 사람', glance)}
       <h3 class="rp-more">더 자세히 보기</h3>
       <div class="rp-chs">${chapters}</div>
       <p class="rp-note">점술은 상징적 해석 도구이며 실제 미래를 확정하지 않습니다. 결혼·이별·임신·투자·건강과 관련된 결정은

@@ -164,7 +164,7 @@ function renderCompat(formA, formB, r) {
     <div class="section-label">AI 명반 해석</div>
     ${aiSection('pair', v)}
 
-    <details class="compat-details">
+    <details class="compat-details" open>
       <summary>관계 축별 해석 <span>여덟 가지 관계의 읽기</span></summary>
       <div class="compat-prose">
         ${v.eightAxes.map((a) => `
@@ -241,7 +241,7 @@ function chartPanel(r) {
       <div class="pillars">${pillar}</div>
       ${brief ? `<p class="mb-brief">${esc(brief)}</p>` : ''}
 
-      <details class="pool">
+      <details class="pool" open>
         <summary>명반 자세히 보기</summary>
         ${group('점성술 네이탈', `<dl class="mb-grid">${
           cells(by('astrology'), ['태양', '달', '상승점', '중천'])}</dl>`)}
@@ -334,7 +334,7 @@ function render(form, r, f) {
         </ul>
         <p class="rp-fine">이미 잡힌 수술·계약·면접 일정을 이 날짜 때문에 바꾸실 필요는 없습니다. 고를 수 있을 때 참고만 하세요.</p>
       </section>
-      <details class="why" style="margin-top:14px">
+      <details class="why" style="margin-top:14px" open>
         <summary>${esc(v.month.label)} 일자별로 보기</summary>
         <div class="daytable-wrap" style="margin-top:12px">
           <table class="daytable">

@@ -856,12 +856,21 @@ function lifeFlow(r) {
   // 그 해에 삶의 무엇이 바뀌는지만 말한다 — 어느 체계의 어떤 주기인지는 손님이 알 필요가 없다
   const startLine = (st) => {
     if (st.system === '사주') {
+      // 새로 시작되는 10년의 앞 다섯 해 해석(일간 × 대운 천간 사전) — 사람마다 갈린다
+      const d = (ds?.list ?? []).find((x) => yearAt(x.fromExact) === st.fromYear);
+      const de = d ? daeunEntry(r.chart.dayStem, d.stem, d.branch) : null;
+      if (de?.front) return `${de.front.h.replace(/[.]$/, '')}`;
       const g = TEN_GOD_GROUP[String(st.detail ?? '').replace(/^천간\s*/, '')];
       return g ? `'${GOD_FIELD[g]}'이 삶의 중심 주제로 올라옵니다` : '';
     }
     if (st.system === '자미두수') {
       const pal = String(st.label ?? '').match(/원국의\s*(\S+궁)/)?.[1];
-      return pal && AREA[pal] ? `'${AREA[pal]}' 쪽이 삶의 앞자리로 나옵니다` : '';
+      // 그 10년 궁의 별로 이때 두드러지는 내 모습까지
+      const lim = limits.find((x) => x.fromYear === st.fromYear);
+      let nat = null;
+      try { nat = lim?.stars?.length ? natureOf(lim.stars, '이 시기의 나') : null; } catch { /* */ }
+      const area = pal && AREA[pal] ? `'${AREA[pal]}' 쪽이 삶의 앞자리로 나옵니다` : '';
+      return [area, nat?.traits?.length ? `이때의 나는 ${nat.traits.slice(0, 2).join(', ')} 쪽이 두드러집니다` : ''].filter(Boolean).join('. ');
     }
     if (st.system === '베딕') {
       const p = String(st.label ?? '').split(' ')[0];
@@ -875,7 +884,7 @@ function lifeFlow(r) {
   const turnRows = turns.map((t) => {
     const what = [...new Set(t.starts.map(startLine).filter(Boolean))];
     return [`${t.year}년 (${t.age}세)`,
-      `${what.length ? `${what.join('. ')}. ` : ''}하던 일의 방향이나 생활의 틀을 다시 짜게 되기 쉬운 때입니다.`];
+      what.length ? `${what.join('. ')}.` : '하던 일의 방향이나 생활의 틀을 다시 짜게 되기 쉬운 때입니다.'];
   });
 
   return (rows.length ? timeline(rows) : '')

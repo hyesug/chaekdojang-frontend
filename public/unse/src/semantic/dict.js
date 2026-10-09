@@ -25,6 +25,7 @@ export const DICT_FILES = [
   'gujeong', 'juyeok', 'kabbalah', 'tarot', 'weekday', 'boards',
   'daeun-stem', 'daeun-branch-1', 'daeun-branch-2',
   'ziwei-career', 'ziwei-money', 'ziwei-spouse', 'ziwei-children',
+  'western-planets-1', 'western-planets-2', 'boards-2',
 ];
 /** 파일 → 사전 묶음 이름 */
 const GROUP = (file) => file.replace(/-\d+$/, '');
@@ -81,6 +82,10 @@ export function dictKeys(r) {
     add('western', `태양|${SIGNS[Math.floor(pos.태양.lon / 30) % 12].name}`, '서양 점성(태양)');
     add('western', `달|${SIGNS[Math.floor(pos.달.lon / 30) % 12].name}`, '서양 점성(달)');
     add('vedic', `달|${Math.floor(toSidereal(pos.달.lon, input.jdUT) / 30) % 12}`, '베딕(달)');
+    // 금성(사랑·즐거움)·화성(추진·갈등)·수성(말·생각)·목성(기회)·토성(책임·두려움)
+    for (const p of ['금성', '화성', '수성', '목성', '토성']) {
+      add('western-planets', `${p}|${SIGNS[Math.floor(pos[p].lon / 30) % 12].name}`, `서양 점성(${p})`);
+    }
   });
   safe(() => {
     if (!input.timeKnown) return;
@@ -124,6 +129,14 @@ export function dictKeys(r) {
     add('boards', gate ? `문|${gate}` : null, '홍국기문');
     const hanja = titleOf(r, '태을신수', /^태을이 .궁에 있습니다/).match(/^태을이 (.)궁/)?.[1];
     add('boards', PALACE_KR[hanja] ? `궁|${PALACE_KR[hanja]}` : null, '태을신수');
+    const last = titleOf(r, '육임', /^말전의 천장 — /).replace(/^말전의 천장 — /, '');
+    add('boards', last && last !== '없음' ? `말전|${last}` : null, '육임(결말)');
+    const star = titleOf(r, '홍국기문', /이 지키는 자리$/).match(/^(천.)\(/)?.[1];
+    add('boards', star ? `별|${star}` : null, '홍국기문(별)');
+    const tGate = titleOf(r, '태을신수', /붙었습니다$/).match(/^(\S+문)/)?.[1];
+    add('boards', tGate ? `문|${tGate}` : null, '태을신수(문)');
+    const jk = titleOf(r, '태을신수', /주산|객산/);
+    add('boards', /같습니다/.test(jk) ? '주객|대등' : /^주산이 큽니다/.test(jk) ? '주객|주산' : /^객산이 큽니다/.test(jk) ? '주객|객산' : null, '태을신수(주객)');
   });
   return keys;
 }

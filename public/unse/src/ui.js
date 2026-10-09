@@ -244,7 +244,7 @@ function chartPanel(r) {
       <div class="pillars">${pillar}</div>
       ${brief ? `<p class="mb-brief">${esc(brief)}</p>` : ''}
 
-      <details class="pool" open>
+      <details class="pool">
         <summary>명반 자세히 보기</summary>
         ${group('점성술 네이탈', `<dl class="mb-grid">${
           cells(by('astrology'), ['태양', '달', '상승점', '중천'])}</dl>`)}

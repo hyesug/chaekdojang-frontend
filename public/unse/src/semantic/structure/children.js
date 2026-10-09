@@ -241,13 +241,17 @@ export function readChildren(chart, ziweiChildStars = [], vedic = null, allStars
  * "2명"으로 찍기(8명 중 4명)와 같았다(docs/unse/rebuild-result.md). 사례가 쌓여 넘어서면 켠다.
  */
 const COUNT_VERIFIED = false;
+const STANCE_VERIFIED = false;
 
 export function childrenVerdict(reads) {
   const c = consensusOf(reads.filter((x) => x.topicKey === '열림'));
   const r = consensusRange(reads.filter((x) => x.range).map((x) => ({ system: x.system, n: x.range })));
 
   const lines = [];
-  if (c.verdict === '갈림') {
+  // 자녀 인연이 많다·적다는 판정도 수와 같이 사례로 확인되지 않아 내지 않는다 — 리포트·AI 모두 이 판정을 따른다
+  if (!STANCE_VERIFIED) {
+    // 말하지 않는다
+  } else if (c.verdict === '갈림') {
     lines.push(c.say);
   } else if (c.verdict === '겹침') {
     lines.push(`자녀 자리는 **${c.stance === '많음' ? '열리는 쪽' : '눌리는 쪽'}**입니다. ${c.say}`);

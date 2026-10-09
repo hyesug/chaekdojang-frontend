@@ -292,13 +292,7 @@ function render(form, r, f) {
 
   const dayList = (arr) => arr.length ? `${arr.slice().sort((a, b) => a - b).join(', ')}일` : '';
   const L = v.month.lucky;
-
-  const dayRows = v.month.days.map((x) => `
-    <tr class="${x.d === f.today.d ? 'now' : ''}">
-      <td class="dt">${x.d}<small>${esc(x.weekday)}</small></td>
-      <td class="ln">${esc(x.line)}</td>
-      <td class="gd ${x.cls}">${esc(x.grade)}</td>
-    </tr>`).join('');
+  // 이달의 일자별 표는 뺐다 — 날마다의 흐름은 '오늘의 운세'에서 매일 본다
 
   return `
     <div class="result-header">
@@ -336,16 +330,8 @@ function render(form, r, f) {
           ${item('⏸️', '미루면 좋은 날', L.avoid.length ? `${dayList(L.avoid)} — 기운이 넘쳐 무리하기 쉬운 날입니다.${L.worst.length ? ` 그다음은 ${dayList(L.worst)}.` : ''}` : '')}
         </ul>
         <p class="rp-fine">이미 잡힌 수술·계약·면접 일정을 이 날짜 때문에 바꾸실 필요는 없습니다. 고를 수 있을 때 참고만 하세요.</p>
-      </section>
-      <details class="why" style="margin-top:14px" open>
-        <summary>${esc(v.month.label)} 일자별로 보기</summary>
-        <div class="daytable-wrap" style="margin-top:12px">
-          <table class="daytable">
-            <thead><tr><th>날</th><th>풀이</th><th>등급</th></tr></thead>
-            <tbody>${dayRows}</tbody>
-          </table>
-        </div>
-      </details>`)}
+      </section>`)}
+
 
     <div class="section-label">인생 데이터 분석</div>
     ${renderReport(form, r, f, v)}

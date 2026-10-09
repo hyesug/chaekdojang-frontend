@@ -19,7 +19,7 @@
  */
 import { areaText } from './forecast.js';
 import { currentDaeun, computeDaeun, TEN_GOD_GROUP, elementDistribution, tenGod, tenGodDistribution, branchRelations } from './core/ganzhi.js';
-import { buildBoard, decadeLimits } from './hires/ziwei.js';
+import { buildBoard, decadeLimits, palaceMap, sihwaOn } from './hires/ziwei.js';
 import { yearTimeline } from './reading.js';
 import { j } from './core/josa.js';
 import { yearDirections } from './systems/gujeong.js';
@@ -316,6 +316,75 @@ function personOf(reads, who) {
   ]);
 }
 
+/**
+ * 자미 궁 하나에 든 별로 그 대상이 어떤 사람인지 — 별 조합이라 사람마다 갈린다.
+ * 출생 시각이 없으면 궁을 세우지 못해 빈 문자열을 낸다(호출부가 대신할 글을 고른다).
+ */
+function palaceLine(r, palace, who) {
+  let nat = null;
+  try { nat = natureOf(palaceStars(r.input, palace), who); } catch { /* */ }
+  if (!nat?.traits?.length) return '';
+  return para(`${who}과의 관계에서는 ${nat.traits.slice(0, 4).join(', ')} 같은 모습이 두드러집니다.`)
+    + (nat.risk?.[0] ? para(`부딪치는 지점은 ${nat.risk[0].replace(/다$/, '다는 것')}입니다.`) : '');
+}
+
+/**
+ * 일이 풀리고 막히는 흐름 — 자미 관록궁(일할 때의 나)의 별과 사주에서 가장 센 힘·비어 있는 힘으로.
+ * 예전에는 모든 사람에게 같은 세 줄을 냈다(고유 0%).
+ */
+function workFlow(r) {
+  const rows = [];
+  let nat = null;
+  try { nat = natureOf(palaceStars(r.input, '관록궁'), '일할 때의 나'); } catch { /* */ }
+  if (nat?.traits?.length) rows.push(['잘 풀릴 때', `${nat.traits.slice(0, 3).join(', ')} — 이 힘이 그대로 쓰이는 자리에서 일이 풀립니다.`]);
+  if (nat?.risk?.[0]) rows.push(['막힐 때', `${nat.risk[0].replace(/다$/, '다')}.`.replace(/\.\.$/, '.')]);
+  try {
+    const g = tenGodDistribution(r.chart.pillars, r.chart.dayStem).groups;
+    const order = Object.keys(g).sort((a, b) => g[b] - g[a]);
+    if (STRONG_RULE[order[0]]) rows.push(['넘칠 때 잡을 것', STRONG_RULE[order[0]]]);
+    if (order.at(-1) !== order[0] && EMPTY_RULE[order.at(-1)]) rows.push(['비어 있어 채울 것', EMPTY_RULE[order.at(-1)]]);
+  } catch { /* */ }
+  return rows.length ? timeline(rows) : '';
+}
+
+/**
+ * 올해 — 그 해 천간의 사화가 **타고난 판의 어느 궁**에 떨어지는가, 그 해 지지가 원국 기둥과 무엇을 맺는가.
+ * 둘 다 생년월일시로 정해진 판 위에서 계산하므로 같은 해라도 사람마다 다른 자리를 짚는다.
+ */
+const SIHWA_SAY = {
+  화록: (a) => `'${a}' 쪽에 돈과 기회가 붙습니다.`,
+  화권: (a) => `'${a}' 쪽에서 주도권을 쥐게 됩니다.`,
+  화과: (a) => `'${a}' 쪽에서 이름이 나거나 인정을 받습니다.`,
+  화기: (a) => `'${a}' 쪽이 막히거나 마음이 붙들리기 쉽습니다. 여기서는 서두르지 마세요.`,
+};
+function yearPalaces(r, yr) {
+  const rows = [];
+  try {
+    if (r.input.timeKnown) {
+      const b = buildBoard(r.input);
+      const map = palaceMap(b.myeong);
+      const stem = ((Number(yr) - 4) % 10 + 10) % 10;
+      const center = map[((Number(yr) - 4) % 12 + 12) % 12];
+      if (AREA[center]) rows.push(['올해의 중심', `'${AREA[center]}' 쪽이 한 해의 중심에 섭니다.`]);
+      for (const s of sihwaOn(b.board, stem)) {
+        const pal = s.branch != null ? map[s.branch] : null;
+        if (pal && AREA[pal] && SIHWA_SAY[s.kind]) rows.push([s.kind === '화기' ? '조심할 자리' : s.kind === '화록' ? '돈과 기회' : s.kind === '화권' ? '주도권' : '인정받는 자리', SIHWA_SAY[s.kind](AREA[pal])]);
+      }
+    }
+    const yb = ((Number(yr) - 4) % 12 + 12) % 12;
+    for (const key of ['day', 'year', 'month', 'hour']) {
+      const p = r.chart.pillars[key];
+      if (!p) continue;
+      const rel = branchRelations(p.branch, yb).find((x) => !x.minor);
+      if (!rel) continue;
+      if (rel.kind === '충') rows.push(['크게 움직이는 곳', `${PILLAR_AREA[key]} 쪽이 크게 바뀌거나 자리를 옮기기 쉽습니다.`]);
+      else if (/합/.test(rel.kind)) rows.push(['붙는 인연', `${PILLAR_AREA[key]} 쪽에 새 인연·협력이 붙기 쉽습니다.`]);
+      else if (/형/.test(rel.kind)) rows.push(['되풀이되는 일', `${PILLAR_AREA[key]} 쪽에서 같은 문제가 되풀이되기 쉽습니다.`]);
+    }
+  } catch { /* */ }
+  return rows;
+}
+
 function relations(v, r) {
   const chart = { ...r.chart, gender: r.input.gender };
   let sp = [], spv = { lines: [] }, ch = [], chv = { lines: [] };
@@ -332,7 +401,8 @@ function relations(v, r) {
       para(withSrc(v.life?.spouse)) + verdictLines(spv.lines, '배우자').map(para).join('') + personOf(sp, '배우자') + timingOf(r, '결혼'))
     + sub('', '자녀',
       para(withSrc(v.life?.child)) + verdictLines(chv.lines, '자녀').map(para).join('') + personOf(ch, '자녀') + timingOf(r, '자녀'))
-    + sub('', '형제·동료', para(withSrc(v.life?.sibling)));
+    + sub('', '형제·동료', palaceLine(r, '형제궁', '형제·동료') || para(withSrc(v.life?.sibling)))
+    + sub('', '주변 사람', palaceLine(r, '노복궁', '주변 사람'));
 }
 
 /* ── 3. 올해 흐름 ───────────────────────────────────────── */
@@ -357,9 +427,10 @@ function thisYear(v, f, r) {
       return s == null ? null : [a === '총운' ? '전체' : a.replace('운', ''), areaText(a, s, 'year')];
     }).filter(Boolean);
 
-  return sub('', `${yr}년 분야별 흐름`,
-      '<p class="rp-fine rp-fine-top">분야마다 운이 좋은지 나쁜지의 정도입니다. 올해 어떤 일이 생기기 쉬운지는 아래 메인 테마에서 봅니다.</p>'
-      + table2(['영역', '풀이'], areas))
+  // 판 위에서 계산한 올해의 자리(사람마다 갈린다)를 먼저 쓰고, 그것이 없을 때만 영역 점수표로 물러선다
+  const placed = yearPalaces(r, yr);
+  if (healthText) placed.push(['건강', healthText]);
+  return sub('', `${yr}년, 어디가 움직이는가`, placed.length >= 2 ? timeline(placed) : table2(['영역', '풀이'], areas))
     + sub('', '올해의 메인 테마', readings(r, '토정비결', 2) + readings(r, '태을신수', 1))
     + sub('', '타고난 요일의 성향', readings(r, '태국 점성술', 1));
 }
@@ -382,7 +453,6 @@ function direction(r, f) {
 
   return table2(['구분', '방향'], rows)
     + (lucky ? labeled('나의 행운 상징', lucky) : '')
-    + (rows.length ? '<p class="rp-fine">지금 사는 곳에서 본 올해 기준 방향입니다. 실제 이사는 날짜와 목적지가 정해지면 다시 확인하세요.</p>' : '')
     + sub('', '타고난 기질', readings(r, '구성학', 1))
     + sub('', '옮기기 좋은 시기', timingOf(r, '이사', 8));
 }
@@ -390,13 +460,7 @@ function direction(r, f) {
 /* ── 5. 내면의 패턴 ─────────────────────────────────────── */
 
 function inner(r) {
-  // 일이 풀리고 막히는 흐름 — 고정 3행
-  const pattern = [
-    ['잘 풀릴 때', '분석 → 기준 결정 → 실행 → 공개 → 평가 → 확장'],
-    ['멈출 때', '분석 → 재분석 → 새 변수 발견 → 다시 설계 → 미완성'],
-    ['새어 나갈 때', '흥분 → 여러 개 동시 시작 → 비용·시간 과투입 → 피로 → 중단'],
-  ];
-  return sub('', '일이 풀리고 막히는 흐름', timeline(pattern))
+  return sub('', '일이 풀리고 막히는 흐름', workFlow(r))
     + sub('', '생일 숫자로 본 나', readings(r, '카발라', 1))
     + sub('', '타고난 과제', readings(r, '주역', 2))
     + sub('', '타로 카드', readings(r, '타로', 2));
@@ -440,6 +504,10 @@ function personalPrinciples(r) {
     const rule = dae ? SEASON_RULE[TEN_GOD_GROUP[dae.god]] : null;
     if (rule) out.push(rule);
   } catch { /* */ }
+  try {
+    const nat = natureOf(palaceStars(r.input, '명궁'), '나');
+    if (nat?.risk?.[0]) out.unshift(`${nat.risk[0].replace(/다$/, '다')} — 이 버릇이 나오는 순간을 알아차리는 것이 첫 번째 원칙입니다.`);
+  } catch { /* */ }
   return [...new Set(out.filter(Boolean))];
 }
 
@@ -461,8 +529,7 @@ function finale(r) {
       : `${esc(what)}는 <strong>${esc(spans.join(', '))}</strong> 순으로 신호가 높습니다.`);
     items.push(`<li><span class="rp-ic" aria-hidden="true">${icon}</span><div><p>${text}</p></div></li>`);
   }
-  const principles = [...personalPrinciples(r),
-    '운세는 선택을 대신하는 도구가 아니라, 되풀이되는 패턴을 점검하는 보조 자료입니다.'];
+  const principles = personalPrinciples(r);
   const timingNotice = items.length
     ? `<ul class="rp-bul">${items.join('')}</ul>`
     : '<p class="rp-t rp-when">이 명반에서는 선택된 체계가 기간 안에서 서로 다른 달을 가르지 못했습니다.</p>';
@@ -607,26 +674,40 @@ function actionItems(r, v, me, s) {
     if (t) used.add(t);
     return t ?? '';
   };
-  const strip = (t) => String(t ?? '').replace(/^다만\s+/, '');
+  const strip = (t) => String(t ?? '').replace(/^다만s+/, '');
+  const natOf = (palace, who) => { try { return natureOf(palaceStars(r.input, palace), who); } catch { return null; } };
 
-  // DO — 지금 시즌에 맞는 움직임 + 일하는 방식
-  const doWhy = [take(pickOf(withSrc(v.work?.job), /편이 낫|잘 됩니다|좋습니다/)), s.seasonTips?.[0]?.[2] ? take(s.seasonTips[0][2]) : ''].filter(Boolean).join(' ');
+  // DO — 일할 때의 나(관록궁 별)가 자라는 방향. 별 조합이라 사람마다 갈린다. 시각이 없으면 지금 시즌
+  const work = natOf('관록궁', '일할 때의 나');
+  const grow = String(work?.text ?? '').replace(/\*\*/g, '').match(/자라는 방향은 ([^.]+?)입니다/)?.[1];
+  const doHead = grow ? `${grow.replace(/s*쪽$/, '')} 쪽으로 움직이세요.` : (s.act ? `${s.act}.` : '');
+  const doWhy = grow && work?.traits?.length
+    ? `일할 때의 나는 ${work.traits.slice(0, 3).join(', ')} 쪽이라, 이 힘이 그대로 쓰이는 자리에서 성과가 납니다.`
+    : [take(pickOf(withSrc(v.work?.job), /편이 낫|잘 됩니다|좋습니다/)), s.seasonTips?.[0]?.[2] ? take(s.seasonTips[0][2]) : ''].filter(Boolean).join(' ');
 
-  // DON'T — 돈·결정 습관에서 반복되기 쉬운 실수
-  const dontHead = strip(take(pickOf(withSrc(v.work?.money), /마세요|말고/), pickOf(withSrc(v.work?.money), CAUTION)));
-  const dontWhy = dontHead
-    ? '돈이 들어오면 쓰기 전에 일정 몫을 먼저 따로 떼어 두세요. 저축·비상금 통장으로 자동이체를 걸어 두면 손에 닿기 전에 남길 수 있습니다.'
-    : '';
+  // DON'T — 타고난 나(명궁 별)의 걸림돌. 없으면 돈 습관
+  const me2 = natOf('명궁', '나');
+  const dontHead = me2?.risk?.[0]
+    ? '타고난 버릇 하나를 경계하세요.'
+    : strip(take(pickOf(withSrc(v.work?.money), /마세요|말고/), pickOf(withSrc(v.work?.money), CAUTION)));
+  const dontWhy = me2?.risk?.[0]
+    ? `${me2.risk.slice(0, 2).map((x) => `${x.replace(/[.]?$/, '')}.`).join(' ')} 이런 순간을 알아차리는 것만으로 손해가 크게 줄어듭니다.`
+    : (dontHead ? '돈이 들어오면 쓰기 전에 일정 몫을 먼저 따로 떼어 두세요.' : '');
 
-  // KEY — 가장 약한 기운을 생활에서 채우는 법
-  let weak = null;
-  try { weak = ELEM_KEYS[elementDistribution(r.chart.pillars).weakest]; } catch { /* */ }
+  // KEY — 가장 넘치는 기운과 가장 옅은 기운의 짝 (스무 가지로 갈린다)
+  let weak = null, strong = null;
+  try {
+    const c = elementDistribution(r.chart.pillars).count;
+    weak = ELEM_KEYS[[0, 1, 2, 3, 4].reduce((x, i) => (c[i] < c[x] ? i : x), 0)];
+    strong = ELEM_KEYS[[0, 1, 2, 3, 4].reduce((x, i) => (c[i] > c[x] ? i : x), 0)];
+  } catch { /* */ }
   const fill = weak ? ELEM_FILL[weak] : null;
-
+  const over = strong && strong !== weak ? ELEM_FILL[strong] : null;
   return [
-    ['DO', s.act ? `${s.act}.` : '', doWhy],
+    ['DO', doHead, doWhy],
     ["DON'T", dontHead, dontWhy],
-    ['KEY', fill ? `약한 '${fill.name}' 기운을 생활 습관으로 채우세요.` : '', fill ? `${fill.name} 기운은 ${fill.means}입니다. 타고난 구성에서 이 힘이 가장 옅어 쉽게 무리하거나 한쪽으로 치우칩니다. ${fill.how}` : ''],
+    ['KEY', fill ? `넘치는 '${over?.name ?? ''}' 대신 옅은 '${fill.name}' 기운을 채우세요.`.replace(/넘치는 '' 대신 /, '') : '',
+      fill ? `${over ? `${over.means}은 이미 넘쳐 한쪽으로 쏠리기 쉽고, ` : ''}${fill.means}이 가장 옅습니다. ${fill.how}` : ''],
   ].filter(([, head, why]) => head || why);
 }
 
@@ -646,7 +727,7 @@ function distinctCard(r) {
   try { rows = distinctReadings(r, { max: 6 }); } catch { /* */ }
   const items = rows.map((x) => {
     // 체계의 정의처럼 누구에게나 붙는 문장은 빼고 그 사람 몫의 문장만
-    const text = firstOf(plain(ownSentences(x.text).join(' ')), 2);
+    const text = firstOf(plain(ownSentences(x.text).join(' ')), 3);
     if (!text) return '';
     const head = DISTINCT_LABEL[x.system] ?? '타고난 자리';
     // 드문 정도는 계산 사실이다 — 백 명 중 몇 명꼴인지로만 적는다
@@ -664,6 +745,12 @@ function distinctCard(r) {
  * 둘 다 생년월일시로 정해지는 계산이라 사람마다 갈린다. 여러 체계의 큰 주기가 한 해에 함께
  * 바뀌는 해는 "흐름이 꺾이는 해"로 따로 짚는다(사건을 단정하지 않는다).
  */
+/** 인도 점성 행성 주기의 주제 — 다샤 주인의 전통적 소관 */
+const PLANET_TERM = {
+  태양: '지위·명예·윗사람과의 관계', 달: '감정·가족·생활의 안정', 화성: '추진력·경쟁·몸을 쓰는 일',
+  수성: '배움·거래·말과 글', 목성: '확장·배움·도와주는 사람', 금성: '관계·즐거움·재물',
+  토성: '책임·인내·오래 걸리는 일의 정리', 라후: '욕망과 낯선 변화', 케투: '내려놓음과 정리',
+};
 const PILLAR_AREA = { year: '집안·윗사람', month: '일과 직장', day: '나 자신과 배우자', hour: '자녀·아랫사람·내 결과물' };
 function lifeFlow(r) {
   let ds = null;
@@ -674,6 +761,12 @@ function lifeFlow(r) {
   try { if (r.input.timeKnown) limits = decadeLimits(r.input, buildBoard(r.input)); } catch { /* */ }
   const seenGroup = new Set();
   const rows = [];
+  let elem = null;
+  try {
+    const c = elementDistribution(r.chart.pillars).count;
+    const idx = [0, 1, 2, 3, 4];
+    elem = { weak: idx.reduce((a, i) => (c[i] < c[a] ? i : a), 0), strong: idx.reduce((a, i) => (c[i] > c[a] ? i : a), 0) };
+  } catch { /* */ }
   for (const d of ds?.list ?? []) {
     const from = yearAt(d.fromExact), to = yearAt(d.toExact) - 1;
     if (to < now || from > now + 30) continue;
@@ -683,7 +776,8 @@ function lifeFlow(r) {
     if (info) parts.push(`'${GOD_FIELD[group]}'의 시기입니다. ${firstOf(info.what)}`);
     // 그 십 년의 지지가 타고난 네 기둥과 맺는 관계 — 어느 영역이 움직이는가
     const moves = [];
-    for (const key of ['day', 'month', 'year', 'hour']) {
+    // 월주는 뺀다 — 대운은 월주에서 한 칸씩 나아가므로 월주와의 관계가 누구에게나 같은 순서로 온다
+    for (const key of ['day', 'year', 'hour']) {
       const p = r.chart.pillars[key];
       if (!p) continue;
       for (const rel of branchRelations(p.branch, d.branch)) {
@@ -694,6 +788,12 @@ function lifeFlow(r) {
       }
     }
     if (moves.length) parts.push(`${[...new Set(moves)].slice(0, 2).join('. ')}.`);
+    // 그 십 년의 기운이 타고난 오행의 빈 곳을 채우는가, 넘치는 곳을 더 키우는가 — 원국마다 다르다
+    if (elem) {
+      const de = [d.element, d.branchElement].filter((x) => x != null);
+      if (de.includes(elem.weak)) parts.push(`타고난 구성에서 가장 옅은 ${ELEM_FILL[ELEM_KEYS[elem.weak]].name} 기운(${ELEM_FILL[ELEM_KEYS[elem.weak]].means})이 채워지는 시기라, 평소 어렵던 일이 한결 수월해집니다.`);
+      else if (de.includes(elem.strong)) parts.push(`이미 넘치는 ${ELEM_FILL[ELEM_KEYS[elem.strong]].name} 기운이 더해지는 시기라, 내 방식이 지나치게 굳어지지 않게 살펴야 합니다.`);
+    }
     const lim = limits.find((x) => x.fromYear <= Math.max(from, now) && x.toYear >= Math.max(from, now));
     if (lim && AREA[lim.palaceOfNatal]) parts.push(`같은 무렵 '${AREA[lim.palaceOfNatal]}' 쪽이 삶의 앞자리에 나옵니다.`);
     // 그 십 년의 궁에 든 별 — 이 시기에 두드러지는 내 모습과 걸림돌 (별 조합이라 사람마다 갈린다)
@@ -716,24 +816,31 @@ function lifeFlow(r) {
     turns = chapterTurns(lifeChapters(r.input, r.chart, r.input.isMale),
       { from: now, to: now + 30, minSystems: 2, birthYear: r.input.year }).slice(0, 4);
   } catch { /* */ }
-  // 그 해에 **무엇이** 새로 시작되는지 — 사주 대운은 십성 무리, 자미 대한은 원국의 궁으로 읽는다
+  // 그 해에 **무엇이** 바뀌는지 — 주기마다 쉬운 이름과, 새로 시작되는 구간의 뜻
   const startLine = (st) => {
     if (st.system === '사주') {
-      const god = String(st.detail ?? '').replace(/^천간\s*/, '');
-      const g = TEN_GOD_GROUP[god];
-      return g ? `'${GOD_FIELD[g]}'의 십 년이 시작됩니다` : '';
+      const g = TEN_GOD_GROUP[String(st.detail ?? '').replace(/^천간s*/, '')];
+      return g ? `사주로 보는 10년 운이 바뀌어 '${GOD_FIELD[g]}'의 십 년이 시작됩니다` : '사주로 보는 10년 운이 바뀝니다';
     }
     if (st.system === '자미두수') {
-      const pal = String(st.label ?? '').match(/원국의\s*(\S+궁)/)?.[1];
-      return pal && AREA[pal] ? `'${AREA[pal]}' 쪽이 삶의 앞자리로 나옵니다` : '';
+      const pal = String(st.label ?? '').match(/원국의s*(S+궁)/)?.[1];
+      return pal && AREA[pal] ? `별자리판으로 보는 10년 운이 바뀌어 '${AREA[pal]}' 쪽이 삶의 앞자리로 나옵니다` : '별자리판으로 보는 10년 운이 바뀝니다';
     }
+    if (st.system === '베딕') {
+      const p = String(st.label ?? '').split(' ')[0];
+      return PLANET_TERM[p] ? `인도 점성의 행성 주기가 ${p}의 ${st.toAge - st.fromAge + 1}년으로 바뀌어 ${j(PLANET_TERM[p], '이')} 주제가 됩니다` : '인도 점성의 행성 주기가 바뀝니다';
+    }
+    if (st.system === '구성학') return '9년마다 도는 주기가 새로 시작돼, 씨를 뿌리는 해부터 다시 셉니다';
+    if (st.system === '카발라') return '숫자로 보는 9년 주기가 새로 시작됩니다';
+    if (st.system === '고전 서양') return `서양 고전 점성의 큰 구간이 ${st.toAge - st.fromAge + 1}년짜리 새 구간으로 넘어갑니다`;
+    if (st.system === '태을신수') return '24년마다 도는 큰 주기가 한 바퀴를 새로 돕니다';
     return '';
   };
   const turnRows = turns.map((t) => {
     const what = [...new Set(t.starts.map(startLine).filter(Boolean))];
     return [`${t.year}년 (${t.age}세)`,
-      `큰 주기 ${t.systems.length}개가 한 해에 함께 바뀝니다.${what.length ? ` ${what.join('. ')}.` : ''}`
-      + ' 하던 일의 방향이나 생활의 틀을 다시 짜게 되기 쉬운 때입니다.'];
+      `이 해에 큰 주기 ${t.systems.length}개가 함께 바뀝니다. ${what.join('. ')}.`
+      + ' 둘 이상이 한 해에 겹쳐 바뀌어, 하던 일의 방향이나 생활의 틀을 다시 짜게 되기 쉬운 때입니다.'];
   });
 
   return (rows.length ? timeline(rows) : '')

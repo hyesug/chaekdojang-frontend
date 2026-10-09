@@ -10,7 +10,7 @@
  */
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { readFortune } from '../public/unse/src/engine.js';
-import { rarityKey, sentenceKeys } from '../public/unse/src/semantic/distinct.js';
+import { rarityKey, sentenceKeys, slotOf } from '../public/unse/src/semantic/distinct.js';
 
 const N = Number(process.argv[2] ?? 2000);
 let seed = 7;
@@ -18,7 +18,9 @@ const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed
 const PLACES = ['서울', '부산', '대구', '대전', '광주', '인천', '수원', '구미', '창원', '여주', '제주', '전주'];
 
 const count = {};
-const sentenceCount = {};   // 풀이 문장마다 몇 사람에게 나오는가 — 체계 정의처럼 누구에게나 붙는 문장을 거르려고
+// 같은 자리(예: 점성 '달')의 서로 다른 값(게자리·사자자리…)에 똑같이 붙는 문장 = 그 자리의 정의.
+// 값마다 다른 문장(그 사람의 내용)과 가르려고 자리별로 값의 종류를 센다
+const slotSentences = {};   // slot → sentence → Set(value)
 let done = 0;
 for (let i = 0; i < N; i++) {
   const form = {
@@ -33,10 +35,8 @@ for (let i = 0; i < N; i++) {
   for (const s of r.results) for (const x of s.readings ?? []) {
     const k = rarityKey(s.name, x.title);
     if (k && !seen.has(k)) { seen.add(k); count[k] = (count[k] ?? 0) + 1; }
-    for (const sen of sentenceKeys(x.text)) {
-      if (seen.has(`s:${sen}`)) continue;
-      seen.add(`s:${sen}`); sentenceCount[sen] = (sentenceCount[sen] ?? 0) + 1;
-    }
+    const [slot, value] = slotOf(s.name, x.title);
+    for (const sen of sentenceKeys(x.text)) ((slotSentences[slot] ??= {})[sen] ??= new Set()).add(value);
   }
   done++;
   if (done % 250 === 0) process.stdout.write(`  ${done}/${N}\n`);
@@ -46,7 +46,7 @@ mkdirSync('public/unse/src/semantic/data', { recursive: true });
 writeFileSync('public/unse/src/semantic/data/rarity.js',
   `/** 자동 생성 — scripts/build-rarity.mjs (표본 ${done}명). 풀이 항목이 나오는 사람의 비율 */\n`
   + `export const SAMPLE = ${done};\nexport const RARITY = ${JSON.stringify(table)};\n`
-  // 표본의 15% 넘게 나온 문장 — 그 사람의 특징이 아니라 체계의 정의·설명이다
-  + `export const COMMON_SENTENCES = new Set(${JSON.stringify(Object.entries(sentenceCount)
-    .filter(([, c]) => c / done > 0.15).map(([s]) => s).sort())});\n`);
+  // 같은 자리의 값 셋 이상에 똑같이 붙은 문장 — 그 사람의 내용이 아니라 자리의 정의다
+  + `export const DEFINITIONS = new Set(${JSON.stringify([...new Set(Object.values(slotSentences)
+    .flatMap((m) => Object.entries(m).filter(([, vals]) => vals.size >= 3).map(([sen]) => sen)))].sort())});\n`);
 console.log(`표본 ${done}명 · 항목 ${Object.keys(table).length}개`);

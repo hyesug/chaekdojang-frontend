@@ -142,6 +142,14 @@ export function dictKeys(r) {
 }
 
 /**
+ * 태어난 해 하나로만 정해지는 열쇠 — 같은 해에 난 사람은 모두 같은 글을 받는다.
+ * 리포트는 "그 사람 명반"만 말해야 하므로 고르지 않는다(드문 정도 표에는 남겨 둔다).
+ *   구성학 본명성 · 태을신수(궁·문·주객) · 목성·토성 별자리(한 별자리에 1~2.5년 머문다)
+ */
+export const PEER_ONLY = /^(gujeong\|본명\||boards\|(궁|주객)\||western-planets\|(목성|토성)\|)/;
+const TAEEUL_GATE = '태을신수(문)';
+
+/**
  * 그 사람의 사전 항목들 — 드문 것부터.
  * share 는 무작위 2천 명에서 그 열쇠가 나온 비율(data/rarity.js). 없으면 중간값으로 둔다.
  * @returns {Array<{group, key, label, entry, share}>}
@@ -149,6 +157,7 @@ export function dictKeys(r) {
 export function dictEntries(r) {
   if (!DICT) return [];
   return dictKeys(r)
+    .filter(([group, key, label]) => !PEER_ONLY.test(`${group}|${key}|`) && label !== TAEEUL_GATE)
     .map(([group, key, label]) => ({ group, key, label, entry: DICT[group]?.[key] ?? null, share: DICT_SHARE?.[`${group}|${key}`] ?? 0.1 }))
     .filter((x) => x.entry)
     .sort((a, b) => a.share - b.share);

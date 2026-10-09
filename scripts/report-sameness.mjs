@@ -17,6 +17,8 @@ import { loadDicts } from '../public/unse/src/semantic/dict.js';
 await loadDicts();
 
 const N = Number(process.argv[2] ?? 60);
+// --year 1992 처럼 주면 모두 같은 해에 태어난 사람으로 잰다 (또래끼리 비교할 때의 실제 체감)
+const YEAR = process.argv.includes('--year') ? Number(process.argv[process.argv.indexOf('--year') + 1]) : null;
 let seed = 20261009;
 const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
 const PLACES = ['서울', '부산', '대구', '대전', '광주', '인천', '수원', '구미', '창원', '여주'];
@@ -25,7 +27,7 @@ const people = [];
 for (let i = 0; i < N; i++) {
   people.push({
     name: '', gender: rnd() < 0.5 ? 'female' : 'male',
-    year: 1965 + Math.floor(rnd() * 40), month: 1 + Math.floor(rnd() * 12), day: 1 + Math.floor(rnd() * 28),
+    year: YEAR ?? 1965 + Math.floor(rnd() * 40), month: 1 + Math.floor(rnd() * 12), day: 1 + Math.floor(rnd() * 28),
     hour: Math.floor(rnd() * 24), minute: Math.floor(rnd() * 60),
     birthPlace: PLACES[Math.floor(rnd() * PLACES.length)], homePlace: PLACES[Math.floor(rnd() * PLACES.length)],
   });

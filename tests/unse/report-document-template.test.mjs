@@ -43,13 +43,13 @@ const pair = (a, b) => {
   });
 };
 
-test('개인 리포트는 나만의 특징·키워드·커리어·인생 흐름·실행 순서의 결과지로 시작한다', () => {
+test('개인 리포트는 한눈에 보는 나·나는 어떤 사람인가·커리어·인생 흐름·실행 순서의 결과지로 시작한다', () => {
   const html = personal(A);
   const order = [
     '보고서 개인님의 인생 데이터 분석 리포트',
+    '한눈에 보는 나',
     '나는 어떤 사람인가', '성격', '일할 때', '조심할 점',
-    '한눈에 보는 내 인생의 핵심 키워드',
-    '타고난 강점', '사회적 역할', '주의할 패턴',
+    '명반을 가르는 핵심 구조',
     '커리어 &amp; 재물: 나의 시장 가치와 돈 버는 법',
     '어떤 일을 할 때 빛나는가', '수익 스타일',
     '인생의 큰 흐름 — 십 년마다 무엇이 오는가',
@@ -65,15 +65,18 @@ test('개인 리포트는 나만의 특징·키워드·커리어·인생 흐름�
   }
   for (const tag of ['DO', 'KEY']) assert.match(html, rx(`>${tag}<`));
   // 자세한 장은 접어 두고, 겹치던 장(사업·로또, 질문별 색인)은 다시 넣지 않는다
-  for (const chapter of ['일과 돈', '사랑과 가족', '방향과 이동', '내면의 패턴', '시기 한눈에 보기']) {
+  for (const chapter of ['일과 돈', '사랑과 가족', '일이 풀리고 막히는 흐름', '시기 한눈에 보기']) {
     assert.match(html, rx(chapter));
   }
-  for (const gone of ['2-2. 책도장', '로또 분석과 횡재운', '질문별 답변 통합 색인', '세부 계산 보기']) {
+  // 태어난 해 하나로 정해져 또래가 같은 글을 받던 칸과, 사전과 겹치던 칸은 다시 넣지 않는다
+  for (const gone of ['2-2. 책도장', '로또 분석과 횡재운', '질문별 답변 통합 색인', '세부 계산 보기',
+    '방향과 이동', '올해의 메인 테마', '타고난 기질', '타고난 요일의 성향', '사회에서 보이는 나',
+    '한눈에 보는 내 인생의 핵심 키워드', '이 힘이 흔들리는 조건', '잘 되는 것 —']) {
     assert.doesNotMatch(html, rx(gone));
   }
 });
 
-test('개인 리포트는 키워드보다 먼저 명반 고유의 핵심 구조와 경계를 보여준다', () => {
+test('개인 리포트는 명반 고유의 핵심 구조를 결론만으로 보여준다', () => {
   const r = readFortune(A);
   const f = readForecast(A);
   const v = buildView(A, r, f);
@@ -81,11 +84,10 @@ test('개인 리포트는 키워드보다 먼저 명반 고유의 핵심 구조�
 
   const heading = html.indexOf('명반을 가르는 핵심 구조');
   assert.ok(heading >= 0, '첫머리에 핵심 구조가 없다');
-  assert.ok(heading < html.indexOf('한눈에 보는 내 인생의 핵심 키워드'));
+  assert.ok(heading < html.indexOf('커리어 &amp; 재물'));
   for (const item of v.signature) {
     assert.match(html, rx(item.title));
     assert.match(html, rx(item.conclusion));
-    assert.match(html, rx(item.condition));
   }
 });
 

@@ -280,14 +280,14 @@ export function verdictSummary(buckets, coreBuckets) {
 
   let text;
   if (!core) {
-    text = `열다섯 체계는 좋음 ${all.좋음}, 무난 ${all.무난}, 어려움 ${all.어려움}으로 나뉩니다.`;
+    text = `열일곱 체계는 좋음 ${all.좋음}, 무난 ${all.무난}, 어려움 ${all.어려움}으로 나뉩니다.`;
   } else {
     const coreTotal = core.좋음 + core.무난 + core.어려움;
     const corePositive = core.좋음;
     const coreNegative = core.어려움;
     const allPositive = all.좋음;
     const head = `명반을 통째로 세우는 ${coreTotal}개 체계는 좋음 ${core.좋음}, 무난 ${core.무난}, 어려움 ${core.어려움}입니다. ` +
-      `보조와 재미 쪽까지 더한 열다섯 전체로는 좋음 ${all.좋음}, 무난 ${all.무난}, 어려움 ${all.어려움}입니다.`;
+      `보조와 재미 쪽까지 더한 열일곱 전체로는 좋음 ${all.좋음}, 무난 ${all.무난}, 어려움 ${all.어려움}입니다.`;
 
     let gap;
     if (corePositive === 0 && coreNegative > 0 && allPositive > all.어려움) {

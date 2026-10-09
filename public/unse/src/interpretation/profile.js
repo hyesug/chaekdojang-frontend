@@ -71,7 +71,7 @@ export function interpretProfile(results) {
     return [domain, { supporting, anchors, average, status: supporting.length >= 2 ? 'measurable' : 'insufficient-evidence' }];
   }));
   return {
-    method: '15체계의 공통 태그와 체계가 직접 제공한 영역 점수를 분리해 집계한다. 사례 사실은 입력하지 않는다.',
+    method: '17체계의 공통 태그와 체계가 직접 제공한 영역 점수를 분리해 집계한다. 사례 사실은 입력하지 않는다.',
     limits: ['결혼·이혼·자녀·수술처럼 구체적 사건은 원국만으로 확정하지 않는다.', '영역 점수는 체계 사이의 확률 비교가 아니라 각 체계의 해석 범위 표시다.'],
     domainEvidence, areas, targets: deriveProfileTargets(results),
   };

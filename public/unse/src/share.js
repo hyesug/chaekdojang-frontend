@@ -282,7 +282,7 @@ export function compatText(formA, formB, c, rA, rB) {
   out.push(chartText(formB, rB, { footer: false }));
 
   out.push(eq);
-  out.push('열다섯 체계가 견준 결과');
+  out.push('열일곱 체계가 견준 결과');
   out.push(eq);
   out.push('');
 

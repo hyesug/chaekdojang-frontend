@@ -171,7 +171,7 @@ export function lifeReport({ input, chart, fortune }, year, name = null) {
     from: year, to: year + 40, minSystems: 2, birthYear: input.year,
   });
 
-  const head = `${name ? `${name} 님, ` : ''}열다섯 체계 가운데 **시간축이 있는 아홉**을 한 축에 놓고`
+  const head = `${name ? `${name} 님, ` : ''}열일곱 체계 가운데 **시간축이 있는 아홉**을 한 축에 놓고`
     + ` 평생을 장으로 잘랐습니다. 주기가 저마다 달라(10·9·24년·가변) 시작과 끝이 어긋나며 돕니다.`
     + ` 줄마다 끝에 어느 체계의 어느 자리에서 나온 말인지 붙였습니다.`;
 

@@ -388,7 +388,7 @@ export function buildContext(form, r, f = null) {
   out.push('');
 
   // ── 체계별 ──
-  out.push('## 열다섯 체계');
+  out.push('## 열일곱 체계');
   out.push('');
   for (const sys of r.results) {
     out.push(`### ${sys.name}${sys.hanja ? ` (${sys.hanja})` : ''}`);
@@ -464,7 +464,7 @@ export function buildContext(form, r, f = null) {
       .map((m) => `${m.from.m}월 ${m.from.d}일 이후`)
       .join(' / ');
     out.push(`올해 건강 흐름이 낮게 잡힌 절기: ${healthLow}. 연간 평균이 무난하더라도 건강 질문에서는 이 구간을 먼저 짚을 것.`);
-    out.push('※ 점수는 열다섯 체계 평균을 눈금만 벌린 값이다. 50이 보통. 절대 수치가 아니라 영역끼리·달끼리 견주는 용도다.');
+    out.push('※ 점수는 열일곱 체계 평균을 눈금만 벌린 값이다. 50이 보통. 절대 수치가 아니라 영역끼리·달끼리 견주는 용도다.');
     out.push('');
   }
 
@@ -648,7 +648,7 @@ export function buildContext(form, r, f = null) {
 export const READING_PROMPT =
   '위 명반을 바탕으로 이 사람의 전체 풀이를 써 주세요. ' +
   '소제목을 넣어 (1) 타고난 기질 (2) 지금의 흐름 (3) 올해 눈여겨볼 시기 (4) 조심할 지점 순으로 정리해 주세요. ' +
-  '열다섯 체계가 어긋나는 지점이 있으면 그것도 짚어 주세요.';
+  '열일곱 체계가 어긋나는 지점이 있으면 그것도 짚어 주세요.';
 
 /**
  * 궁합용 명반 — 두 사람 것을 한 덩이로
@@ -772,4 +772,4 @@ export function buildCompatContext(formA, formB, c, forecastA = null, forecastB 
 export const COMPAT_PROMPT =
   '위 결과를 바탕으로 두 사람의 궁합을 풀어 주세요. ' +
   '소제목을 넣어 (1) 서로 끌리는 지점 (2) 부딪치기 쉬운 지점 (3) 오래 가려면 무엇이 필요한지 순으로 정리하고, ' +
-  '열다섯 체계가 어긋나는 지점이 있으면 그것도 짚어 주세요.';
+  '열일곱 체계가 어긋나는 지점이 있으면 그것도 짚어 주세요.';

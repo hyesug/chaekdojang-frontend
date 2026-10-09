@@ -88,7 +88,7 @@ export function toMarkdown(dict, measurement = null, domain = 'career') {
   const out = [];
   out.push(`# ${DOMAIN_LABEL[domain] ?? domain} 해석 사전 v1`);
   out.push('');
-  out.push('열다섯 체계의 기호 하나하나가 **현실의 어떤 속성**을 뜻하는지 적은 표입니다.');
+  out.push('열일곱 체계의 기호 하나하나가 **현실의 어떤 속성**을 뜻하는지 적은 표입니다.');
   out.push('규칙 등록소(`src/semantic/rules.js` · `src/semantic/domains.js`)를 그대로');
   out.push('펼친 것이라, 이 문서와 엔진이 갈라질 수 없습니다.');
   out.push('');

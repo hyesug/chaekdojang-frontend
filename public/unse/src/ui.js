@@ -144,7 +144,7 @@ function renderCompat(formA, formB, r) {
     <div class="result-header">
       <p class="result-kicker">분석 기록 · 궁합</p>
       <h2 class="hero-title">${esc(formA.name)} <span style="color:var(--gold-soft)">×</span> ${esc(formB.name)}</h2>
-      <p class="result-meta">두 사람의 출생 기준을 열다섯 체계로 나란히 살폈습니다.</p>
+      <p class="result-meta">두 사람의 출생 기준을 열일곱 체계로 나란히 살폈습니다.</p>
     </div>
 
     <div class="section-label">계산값 · 두 사람의 기준</div>

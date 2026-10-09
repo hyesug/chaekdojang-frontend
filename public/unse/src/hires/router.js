@@ -219,7 +219,7 @@ const SCOPE = [
 ];
 
 /** "종합해서 봐줘" 처럼 **일부러 여러 체계를 부른** 말 */
-const ASK_ALL = /종합|합쳐|다 ?봐|전부|모든 체계|여러 체계|열다섯|15개|전체 ?풀이/;
+const ASK_ALL = /종합|합쳐|다 ?봐|전부|모든 체계|여러 체계|열다섯|열일곱|15개|17개|전체 ?풀이/;
 
 export function scopeLockOf(question) {
   const q = String(question ?? '');

@@ -1250,11 +1250,11 @@ export function compatReading(c) {
   const good = s.buckets['좋음'], bad = s.buckets['어려움'];
   out.총평 = {
     text: s.split
-      ? `열다섯 가운데 ${good.length}개는 잘 맞는다 하고 ${bad.length}개는 어렵다고 봅니다. 이런 조합은 "애매하다"가 아니라 "어떤 면은 아주 잘 맞고 어떤 면은 계속 부딪친다"에 가깝습니다. 좋은 쪽만 보고 정하면 나중에 부딪치는 자리에서 놀라게 됩니다.`
+      ? `열일곱 가운데 ${good.length}개는 잘 맞는다 하고 ${bad.length}개는 어렵다고 봅니다. 이런 조합은 "애매하다"가 아니라 "어떤 면은 아주 잘 맞고 어떤 면은 계속 부딪친다"에 가깝습니다. 좋은 쪽만 보고 정하면 나중에 부딪치는 자리에서 놀라게 됩니다.`
       : good.length > bad.length * 2
-        ? `열다섯 가운데 ${good.length}개가 잘 맞는다고 봅니다. 서로 다른 잣대가 같은 말을 하고 있으니 그만큼 믿을 만한 결입니다.`
+        ? `열일곱 가운데 ${good.length}개가 잘 맞는다고 봅니다. 서로 다른 잣대가 같은 말을 하고 있으니 그만큼 믿을 만한 결입니다.`
         : bad.length > good.length
-          ? `열다섯 가운데 ${bad.length}개가 어렵게 봅니다. 인연이 아니라는 뜻은 아니고, 저절로 되는 사이는 아니라는 뜻입니다.`
+          ? `열일곱 가운데 ${bad.length}개가 어렵게 봅니다. 인연이 아니라는 뜻은 아니고, 저절로 되는 사이는 아니라는 뜻입니다.`
           : `크게 좋지도 나쁘지도 않은 조합입니다. 무엇이 되느냐는 두 사람이 어떻게 하느냐에 더 많이 달려 있습니다.`,
     sources: good.concat(bad).slice(0, 4),
   };
@@ -1265,13 +1265,13 @@ export function compatReading(c) {
 
   if (worst) {
     out.부딪침 = {
-      text: `${plainest(worst, s.names)} 열다섯 가운데 이 관계를 가장 어렵게 본 곳이 짚는 대목입니다. 한 체계의 잣대이니 결론으로 삼지는 마시고, 실제로 그런 일이 생길 때 덜 놀라시라는 뜻으로 보세요.`,
+      text: `${plainest(worst, s.names)} 열일곱 가운데 이 관계를 가장 어렵게 본 곳이 짚는 대목입니다. 한 체계의 잣대이니 결론으로 삼지는 마시고, 실제로 그런 일이 생길 때 덜 놀라시라는 뜻으로 보세요.`,
       sources: [worst.name],
     };
   }
   if (best) {
     out.강점 = {
-      text: `${plainest(best, s.names)} 열다섯 가운데 이 관계를 가장 후하게 본 곳이 짚는 대목입니다. 흔들릴 때 버팀목으로 삼을 만한 자리입니다.`,
+      text: `${plainest(best, s.names)} 열일곱 가운데 이 관계를 가장 후하게 본 곳이 짚는 대목입니다. 흔들릴 때 버팀목으로 삼을 만한 자리입니다.`,
       sources: [best.name],
     };
   }

@@ -80,7 +80,7 @@ export async function initCompose(root, birth) {
   const out = root.querySelector('#cmp-out');
   if (!out) return;
 
-  out.innerHTML = '<p class="scen-empty">열다섯 체계를 세우는 중입니다…</p>';
+  out.innerHTML = '<p class="scen-empty">열일곱 체계를 세우는 중입니다…</p>';
   await new Promise((r) => setTimeout(r, 0));   // '세우는 중'이 실제로 보이게
 
   let cache = null;

@@ -1040,7 +1040,8 @@ export function futureDigest(r) {
         ...focus.lines,
       ].filter(Boolean),
       earn: pick('m', 2, (t) => EARN.test(t) && !IMPERATIVE.test(t)),
-      drawn: pick('r', 2, (t) => DRAWN_TO.test(t)),
+      // 한 문장만 — 두 문장이면 "안정된 관계를 원합니다"처럼 같은 말이 되풀이되었다
+      drawn: pick('r', 1, (t) => DRAWN_TO.test(t)),
     },
     know: {
       p: pick('p', 3),

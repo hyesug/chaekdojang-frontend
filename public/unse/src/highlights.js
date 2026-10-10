@@ -11,7 +11,7 @@
  */
 import { dictEntries, coreField, ziweiPalaceEntry, themeContrast } from './semantic/dict.js';
 import { curate, meta, PageMemo } from './semantic/curate.js';
-import { futureDigest, seasonNow, periodFlow, lifeEventItems, GOD_FIELD, SEASON, STRONG_RULE, ELEM_FILL, ELEM_KEYS } from './report.js';
+import { futureDigest, seasonNow, periodFlow, lifeEventItems, eventWhat, GOD_FIELD, SEASON, STRONG_RULE, ELEM_FILL, ELEM_KEYS } from './report.js';
 import { computeDaeun, currentDaeun, TEN_GOD_GROUP, tenGodDistribution, elementDistribution } from './core/ganzhi.js';
 import { j } from './core/josa.js';
 
@@ -29,7 +29,15 @@ const GOD_PHRASE = {
   비겁: '내 힘으로 서려는 기운', 식상: '표현하고 만들어 내는 기운', 재성: '돈과 현실을 다루는 기운',
   관성: '책임과 자리의 기운', 인성: '배우고 받아들이는 기운',
 };
-const STRESS = /지치|혼자|참다|참는|떠안|걱정|불안|화가|화를|예민|잠을|압박|쌓/;
+/** 공유 카드의 타입 이름 — 여러 칸에서 되풀이되는 결(형용) + 명반에서 가장 강한 십신 무리(명사) */
+const TYPE_ADJ = {
+  fast: '빠르게 결단하는', slow: '신중하게 쌓아 가는', firm: '끝까지 버티는', soft: '흐름을 읽는',
+  out: '사람 앞에서 빛나는', in: '혼자 깊어지는', care: '사람을 품는', free: '내 방식대로 가는',
+};
+const TYPE_NOUN = { 비겁: '개척자', 식상: '창작자', 재성: '실속가', 관성: '리더', 인성: '탐구자' };
+const TYPE_TAG = { fast: '#결단력', slow: '#신중함', firm: '#끈기', soft: '#유연함', out: '#존재감', in: '#깊이', care: '#다정함', free: '#독립심' };
+const GROUP_TAG = { 비겁: '#자립', 식상: '#표현력', 재성: '#현실감각', 관성: '#책임감', 인성: '#배움' };
+const STRESS =/지치|혼자|참다|참는|떠안|걱정|불안|화가|화를|예민|잠을|압박|쌓/;
 const REL = /상대|배우자|관계|말|서운|간섭|고집|표현|마음을|사랑/;
 /** 돈이 실제로 새는 모양 — '손해가 적다'처럼 강점을 말하는 문장은 걸리지 않게 */
 const LEAK = /새|낭비|충동|지출이|쓰기 쉽|써 버|빌려|보증|과소비|씀씀이|손해를 보|날리|큰돈을|한탕/;
@@ -38,6 +46,12 @@ const LEAK_NOT = /적습니다|적고|적은|드뭅|없습니다|않습니다/;
 const sameForce = (a, b) => a.split(' ').filter((w) => w.length >= 3).some((w) => b.includes(w.slice(0, 2)));
 
 const firstSentence = (t) => String(t ?? '').split(/(?<=[.!?])\s/)[0];
+/** 사건 한 줄 — 제목 + 설명 가운데 제목을 되풀이하지 않는 첫 문장(다 되풀이면 제목만).
+ *  예) '아이가 찾아오거나 함께 아이를 키우는 일. 두 사람 사이에 아이가 생기거나 아이를 키우는 일이…' 같은 반복을 막는다 */
+function eventLine(e) {
+  const add = eventWhat(e.title, e.what, { keepAll: false });
+  return add ? `${e.title}. ${firstSentence(add)}` : `${e.title}.`;
+}
 
 /**
  * @param {object} r readFortune 결과
@@ -75,7 +89,7 @@ export function buildHighlights(r, f = null) {
   one('rare', '다른 사람에게서 잘 보이지 않는 특징', rareSorted.slice(0, 6).map((x) => ({ text: x.text, base: 0.5, rare: rareOf(x) })));
   if (sn?.cur?.e) one('now', '지금 가장 활발한 삶의 주제', [{ text: `${firstSentence(sn.cur.e.h)} ${sn.cur.e.g}`, base: 0.9 }], { minSpecificity: 0 });
   const near = events.filter((e) => e.y - now <= 5)[0];
-  if (near) one('next', '가까운 시기의 변화 포인트', [{ text: `${near.when} — ${near.title}. ${firstSentence(near.what)}`, base: 0.9 }], { minSpecificity: 0 });
+  if (near) one('next', '가까운 시기의 변화 포인트', [{ text: `${near.when} — ${eventLine(near)}`, base: 0.9 }], { minSpecificity: 0 });
   const pattern = pool.filter((x) => x.field === 'c' && recurring && x.themes.includes(recurring[0]));
   one('pattern', '반복되기 쉬운 인생 패턴', (pattern.length ? pattern : field('c')).map((x) => ({ text: x.text, base: base(x) })));
 
@@ -91,9 +105,10 @@ export function buildHighlights(r, f = null) {
     const [ex] = curate(pool.filter((x) => x.themes.includes(recurring[0])).map((x) => ({ text: x.text, base: base(x) })), { max: 1, memo });
     traits.push({ label: '여러 영역에서 반복해서 나타나는 특징', text: `${j(THEME_PHRASE[recurring[0]], '이')} ${where}에서 거듭 나타납니다.${ex ? ` ${ex.text}` : ''}` });
   }
+  let top = null;
   try {
     const g = tenGodDistribution(r.chart.pillars, r.chart.dayStem).groups;
-    const top = Object.keys(g).sort((a, b) => g[b] - g[a])[0];
+    top = Object.keys(g).sort((a, b) => g[b] - g[a])[0];
     const c = elementDistribution(r.chart.pillars).count;
     const weak = ELEM_KEYS[[0, 1, 2, 3, 4].reduce((x, i) => (c[i] < c[x] ? i : x), 0)];
     if (g[top] >= 3 && GOD_PHRASE[top]) {
@@ -163,7 +178,22 @@ export function buildHighlights(r, f = null) {
   // 공유 카드 — 나를 설명하는 세 문장(개인정보 없이)
   const shareLines = summary.filter((x) => ['strong', 'rare', 'pattern', 'now'].includes(x.key)).slice(0, 3).map((x) => x.text);
 
-  return { summary: summary.slice(0, 5), traits, discover, flow, shareLines, memo };
+  // 공유 이미지 — 타입 이름 · 해시태그 셋 · 짧은 세 칸. 생년월일·시각은 넣지 않는다
+  const themeRank = Object.entries(themeFields).sort((a, b) => b[1].size - a[1].size).map(([k]) => k);
+  const strongThemes = meta(summary.find((x) => x.key === 'strong')?.text ?? '').themes;
+  const lead = themeRank[0] ?? strongThemes[0];
+  const closeSide = discover.find((x) => x.title.startsWith('처음 보는 나'))?.b?.[1];
+  const shareCard = {
+    type: `${TYPE_ADJ[lead] ?? '타고난 결이 분명한'} ${TYPE_NOUN[top] ?? '사람'}`,
+    tags: [...new Set([TYPE_TAG[lead], GROUP_TAG[top], TYPE_TAG[themeRank[1]] ?? TYPE_TAG[strongThemes[1]]].filter(Boolean))].slice(0, 3),
+    blocks: [
+      ['나의 가장 큰 강점', summary.find((x) => x.key === 'strong')?.text],
+      ['가까워져야 보이는 나', closeSide ?? summary.find((x) => x.key === 'rare')?.text],
+      ['지금 나의 시기', sn?.cur?.e ? `${firstSentence(sn.cur.e.h)} ${sn.cur.e.g}` : summary.find((x) => x.key === 'pattern')?.text],
+    ].filter(([, t]) => t),
+  };
+
+  return { summary: summary.slice(0, 5), traits, discover, flow, shareLines, shareCard, memo };
 }
 
 /**
@@ -187,7 +217,7 @@ export function buildPairHighlights({ A, B, d, rA }) {
   const now = Number(rA?.input?.currentYear) || new Date().getFullYear();
   const future = (d.events ?? []).filter((e) => e.y == null || e.y >= now).sort((a, b) => (a.y ?? 9999) - (b.y ?? 9999));
   const near = future.find((e) => e.y != null && e.y - now <= 5);
-  if (near) one('next', '가까운 시기 두 사람에게 오는 일', [{ text: `${near.when} — ${near.title}. ${firstSentence(near.what)}`, base: 1 }]);
+  if (near) one('next', '가까운 시기 두 사람에게 오는 일', [{ text: `${near.when} — ${eventLine(near)}`, base: 1 }]);
   if (d.relation) one('relation', '두 사람의 관계 모양', [d.relation]);
 
   // ── 두 사람에게 특히 두드러지는 점 ──
@@ -215,11 +245,29 @@ export function buildPairHighlights({ A, B, d, rA }) {
 
   // ── 두 사람의 흐름 — 요약에 낸 일 다음부터, 15년 안쪽만(먼 일은 아래 사건 장에) ──
   const flow = future.filter((e) => e !== near && (e.y == null || e.y - now <= 15)).slice(0, 3)
-    .map((e) => [e.when, '', `${e.title}. ${firstSentence(e.what)}`]);
+    .map((e) => [e.when, '', eventLine(e)]);
 
   const shareLines = summary.map((x) => x.text).filter((t) => !named(t)).slice(0, 3);
+  // 공유 이미지 — 궁합 타입 · 해시태그 · 짧은 세 칸(이름은 넣되 생년월일·시각은 넣지 않는다)
+  const kind = d.verdict.kind;
+  const sum = (k) => summary.find((x) => x.key === k)?.text;
+  const shareCard = {
+    type: d.married
+      ? { 연애: '대화로 빛나는 부부', 결혼: '살수록 손발이 맞는 부부', '둘 다': '설렘과 생활이 균형 잡힌 부부' }[kind]
+      : { 연애: '설렘이 오래가는 연애형 궁합', 결혼: '살수록 맞는 결혼형 궁합', '둘 다': '설렘과 생활의 균형형 궁합' }[kind],
+    tags: [
+      { 연애: '#설렘', 결혼: '#안정감', '둘 다': '#균형' }[kind],
+      d.dating.good.some((t) => /닮아/.test(t)) ? '#닮은꼴' : '#서로를채움',
+      d.dating.bad.some((t) => /차이로/.test(t)) ? '#다른결' : '#편안함',
+    ],
+    blocks: [
+      ['이 궁합을 한 줄로', d.verdict.text],
+      ['두 사람의 관계', sum('relation') ?? sum('pull')],
+      [sum('clash') ? '서로 조심할 지점' : '서로 끌리는 지점', sum('clash') ?? sum('pull')],
+    ].filter(([, t], i, xs) => t && xs.findIndex(([, u]) => u === t) === i),
+  };
   return {
-    summary: summary.slice(0, 5), traits, discover, flow, shareLines, memo,
+    summary: summary.slice(0, 5), traits, discover, flow, shareLines, shareCard, memo,
     titles: { traits: '두 사람에게 특히 두드러지는 점', discover: '두 사람에 대한 발견', flow: '앞으로 두 사람의 흐름' },
   };
 }

@@ -372,21 +372,168 @@ export function downloadText(text, filename) {
 
 // ── 개인 운세 카드 ───────────────────────────────────────────
 
-/**
- * 공유 이미지 — 핵심 요약(highlights.js shareLines)의 "나를 설명하는 세 문장"만 그린다.
- * 이름·생년월일·태어난 시각·태어난 곳은 넣지 않는다(받은 사람이 출생 정보를 알 수 없게).
+/* ── 공유 이미지(명반 카드) ───────────────────────────────────
+ * 인스타그램 피드 비율(4:5, 1080×1350). 책도장 화면과 같은 종이·청록 잉크·붉은 도장.
+ * 글꼴은 사이트에 이미 묶인 것(Noto Serif KR · Pretendard)만 쓴다 — 외부 요청 없음.
+ * 내용은 highlights.js shareCard: 타입 이름 · 해시태그 · 짧은 세 칸. 생년월일·시각·태어난 곳은 넣지 않는다.
  * AI 이미지 생성 없이 캔버스로만 그린다.
  */
-export function buildSoloCard(lines, { title = '나를 설명하는 세 문장', sub = '열일곱 가지 점술이 함께 가리킨 나' } = {}) {
-  const { cv, ctx } = makeCanvas(1600);
-  let y = header(ctx, title, sub);
-  lines.slice(0, 3).forEach((t, i) => {
-    y = sectionLabel(ctx, y, `${i + 1}`);
-    y = para(ctx, y + 6, t, { size: 30, gap: 46 });
-    y += 18;
-  });
-  y = footer(ctx, y + 10, '책도장 운세 · 재미로 보시고, 중요한 결정은 스스로 내리시기 바랍니다.');
-  return crop(cv, y);
+const SC = {
+  W: 1080, H: 1350,
+  paper: '#F3F2EB', paper2: '#FCFBF7', ink: '#102A2C', ink2: '#315F5A', ink3: '#56706A',
+  teal: '#174A46', tealSoft: '#E1EBE5', stamp: '#8B3040', line: '#D3D5C9',
+};
+const SERIF = '"Noto Serif KR", "AppleMyungjo", serif';
+const SANS = '"Pretendard Variable", Pretendard, -apple-system, "Malgun Gothic", "Apple SD Gothic Neo", sans-serif';
+
+/** 띄어쓰기 단위로 줄을 나눈다(한 어절이 너무 길면 글자 단위로) */
+function wrapWords(ctx, text, maxW) {
+  const lines = [];
+  let line = '';
+  for (const word of String(text).split(/\s+/)) {
+    const next = line ? `${line} ${word}` : word;
+    if (ctx.measureText(next).width <= maxW) { line = next; continue; }
+    if (line) lines.push(line);
+    if (ctx.measureText(word).width <= maxW) { line = word; continue; }
+    line = '';
+    for (const ch of word) {
+      if (ctx.measureText(line + ch).width > maxW && line) { lines.push(line); line = ch; } else line += ch;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+/** 카드에 맞게 줄인다 — 문장 단위로 max 글자까지 */
+function shorten(text, max = 78) {
+  const ss = String(text ?? '').trim().split(/(?<=[.!?])\s+/);
+  let out = ss[0] ?? '';
+  for (const s of ss.slice(1)) { if ((out + ' ' + s).length > max) break; out += ' ' + s; }
+  return out.length > max + 24 ? `${out.slice(0, max).replace(/[\s,·]+\S*$/, '')}…` : out;
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+/** 붉은 기록 도장 — '책도' / '장印' */
+function seal(ctx, cx, cy, size) {
+  ctx.save();
+  ctx.translate(cx, cy); ctx.rotate(-0.08);
+  ctx.globalAlpha = 0.9;
+  ctx.strokeStyle = SC.stamp; ctx.lineWidth = 6;
+  roundRect(ctx, -size / 2, -size / 2, size, size, 14); ctx.stroke();
+  ctx.lineWidth = 2;
+  roundRect(ctx, -size / 2 + 9, -size / 2 + 9, size - 18, size - 18, 8); ctx.stroke();
+  ctx.fillStyle = SC.stamp; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = `700 ${Math.round(size * 0.3)}px ${SERIF}`;
+  const q = size * 0.2;
+  [['책', -q, -q], ['도', q, -q], ['장', -q, q], ['印', q, q]].forEach(([ch, x, y]) => ctx.fillText(ch, x, y));
+  ctx.restore();
+}
+
+/**
+ * @param {{kicker, type, tags, blocks: Array<[label, text]>}} card
+ * @returns {Promise<HTMLCanvasElement>}
+ */
+export async function buildShareCard({ kicker, type, tags = [], blocks = [] }) {
+  try {
+    await Promise.all([
+      document.fonts.load(`700 72px ${SERIF}`),
+      document.fonts.load(`600 30px ${SANS}`),
+    ]);
+  } catch { /* 글꼴을 못 불러도 시스템 글꼴로 그린다 */ }
+
+  const { W, H } = SC;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  ctx.textBaseline = 'alphabetic';
+
+  // 종이 바탕 + 가운데가 조금 밝은 빛 + 이중 테두리
+  ctx.fillStyle = SC.paper; ctx.fillRect(0, 0, W, H);
+  const glow = ctx.createRadialGradient(W / 2, H * 0.35, 80, W / 2, H * 0.35, W * 0.9);
+  glow.addColorStop(0, 'rgba(255,255,255,0.7)'); glow.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = SC.teal; ctx.lineWidth = 3; ctx.strokeRect(36, 36, W - 72, H - 72);
+  ctx.strokeStyle = SC.line; ctx.lineWidth = 1.5; ctx.strokeRect(50, 50, W - 100, H - 100);
+
+  // 머리말
+  let y = 132;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = SC.stamp;
+  ctx.font = `700 26px ${SANS}`;
+  if ('letterSpacing' in ctx) ctx.letterSpacing = '4px';
+  ctx.fillText(kicker, W / 2, y);
+  if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+  // 가는 선과 마름모 장식
+  y += 34;
+  ctx.fillStyle = SC.teal;
+  ctx.fillRect(W / 2 - 120, y, 100, 1.5); ctx.fillRect(W / 2 + 20, y, 100, 1.5);
+  ctx.save(); ctx.translate(W / 2, y + 1); ctx.rotate(Math.PI / 4); ctx.fillRect(-6, -6, 12, 12); ctx.restore();
+
+  // 타입 이름 — 두 줄 안에 들어갈 때까지 글자를 줄인다
+  y += 96;
+  let size = 76, typeLines;
+  for (; size >= 52; size -= 4) {
+    ctx.font = `700 ${size}px ${SERIF}`;
+    typeLines = wrapWords(ctx, type, W - 220);
+    if (typeLines.length <= 2) break;
+  }
+  ctx.fillStyle = SC.ink;
+  for (const line of typeLines) { ctx.fillText(line, W / 2, y); y += size * 1.3; }
+
+  // 해시태그 알약
+  y += 6;
+  ctx.font = `600 28px ${SANS}`;
+  const pills = tags.map((t) => ({ t, w: ctx.measureText(t).width + 44 }));
+  const total = pills.reduce((s, p) => s + p.w, 0) + Math.max(0, pills.length - 1) * 14;
+  let x = (W - total) / 2;
+  for (const p of pills) {
+    ctx.fillStyle = SC.tealSoft; roundRect(ctx, x, y - 38, p.w, 56, 28); ctx.fill();
+    ctx.fillStyle = SC.teal; ctx.textAlign = 'left'; ctx.fillText(p.t, x + 22, y);
+    x += p.w + 14;
+  }
+  y += pills.length ? 62 : 10;
+
+  // 세 칸 — 남은 높이에 맞을 때까지 본문 글자를 줄인다
+  const footTop = H - 190;
+  const boxX = 96, boxW = W - 192, pad = 34;
+  const texts = blocks.slice(0, 3).map(([label, t]) => [label, shorten(t)]);
+  let body = 32, laid;
+  for (; body >= 24; body -= 2) {
+    ctx.font = `500 ${body}px ${SANS}`;
+    laid = texts.map(([label, t]) => ({ label, lines: wrapWords(ctx, t, boxW - pad * 2) }));
+    const need = laid.reduce((s, b) => s + pad * 2 + 30 + 14 + b.lines.length * body * 1.5, 0) + (laid.length - 1) * 22;
+    if (y + need <= footTop) break;
+  }
+  const gap = 22;
+  for (const b of laid) {
+    const h = pad * 2 + 30 + 14 + b.lines.length * body * 1.5;
+    ctx.fillStyle = SC.paper2; roundRect(ctx, boxX, y, boxW, h, 22); ctx.fill();
+    ctx.strokeStyle = SC.line; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = SC.stamp; ctx.beginPath(); ctx.arc(boxX + pad + 6, y + pad + 20, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.textAlign = 'left';
+    ctx.font = `700 25px ${SANS}`; ctx.fillStyle = SC.stamp;
+    ctx.fillText(b.label, boxX + pad + 22, y + pad + 29);
+    ctx.font = `500 ${body}px ${SANS}`; ctx.fillStyle = SC.ink;
+    let ty = y + pad + 30 + 14 + body * 1.1;
+    for (const line of b.lines) { ctx.fillText(line, boxX + pad, ty); ty += body * 1.5; }
+    y += h + gap;
+  }
+
+  // 바닥 — 주소와 도장
+  ctx.textAlign = 'left';
+  ctx.fillStyle = SC.teal; ctx.font = `700 28px ${SERIF}`;
+  ctx.fillText('책도장 운세', 96, H - 118);
+  ctx.fillStyle = SC.ink3; ctx.font = `500 22px ${SANS}`;
+  ctx.fillText('chaekdojang.com/unse · 열일곱 가지 점술로 본 해석', 96, H - 82);
+  seal(ctx, W - 160, H - 128, 104);
+  return cv;
 }
 
 // ── 궁합 카드 ────────────────────────────────────────────────

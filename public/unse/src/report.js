@@ -32,7 +32,20 @@ import { childrenPack, marriagePack } from './hires/vedicExt.js';
 import { consensusOf } from './semantic/compose/consensus.js';
 import { verifiedCareer } from './semantic/index.js';
 import { distinctReadings, ownSentences } from './semantic/distinct.js';
-import { dictEntries, dictField, coreField, daeunEntry, ziweiPalaceEntry, pairReading, themeContrast, eventEntry, dictLoaded } from './semantic/dict.js';
+import { dictEntries, dictField, coreField, daeunEntry, ziweiPalaceEntry, pairReading, themeContrast, eventEntry, dictLoaded, bigrams } from './semantic/dict.js';
+
+/**
+ * 사건 설명에서 제목을 되풀이하는 문장을 뺀다 — 제목 '아이가 찾아오거나 함께 아이를 키우는 일' 밑에
+ * '두 사람 사이에 아이가 생기거나, 아이를 키우는 일이…'가 다시 나오던 것.
+ * 남는 문장이 없으면 keepAll 이면 원문 그대로(본문 칸이 비지 않게), 아니면 빈 문자열.
+ */
+export function eventWhat(title, what, { keepAll = true } = {}) {
+  const a = bigrams(String(title ?? ''));
+  const repeats = (s) => { const b = bigrams(s); let n = 0; for (const x of a) if (b.has(x)) n++; return a.size && n / a.size >= 0.3; };
+  const ss = String(what ?? '').split(/(?<=[.!?])\s+/).filter((s) => s.trim());
+  const rest = ss.filter((s) => !repeats(s));
+  return rest.length ? rest.join(' ') : keepAll ? String(what ?? '') : '';
+}
 import { lifeChapters, chapterTurns } from './semantic/compose/life.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
@@ -996,7 +1009,7 @@ const DOMAIN_EVENT = {
 function lifeEvents(r) {
   return lifeEventItems(r).map((it) =>
     `<article class="rp-event"><h4 class="rp-h4">${esc(it.title)} <small>· ${esc(it.when)}</small></h4>`
-    + `<p>${esc(it.what)}</p><p class="rp-prep"><b>대비</b> — ${esc(it.prep)}</p></article>`).join('');
+    + `<p>${esc(eventWhat(it.title, it.what))}</p><p class="rp-prep"><b>대비</b> — ${esc(it.prep)}</p></article>`).join('');
 }
 
 /** 앞으로 마주할 중요한 일의 목록 (리포트·AI 공용) — {y, when, title, what, prep} */
@@ -1530,7 +1543,8 @@ export function pairLoveDigest(rA, rB, A, B, v, { married = false } = {}) {
     chA ? [`${A}님 쪽에서 보면`, `${chA.h} ${chA.g}`] : null,
     chB ? [`${B}님 쪽에서 보면`, `${chB.h} ${chB.g}`] : null,
     chA || chB ? ['아이를 키울 때 조심할 것', [chA?.c, chB?.c].filter(Boolean).join(' ')] : null,
-    kidsEv.length ? ['아이와 관련된 일이 생기기 쉬운 때', `${kidsEv.join(', ')}.`] : null,
+    // 사건 이름은 흐름 카드·사건 장에 이미 있다 — 여기서는 때만
+    kidsEv.length ? ['아이와 관련된 일이 생기기 쉬운 때', `${events.filter((e) => /아이/.test(e.title)).slice(0, 2).map((e) => e.when).join(', ')}. 자세한 내용은 아래 '앞으로 두 사람이 마주할 중요한 일'에 있습니다.`] : null,
   ].filter(Boolean);
 
   return { married, verdict, relation: pr?.stem?.h ?? '', dating, marriage, care, fix, kids, events,
@@ -1587,7 +1601,7 @@ export function pairEventsHtml(rA, rB, A, B, { married = false } = {}) {
   if (!events.length) return '<p class="rp-t">앞으로 30년 안에 두 사람에게 크게 짚이는 일은 없습니다.</p>';
   return events.map((it) =>
     `<article class="rp-event"><h4 class="rp-h4">${esc(it.title)} <small>· ${esc(it.when)}</small></h4>`
-    + `<p>${esc(it.what)}</p><p class="rp-prep"><b>대비</b> — ${esc(it.prep)}</p></article>`).join('');
+    + `<p>${esc(eventWhat(it.title, it.what))}</p><p class="rp-prep"><b>대비</b> — ${esc(it.prep)}</p></article>`).join('');
 }
 
 /**

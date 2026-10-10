@@ -179,3 +179,28 @@ test('궁합 요약이 낸 문장은 아래 리포트에서 다시 나오지 않
     assert.doesNotMatch(html, /연애 궁합인가, 결혼 궁합인가|두 사람은 어떤 부부인가/);
   }
 });
+
+/* ── 공유 카드 · 사건 문장 반복 ───────────────────────────── */
+import { eventWhat } from '../../public/unse/src/report.js';
+
+test('공유 카드는 타입 이름·해시태그 셋 이하·세 칸 이하이고 출생 정보가 없다', () => {
+  for (const { form, h } of ALL) {
+    const c = h.shareCard;
+    assert.ok(c.type && !/undefined/.test(c.type), c.type);
+    assert.ok(c.tags.length >= 1 && c.tags.length <= 3 && c.tags.every((t) => t.startsWith('#')));
+    assert.ok(c.blocks.length >= 2 && c.blocks.length <= 3);
+    const all = JSON.stringify(c);
+    assert.ok(!all.includes(String(form.year)) && !all.includes(form.birthPlace));
+  }
+  for (const { h } of PAIRS) {
+    assert.ok(h.shareCard.type && h.shareCard.tags.length === 3 && h.shareCard.blocks.length >= 2);
+  }
+});
+
+test('사건 설명이 제목을 되풀이하면 그 문장은 뺀다', () => {
+  const title = '권ㅇㅇ님에게 아이가 찾아오거나 함께 아이를 키우는 일';
+  const what = '두 사람 사이에 아이가 생기거나, 아이를 키우는 일이 두 사람 생활의 중심이 되기 쉽습니다.';
+  assert.equal(eventWhat(title, what, { keepAll: false }), '');
+  assert.equal(eventWhat(title, what), what);   // 본문 칸은 비우지 않는다
+  assert.equal(eventWhat(title, `${what} 양가의 도움을 미리 정해 두면 편합니다.`), '양가의 도움을 미리 정해 두면 편합니다.');
+});

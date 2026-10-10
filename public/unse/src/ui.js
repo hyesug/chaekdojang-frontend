@@ -15,7 +15,7 @@ import { compareFortune } from './compat.js';
 import { lunarToSolar } from './core/lunar.js';
 import { elementDistribution } from './core/ganzhi.js';
 import { j } from './core/josa.js';
-import { encodeState, decodeState, shareLink, buildSoloCard, saveCanvas } from './share.js';
+import { encodeState, decodeState, shareLink, buildShareCard, saveCanvas } from './share.js';
 import { buildHighlights, buildPairHighlights, renderHighlights } from './highlights.js';
 import { readForecast, areaText } from './forecast.js';
 import { renderReport, renderPairReport, pairDigestFor, periodFlow, pairEventsHtml } from './report.js';
@@ -165,7 +165,8 @@ function renderCompat(formA, formB, r) {
   // 맨 위 핵심 요약·발견 — 궁합 재료를 한 번만 계산해 요약과 아래 리포트가 함께 쓴다
   let pd = null, h = null;
   try { pd = pairDigestFor(formA, formB, r, v, people); h = buildPairHighlights(pd); } catch (err) { console.warn('pair highlights', err); }
-  last.shareLines = h?.shareLines ?? [];
+  last.shareCard = h?.shareCard?.blocks?.length
+    ? { ...h.shareCard, kicker: `${formA.name || '나'} × ${formB.name || '상대'} 궁합 카드` } : null;
 
   return `
     <div class="result-header">
@@ -182,7 +183,7 @@ function renderCompat(formA, formB, r) {
       b: elementDistribution(r.B?.chart?.pillars ?? {}).count,
     }, people, { digest: pd, memo: h?.memo })}
 
-    ${shareBlock(last.shareLines.length > 0)}
+    ${shareBlock(!!last.shareCard)}
 
     <div class="section-label">AI 명반 해석</div>
     ${aiSection('pair', v)}
@@ -291,7 +292,8 @@ function render(form, r, f) {
   // 맨 위 핵심 요약·발견 — 한 번만 계산하고, 그 memo 로 아래 리포트가 같은 문장을 다시 내지 않게 한다
   let h = null;
   try { h = buildHighlights(r, f); } catch (err) { console.warn('highlights', err); }
-  last.shareLines = h?.shareLines ?? [];
+  last.shareCard = h?.shareCard?.blocks?.length
+    ? { ...h.shareCard, kicker: `${form.name ? `${form.name}님의` : '나의'} 명반 카드` } : null;
 
   // 오늘·이달의 운세도 아래 결과지(report.js)와 같은 카드 모양 — 이모지 + 이름 + 한두 문장
   const item = (icon, label, text) => text
@@ -351,7 +353,7 @@ function render(form, r, f) {
     <div class="section-label">상세 분석</div>
     ${renderReport(form, r, f, v, { memo: h?.memo })}
 
-    ${shareBlock(last.shareLines.length > 0)}
+    ${shareBlock(!!last.shareCard)}
 
     <div class="section-label">AI 명반 해석</div>
     ${aiSection('solo', v)}
@@ -443,20 +445,14 @@ function shareBlock(withImage = false) {
         <button type="button" data-act="share">🔗 결과 링크 공유하기</button>
         ${withImage ? '<button type="button" data-act="share-image">🖼️ 이미지로 공유</button>' : ''}
       </div>
-      ${withImage ? '<p class="agree-note" style="margin:8px 0 0">이미지에는 요약 문장만 담기고 이름·생년월일·태어난 시각은 들어가지 않습니다.</p>' : ''}
+      ${withImage ? '<p class="agree-note" style="margin:8px 0 0">이미지에는 요약 카드만 담기고 생년월일·태어난 시각은 들어가지 않습니다.</p>' : ''}
       <p class="agree-note" style="margin:8px 0 0">링크를 받은 사람도 같은 결과를 볼 수 있습니다. 링크에 생년월일과 태어난 시각이 담기니 믿는 사람에게만 보내세요.</p>
     </div>`;
 }
 
 $('#result').addEventListener('click', async (e) => {
-  if (e.target.closest('[data-act="share-image"]') && last?.shareLines?.length) {
-    try {
-      const card = last.mode === 'pair'
-        ? buildSoloCard(last.shareLines, { title: '우리 두 사람을 설명하는 문장', sub: '열일곱 가지 점술이 함께 본 두 사람' })
-        : buildSoloCard(last.shareLines);
-      const how = await saveCanvas(card, 'chaekdojang-unse.png');
-      if (how === 'download') toast('이미지를 저장했습니다.');
-    } catch { toast('이미지를 만들지 못했습니다.', false); }
+  if (e.target.closest('[data-act="share-image"]') && last?.shareCard) {
+    try { openSharePreview(await buildShareCard(last.shareCard)); } catch { toast('이미지를 만들지 못했습니다.', false); }
     return;
   }
   const btn = e.target.closest('[data-act="share"]');
@@ -468,6 +464,38 @@ $('#result').addEventListener('click', async (e) => {
   const how = await shareLink(url, title);
   if (how === 'copied') toast('링크를 복사했습니다. 원하는 곳에 붙여 넣어 보내세요.');
 });
+
+/** 공유 이미지 미리보기 — 먼저 보여 주고, 마음에 들면 저장·공유한다 */
+function openSharePreview(cv) {
+  document.querySelector('.share-preview')?.remove();
+  const box = document.createElement('div');
+  box.className = 'share-preview';
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-modal', 'true');
+  box.setAttribute('aria-label', '공유 이미지 미리보기');
+  box.innerHTML = `
+    <div class="share-preview-in">
+      <img alt="공유 이미지 미리보기" src="${cv.toDataURL('image/png')}">
+      <div class="sharebar">
+        <button type="button" data-sp="save">📤 저장·공유하기</button>
+        <button type="button" data-sp="close">닫기</button>
+      </div>
+    </div>`;
+  const close = () => box.remove();
+  box.addEventListener('click', async (ev) => {
+    if (ev.target === box || ev.target.closest('[data-sp="close"]')) return close();
+    if (ev.target.closest('[data-sp="save"]')) {
+      try {
+        const how = await saveCanvas(cv, 'chaekdojang-unse.png');
+        if (how === 'download') toast('이미지를 저장했습니다.');
+        if (how !== 'cancel') close();
+      } catch { toast('이미지를 만들지 못했습니다.', false); }
+    }
+  });
+  box.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') close(); });
+  document.body.appendChild(box);
+  box.querySelector('[data-sp="save"]').focus();
+}
 
 function toast(msg, ok = true) {
   let el = $('#toast');

@@ -52,8 +52,9 @@ export function attachFeedback(root, { mode, names = [] }) {
       <button type="button" data-fb="up" aria-label="맞아요">👍 맞아요</button>
       <button type="button" data-fb="down" aria-label="아니에요">👎 아니에요</button>
       <form class="fb-form" hidden>
-        <input type="text" maxlength="300" placeholder="어디가 달랐나요? (선택 · 이름·연락처는 적지 마세요)" aria-label="다른 점 한 줄">
+        <input type="text" maxlength="300" placeholder="어디가 달랐나요? (선택)" aria-label="다른 점 한 줄">
         <button type="submit">보내기</button>
+        <p class="fb-note">이름·연락처·생년월일은 적지 말아 주세요.</p>
       </form>`;
     (el.matches('.rp-ch') ? el.querySelector('.rp-ch-body') ?? el : el).appendChild(bar);
 

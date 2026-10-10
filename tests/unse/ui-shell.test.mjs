@@ -103,3 +103,8 @@ test('결과 칸마다 피드백(👍/👎 + 한 줄)을 붙이고, 출생 정�
   assert.doesNotMatch(fb, /year|month|day|hour|birth/);
   assert.match(fb, /split\(n\)\.join\('○○'\)/);   // 문장 속 이름은 지운다
 });
+
+test('피드백 한 줄 입력은 👎를 누르기 전에는 숨어 있다', async () => {
+  const css = await read('assets/style.css');
+  assert.match(css, /\.fb-form\[hidden\] \{ display: none; \}/);
+});

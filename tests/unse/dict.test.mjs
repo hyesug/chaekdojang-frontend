@@ -54,3 +54,17 @@ test('AI 상담 문맥에도 리포트와 같은 사전 문장이 실린다', as
   const first = dictField(dictEntries(r), 'p', 1)[0].text;
   assert.ok(ctx.includes(first), '리포트 성격 첫 문장이 AI 문맥에 없다');
 });
+
+test('AI 문맥은 리포트와 같은 "앞으로 마주할 중요한 일" 목록을 싣고, 결혼 시기를 점치지 않는다', async () => {
+  const { buildContext, buildCompatContext } = await import('../../public/unse/src/aiContext.js');
+  const { lifeEventItems, pairEventItems } = await import('../../public/unse/src/report.js');
+  const { compareFortune } = await import('../../public/unse/src/compat.js');
+  const a = { name: '가', gender: 'female', year: 1993, month: 5, day: 17, hour: 14, minute: 20, birthPlace: '서울', homePlace: '서울' };
+  const b = { name: '나', gender: 'male', year: 1990, month: 11, day: 3, hour: 7, minute: 0, birthPlace: '서울', homePlace: '서울' };
+  const ra = readFortune(a), rb = readFortune(b);
+  const ctx = buildContext(a, ra);
+  for (const it of lifeEventItems(ra)) assert.ok(ctx.includes(it.title), `개인 AI 문맥에 사건이 없다: ${it.title}`);
+  const pctx = buildCompatContext(a, b, compareFortune(a, b));
+  for (const it of pairEventItems(ra, rb, '가', '나')) assert.ok(pctx.includes(it.title), `궁합 AI 문맥에 사건이 없다: ${it.title}`);
+  assert.doesNotMatch(pctx, /결혼 시기를 물을 때 반드시/);
+});

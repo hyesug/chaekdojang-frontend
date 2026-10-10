@@ -959,7 +959,9 @@ export function lifeEventItems(r) {
  *   · 두 사람의 흐름이 함께 바뀌는 때
  * 사전 문장의 {X}는 그 일을 겪는 사람, {Y}는 상대다. 결혼·출산 시기는 쓰지 않는다.
  */
-export function pairEventItems(rA, rB, A, B) {
+export function pairEventItems(rA, rB, A, B, { withLife = true } = {}) {
+  // withLife — 각자의 일·목돈·이사 사건까지. 한 사람당 2초 남짓 걸리는 시기 계산이 들어가므로
+  // 첫 화면(연애·결혼·자녀 판정)은 이것 없이 그리고, 사건 장은 뒤이어 채운다(pairEventsHtml)
   const now = Number(rA.input.currentYear);
   const items = [];
   const fill = (e, X, Y) => [e.t, e.w, e.p].map((s) => s.replaceAll('{X}', X).replaceAll('{Y}', Y));
@@ -984,7 +986,7 @@ export function pairEventItems(rA, rB, A, B) {
         items.push({ y, when: `${y}~${to}년 무렵`, title, what, prep });
       }
     } catch { /* */ }
-    for (const it of lifeEventItems(rX)) {
+    for (const it of withLife ? lifeEventItems(rX) : []) {
       if (!['직업', '재물', '이사'].includes(it.domain)) continue;
       const e = eventEntry(`pairlife|${it.domain}|${it.group}`);
       if (!e) continue;
@@ -1181,7 +1183,8 @@ export function pairLoveDigest(rA, rB, A, B, v) {
   const { same, clash } = themeContrast([...lines(esA, 'p', 6), ...lines(esA, 'r', 4)], [...lines(esB, 'p', 6), ...lines(esB, 'r', 4)]);
   const money = themeContrast(lines(esA, 'm', 4), lines(esB, 'm', 4));
   let events = [];
-  try { events = pairEventItems(rA, rB, A, B); } catch { /* */ }
+  // 판정에는 두 사람 사이의 사건만(빠르다) — 각자의 일·목돈·이사 사건은 사건 장에서 뒤이어 채운다
+  try { events = pairEventItems(rA, rB, A, B, { withLife: false }); } catch { /* */ }
   const seatGood = SEAT_GOOD.has(pr?.seatKind), seatBad = SEAT_BAD.has(pr?.seatKind);
 
   // 연애 궁합인가 결혼 궁합인가 — 끌림·감정·대화 축과 생활·돈·역할·장기 유지 축의 점수를 견주고,
@@ -1246,6 +1249,16 @@ export function pairLoveDigest(rA, rB, A, B, v) {
   return { verdict, relation: pr?.stem?.h ?? '', dating, marriage, care, fix, kids, events };
 }
 
+/** 궁합 사건 장의 본문 — 화면이 뜬 뒤 ui.js 가 채운다 */
+export function pairEventsHtml(rA, rB, A, B) {
+  let events = [];
+  try { events = pairEventItems(rA, rB, A, B); } catch { /* */ }
+  if (!events.length) return '<p class="rp-t">앞으로 30년 안에 두 사람에게 크게 짚이는 일은 없습니다.</p>';
+  return events.map((it) =>
+    `<article class="rp-event"><h4 class="rp-h4">${esc(it.title)} <small>· ${esc(it.when)}</small></h4>`
+    + `<p>${esc(it.what)}</p><p class="rp-prep"><b>대비</b> — ${esc(it.prep)}</p></article>`).join('');
+}
+
 /**
  * 궁합 리포트 — 연애할 때 · 결혼하면 · 배려할 점 · 고쳐야 할 점 · 자녀, 그리고 두 사람이 마주할 일.
  * (예전: 지금 두 사람은 / 앞으로 함께 가야 할 방향 / 알아 두면 좋은 서로 / 조심해야 할 것 / 기운 비교표 —
@@ -1262,10 +1275,10 @@ export function renderPairReport(formA, formB, c, v, elementDist, people = {}) {
   const goodBad = (g, b) => (g.length ? h4('🟢', '좋은 점') + list(g) : '') + (b.length ? h4('⚠️', '아쉬운 점') + list(b) : '');
   const pairs = (rows) => bullets(...rows.map(([k, t]) => bullet('', k, t)));
 
-  const eventHtml = d.events.map((it) =>
-    `<article class="rp-event"><h4 class="rp-h4">${esc(it.title)} <small>· ${esc(it.when)}</small></h4>`
-    + `<p>${esc(it.what)}</p><p class="rp-prep"><b>대비</b> — ${esc(it.prep)}</p></article>`).join('');
-  const chapters = sec(1, '앞으로 두 사람이 마주할 중요한 일', eventHtml, '무슨 일이, 어떤 모양으로 오고, 어떻게 대비할지');
+  // 사건 장은 자리만 잡아 두고 화면이 뜬 뒤 채운다(fillPairEvents) — 각자의 시기 계산이 무거워 첫 화면이 늦었다
+  const chapters = sec(1, '앞으로 두 사람이 마주할 중요한 일',
+    '<div class="rp-pair-events"><p class="rp-t">두 사람의 앞날을 계산하고 있습니다…</p></div>',
+    '무슨 일이, 어떤 모양으로 오고, 어떻게 대비할지');
 
   return `
     <section class="rp" aria-labelledby="rp-title">

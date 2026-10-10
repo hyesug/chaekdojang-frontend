@@ -287,13 +287,32 @@ const SUN_DEG_PER_DAY = 360 / 365.2422;
  */
 export function solarTermJD(targetLon, startJD) {
   const ahead = norm360(targetLon - sunLongitude(startJD));
-  return refineCrossing(targetLon, startJD + ahead / SUN_DEG_PER_DAY);
+  return crossingNear(targetLon, startJD + ahead / SUN_DEG_PER_DAY);
 }
 
 /** startJD 이전에 태양 황경이 targetLon이었던 가장 가까운 시각 */
 export function prevSolarTermJD(targetLon, startJD) {
   const behind = norm360(sunLongitude(startJD) - targetLon);
-  return refineCrossing(targetLon, startJD - behind / SUN_DEG_PER_DAY);
+  return crossingNear(targetLon, startJD - behind / SUN_DEG_PER_DAY);
+}
+
+/**
+ * 같은 절기 경계는 몇 번을 물어도 답이 같다. 시기 계산(달마다 절기 구간을 다시 구한다)이
+ * 같은 경계를 수백 번 이분법(태양 황경 50번)으로 다시 풀어 한 사람에 2초 가까이 걸렸다 —
+ * 궁합은 두 사람이라 4초. 한 번 구한 경계를 기억해 둔다.
+ * 열쇠: 목표 황경 + 추정 시각(10일 단위). 같은 황경의 경계는 1년 간격이라 서로 섞이지 않는다.
+ */
+const crossingCache = new Map();
+function crossingNear(targetLon, guessJD) {
+  const key = `${targetLon}|${Math.round(guessJD / 10)}`;
+  let jd = crossingCache.get(key);
+  if (jd === undefined) {
+    jd = refineCrossing(targetLon, guessJD);
+    if (crossingCache.size > 20000) crossingCache.clear();
+    crossingCache.set(key, jd);
+  }
+  // 추정이 다른 경계 쪽으로 크게 빗나간 경우(이론상 없음)에 대비해 결과가 ±5일 탐색창 안인지 확인한다
+  return Math.abs(jd - guessJD) <= 5 ? jd : refineCrossing(targetLon, guessJD);
 }
 
 /**

@@ -20,10 +20,15 @@ export const REPORT_TIMING_DOMAIN = {
 // policy.js와 학습기에는 남아 있으나, 숨은 분야까지 계산해 첫 화면을 느리게 만들지 않는다.
 const REPORT_VISIBLE_TIMING_LABELS = new Set(['직업', '재물', '이사', '건강']);
 const reportTimelineCache = new WeakMap();
+// 같은 출생 정보면 결과도 같다 — 궁합 화면과 AI 문맥이 readFortune 을 따로 불러 새 객체가 생겨도
+// 한 사람당 2초 남짓 걸리는 계산을 다시 하지 않게 출생 정보로도 기억한다(최근 8명)
+const reportTimelineByBirth = new Map();
+const birthKey = (r) => [r.input.jdUT, r.input.jdTST, r.input.isMale, r.input.timeKnown, r.input.currentYear,
+  r.input.birthPlace, r.input.homePlace].join('|');
 
 export function reportTimeline(r) {
-  const cached = reportTimelineCache.get(r);
-  if (cached) return cached;
+  const cached = reportTimelineCache.get(r) ?? reportTimelineByBirth.get(birthKey(r));
+  if (cached) { reportTimelineCache.set(r, cached); return cached; }
   const from = Number(r.input.currentYear);
   const timingPolicy = {};
   for (const [label, domain] of Object.entries(REPORT_TIMING_DOMAIN)) {
@@ -38,6 +43,8 @@ export function reportTimeline(r) {
       domains: Object.keys(timingPolicy), timingPolicy, onlySystems,
     });
     reportTimelineCache.set(r, value);
+    reportTimelineByBirth.set(birthKey(r), value);
+    if (reportTimelineByBirth.size > 8) reportTimelineByBirth.delete(reportTimelineByBirth.keys().next().value);
     return value;
   } catch { return null; }
 }

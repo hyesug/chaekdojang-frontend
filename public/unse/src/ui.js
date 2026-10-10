@@ -17,7 +17,7 @@ import { elementDistribution } from './core/ganzhi.js';
 import { j } from './core/josa.js';
 import { encodeState, decodeState } from './share.js';
 import { readForecast, areaText } from './forecast.js';
-import { renderReport, renderPairReport, periodFlow } from './report.js';
+import { renderReport, renderPairReport, periodFlow, pairEventsHtml } from './report.js';
 import { buildView, buildCompatView } from './viewmodel.js';
 import { SYSTEM_META, TIER_LABEL, SOURCE_LABEL } from './meta.js';
 import { loadProfile, saveProfile, deleteProfile, loginUrl } from './profile.js';
@@ -59,7 +59,14 @@ export async function run(mode, box, next) {
     await loadDicts().catch(() => null);
     await next();
     box.innerHTML = renderCompat(form, formB, c);
-    initCompatAI(form, formB, c);
+    // 화면부터 띄우고, 무거운 계산(두 사람의 시기 → 사건 장, AI 문맥)은 그다음에 — 예전에는 둘 다 끝나야 화면이 떴다.
+    // AI 문맥은 사건 장이 계산해 둔 시기를 출생 정보 캐시로 다시 쓰므로 뒤에 두면 금방 끝난다.
+    setTimeout(() => {
+      const p = last?.people ?? {};
+      const el = box.querySelector('.rp-pair-events');
+      if (el && p.a && p.b) el.innerHTML = pairEventsHtml(p.a, p.b, form.name, formB.name);
+      initCompatAI(form, formB, c);
+    }, 30);
     await next();
     await next();
   } else {
@@ -148,7 +155,8 @@ function pairPeople(formA, formB) {
 
 // '관계 축별 해석'(여덟 축 × 상·중·하마다 정해진 문단)은 뺐다 — 같은 구간의 쌍은 같은 글을 받았다
 function renderCompat(formA, formB, r) {
-  last = { mode: 'pair', formA, formB, result: r };
+  const people = pairPeople(formA, formB);
+  last = { mode: 'pair', formA, formB, result: r, people };
   const v = buildCompatView(formA, formB, r);
 
   return `
@@ -170,7 +178,7 @@ function renderCompat(formA, formB, r) {
     ${renderPairReport(formA, formB, r, v, {
       a: elementDistribution(r.A?.chart?.pillars ?? {}).count,
       b: elementDistribution(r.B?.chart?.pillars ?? {}).count,
-    }, pairPeople(formA, formB))}
+    }, people)}
 
     <div class="section-label">AI 명반 해석</div>
     ${aiSection('pair', v)}

@@ -18,7 +18,7 @@
 import { ELEMENTS, computeDaeun } from './core/ganzhi.js';
 import { dictEntries, ziweiPalaceEntry } from './semantic/dict.js';
 import { readFortune } from './engine.js';
-import { futureDigest, careerFocus, lifeEventItems, periodFlow, pairLoveDigest } from './report.js';
+import { futureDigest, careerFocus, lifeEventItems, periodFlow, pairLoveDigest, pairEventItems } from './report.js';
 import { buildCompatView } from './viewmodel.js';
 import { AREAS } from './forecast.js';
 import { candidatesToward, DIR8 } from './hires/location.js';
@@ -753,7 +753,10 @@ function formatPairDict(formA, formB, c) {
   sec('서로 배려할 점', d.care.map(([k, t]) => `${k}: ${t}`));
   sec('각자 고쳐야 할 점', d.fix.map(([k, t]) => `${k}: ${t}`));
   sec('자녀와 함께라면 (두 사람 궁합으로 본 권하는 말이다 — "몇 명을 낳게 된다"는 예측으로 바꿔 말하지 말 것)', d.kids.map(([k, t]) => `${k}: ${t}`));
-  sec('앞으로 두 사람이 마주할 중요한 일 (무슨 일이, 어떤 모양으로, 어떻게 대비할지)', d.events.map((it) => `${it.when} · ${it.title}: ${it.what} 대비: ${it.prep}`));
+  // 리포트의 사건 장과 같은 목록(각자의 일·목돈·이사 사건까지) — 시기 계산은 캐시를 다시 쓴다
+  let events = [];
+  try { events = pairEventItems(rA, rB, nA, nB); } catch { /* */ }
+  sec('앞으로 두 사람이 마주할 중요한 일 (무슨 일이, 어떤 모양으로, 어떻게 대비할지)', events.map((it) => `${it.when} · ${it.title}: ${it.what} 대비: ${it.prep}`));
   out.push('');
   return out;
 }

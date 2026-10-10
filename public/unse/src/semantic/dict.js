@@ -8,7 +8,7 @@
  *
  * 사전은 크기 때문에 번들에 넣지 않고 리포트를 그리기 직전에 한 번 불러온다(loadDicts).
  */
-import { STEMS_KR, BRANCHES_KR } from '../core/ganzhi.js';
+import { STEMS_KR, BRANCHES_KR, ELEMENTS, STEM_ELEMENT, isStemCombine, branchRelations } from '../core/ganzhi.js';
 import { buildBoard } from '../hires/ziwei.js';
 import { planetPositions, toSidereal } from '../core/planets.js';
 import { SIGNS } from '../systems/astrology.js';
@@ -26,6 +26,7 @@ export const DICT_FILES = [
   'daeun-stem', 'daeun-branch-1', 'daeun-branch-2',
   'ziwei-career', 'ziwei-money', 'ziwei-spouse', 'ziwei-children',
   'western-planets-1', 'western-planets-2', 'boards-2',
+  'pair-stem', 'pair-bond',
 ];
 /** 파일 → 사전 묶음 이름 */
 const GROUP = (file) => file.replace(/-\d+$/, '');
@@ -264,4 +265,51 @@ export function ziweiPalaceEntry(r, which) {
     const key = MAIN.filter((s) => b.board[branch].includes(s)).join('·') || '공궁';
     return DICT[`ziwei-${which}`]?.[key] ?? null;
   } catch { return null; }
+}
+
+/* ── 궁합 ─────────────────────────────────────────────────── */
+
+/**
+ * 두 사람 사이의 관계 해석 — 두 사람의 명반을 맞대어서만 정해지는 것(띠처럼 태어난 해로만 정해지는 것은 쓰지 않는다).
+ *   stem: 두 일간의 기운 짝(5×5, 누가 누구를 살리고 누르는가) · hap: 일간끼리 끌어당기는 짝이면
+ *   seat: 두 사람의 배우자 자리(일지)끼리 맞물리는가·부딪치는가
+ * 문장의 {A}·{B} 자리에 이름을 넣는다. 각 항목은 {h 어떤 관계인가, g 잘 되려면, c 조심할 점}.
+ */
+const SEAT_ORDER = ['충', '형', '육합', '반합', '해', '파', '원진'];
+export function pairReading(rA, rB, nameA, nameB) {
+  if (!DICT) return null;
+  const fill = (e) => e && Object.fromEntries(Object.entries(e).map(([k, v]) => [k, v.replaceAll('{A}', nameA).replaceAll('{B}', nameB)]));
+  try {
+    const sa = rA.chart.dayStem, sb = rB.chart.dayStem;
+    const stem = fill(DICT['pair-stem']?.[`${ELEMENTS[STEM_ELEMENT[sa]]}|${ELEMENTS[STEM_ELEMENT[sb]]}`]);
+    const hap = isStemCombine(sa, sb) ? fill(DICT['pair-bond']?.[`합|${STEMS_KR[Math.min(sa, sb)]}${STEMS_KR[Math.max(sa, sb)]}`]) : null;
+    const da = rA.chart.pillars.day.branch, db = rB.chart.pillars.day.branch;
+    let kind = '없음';
+    if (da === db) kind = '같음';
+    else {
+      const kinds = branchRelations(da, db).map((x) => (x.kind.includes('형') ? '형' : x.kind));
+      kind = SEAT_ORDER.find((k) => kinds.includes(k)) ?? '없음';
+    }
+    const seat = fill(DICT['pair-bond']?.[`자리|${kind}`]);
+    return { stem, hap, seat, seatKind: kind };
+  } catch { return null; }
+}
+
+/**
+ * 두 사람의 문장을 결(THEMES)로 맞대어 닮은 점과 부딪치는 점을 찾는다.
+ * @returns {{same: Array<[a, b]>, clash: Array<[a, b]>}} 각 짝은 두 사람의 원문 문장
+ */
+export function themeContrast(textsA, textsB) {
+  const same = [], clash = [];
+  const usedA = new Set(), usedB = new Set();
+  for (const a of textsA) {
+    const ta = themesOf(a);
+    for (const b of textsB) {
+      if (usedA.has(a) || usedB.has(b) || a === b) continue;
+      const tb = themesOf(b);
+      if (ta.some((k) => tb.includes(OPPOSITE[k]))) { clash.push([a, b]); usedA.add(a); usedB.add(b); }
+      else if (ta.some((k) => tb.includes(k))) { same.push([a, b]); usedA.add(a); usedB.add(b); }
+    }
+  }
+  return { same, clash };
 }

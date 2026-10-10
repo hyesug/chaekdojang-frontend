@@ -53,9 +53,8 @@ test('결과는 계산값·오늘/이달·통합 리포트·AI 순서로 읽게 
   const pairReportAt = pairRender.indexOf('${renderPairReport(');
   const pairAi = pairRender.indexOf('AI 명반 해석');
   assert.ok(pairReportAt >= 0 && pairAi > pairReportAt);
-  const pairDetail = pairRender.indexOf('관계 축별 해석');
-  assert.ok(pairAi >= 0 && pairDetail > pairAi);
-  assert.match(pairRender, /<details class="compat-details" open>/);
+  // 여덟 축마다 정해진 문단을 싣던 '관계 축별 해석'은 뺐다
+  assert.doesNotMatch(pairRender, /<details class="compat-details"/);
 });
 
 test('AI 영역은 질문권 상태와 소진 paywall을 기록 안에서 표시한다', async () => {

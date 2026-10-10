@@ -16,7 +16,8 @@
  */
 
 import { ELEMENTS, computeDaeun, currentDaeun } from './core/ganzhi.js';
-import { dictEntries, dictField, daeunEntry, ziweiPalaceEntry } from './semantic/dict.js';
+import { dictEntries, dictField, coreField, daeunEntry, ziweiPalaceEntry, pairReading, themeContrast } from './semantic/dict.js';
+import { readFortune } from './engine.js';
 import { AREAS } from './forecast.js';
 import { candidatesToward, DIR8 } from './hires/location.js';
 import { yearDirections } from './systems/gujeong.js';
@@ -697,6 +698,35 @@ export const READING_PROMPT =
  * @param {object} formB 두 번째 사람
  * @param {object} c     compareFortune 결과
  */
+/**
+ * 궁합 리포트와 같은 해석 — 두 사람의 기운 짝·배우자 자리, 각자의 사전 문장, 닮은 점·부딪치는 점.
+ * 체계별 결과가 이미 이름으로 부르므로 같은 이름을 쓴다(이름이 없으면 첫째·둘째).
+ */
+function formatPairDict(formA, formB) {
+  let rA, rB;
+  try { rA = readFortune(formA); rB = readFortune(formB); } catch { return []; }
+  const nA = formA.name || '첫째', nB = formB.name || '둘째';
+  const pr = pairReading(rA, rB, nA, nB);
+  const esA = dictEntries(rA), esB = dictEntries(rB);
+  if (!pr && !esA.length) return [];
+  const lines = (es, f, n) => coreField(es, f, n).map((x) => x.text);
+  const out = ['## 두 사람의 해석 (리포트와 같은 사전 — 답은 이 내용을 바탕으로)'];
+  for (const e of [pr?.stem, pr?.hap, pr?.seatKind !== '없음' ? pr?.seat : null].filter(Boolean)) out.push(`- ${e.h} 잘 되려면: ${e.g} 조심할 점: ${e.c}`);
+  for (const [name, es, r] of [[nA, esA, rA], [nB, esB, rB]]) {
+    out.push(`### ${name}`);
+    out.push(`성격: ${lines(es, 'p', 3).join(' ')}`);
+    out.push(`사랑할 때: ${lines(es, 'r', 3).join(' ')}`);
+    out.push(`돈: ${lines(es, 'm', 2).join(' ')}`);
+    const want = ziweiPalaceEntry(r, 'spouse');
+    if (want) out.push(`끌리는 사람: ${want.h}`);
+  }
+  const { same, clash } = themeContrast([...lines(esA, 'p', 6), ...lines(esA, 'r', 4)], [...lines(esB, 'p', 6), ...lines(esB, 'r', 4)]);
+  for (const [a, b] of same.slice(0, 3)) out.push(`닮은 점 — ${nA}: ${a} / ${nB}: ${b}`);
+  for (const [a, b] of clash.slice(0, 3)) out.push(`부딪치는 점 — ${nA}: ${a} / ${nB}: ${b}`);
+  out.push('');
+  return out;
+}
+
 export function buildCompatContext(formA, formB, c, forecastA = null, forecastB = null) {
   const out = [];
   const s = c.synthesis;
@@ -707,6 +737,7 @@ export function buildCompatContext(formA, formB, c, forecastA = null, forecastB 
   out.push(who(formA));
   out.push(who(formB));
   out.push('');
+  out.push(...formatPairDict(formA, formB));
 
   out.push('## 체계별로 견준 결과');
   out.push('');

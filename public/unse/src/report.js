@@ -31,7 +31,7 @@ import { readChildren, childPalaceStars, childrenVerdict } from './semantic/stru
 import { childrenPack, marriagePack } from './hires/vedicExt.js';
 import { verifiedCareer } from './semantic/index.js';
 import { distinctReadings, ownSentences } from './semantic/distinct.js';
-import { dictEntries, dictField, coreField, daeunEntry, ziweiPalaceEntry } from './semantic/dict.js';
+import { dictEntries, dictField, coreField, daeunEntry, ziweiPalaceEntry, pairReading, themeContrast } from './semantic/dict.js';
 import { lifeChapters, chapterTurns } from './semantic/compose/life.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
@@ -974,63 +974,86 @@ export function renderReport(form, r, f, v) {
    맞대 보고 이미 써 둔 말을 절마다 골라 놓는다.
    ═══════════════════════════════════════════════════════════ */
 
-/** 궁합 결과에서 체계 하나 */
-const pSys = (c, name) => (c.results ?? []).find((x) => x?.name === name) ?? null;
-
-
-/** 그 체계의 풀이 */
-function pRead(c, name, max = 2) {
-  const s = pSys(c, name);
-  if (!s?.readings?.length) return '';
-  return readItems(s.readings.slice(0, max).map((x) => [x.title, x.text]));
-}
-
-/** 관계 축 하나 — 실제로 어떤 모습인지 · 잘 되려면 · 조심할 점 */
-const pairAxis = (v, key) => v?.eightAxes?.find((item) => item.key === key) ?? null;
-function axisBlock(v, key) {
-  const x = pairAxis(v, key);
-  if (!x) return '';
-  return sub('', x.label, para([x.conclusion, x.reality].filter(Boolean).join(' '))
-    + bullets(bullet('🟢', '잘 되려면', x.good), bullet('⚠️', '조심할 점', x.bad)));
-}
-
-export function renderPairReport(formA, formB, c, v, elementDist) {
+/**
+ * 궁합 리포트 — 개인 리포트와 같은 원칙이다.
+ * 여덟 관계 축마다 점수 구간(상·중·하)별로 정해진 문단을 붙이던 방식은 뺐다. 같은 구간의 쌍은
+ * 글자 하나 다르지 않은 글을 받았다. 대신
+ *   · 두 사람의 명반을 맞대야만 정해지는 것(일간의 기운 짝, 배우자 자리끼리의 관계, 서로 채우는 기운)
+ *   · 두 사람 각자의 해석 사전(성격의 뼈대 체계 순 — 개인 리포트의 "나는 어떤 사람인가"와 같다)
+ *   · 두 사람의 문장을 맞대어 찾은 닮은 점·부딪치는 점
+ * 으로 쓴다. 띠처럼 태어난 해로만 정해지는 것은 쓰지 않는다.
+ */
+export function renderPairReport(formA, formB, c, v, elementDist, people = {}) {
   const A = c.A?.input?.name ?? formA.name;
   const B = c.B?.input?.name ?? formB.name;
   const today = new Date();
   const stamp = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
+  const rA = people.a ?? c.A, rB = people.b ?? c.B;
 
-  // 오행 보완성 — 두 사람 수치를 나란히 놓고 적은 쪽을 짚는다(수치는 싣지 않고 결론만)
+  // 서로 채워 주는 기운 — 한쪽이 옅은 기운을 다른 쪽이 넉넉히 가졌는가
   const ea = elementDist?.a, eb = elementDist?.b;
-  const elemRows = (ea && eb) ? ['목', '화', '토', '금', '수'].map((e, i) => {
+  const fills = [];
+  const elemRows = (ea && eb) ? ELEM_KEYS.map((e, i) => {
     const x = Math.round(ea[i] * 10) / 10, y = Math.round(eb[i] * 10) / 10;
-    // 0.8 이상 벌어지면 한쪽으로 기운 것으로 본다
+    if (x < 1 && y >= 2) fills.push(`${B}님이 ${A}님에게 옅은 ${ELEM_FILL[e].name} 기운(${ELEM_FILL[e].means})을 채워 줍니다.`);
+    if (y < 1 && x >= 2) fills.push(`${A}님이 ${B}님에게 옅은 ${ELEM_FILL[e].name} 기운(${ELEM_FILL[e].means})을 채워 줍니다.`);
     const note = (x < 1 && y < 1) ? '두 사람 모두 약합니다. 서로 채워주지 못하는 기운입니다.'
       : x - y >= 0.8 ? `${A}님 쪽이 강합니다.` : y - x >= 0.8 ? `${B}님 쪽이 강합니다.` : '두 사람이 비슷합니다.';
     return [`${ELEM[e]} 기운`, note];
   }) : [];
 
-  // 한눈에 — 잘 맞는 축 · 부딪치기 쉬운 축 · 오래 가려면. 체계 표 수는 싣지 않는다
-  const axes = v?.eightAxes ?? [];
-  const hi = axes.filter((x) => x.band === 'hi');
-  const lo = axes.filter((x) => x.band === 'lo');
-  const keep = pairAxis(v, '장기유지');
+  let pr = null, esA = [], esB = [];
+  try { pr = pairReading(rA, rB, A, B); } catch { /* */ }
+  try { esA = dictEntries(rA); esB = dictEntries(rB); } catch { /* */ }
+  const lines = (es, f, n, skip = 0) => coreField(es, f, n, skip).map((x) => x.text);
+
+  // 한눈에 — 두 사람의 짝에서만 나오는 세 가지
   const glance = bullets(
-    bullet('🟢', `잘 맞는 점${hi.length ? ` — ${hi.map((x) => x.label).join('·')}` : ''}`,
-      hi[0] ? [hi[0].conclusion, hi[0].reality].join(' ') : ''),
-    bullet('⚠️', `부딪치기 쉬운 점${lo.length ? ` — ${lo.map((x) => x.label).join('·')}` : ''}`,
-      lo[0] ? [lo[0].conclusion, lo[0].bad].join(' ') : ''),
-    bullet('🔑', '오래 가려면', keep ? [keep.conclusion, keep.good].join(' ') : ''),
+    bullet('💞', '두 사람의 관계', pr?.stem?.h),
+    bullet('🔗', '끌어당기는 힘', pr?.hap?.h),
+    // 배우자 자리끼리 아무 관계가 없으면 누구에게나 같은 말이라 싣지 않는다
+    bullet('🏠', '함께 살 때', pr?.seatKind !== '없음' ? pr?.seat?.h : ''),
+    bullet('🌱', '서로 채워 주는 것', fills.slice(0, 2).join(' ')),
   );
 
+  // 두 사람 각자 — 관계에서 어떤 사람인가
+  const person = (name, es, r) => {
+    const want = ziweiPalaceEntry(r, 'spouse');
+    return sub('', `${name}님`, bullets(
+      bullet('🙂', '성격', lines(es, 'p', 2).join(' ')),
+      bullet('💞', '사랑할 때', lines(es, 'r', 3).join(' ')),
+      bullet('💘', '끌리는 사람', want?.h),
+    ));
+  };
+
+  // 닮은 점·부딪치는 점 — 두 사람의 문장을 결로 맞댄다
+  const tA = [...lines(esA, 'p', 6), ...lines(esA, 'r', 4)];
+  const tB = [...lines(esB, 'p', 6), ...lines(esB, 'r', 4)];
+  const mA = lines(esA, 'm', 4), mB = lines(esB, 'm', 4);
+  const { same, clash } = themeContrast(tA, tB);
+  const money = themeContrast(mA, mB);
+  const pairRow = ([a, b]) => `<li><b>${esc(A)}님</b> — ${esc(a)}<br><b>${esc(B)}님</b> — ${esc(b)}</li>`;
+  const pairList = (rows) => (rows.length ? `<ul class="rp-ul">${rows.slice(0, 3).map(pairRow).join('')}</ul>` : '');
+
   const chapters = [
-    sec(1, '두 사람의 기본 성향',
-      sub('', '성격이 맞물리는 방식', pRead(c, '사주'))
+    sec(1, '두 사람은 각자 어떤 사람인가', person(A, esA, rA) + person(B, esB, rB), '관계 속의 나와 상대'),
+    sec(2, '닮은 점과 부딪치는 점',
+      sub('', '닮은 점', pairList(same))
+      + sub('', '부딪치기 쉬운 점', pairList(clash)),
+      '서로의 결이 같은 곳과 엇갈리는 곳'),
+    sec(3, '돈과 생활',
+      sub('', '돈을 대하는 방식', pairList(money.clash.length ? money.clash : [[mA[0], mB[0]]].filter(([a, b]) => a && b))
+        + (money.clash.length ? para('돈 앞에서 두 사람의 결이 엇갈립니다. 공동으로 쓰는 몫과 각자 쓰는 몫을 처음부터 나눠 두세요.') : ''))
       + sub('', '서로 채워주는 기운', table2(['기운', '두 사람'], elemRows)),
-      '성격과 기운'),
-    sec(2, '감정과 끌림', axisBlock(v, '끌림') + axisBlock(v, '감정') + axisBlock(v, '대화'), '끌림·감정·대화'),
-    sec(3, '생활의 궁합', axisBlock(v, '생활') + axisBlock(v, '돈') + axisBlock(v, '역할분담'), '생활·돈·역할'),
-    sec(4, '다툼과 오래 가기', axisBlock(v, '갈등') + axisBlock(v, '장기유지'), '부딪칠 때와 오래 갈 때'),
+      '돈·살림·기운'),
+    sec(4, '오래 가려면',
+      bullets(
+        bullet('🟢', '잘 되려면', [pr?.stem?.g, pr?.hap?.g, pr?.seatKind !== '없음' ? pr?.seat?.g : ''].filter(Boolean).join(' ')),
+        bullet('⚠️', '조심할 점', [pr?.stem?.c, pr?.hap?.c, pr?.seatKind !== '없음' ? pr?.seat?.c : ''].filter(Boolean).join(' ')),
+        bullet('🙋', `${A}님이 조심할 것`, lines(esA, 'c', 1)[0]),
+        bullet('🙋', `${B}님이 조심할 것`, lines(esB, 'c', 1)[0]),
+      ),
+      '두 사람이 지킬 것'),
   ].filter(Boolean).join('');
 
   return `

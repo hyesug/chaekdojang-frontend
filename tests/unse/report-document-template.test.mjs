@@ -114,20 +114,19 @@ test('배우자 문장은 번역투 없이 쓴다', () => {
   assert.doesNotMatch(text, /자리에 힘이 여러 갈래로 실립니다/);
 });
 
-test('궁합 리포트는 두 사람 결과지와 관계 축을 쉬운 말로 싣는다', () => {
+test('궁합 리포트는 두 사람의 명반을 맞댄 해석과 각자의 사전 문장을 쉬운 말로 싣는다', () => {
   const c = compareFortune(A, B);
   const view = buildCompatView(A, B, c);
   const html = pair(A, B);
   for (const heading of ['보고서 개인 · 보고서 상대 관계 분석 리포트', '한눈에 보는 두 사람',
-    '두 사람의 기본 성향', '감정과 끌림', '생활의 궁합', '더 자세히 보기']) {
+    '두 사람은 각자 어떤 사람인가', '닮은 점과 부딪치는 점', '돈과 생활', '오래 가려면', '더 자세히 보기']) {
     assert.match(html, rx(heading));
   }
   assert.match(html, /점술은 상징적 해석 도구/);
-  for (const key of ['생활', '돈', '역할분담', '끌림', '감정', '대화', '장기유지']) {
-    const axis = view.eightAxes.find((item) => item.key === key);
-    assert.ok(axis, `${key} 축이 없습니다`);
-    assert.match(html, rx(axis.conclusion.slice(0, 12)));
-  }
+  // 여덟 축 × 상·중·하마다 정해진 문단은 다시 싣지 않는다 — 같은 구간의 쌍이 같은 글을 받았다
+  for (const axis of view.eightAxes) assert.doesNotMatch(html, rx(axis.conclusion));
+  // 두 사람의 일간 기운 짝 해석에 두 이름이 들어간다
+  assert.match(html, /보고서 개인님|보고서 상대님/);
   const hit = visible(html).match(JARGON);
   assert.equal(hit, null, `남은 용어: ${hit?.[0]}`);
 });

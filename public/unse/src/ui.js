@@ -55,6 +55,8 @@ export async function run(mode, box, next) {
     prepareInput(form); prepareInput(formB);
     await next();
     const c = compareFortune(form, formB);
+    // 궁합 리포트도 두 사람 각자의 해석 사전을 쓴다. 못 불러와도 리포트는 그려진다
+    await loadDicts().catch(() => null);
     await next();
     box.innerHTML = renderCompat(form, formB, c);
     initCompatAI(form, formB, c);
@@ -139,6 +141,12 @@ function collect(p, mode) {
  * 궁합 화면 — 먼저 종합을 읽고 AI 질문으로 이어진 뒤, 필요할 때만 축별 기록을 펼친다.
  * 판정 개수·근거·양 끝은 싣지 않는다.
  */
+/** 궁합 리포트에 쓸 두 사람 각자의 전체 풀이 — 사전 열쇠 가운데 체계 풀이에서 읽는 것(상승궁 등)이 있다 */
+function pairPeople(formA, formB) {
+  try { return { a: readFortune(formA), b: readFortune(formB) }; } catch { return {}; }
+}
+
+// '관계 축별 해석'(여덟 축 × 상·중·하마다 정해진 문단)은 뺐다 — 같은 구간의 쌍은 같은 글을 받았다
 function renderCompat(formA, formB, r) {
   last = { mode: 'pair', formA, formB, result: r };
   const v = buildCompatView(formA, formB, r);
@@ -162,24 +170,10 @@ function renderCompat(formA, formB, r) {
     ${renderPairReport(formA, formB, r, v, {
       a: elementDistribution(r.A?.chart?.pillars ?? {}).count,
       b: elementDistribution(r.B?.chart?.pillars ?? {}).count,
-    })}
+    }, pairPeople(formA, formB))}
 
     <div class="section-label">AI 명반 해석</div>
     ${aiSection('pair', v)}
-
-    <details class="compat-details" open>
-      <summary>관계 축별 해석 <span>여덟 가지 관계의 읽기</span></summary>
-      <div class="compat-prose">
-        ${v.eightAxes.map((a) => `
-          <p class="say-text"><strong>${esc(a.label)}</strong> — ${esc([a.conclusion, a.reality, a.good, a.bad].filter(Boolean).join(' '))}</p>
-        `).join('')}
-      </div>
-      ${v.strong?.text || v.friction?.text ? `
-      <div class="compat-extremes">
-        ${v.strong?.text ? `<p class="say-text"><strong>가장 좋게 보는 자리</strong> — ${esc(v.strong.text)}</p>` : ''}
-        ${v.friction?.text ? `<p class="say-text"><strong>가장 어렵게 보는 자리</strong> — ${esc(v.friction.text)}</p>` : ''}
-      </div>` : ''}
-    </details>
 
 
   `;

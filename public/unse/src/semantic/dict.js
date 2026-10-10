@@ -18,17 +18,10 @@ import { starOfYear, getsumeiOf } from '../systems/gujeong.js';
 import { HEXAGRAM_TABLE } from '../systems/juyeok.js';
 import { modFrom1 } from '../systems/_base.js';
 import { DICT_SHARE } from './data/rarity.js';
+import { DICT_FILES } from './dictFiles.js';
 
-export const DICT_FILES = [
-  'saju-stem-month-1', 'saju-stem-month-2', 'saju-stem-month-3', 'saju-stem-month-4',
-  'saju-ilju-1', 'saju-ilju-2', 'ziwei-ming', 'western', 'vedic', 'mansion',
-  'gujeong', 'juyeok', 'kabbalah', 'tarot', 'weekday', 'boards',
-  'daeun-stem', 'daeun-branch-1', 'daeun-branch-2',
-  'ziwei-career', 'ziwei-money', 'ziwei-spouse', 'ziwei-children',
-  'western-planets-1', 'western-planets-2', 'boards-2',
-  'pair-stem', 'pair-bond',
-  'event-1', 'event-2', 'event-3', 'flow',
-];
+// 사전 파일 목록은 관리자 화면(운세 피드백 출처 찾기)도 함께 쓴다 — 무거운 계산 모듈 없이 불러오게 따로 둔다
+export { DICT_FILES };
 /** 파일 → 사전 묶음 이름 */
 const GROUP = (file) => file.replace(/-\d+$/, '');
 

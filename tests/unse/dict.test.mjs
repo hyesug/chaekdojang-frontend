@@ -105,3 +105,19 @@ test('인성(받는 기운) 문장은 "배우는 것을 좋아한다"는 취향�
     assert.doesNotMatch(t, /배우는 것을 좋아|배우기를 좋아|공부를 좋아/, f);
   }
 });
+
+test('피드백 문장에서 사전 출처를 거꾸로 찾는다(관리자 운세 피드백)', async () => {
+  const { buildSentenceIndex, traceSources, keyLabel } = await import('../../public/unse/src/semantic/sourceTrace.js');
+  const { DICT_FILES } = await import('../../public/unse/src/semantic/dictFiles.js');
+  const { readFile } = await import('node:fs/promises');
+  const dicts = {};
+  for (const f of DICT_FILES) dicts[f] = JSON.parse(await readFile(new URL(`../../public/unse/dict/${f}.json`, import.meta.url), 'utf8'));
+  const index = buildSentenceIndex(dicts);
+  const line = dicts['saju-stem-month-3']['신-진'].p;
+  // 화면처럼 칸 제목과 다른 문장이 앞뒤에 붙어 있어도 찾는다
+  const found = traceSources(`가장 강하게 나타나는 성향 ${line} 다른 사람에게서 잘 보이지 않는 특징 …`, index);
+  assert.ok(found.some((x) => x.file === 'saju-stem-month-3' && x.key === '신-진' && x.field === 'p'), JSON.stringify(found.slice(0, 3)));
+  assert.match(found.find((x) => x.key === '신-진').label, /사주 일간×월 · 辛\(신\) 일간 × 辰\(진\)월 · 성격/);
+  assert.equal(keyLabel('saju-ilju-1', '경진'), '庚辰(경진) 일주');
+  assert.deepEqual(traceSources('', index), []);
+});

@@ -3,6 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { API_BASE } from "../lib/api";
 import { authFetch, getValidToken } from "../lib/auth";
+// 운세 사전 문장으로 출처를 거꾸로 찾는다 — 운세 계산 모듈은 끌어오지 않는 가벼운 두 파일만
+import { DICT_FILES } from "../../public/unse/src/semantic/dictFiles.js";
+import { buildSentenceIndex, traceSources } from "../../public/unse/src/semantic/sourceTrace.js";
 
 type SectionCount = { section: string; up: number; down: number };
 type FeedbackItem = {
@@ -15,16 +18,33 @@ type FeedbackItem = {
   createdAt: string;
 };
 type Summary = { sections: SectionCount[]; recent: FeedbackItem[] };
+type Source = { file: string; key: string; field: string; text: string; label: string };
+type SentenceIndex = ReturnType<typeof buildSentenceIndex>;
+
+/** 공개 사전 파일(/unse/dict/*.json)을 한 번 불러와 문장 색인을 만든다 */
+async function loadSentenceIndex(): Promise<SentenceIndex> {
+  const files = DICT_FILES as string[];
+  const all = await Promise.all(files.map((f) => fetch(`/unse/dict/${f}.json`).then((r) => (r.ok ? r.json() : {})).catch(() => ({}))));
+  return buildSentenceIndex(Object.fromEntries(files.map((f, i) => [f, all[i]])));
+}
 
 /**
  * 운세 피드백 — 칸별 👍/👎 집계와 최근 피드백.
  * 👎 비율이 높은 칸이 위로 온다. 생년월일·이름은 저장되지 않는다.
+ * 저장된 문장을 운세 사전과 맞대어 문장마다 출처(예: 사주 辛 일간 × 辰월 · 성격)를 붙인다.
  */
 export default function FortuneFeedbackPanel() {
   const [data, setData] = useState<Summary | null>(null);
   const [error, setError] = useState("");
   const [onlyDown, setOnlyDown] = useState(true);
   const [onlyComment, setOnlyComment] = useState(false);
+  const [index, setIndex] = useState<SentenceIndex | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    loadSentenceIndex().then((x) => alive && setIndex(x)).catch(() => {});
+    return () => { alive = false; };
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -43,6 +63,25 @@ export default function FortuneFeedbackPanel() {
   const sections = useMemo(() => (data?.sections ?? [])
     .map((s) => ({ ...s, total: s.up + s.down, rate: s.up + s.down ? s.down / (s.up + s.down) : 0 }))
     .sort((a, b) => b.rate - a.rate || b.down - a.down), [data]);
+  // 피드백마다 문장 출처
+  const sourcesOf = useMemo(() => {
+    const m = new Map<number, Source[]>();
+    if (index) for (const x of data?.recent ?? []) m.set(x.id, traceSources(x.snippet ?? "", index) as Source[]);
+    return m;
+  }, [data, index]);
+  // 👎가 몰린 출처 — 같은 사전 문장이 여러 피드백에 걸리면 위로
+  const downSources = useMemo(() => {
+    const c = new Map<string, { label: string; text: string; down: number; up: number }>();
+    for (const x of data?.recent ?? []) {
+      for (const s of sourcesOf.get(x.id) ?? []) {
+        const k = `${s.file}|${s.key}|${s.field}`;
+        const v = c.get(k) ?? { label: s.label, text: s.text, down: 0, up: 0 };
+        if (x.verdict === "down") v.down += 1; else v.up += 1;
+        c.set(k, v);
+      }
+    }
+    return [...c.values()].filter((v) => v.down > 0).sort((a, b) => b.down - a.down || a.up - b.up).slice(0, 30);
+  }, [data, sourcesOf]);
   const recent = useMemo(() => (data?.recent ?? [])
     .filter((x) => (!onlyDown || x.verdict === "down") && (!onlyComment || x.comment)), [data, onlyDown, onlyComment]);
 
@@ -69,6 +108,24 @@ export default function FortuneFeedbackPanel() {
       </div>
 
       <div className="rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+        <h3 className="font-serif text-lg font-bold text-brown-900">👎가 몰린 문장 출처</h3>
+        <p className="mt-1 text-sm text-brown-500">
+          피드백에 저장된 문장을 운세 사전과 맞대어 어느 규칙에서 나온 문장인지 찾았습니다. 같은 출처에 👎가 쌓이면 그 사전 문장을 고칠 차례입니다.
+          사전 문장을 고친 뒤에는 예전 피드백이 더 이상 맞지 않아 여기서 빠집니다.
+        </p>
+        {!index && <p className="mt-3 text-sm text-brown-400">사전을 불러오는 중…</p>}
+        <ul className="mt-3 space-y-2">
+          {downSources.map((v) => (
+            <li key={v.label + v.text} className="rounded-xl bg-cream-50 p-3 text-sm">
+              <p className="font-semibold text-brown-800">{v.label} <span className="font-normal text-brown-500">· 👎 {v.down}{v.up ? ` · 👍 ${v.up}` : ""}</span></p>
+              <p className="mt-1 text-brown-600">“{v.text}”</p>
+            </li>
+          ))}
+        </ul>
+        {index && downSources.length === 0 && <p className="py-4 text-center text-sm text-brown-400">출처를 찾은 👎 피드백이 아직 없어요</p>}
+      </div>
+
+      <div className="rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="font-serif text-lg font-bold text-brown-900">최근 피드백</h3>
           <div className="flex gap-3 text-sm text-brown-600">
@@ -84,6 +141,13 @@ export default function FortuneFeedbackPanel() {
               </p>
               {x.comment && <p className="mt-1 font-semibold text-brown-800">“{x.comment}”</p>}
               {x.snippet && <p className="mt-1 line-clamp-3 text-sm text-brown-500">{x.snippet}</p>}
+              {(sourcesOf.get(x.id) ?? []).length > 0 && (
+                <ul className="mt-2 flex flex-wrap gap-1.5">
+                  {(sourcesOf.get(x.id) ?? []).map((src) => (
+                    <li key={src.label + src.text} title={src.text} className="rounded-full border border-cream-300 bg-white px-2 py-0.5 text-xs text-brown-600">{src.label}</li>
+                  ))}
+                </ul>
+              )}
             </li>
           ))}
         </ul>

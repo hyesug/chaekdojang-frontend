@@ -38,6 +38,8 @@ const packPerson = (f) => [
   f.dst ? 1 : 0, f.inputCalendar ?? 'solar',
   // 궁합의 결혼 여부 — 링크로 열어도 부부용 리포트가 그대로 나오게
   f.marital === 'married' ? 'm' : f.marital === 'single' ? 's' : '',
+  // 시간 기준 — 일반 만세력 방식이면 'std', 진태양시(기본)면 비움(예전 링크와 같은 모양)
+  f.timeBasis === 'std' ? 'std' : '',
 ];
 
 const unpackPerson = (a) => ({
@@ -47,6 +49,7 @@ const unpackPerson = (a) => ({
   birthPlace: a[7], homePlace: a[8],
   dst: !!a[9], inputCalendar: a[10] || 'solar',
   marital: a[11] === 'm' ? 'married' : a[11] === 's' ? 'single' : null,
+  timeBasis: a[12] === 'std' ? 'std' : 'tst',
 });
 
 /**

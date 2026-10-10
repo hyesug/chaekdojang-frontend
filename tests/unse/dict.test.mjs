@@ -237,3 +237,23 @@ test('시주 기준 안내: 시 경계 근처라 진태양시와 일반 만세�
   assert.match(ui, /basisNote\(r\.input\)/);
   assert.match(ai, /input\.pillarBasis/);
 });
+
+test('시간 기준 선택: 일반 만세력 방식(std)을 고르면 그 기준으로 명반을 세우고, 링크에도 남는다', async () => {
+  const { readFortune } = await import('../../public/unse/src/engine.js');
+  const base = { name: 'x', year: 1995, month: 9, day: 15, hour: 13, minute: 26, birthPlace: '대구', homePlace: '대구', gender: 'female' };
+  const tst = readFortune(base), std = readFortune({ ...base, timeBasis: 'std' });
+  assert.match(tst.chart.pillars.hour.hanja, /未$/);
+  assert.match(std.chart.pillars.hour.hanja, /午$/);
+  assert.equal(tst.input.timeBasis, 'tst');
+  assert.equal(std.input.timeBasis, 'std');
+  // 시각을 쓰는 다른 체계도 같은 기준 — 자미 명궁은 시지로 정해지므로 함께 바뀐다
+  const myeong = (r) => r.results.find((x) => x.id === 'jamidusu').facts.find((f) => f.label === '명궁').value;
+  assert.notEqual(myeong(tst), myeong(std));
+  // 경계 안내는 두 경우 모두 두 결과를 함께 준다
+  assert.ok(tst.input.pillarBasis && std.input.pillarBasis);
+  assert.equal(std.input.pillarBasis.used, 'std');
+  // 공유 링크에 기준이 남는다(진태양시면 예전 링크와 같은 모양)
+  const { encodeState, decodeState } = await import('../../public/unse/src/share.js');
+  assert.equal(decodeState(encodeState('solo', { ...base, timeBasis: 'std' }, null)).formA.timeBasis, 'std');
+  assert.equal(decodeState(encodeState('solo', base, null)).formA.timeBasis, 'tst');
+});

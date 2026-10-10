@@ -439,7 +439,8 @@ export function buildContext(form, r, f = null) {
   if (input.pillarBasis) {
     const b = input.pillarBasis;
     const part = (x) => (b.dayDiffers ? `${x.day.hanja}일 ${x.hour.hanja}시` : `${x.hour.hanja}시`);
-    out.push(`※ 시 경계 출생: 진태양시 기준 ${part(b.tst)}(이 명반) · 일반 만세력 방식(표준시 30분 보정) 기준 ${part(b.common)}. ` +
+    const usedStd = input.timeBasis === 'std';
+    out.push(`※ 시 경계 출생: 진태양시 기준 ${part(b.tst)}${usedStd ? '' : '(이 명반)'} · 일반 만세력 방식(표준시 30분 보정) 기준 ${part(b.common)}${usedStd ? '(이 명반 — 사용자가 이 기준을 골랐다)' : ''}. ` +
       '사용자가 다른 앱과 시주가 다르다고 하면 이 차이를 설명하고, 어느 한쪽을 정답으로 단정하지 말 것.');
   }
   out.push('');

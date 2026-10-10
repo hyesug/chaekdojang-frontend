@@ -103,16 +103,31 @@ function elapsedYears(jdBirth, now = new Date()) {
  * 나오지만, 태어난 시각이 시 경계에 가까우면 둘이 갈린다(예: 대구 9월 13:26 → 진태양시 未, 일반 午).
  * 갈릴 때만 두 결과를 함께 돌려준다 — 한쪽만 정답처럼 보이지 않게.
  */
-function pillarBasisOf(birth, chart) {
-  const common = computeFourPillars(birth.jdUT, birth.jdUT + 8.5 / 24, { timeKnown: true });
-  const P = chart.pillars, C = common.pillars;
-  if (P.hour.hanja === C.hour.hanja && P.day.hanja === C.day.hanja) return null;
+function pillarBasisOf(tstBirth, used) {
+  const T = computeFourPillars(tstBirth.jdUT, tstBirth.jdTST, { timeKnown: true }).pillars;
+  const C = computeFourPillars(tstBirth.jdUT, tstBirth.jdUT + STD_OFFSET, { timeKnown: true }).pillars;
+  if (T.hour.hanja === C.hour.hanja && T.day.hanja === C.day.hanja) return null;
   return {
-    tst: { hour: P.hour, day: P.day },
+    used,                                  // 'tst' | 'std' — 이 결과가 쓴 기준
+    tst: { hour: T.hour, day: T.day },
     common: { hour: C.hour, day: C.day },
-    dayDiffers: P.day.hanja !== C.day.hanja,
-    tstClock: birth.tst,
+    dayDiffers: T.day.hanja !== C.day.hanja,
+    tstClock: tstBirth.tst,
   };
+}
+
+/** 일반 만세력 방식의 시각 — 세계시 + 8시간 30분(동경 127.5° 고정, 표준시에서 30분 보정) */
+const STD_OFFSET = 8.5 / 24;
+/**
+ * 시주를 세우는 시간 기준. 입력 화면에서 고른다.
+ *   tst(기본) — 진태양시: 태어난 곳의 실제 경도 + 균시차
+ *   std       — 일반 만세력 방식: 표준시에서 30분 보정
+ * std 를 고르면 사주만이 아니라 시각을 쓰는 모든 체계가 같은 시각으로 계산한다(기준이 섞이지 않게).
+ */
+function applyTimeBasis(birth, basis) {
+  if (basis !== 'std') return birth;
+  const jdTST = birth.jdUT + STD_OFFSET;
+  return { ...birth, jdTST, tst: fromJD(jdTST) };
 }
 
 export function prepareInput(form, opts = {}) {
@@ -152,17 +167,19 @@ export function prepareInput(form, opts = {}) {
   const timeKnown = form.hour != null;
 
   // 1) 시각 정규화 — 서머타임·표준자오선·균시차를 벗겨낸다
-  const birth = normalizeBirth({
+  const tstBirth = normalizeBirth({
     year: form.year, month: form.month, day: form.day,
     hour: form.hour, minute: form.minute ?? 0,
     place, dst: form.dst,
   });
+  const timeBasis = form.timeBasis === 'std' ? 'std' : 'tst';
+  const birth = applyTimeBasis(tstBirth, timeBasis);
 
   // 2) 모든 체계가 공유하는 계산
   const lunar = solarToLunar(form.year, form.month, form.day);
   const chart = computeFourPillars(birth.jdUT, birth.jdTST, { timeKnown });
   const ziweiLunar = ziweiLunarOf(birth, timeKnown, lunar);
-  const pillarBasis = timeKnown ? pillarBasisOf(birth, chart) : null;
+  const pillarBasis = timeKnown ? pillarBasisOf(tstBirth, timeBasis) : null;
 
   const at = opts.now instanceof Date ? opts.now : new Date();
   const currentYear = currentSajuYear(at);
@@ -179,7 +196,9 @@ export function prepareInput(form, opts = {}) {
     jdUT: birth.jdUT,
     jdTST: birth.jdTST,
     tst: birth.tst,
-    // 시 경계 근처라 '일반 만세력 방식'(동경 127.5° 고정)과 시주·일주가 갈리면 그 차이 (아니면 null)
+    // 시주를 세운 시간 기준 — 'tst'(진태양시, 기본) | 'std'(일반 만세력 방식)
+    timeBasis,
+    // 시 경계 근처라 두 기준의 시주·일주가 갈리면 그 차이 (아니면 null)
     pillarBasis,
     lunar,
     // 자미두수가 쓰는 음력 — 사주 일주와 같은 날, 설날 기준 연도, 윤달 보정 (ziweiLunarOf)

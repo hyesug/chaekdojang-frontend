@@ -11,7 +11,9 @@ test('운세 입력은 분석 입력 fieldset과 보정 options를 구분한다'
   assert.match(html, /<fieldset class="analysis-fields"/);
   assert.match(html, /<legend>분석할 사람의 출생 정보<\/legend>/);
   assert.match(html, /<details class="input-options">/);
-  assert.match(html, /태어난 시간 보정과 거주지/);
+  assert.match(html, /태어난 시간 보정 \(시간 기준 · 서머타임\)/);
+  // 시주를 세우는 시간 기준 — 진태양시(기본) / 일반 만세력 방식
+  assert.match(html, /<select id="timeBasis">\s*<option value="tst">진태양시/);
 });
 
 test('명반 생성 결과와 계산 진행 영역은 접근 가능한 상태를 제공한다', async () => {

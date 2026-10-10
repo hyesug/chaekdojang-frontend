@@ -141,6 +141,8 @@ function collect(p, mode) {
     birthPlace: $(`#${p}birthPlace`).value.trim() || '서울',
     homePlace: $(`#${p}homePlace`).value.trim() || '서울',
     dst: $(`#${p}dst`).checked,
+    // 시주를 세우는 시간 기준 — 진태양시(기본) | 일반 만세력 방식(30분 보정)
+    timeBasis: $(`#${p}timeBasis`)?.value === 'std' ? 'std' : 'tst',
     inputCalendar: cal,
     // 결혼 여부는 궁합에서만 묻는다 — 개인 운세에서는 칸을 숨기고 값도 쓰지 않는다. 고르지 않으면 null
     marital: mode === 'pair' ? ($(`#${p}marital`)?.value || null) : null,
@@ -235,17 +237,23 @@ function cells(sys, labels) {
  */
 function basisNote(input, who = '') {
   const b = input?.pillarBasis;
-  if (!b) return '';
+  const std = input?.timeBasis === 'std';
+  // 경계가 아니어도 일반 만세력 방식을 골랐으면 그 사실은 밝힌다
+  if (!b) return std ? `<p class="result-meta">${who ? `${esc(who)}님 ` : ''}시간 기준: 일반 만세력 방식(표준시에서 30분 보정)</p>` : '';
   const t = b.tstClock;
   const clock = t ? ` · 진태양시 ${t.h}:${String(t.mi).padStart(2, '0')}` : '';
   const part = (x) => (b.dayDiffers ? `${x.day.hanja}일 ${x.hour.hanja}시` : `${x.hour.hanja}시`);
+  const TST = `<b>진태양시</b>(태어난 곳의 실제 경도와 계절별 해의 빠르기를 반영${esc(clock)})`;
+  const STD = '<b>일반 만세력 방식</b>(표준시에서 30분 보정)';
+  const [usedName, usedP, otherName, otherP] = std
+    ? [STD, b.common, TST, b.tst] : [TST, b.tst, STD, b.common];
   return `
       <div class="basis-note" role="note">
         <b>⏱️ ${who ? `${esc(who)}님 ` : ''}시주 기준 안내</b>
         <p>태어난 시각이 시(時)의 경계에 가까워 기준에 따라 ${b.dayDiffers ? '일주·시주가' : '시주가'} 달라집니다.
-          이 결과는 <b>진태양시</b>(태어난 곳의 실제 경도와 계절별 해의 빠르기를 반영${esc(clock)}) 기준 <b>${esc(part(b.tst))}</b>입니다.
-          많은 만세력 앱이 쓰는 방식(표준시에서 30분 보정)으로는 <b>${esc(part(b.common))}</b>입니다.</p>
-        <p class="basis-sub">태어난 시각이 몇 분만 달라도 바뀌는 자리라 어느 한쪽을 정답으로 단정하기 어렵습니다. 다른 앱과 시주가 다르다면 이 차이 때문입니다.</p>
+          이 결과는 ${usedName} 기준 <b>${esc(part(usedP))}</b>입니다. ${otherName}으로는 <b>${esc(part(otherP))}</b>입니다.</p>
+        <p class="basis-sub">태어난 시각이 몇 분만 달라도 바뀌는 자리라 어느 한쪽을 정답으로 단정하기 어렵습니다.
+          입력 화면의 '태어난 시간 보정'에서 기준을 바꿔 다른 쪽 결과도 볼 수 있습니다.</p>
       </div>`;
 }
 
@@ -608,6 +616,7 @@ export function restoreFromHash() {
     set('birthPlace', f.birthPlace);
     set('homePlace', f.homePlace);
     $(`#${p}dst`).checked = !!f.dst;
+    if ($(`#${p}timeBasis`)) set('timeBasis', f.timeBasis === 'std' ? 'std' : 'tst');
     if ($(`#${p}marital`)) set('marital', f.marital ?? '');
   };
 

@@ -217,3 +217,23 @@ test('매화역수(주역): 연수는 사주 연지(입춘)가 아니라 음력 
   assert.equal(byLunar.upper, 6);
   assert.equal(byIpchun.upper, 7);
 });
+
+test('시주 기준 안내: 시 경계 근처라 진태양시와 일반 만세력(30분 보정)이 갈릴 때만 둘 다 남긴다', async () => {
+  const { prepareInput } = await import('../../public/unse/src/engine.js');
+  const base = { name: 'x', year: 1995, month: 9, day: 15, minute: 26, birthPlace: '대구', homePlace: '대구', gender: 'female' };
+  // 대구 9월 13:26 — 진태양시 13:04(未) · 30분 보정 12:56(午)
+  const edge = prepareInput({ ...base, hour: 13 }).input ?? prepareInput({ ...base, hour: 13 });
+  const pb = edge.pillarBasis;
+  assert.ok(pb, '경계 출생인데 안내가 없다');
+  assert.match(pb.tst.hour.hanja, /未$/);
+  assert.match(pb.common.hour.hanja, /午$/);
+  // 시 한가운데(12:00)는 두 방식이 같아 안내가 없다
+  const mid = prepareInput({ ...base, hour: 12, minute: 0 });
+  assert.equal((mid.input ?? mid).pillarBasis, null);
+  // 화면과 AI 문맥이 이 값을 쓴다
+  const { readFile } = await import('node:fs/promises');
+  const ui = await readFile(new URL('../../public/unse/src/ui.js', import.meta.url), 'utf8');
+  const ai = await readFile(new URL('../../public/unse/src/aiContext.js', import.meta.url), 'utf8');
+  assert.match(ui, /basisNote\(r\.input\)/);
+  assert.match(ai, /input\.pillarBasis/);
+});

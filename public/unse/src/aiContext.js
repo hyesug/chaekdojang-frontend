@@ -436,6 +436,12 @@ export function buildContext(form, r, f = null) {
   if (!input.timeKnown) {
     out.push('※ 출생 시각을 몰라 시주가 없다. 자미두수·육임·홍국기문은 계산하지 않았고 나머지도 정확도가 떨어진다.');
   }
+  if (input.pillarBasis) {
+    const b = input.pillarBasis;
+    const part = (x) => (b.dayDiffers ? `${x.day.hanja}일 ${x.hour.hanja}시` : `${x.hour.hanja}시`);
+    out.push(`※ 시 경계 출생: 진태양시 기준 ${part(b.tst)}(이 명반) · 일반 만세력 방식(표준시 30분 보정) 기준 ${part(b.common)}. ` +
+      '사용자가 다른 앱과 시주가 다르다고 하면 이 차이를 설명하고, 어느 한쪽을 정답으로 단정하지 말 것.');
+  }
   out.push('');
 
   // ── 리포트와 같은 해석 사전 ──

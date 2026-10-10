@@ -176,6 +176,7 @@ function renderCompat(formA, formB, r) {
       <p class="result-kicker">분석 기록 · 궁합</p>
       <h2 class="hero-title">${esc(formA.name)} <span style="color:var(--gold-soft)">×</span> ${esc(formB.name)}</h2>
       <p class="result-meta">두 사람의 출생 기준을 열일곱 체계로 나란히 살폈습니다. 계산 기준은 맨 아래에 있습니다.</p>
+      ${basisNote(people.a?.input ?? r.A?.input, formA.name)}${basisNote(people.b?.input ?? r.B?.input, formB.name)}
     </div>
 
     ${h ? renderHighlights(h) : ''}
@@ -226,6 +227,26 @@ function cells(sys, labels) {
     return `<div class="mb-cell"><dt>${esc(k)}</dt><dd>${esc(f.value)}${
       f.note ? `<small>${esc(f.note)}</small>` : ''}</dd></div>`;
   }).join('');
+}
+
+/**
+ * 시주 기준 안내 — 태어난 시각이 시 경계에 가까워 진태양시와 일반 만세력 방식(30분 고정 보정)의
+ * 시주가 갈리는 사람에게만 둘 다 보여 준다. 다른 앱과 시주가 다르다는 문의가 이 경우였다.
+ */
+function basisNote(input, who = '') {
+  const b = input?.pillarBasis;
+  if (!b) return '';
+  const t = b.tstClock;
+  const clock = t ? ` · 진태양시 ${t.h}:${String(t.mi).padStart(2, '0')}` : '';
+  const part = (x) => (b.dayDiffers ? `${x.day.hanja}일 ${x.hour.hanja}시` : `${x.hour.hanja}시`);
+  return `
+      <div class="basis-note" role="note">
+        <b>⏱️ ${who ? `${esc(who)}님 ` : ''}시주 기준 안내</b>
+        <p>태어난 시각이 시(時)의 경계에 가까워 기준에 따라 ${b.dayDiffers ? '일주·시주가' : '시주가'} 달라집니다.
+          이 결과는 <b>진태양시</b>(태어난 곳의 실제 경도와 계절별 해의 빠르기를 반영${esc(clock)}) 기준 <b>${esc(part(b.tst))}</b>입니다.
+          많은 만세력 앱이 쓰는 방식(표준시에서 30분 보정)으로는 <b>${esc(part(b.common))}</b>입니다.</p>
+        <p class="basis-sub">태어난 시각이 몇 분만 달라도 바뀌는 자리라 어느 한쪽을 정답으로 단정하기 어렵습니다. 다른 앱과 시주가 다르다면 이 차이 때문입니다.</p>
+      </div>`;
 }
 
 function chartPanel(r) {
@@ -327,6 +348,7 @@ function render(form, r, f) {
       <p class="result-kicker">분석 기록 · 개인 명반</p>
       <h2 class="hero-title">${esc(v.who.name)} 님</h2>
       <p class="result-meta">${esc(v.who.born)} · 계산 기준은 맨 아래 체계별 상세에서 확인할 수 있습니다.</p>
+      ${basisNote(r.input)}
     </div>
 
     ${h ? renderHighlights(h) : ''}

@@ -97,6 +97,24 @@ function elapsedYears(jdBirth, now = new Date()) {
  * @param {string} form.homePlace   도시 이름
  * @param {boolean} [form.dst]      해외 출생 시 서머타임 여부
  */
+/**
+ * 시주 기준 차이 — 이 사이트는 **진태양시**(실제 경도 + 균시차)로 시주를 세운다. 많은 만세력 앱은
+ * 표준시에서 30분만 빼는 방식(동경 127.5° 고정, = 세계시 + 8시간 30분)을 쓴다. 대부분은 같은 시가
+ * 나오지만, 태어난 시각이 시 경계에 가까우면 둘이 갈린다(예: 대구 9월 13:26 → 진태양시 未, 일반 午).
+ * 갈릴 때만 두 결과를 함께 돌려준다 — 한쪽만 정답처럼 보이지 않게.
+ */
+function pillarBasisOf(birth, chart) {
+  const common = computeFourPillars(birth.jdUT, birth.jdUT + 8.5 / 24, { timeKnown: true });
+  const P = chart.pillars, C = common.pillars;
+  if (P.hour.hanja === C.hour.hanja && P.day.hanja === C.day.hanja) return null;
+  return {
+    tst: { hour: P.hour, day: P.day },
+    common: { hour: C.hour, day: C.day },
+    dayDiffers: P.day.hanja !== C.day.hanja,
+    tstClock: birth.tst,
+  };
+}
+
 export function prepareInput(form, opts = {}) {
   const integers = ['year', 'month', 'day'];
   if (integers.some((key) => !Number.isInteger(form[key]))) {
@@ -144,6 +162,7 @@ export function prepareInput(form, opts = {}) {
   const lunar = solarToLunar(form.year, form.month, form.day);
   const chart = computeFourPillars(birth.jdUT, birth.jdTST, { timeKnown });
   const ziweiLunar = ziweiLunarOf(birth, timeKnown, lunar);
+  const pillarBasis = timeKnown ? pillarBasisOf(birth, chart) : null;
 
   const at = opts.now instanceof Date ? opts.now : new Date();
   const currentYear = currentSajuYear(at);
@@ -160,6 +179,8 @@ export function prepareInput(form, opts = {}) {
     jdUT: birth.jdUT,
     jdTST: birth.jdTST,
     tst: birth.tst,
+    // 시 경계 근처라 '일반 만세력 방식'(동경 127.5° 고정)과 시주·일주가 갈리면 그 차이 (아니면 null)
+    pillarBasis,
     lunar,
     // 자미두수가 쓰는 음력 — 사주 일주와 같은 날, 설날 기준 연도, 윤달 보정 (ziweiLunarOf)
     ziweiLunar,

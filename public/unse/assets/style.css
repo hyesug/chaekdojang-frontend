@@ -1339,3 +1339,8 @@ input, select, textarea, button.go, .ask-btn, .mode, .lt, .ft, .planned span {
 .fb-note { width: 100%; margin: 0; font-size: 12px; color: var(--ink-3); }
 .fb-form input { flex: 1; min-width: 0; font: inherit; font-size: 14px; padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); color: var(--ink); }
 .fb-done { color: var(--gold); }
+
+/* 시주 기준 안내 (ui.js basisNote) */
+.basis-note { margin: 12px 0 0; padding: 12px 14px; border: 1px solid var(--line); border-left: 3px solid var(--stamp); border-radius: var(--radius-sm); background: var(--bg-soft); font-size: 14px; line-height: 1.7; color: var(--ink-2); }
+.basis-note p { margin: 4px 0 0; }
+.basis-note .basis-sub { font-size: 13px; color: var(--ink-3); }

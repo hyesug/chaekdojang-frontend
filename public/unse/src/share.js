@@ -377,9 +377,9 @@ export function downloadText(text, filename) {
  * 이름·생년월일·태어난 시각·태어난 곳은 넣지 않는다(받은 사람이 출생 정보를 알 수 없게).
  * AI 이미지 생성 없이 캔버스로만 그린다.
  */
-export function buildSoloCard(lines) {
+export function buildSoloCard(lines, { title = '나를 설명하는 세 문장', sub = '열일곱 가지 점술이 함께 가리킨 나' } = {}) {
   const { cv, ctx } = makeCanvas(1600);
-  let y = header(ctx, '나를 설명하는 세 문장', '열일곱 가지 점술이 함께 가리킨 나');
+  let y = header(ctx, title, sub);
   lines.slice(0, 3).forEach((t, i) => {
     y = sectionLabel(ctx, y, `${i + 1}`);
     y = para(ctx, y + 6, t, { size: 30, gap: 46 });

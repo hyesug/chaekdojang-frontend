@@ -16,9 +16,9 @@ import { lunarToSolar } from './core/lunar.js';
 import { elementDistribution } from './core/ganzhi.js';
 import { j } from './core/josa.js';
 import { encodeState, decodeState, shareLink, buildSoloCard, saveCanvas } from './share.js';
-import { buildHighlights, renderHighlights } from './highlights.js';
+import { buildHighlights, buildPairHighlights, renderHighlights } from './highlights.js';
 import { readForecast, areaText } from './forecast.js';
-import { renderReport, renderPairReport, periodFlow, pairEventsHtml } from './report.js';
+import { renderReport, renderPairReport, pairDigestFor, periodFlow, pairEventsHtml } from './report.js';
 import { buildView, buildCompatView } from './viewmodel.js';
 import { SYSTEM_META, TIER_LABEL, SOURCE_LABEL } from './meta.js';
 import { loadProfile, saveProfile, deleteProfile, loginUrl } from './profile.js';
@@ -162,34 +162,38 @@ function renderCompat(formA, formB, r) {
   const people = pairPeople(formA, formB);
   last = { mode: 'pair', formA, formB, result: r, people };
   const v = buildCompatView(formA, formB, r);
+  // 맨 위 핵심 요약·발견 — 궁합 재료를 한 번만 계산해 요약과 아래 리포트가 함께 쓴다
+  let pd = null, h = null;
+  try { pd = pairDigestFor(formA, formB, r, v, people); h = buildPairHighlights(pd); } catch (err) { console.warn('pair highlights', err); }
+  last.shareLines = h?.shareLines ?? [];
 
   return `
     <div class="result-header">
       <p class="result-kicker">분석 기록 · 궁합</p>
       <h2 class="hero-title">${esc(formA.name)} <span style="color:var(--gold-soft)">×</span> ${esc(formB.name)}</h2>
-      <p class="result-meta">두 사람의 출생 기준을 열일곱 체계로 나란히 살폈습니다.</p>
+      <p class="result-meta">두 사람의 출생 기준을 열일곱 체계로 나란히 살폈습니다. 계산 기준은 맨 아래에 있습니다.</p>
     </div>
 
-    <div class="section-label">계산값 · 두 사람의 기준</div>
+    ${h ? renderHighlights(h) : ''}
+
+    <div class="section-label">상세 분석</div>
+    ${renderPairReport(formA, formB, r, v, {
+      a: elementDistribution(r.A?.chart?.pillars ?? {}).count,
+      b: elementDistribution(r.B?.chart?.pillars ?? {}).count,
+    }, people, { digest: pd, memo: h?.memo })}
+
+    ${shareBlock(last.shareLines.length > 0)}
+
+    <div class="section-label">AI 명반 해석</div>
+    ${aiSection('pair', v)}
+
+    <div class="section-label">체계별 상세 · 계산값 · 두 사람의 기준</div>
     <div class="card pair-calculation">
       <dl>
         <div><dt>${esc(formA.name)}</dt><dd>${esc(`${formA.year}.${String(formA.month).padStart(2, '0')}.${String(formA.day).padStart(2, '0')}`)} · ${formA.hour == null ? '시각 미상' : `${String(formA.hour).padStart(2, '0')}:${String(formA.minute).padStart(2, '0')}`} · ${esc(formA.birthPlace)}</dd></div>
         <div><dt>${esc(formB.name)}</dt><dd>${esc(`${formB.year}.${String(formB.month).padStart(2, '0')}.${String(formB.day).padStart(2, '0')}`)} · ${formB.hour == null ? '시각 미상' : `${String(formB.hour).padStart(2, '0')}:${String(formB.minute).padStart(2, '0')}`} · ${esc(formB.birthPlace)}</dd></div>
       </dl>
     </div>
-
-    <div class="section-label">관계 데이터 분석</div>
-    ${renderPairReport(formA, formB, r, v, {
-      a: elementDistribution(r.A?.chart?.pillars ?? {}).count,
-      b: elementDistribution(r.B?.chart?.pillars ?? {}).count,
-    }, people)}
-
-    ${shareBlock()}
-
-    <div class="section-label">AI 명반 해석</div>
-    ${aiSection('pair', v)}
-
-
   `;
 }
 
@@ -439,7 +443,7 @@ function shareBlock(withImage = false) {
         <button type="button" data-act="share">🔗 결과 링크 공유하기</button>
         ${withImage ? '<button type="button" data-act="share-image">🖼️ 이미지로 공유</button>' : ''}
       </div>
-      ${withImage ? '<p class="agree-note" style="margin:8px 0 0">이미지에는 나를 설명하는 세 문장만 담기고 이름·생년월일·태어난 시각은 들어가지 않습니다.</p>' : ''}
+      ${withImage ? '<p class="agree-note" style="margin:8px 0 0">이미지에는 요약 문장만 담기고 이름·생년월일·태어난 시각은 들어가지 않습니다.</p>' : ''}
       <p class="agree-note" style="margin:8px 0 0">링크를 받은 사람도 같은 결과를 볼 수 있습니다. 링크에 생년월일과 태어난 시각이 담기니 믿는 사람에게만 보내세요.</p>
     </div>`;
 }
@@ -447,7 +451,10 @@ function shareBlock(withImage = false) {
 $('#result').addEventListener('click', async (e) => {
   if (e.target.closest('[data-act="share-image"]') && last?.shareLines?.length) {
     try {
-      const how = await saveCanvas(buildSoloCard(last.shareLines), 'chaekdojang-unse.png');
+      const card = last.mode === 'pair'
+        ? buildSoloCard(last.shareLines, { title: '우리 두 사람을 설명하는 문장', sub: '열일곱 가지 점술이 함께 본 두 사람' })
+        : buildSoloCard(last.shareLines);
+      const how = await saveCanvas(card, 'chaekdojang-unse.png');
       if (how === 'download') toast('이미지를 저장했습니다.');
     } catch { toast('이미지를 만들지 못했습니다.', false); }
     return;

@@ -1534,6 +1534,8 @@ export function pairLoveDigest(rA, rB, A, B, v, { married = false } = {}) {
   ].filter(Boolean);
 
   return { married, verdict, relation: pr?.stem?.h ?? '', dating, marriage, care, fix, kids, events,
+    // 맨 위 발견 카드(highlights.js buildPairHighlights)가 쓰는 재료
+    wants: { a: wants(esA, spA), b: wants(esB, spB) },
     home: homeAdvice(rA, rB, A, B, esA, esB),
     books: pairBookNeeds({ married, clash, money, rec }) };
 }
@@ -1593,18 +1595,25 @@ export function pairEventsHtml(rA, rB, A, B, { married = false } = {}) {
  * (예전: 지금 두 사람은 / 앞으로 함께 가야 할 방향 / 알아 두면 좋은 서로 / 조심해야 할 것 / 기운 비교표 —
  *  개인 운세에 맞는 내용이 섞여 있었다)
  */
-export function renderPairReport(formA, formB, c, v, elementDist, people = {}) {
+/** 궁합 리포트·맨 위 요약이 함께 쓰는 재료 — 한 번만 계산한다 */
+export function pairDigestFor(formA, formB, c, v, people = {}) {
   const A = c.A?.input?.name ?? formA.name;
   const B = c.B?.input?.name ?? formB.name;
-  const today = new Date();
-  const stamp = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
   const rA = people.a ?? c.A, rB = people.b ?? c.B;
   // 한 사람이라도 기혼을 골랐으면 부부용 리포트
   const married = [formA.marital, formB.marital, rA?.input?.marital, rB?.input?.marital].includes('married');
-  const d = pairLoveDigest(rA, rB, A, B, v, { married });
+  return { A, B, rA, rB, d: pairLoveDigest(rA, rB, A, B, v, { married }) };
+}
+
+export function renderPairReport(formA, formB, c, v, elementDist, people = {}, { digest = null, memo = null } = {}) {
+  const { A, B, rA, rB, d } = digest ?? pairDigestFor(formA, formB, c, v, people);
+  const today = new Date();
+  const stamp = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
+  // 맨 위 요약·발견(highlights.js)이 이미 낸 문장은 아래 칸에서 다시 내지 않는다
+  const fresh = (xs) => (memo ? xs.filter((t) => !memo.has(t) && memo.add(t)) : xs);
   const list = (xs) => lineList(xs);
-  const goodBad = (g, b) => (g.length ? h4('🟢', '좋은 점') + list(g) : '') + (b.length ? h4('⚠️', '아쉬운 점') + list(b) : '');
-  const pairs = (rows) => bullets(...rows.map(([k, t]) => bullet('', k, t)));
+  const goodBad = (g, b) => { g = fresh(g); b = fresh(b); return (g.length ? h4('🟢', '좋은 점') + list(g) : '') + (b.length ? h4('⚠️', '아쉬운 점') + list(b) : ''); };
+  const pairs = (rows) => bullets(...rows.filter(([, t]) => !memo || (!memo.has(t) && memo.add(t))).map(([k, t]) => bullet('', k, t)));
 
   // 사건 장은 자리만 잡아 두고 화면이 뜬 뒤 채운다(fillPairEvents) — 각자의 시기 계산이 무거워 첫 화면이 늦었다
   const chapters = sec(1, '앞으로 두 사람이 마주할 중요한 일',
@@ -1618,7 +1627,7 @@ export function renderPairReport(formA, formB, c, v, elementDist, people = {}) {
         <h2 class="rp-title" id="rp-title"><span aria-hidden="true">💞</span> ${esc(A)} · ${esc(B)} 관계 분석 리포트</h2>
         <p class="rp-lead">두 사람의 출생 정보를 맞대어 본 결과를 한 장으로 정리했습니다.</p>
       </header>
-      ${card('💞', d.married ? '두 사람은 어떤 부부인가' : '연애 궁합인가, 결혼 궁합인가', `<blockquote class="rp-quote">${esc(d.verdict.text)}</blockquote>${d.relation ? para(d.relation) : ''}`)}
+      ${memo ? '' : card('💞', d.married ? '두 사람은 어떤 부부인가' : '연애 궁합인가, 결혼 궁합인가', `<blockquote class="rp-quote">${esc(d.verdict.text)}</blockquote>${d.relation ? para(d.relation) : ''}`)}
       ${card('💗', d.married ? '두 사람 사이의 설렘과 대화' : '연애할 때', goodBad(d.dating.good, d.dating.bad))}
       ${card('💍', d.married ? '함께 사는 일' : '결혼하면', goodBad(d.marriage.good, d.marriage.bad))}
       ${card('🏡', d.married ? '함께 살며 — 재산·육아·일' : '함께 산다면 — 재산·육아·일', pairs(d.home))}

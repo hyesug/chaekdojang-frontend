@@ -130,3 +130,52 @@ test('두드러지는 조합은 같은 힘을 강하다·옅다로 동시에 말
     if (money) assert.doesNotMatch(money.b[1], /적습니다|없습니다|않습니다/);
   }
 });
+
+/* ── 궁합 ─────────────────────────────────────────────── */
+import { compareFortune } from '../../public/unse/src/compat.js';
+import { buildCompatView } from '../../public/unse/src/viewmodel.js';
+import { renderPairReport, pairDigestFor } from '../../public/unse/src/report.js';
+import { buildPairHighlights } from '../../public/unse/src/highlights.js';
+
+const pairOf = (a, b) => {
+  const c = compareFortune(a, b);
+  const v = buildCompatView(a, b, c);
+  const people = { a: readFortune(a), b: readFortune(b) };
+  const pd = pairDigestFor(a, b, c, v, people);
+  return { a, b, c, v, people, pd, h: buildPairHighlights(pd) };
+};
+const PAIRS = [pairOf(PEOPLE[0], PEOPLE[1]), pairOf(PEOPLE[1], PEOPLE[2]), pairOf({ ...PEOPLE[0], marital: 'married' }, PEOPLE[2])];
+
+test('궁합 핵심 요약은 3~5장이고 판정이 맨 앞, 문장이 겹치지 않는다', () => {
+  for (const { h, pd } of PAIRS) {
+    assert.ok(h.summary.length >= 3 && h.summary.length <= 5, `요약 ${h.summary.length}장`);
+    assert.equal(h.summary[0].key, 'verdict');
+    assert.equal(h.summary[0].text, pd.d.verdict.text);
+    const texts = [...h.summary.map((x) => x.text), ...h.traits.map((x) => x.text),
+      ...h.discover.flatMap((x) => (x.a ? [x.a[1], x.b[1]] : [x.text]))];
+    assert.equal(new Set(texts).size, texts.length);
+    assert.doesNotMatch(renderHighlights(h), /상위\s*\d|\d+\s*%|정확도/);
+  }
+});
+
+test('부부면 판정 카드 이름이 부부용이다', () => {
+  assert.equal(PAIRS[2].h.summary[0].label, '두 사람은 어떤 부부인가');
+  assert.equal(PAIRS[0].h.summary[0].label, '연애 궁합인가, 결혼 궁합인가');
+});
+
+test('궁합 공유 문장에는 이름·출생 정보가 없다', () => {
+  for (const { a, b, h } of PAIRS) {
+    const s = h.shareLines.join(' ');
+    for (const f of [a, b]) assert.ok(!s.includes(`${f.name}님`) && !s.includes(String(f.year)));
+  }
+});
+
+test('궁합 요약이 낸 문장은 아래 리포트에서 다시 나오지 않고, 판정 카드는 요약으로 옮겨 간다', () => {
+  for (const { a, b, c, v, people, pd, h } of PAIRS) {
+    const shown = h.memo.items.map((x) => x.text);
+    const html = renderPairReport(a, b, c, v, {}, people, { digest: pd, memo: h.memo });
+    const texts = [...html.matchAll(/<(?:li|p)>([^<]+)<\/(?:li|p)>/g)].map((m) => m[1]);
+    for (const t of shown) assert.ok(!texts.includes(t), `겹침: ${t}`);
+    assert.doesNotMatch(html, /연애 궁합인가, 결혼 궁합인가|두 사람은 어떤 부부인가/);
+  }
+});

@@ -166,8 +166,67 @@ export function buildHighlights(r, f = null) {
   return { summary: summary.slice(0, 5), traits, discover, flow, shareLines, memo };
 }
 
+/**
+ * 궁합 맨 위 — 개인과 같은 방식. 새 계산 없이 궁합 리포트의 재료(report.js pairDigestFor → pairLoveDigest)를 다시 고른다.
+ * @param {{A, B, d}} pd pairDigestFor 결과
+ */
+export function buildPairHighlights({ A, B, d, rA }) {
+  const memo = new PageMemo();
+  const named = (t) => t.includes(`${A}님`) || t.includes(`${B}님`);
+
+  // ── 핵심 요약 ──
+  const summary = [];
+  const one = (key, label, items) => {
+    const [m] = curate(items.filter(Boolean), { max: 1, memo, minSpecificity: 0 });
+    if (m) summary.push({ key, label, text: m.text });
+  };
+  one('verdict', d.married ? '두 사람은 어떤 부부인가' : '연애 궁합인가, 결혼 궁합인가', [{ text: d.verdict.text, base: 1 }]);
+  one('pull', '서로 가장 끌리는 지점', d.dating.good);
+  // 사건을 묶은 줄('같이 살며 조심할 일: …')은 아래 흐름 카드가 맡는다
+  one('clash', '가장 부딪치기 쉬운 지점', [...d.dating.bad, ...d.marriage.bad].filter((t) => !/^같이 살며/.test(t)));
+  const now = Number(rA?.input?.currentYear) || new Date().getFullYear();
+  const future = (d.events ?? []).filter((e) => e.y == null || e.y >= now).sort((a, b) => (a.y ?? 9999) - (b.y ?? 9999));
+  const near = future.find((e) => e.y != null && e.y - now <= 5);
+  if (near) one('next', '가까운 시기 두 사람에게 오는 일', [{ text: `${near.when} — ${near.title}. ${firstSentence(near.what)}`, base: 1 }]);
+  if (d.relation) one('relation', '두 사람의 관계 모양', [d.relation]);
+
+  // ── 두 사람에게 특히 두드러지는 점 ──
+  const traits = [];
+  const trait = (label, items) => {
+    const [m] = curate(items.filter(Boolean), { max: 1, memo, minSpecificity: 0 });
+    if (m) traits.push({ label, text: m.text });
+  };
+  trait('두 사람이 닮은 점', d.dating.good.filter((t) => /닮아/.test(t)));
+  trait('가장 크게 다른 점', d.dating.bad.filter((t) => /차이로/.test(t)));
+  trait('돈을 대하는 두 사람', [...d.marriage.good, ...d.marriage.bad].filter((t) => /돈 앞에서|돈을 대하는/.test(t)));
+
+  // ── 두 사람에 대한 발견 ──
+  const discover = [];
+  if (d.wants?.a && d.wants?.b && !memo.has(d.wants.a) && !memo.has(d.wants.b)) {
+    discover.push({ title: `${A}님이 바라는 것 vs ${B}님이 바라는 것`, a: [`${A}님`, memo.add(d.wants.a)], b: [`${B}님`, memo.add(d.wants.b)] });
+    for (const [, t] of d.care) memo.add(t);   // 아래 '서로 배려할 점'과 같은 말
+  }
+  const fixA = d.fix.find(([k]) => k === `${A}님`)?.[1], fixB = d.fix.find(([k]) => k === `${B}님`)?.[1];
+  if (fixA && fixB && !memo.has(fixA) && !memo.has(fixB)) {
+    discover.push({ title: '다툼이 되풀이되기 쉬운 패턴', a: [`${A}님`, memo.add(fixA)], b: [`${B}님`, memo.add(fixB)] });
+  }
+  const money = d.home?.find(([k]) => k.startsWith('재산'))?.[1];
+  if (money && !memo.has(money)) discover.push({ title: d.married ? '두 사람이 재산을 모으는 방법' : '함께 산다면 — 재산을 모으는 방법', text: memo.add(money) });
+
+  // ── 두 사람의 흐름 — 요약에 낸 일 다음부터, 15년 안쪽만(먼 일은 아래 사건 장에) ──
+  const flow = future.filter((e) => e !== near && (e.y == null || e.y - now <= 15)).slice(0, 3)
+    .map((e) => [e.when, '', `${e.title}. ${firstSentence(e.what)}`]);
+
+  const shareLines = summary.map((x) => x.text).filter((t) => !named(t)).slice(0, 3);
+  return {
+    summary: summary.slice(0, 5), traits, discover, flow, shareLines, memo,
+    titles: { traits: '두 사람에게 특히 두드러지는 점', discover: '두 사람에 대한 발견', flow: '앞으로 두 사람의 흐름' },
+  };
+}
+
 /** 카드 화면 */
 export function renderHighlights(h) {
+  const T = { traits: '당신에게 특히 두드러지는 특징', discover: '나에 대한 발견', flow: '현재 흐름', ...h.titles };
   const card = (icon, title, body, cls = '') => (body
     ? `<section class="rp-card ${cls}"><h3 class="rp-card-h"><span aria-hidden="true">${icon}</span> ${esc(title)}</h3>${body}</section>` : '');
   const summary = h.summary.length
@@ -186,9 +245,9 @@ export function renderHighlights(h) {
     ? `<ol class="hl-flow">${h.flow.map(([k, when, t]) => `<li><p class="hl-label">${esc(k)} <small>${esc(when)}</small></p><p>${esc(t)}</p></li>`).join('')}</ol>`
     : '';
   return card('✨', '핵심 요약', summary, 'hl-summary')
-    + card('🔎', '당신에게 특히 두드러지는 특징', traits ? `<ul class="hl-traits">${traits}</ul>` : '')
-    + card('🧩', '나에 대한 발견', discover)
-    + card('🧭', '현재 흐름', flow);
+    + card('🔎', T.traits, traits ? `<ul class="hl-traits">${traits}</ul>` : '')
+    + card('🧩', T.discover, discover)
+    + card('🧭', T.flow, flow);
 }
 
 export { meta };

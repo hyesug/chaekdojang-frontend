@@ -9,6 +9,11 @@ on:
   schedule:
     - cron: '0 1 * * 1'
   workflow_dispatch:
+    inputs:
+      auth_check:
+        description: 'Claude 구독 토큰 연결만 확인(파일은 고치지 않음)'
+        type: boolean
+        default: false
 
 concurrency:
   group: unse-feedback-weekly
@@ -33,6 +38,18 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      - name: Claude 연결 확인(수동 실행에서 auth_check 를 켰을 때만)
+        if: inputs.auth_check
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          claude_args: >-
+            --model claude-sonnet-5-5
+            --max-turns 1
+            --allowedTools ""
+          prompt: 'OK 라고만 답하세요. 어떤 파일도 읽거나 고치지 마세요.'
 
       - name: 고칠 후보 뽑기 (AI 없음)
         id: report

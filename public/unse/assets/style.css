@@ -672,6 +672,17 @@ details.pool[open] > summary::before { content: '▾ '; }
 .compat-extremes { border-top: 1px solid var(--line-soft); padding: 16px 0 18px; }
 .compat-extremes .say-text + .say-text { margin-top: 14px; }
 .profile-card { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 15px; }
+/* 책 추천 — 주제마다 이유 한 줄 + 책 두 권 */
+.rp-book-group + .rp-book-group { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line-soft); }
+.rp-book-list { list-style: none; margin: 6px 0 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.rp-book-list a { display: flex; gap: 10px; align-items: flex-start; padding: 8px; border: 1px solid var(--line-soft); border-radius: 10px; color: inherit; text-decoration: none; }
+.rp-book-list a:hover { border-color: var(--gold-soft); }
+.rp-book-list img, .rp-book-noimg { width: 44px; height: 64px; flex: none; border-radius: 4px; object-fit: cover; background: var(--line-soft); display: flex; align-items: center; justify-content: center; }
+.rp-book-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rp-book-meta b { font-size: 14px; line-height: 1.4; color: var(--ink); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.rp-book-meta small { font-size: 12px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 520px) { .rp-book-list { grid-template-columns: 1fr; } }
+
 /* 결과 링크 공유 — 리포트 바로 아래, AI 해석 위 */
 .share-card { margin: 18px 0 6px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
 .share-card .sharebar button { flex: 1; font-weight: 600; }

@@ -190,3 +190,14 @@ test('궁합에서 기혼을 고르면 부부용 리포트 — 결혼 여부를 
   assert.match(single, /함께 산다면 — 재산·육아·일/);
   for (const k of ['재산은 이렇게 모으면 좋습니다', '육아는 누가', '둘 다 일할까']) assert.match(single, rx(k));
 });
+
+test('책 추천 — 그 사람에게 필요한 주제 셋을 이유와 함께 담고, 책은 서버 응답 뒤에 채운다', async () => {
+  const { bookNeeds } = await import('../../public/unse/src/report.js');
+  const needs = bookNeeds(readFortune(A));
+  assert.equal(needs.length, 3);
+  assert.equal(new Set(needs.map((x) => x.theme)).size, 3, '주제가 겹친다');
+  for (const n of needs) assert.ok(n.reason.length > 10);
+  // 카드는 자리만(숨김) — 서버가 꺼져 있어도 빈 카드가 보이지 않는다
+  assert.match(personal(A), /class="rp-card rp-books-card" hidden data-book-needs=/);
+  assert.match(pair(A, B), /두 사람이 함께 읽으면 좋은 책/);
+});

@@ -1011,6 +1011,78 @@ export function pairEventItems(rA, rB, A, B, { withLife = true, married = false 
   return items.slice(0, 8);
 }
 
+/* ── 책 추천 ─────────────────────────────────────────────────
+   그 사람에게 지금 필요한 주제 셋을 리포트 계산에서 고르고(이유와 함께), 책은 책도장 서버가
+   책 소개글로 붙여 둔 주제 태그로 찾는다(GET /api/books/recommend — chaekdojang-api BookTheme).
+   카드는 자리만 그려 두고 화면이 뜬 뒤 ui.js(fillBooks)가 채운다. 서버가 답하지 않으면 카드를 숨긴다. */
+const SEASON_BOOK = {
+  비겁: ['INDEPENDENCE', '내 힘으로 서려는 시기라'],
+  식상: ['EXPRESSION', '재주와 생각을 밖으로 꺼내는 시기라'],
+  재성: ['MONEY', '돈과 현실 조건이 삶의 중심에 오는 시기라'],
+  관성: ['LEADERSHIP', '책임과 자리가 커지는 시기라'],
+  인성: ['STUDY', '배우고 기반을 다지는 시기라'],
+};
+const WEAK_BOOK = {
+  목: ['CHALLENGE', '시작하고 성장하는 힘이 가장 옅어'],
+  화: ['EXPRESSION', '나를 드러내고 표현하는 힘이 가장 옅어'],
+  토: ['HABIT', '중심을 잡고 꾸준히 버티는 힘이 가장 옅어'],
+  금: ['DECISION', '결단하고 정리하는 힘이 가장 옅어'],
+  수: ['REST', '쉬고 회복하는 힘이 가장 옅어'],
+};
+const CAUTION_BOOK = [
+  [/말|표현|오해|태도|고집|상대|관계/, 'RELATION'],
+  [/걱정|불안|생각이 꼬리|잠을/, 'MIND'],
+  [/지치|과로|건강|몸|검진/, 'HEALTH'],
+  [/미루|실행이 늦|준비만/, 'HABIT'],
+  [/돈|지출|결제/, 'MONEY'],
+  [/혼자|떠안/, 'REST'],
+];
+const BOOK_LABEL = {
+  DECISION: '결단·정리', REST: '쉼·회복', RELATION: '관계·대화', MONEY: '돈 관리', LEADERSHIP: '리더십·책임',
+  CHALLENGE: '시작·도전', EXPRESSION: '표현·창작', STUDY: '공부·성장', INDEPENDENCE: '나답게 살기',
+  LOVE: '연애·결혼', PARENTING: '육아·가족', HEALTH: '몸·건강', MIND: '마음·감정', CAREER: '일·커리어',
+  HABIT: '습관·집중', WISDOM: '삶의 지혜', COMFORT: '위로·공감',
+};
+
+/** 한 사람에게 지금 필요한 책 주제 셋 — [{theme, reason}] */
+export function bookNeeds(r, d = futureDigest(r)) {
+  const out = [];
+  const add = (theme, reason) => { if (theme && !out.some((x) => x.theme === theme)) out.push({ theme, reason }); };
+  try {
+    const dae = currentDaeun(computeDaeun(r.chart, r.input.isMale, r.input.jdUT), r.input.elapsedYears ?? r.input.age);
+    const s = dae ? SEASON_BOOK[TEN_GOD_GROUP[dae.god]] : null;
+    if (s) add(s[0], `지금은 ${s[1]} ${j(BOOK_LABEL[s[0]], "을")} 다룬 책이 힘이 됩니다.`);
+  } catch { /* */ }
+  try {
+    const c = elementDistribution(r.chart.pillars).count;
+    const w = WEAK_BOOK[ELEM_KEYS[[0, 1, 2, 3, 4].reduce((x, i) => (c[i] < c[x] ? i : x), 0)]];
+    if (w) add(w[0], `${w[1]}, 이 힘을 길러 주는 ${BOOK_LABEL[w[0]]} 책을 권합니다.`);
+  } catch { /* */ }
+  for (const t of d?.caution?.careful ?? []) {
+    const hit = CAUTION_BOOK.find(([re, theme]) => re.test(t) && !out.some((x) => x.theme === theme));
+    if (hit) { add(hit[1], `'${t.split(/(?<=[.])\s/)[0].replace(/[.]$/, '')}' — 이 버릇을 다루는 데 도움이 되는 책입니다.`); break; }
+  }
+  add('CAREER', '잘 맞는 일 쪽으로 나아갈 때 길잡이가 되는 책입니다.');
+  return out.slice(0, 3);
+}
+
+/** 두 사람에게 필요한 책 주제 — 연애·결혼은 늘, 부딪치는 점·돈·아이가 있으면 그것을 */
+function pairBookNeeds({ married, clash, money, rec }) {
+  const out = [{ theme: 'LOVE', reason: married ? '부부로 오래 가는 법을 함께 이야기해 볼 수 있는 책입니다.' : '두 사람의 관계를 함께 들여다볼 수 있는 책입니다.' }];
+  if (clash.length) out.push({ theme: 'RELATION', reason: '두 사람의 결이 엇갈리는 지점이 있어, 말하고 듣는 법을 다룬 책이 도움이 됩니다.' });
+  if (money.clash.length) out.push({ theme: 'MONEY', reason: '돈 앞에서 두 사람의 생각이 갈려, 함께 읽고 기준을 맞추기 좋은 책입니다.' });
+  if ((rec?.score ?? 0) >= 1 || married) out.push({ theme: 'PARENTING', reason: '아이와 가족에 대해 두 사람이 같은 그림을 그려 보는 데 도움이 되는 책입니다.' });
+  if (out.length < 3) out.push({ theme: 'WISDOM', reason: '함께 읽고 서로의 생각을 나눠 보기 좋은 책입니다.' });
+  return out.slice(0, 3);
+}
+
+/** 책 카드의 자리 — 주제와 이유만 담아 두고 책은 화면이 뜬 뒤 채운다 */
+function bookCard(icon, title, needs) {
+  if (!needs?.length) return '';
+  return `<section class="rp-card rp-books-card" hidden data-book-needs="${esc(JSON.stringify(needs))}">`
+    + `<h3 class="rp-card-h"><span aria-hidden="true">${icon}</span> ${esc(title)}</h3><div class="rp-books"></div></section>`;
+}
+
 /**
  * 리포트 맨 위 네 카드의 내용 — 지금 시기 · 앞으로 가야 할 방향 · 알아 두면 좋은 나 · 조심해야 할 것.
  * AI 상담 문맥(aiContext.js)도 이 함수를 그대로 써서, 리포트와 AI가 같은 말을 같은 순서로 한다.
@@ -1091,6 +1163,7 @@ function lifeReport(form, r, f, v) {
     + card('🚀', '앞으로 가야 할 방향', direction)
     + card('💡', '알아 두면 좋은 나', know || distinctCard(r))
     + card('⚠️', '조심해야 할 것', caution)
+    + bookCard('📚', '내 명반에 어울리는 책', bookNeeds(r, d))
     + card('🌊', '인생의 큰 흐름 — 앞으로 십 년마다 무엇이 오는가', lifeFlow(r))
     + card('🎯', '당장 실행해볼 수 있는 Action Item 3가지',
       `<ol class="rp-act">`
@@ -1264,7 +1337,8 @@ export function pairLoveDigest(rA, rB, A, B, v, { married = false } = {}) {
   ].filter(Boolean);
 
   return { married, verdict, relation: pr?.stem?.h ?? '', dating, marriage, care, fix, kids, events,
-    home: homeAdvice(rA, rB, A, B, esA, esB) };
+    home: homeAdvice(rA, rB, A, B, esA, esB),
+    books: pairBookNeeds({ married, clash, money, rec }) };
 }
 
 /**
@@ -1354,6 +1428,7 @@ export function renderPairReport(formA, formB, c, v, elementDist, people = {}) {
       ${card('🤝', '서로 배려할 점', pairs(d.care))}
       ${card('🔧', '각자 고쳐야 할 점', pairs(d.fix))}
       ${card('👶', '자녀와 함께라면', pairs(d.kids))}
+      ${bookCard('📚', '두 사람이 함께 읽으면 좋은 책', d.books)}
       <h3 class="rp-more">더 자세히 보기</h3>
       <div class="rp-chs">${chapters}</div>
       <p class="rp-note">점술은 상징적 해석 도구이며 실제 미래를 확정하지 않습니다. 결혼·이별·임신·투자·건강과 관련된 결정은

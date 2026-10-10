@@ -67,6 +67,7 @@ export async function run(mode, box, next) {
       const married = [form.marital, formB.marital].includes('married');
       if (el && p.a && p.b) el.innerHTML = pairEventsHtml(p.a, p.b, form.name, formB.name, { married });
       initCompatAI(form, formB, c);
+      fillBooks(box);
     }, 30);
     await next();
     await next();
@@ -80,6 +81,7 @@ export async function run(mode, box, next) {
     await loadDicts().catch(() => null);
     await next();
     box.innerHTML = render(form, r, f);
+    fillBooks(box);
     initAI(form, r, f);
     await next();
     fillProfileCard(form);
@@ -386,6 +388,36 @@ async function fillProfileCard(form) {
 // ─────────────────────────────────────────────────────────────
 // 저장하고 나누기
 // ─────────────────────────────────────────────────────────────
+
+/**
+ * 책 추천 카드 채우기 — report.js 가 그 사람에게 필요한 주제와 이유를 카드에 담아 두면, 책도장 서버의
+ * 주제 태그 추천(GET /api/books/recommend)으로 주제마다 책을 받아 넣는다. 서버가 늦거나 답하지 않거나
+ * 맞는 책이 없으면 카드를 숨긴 채 둔다(리포트의 나머지는 그대로).
+ */
+async function fillBooks(root) {
+  for (const cardEl of root.querySelectorAll('.rp-books-card')) {
+    let needs = [];
+    try { needs = JSON.parse(cardEl.dataset.bookNeeds || '[]'); } catch { /* */ }
+    if (!needs.length) continue;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 6000);
+    try {
+      const res = await fetch(`/api/books/recommend?themes=${encodeURIComponent(needs.map((n) => n.theme).join(','))}&perTheme=2`,
+        { signal: ctrl.signal });
+      if (!res.ok) continue;
+      const groups = (await res.json())?.data ?? [];
+      const html = needs.map((n) => {
+        const books = groups.find((g) => g.theme === n.theme)?.books ?? [];
+        if (!books.length) return '';
+        return `<div class="rp-book-group"><p class="rp-t">${esc(n.reason)}</p><ul class="rp-book-list">${books.map((b) =>
+          `<li><a href="/books/${encodeURIComponent(b.id)}">${b.thumbnail ? `<img src="${esc(b.thumbnail)}" alt="" loading="lazy">` : '<span class="rp-book-noimg" aria-hidden="true">📖</span>'}`
+          + `<span class="rp-book-meta"><b>${esc(b.title)}</b><small>${esc(b.author ?? '')}</small></span></a></li>`).join('')}</ul></div>`;
+      }).join('');
+      if (html) { cardEl.querySelector('.rp-books').innerHTML = html; cardEl.hidden = false; }
+    } catch { /* 서버가 꺼져 있거나 늦으면 카드를 숨긴 채 둔다 */ }
+    finally { clearTimeout(timer); }
+  }
+}
 
 /**
  * 결과 공유 — 링크 하나만(이미지·PDF 저장은 결과가 길어 뺐다). 링크를 열면 같은 결과가 다시 계산된다.

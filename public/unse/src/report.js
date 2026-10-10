@@ -1032,13 +1032,11 @@ export function futureDigest(r) {
     direction: {
       // 직업 분야와 맞는 일을 한 칸으로 — 두 칸으로 나눠 두니 서로 다른 말을 했다
       career: '',
+      // "여러 점술이 함께 가리키는 쪽은 …" 머리말은 뺐다(사용자 요청) — 분야와 문장만
       fields: [
-        focus.name ? `여러 점술이 함께 가리키는 쪽은 ${focus.name}입니다.` : '',
-        focus.verified.length
-          ? (focus.name ? `그중에서도 ${focus.verified.join(', ')} 분야가 가능성이 높습니다.` : `가능성이 높은 분야는 ${focus.verified.join(', ')}입니다.`)
-          : '',
+        focus.verified.length ? `${focus.verified.join(', ')} 분야가 가능성이 높습니다.` : '',
         ...focus.lines,
-      ].filter(Boolean),
+      ].filter(Boolean).concat(!focus.verified.length && !focus.lines.length && focus.name ? [`${focus.name}이 잘 맞습니다.`] : []),
       earn: pick('m', 2, (t) => EARN.test(t) && !IMPERATIVE.test(t)),
       // 한 문장만 — 두 문장이면 "안정된 관계를 원합니다"처럼 같은 말이 되풀이되었다
       drawn: pick('r', 1, (t) => DRAWN_TO.test(t)),

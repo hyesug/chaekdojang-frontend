@@ -292,9 +292,7 @@ function render(form, r, f) {
   const pane = (id, on, html) =>
     `<div class="tab-pane" data-tab="${id}" ${on ? '' : 'hidden'}>${html}</div>`;
 
-  const dayList = (arr) => arr.length ? `${arr.slice().sort((a, b) => a - b).join(', ')}일` : '';
-  const L = v.month.lucky;
-  // 이달의 일자별 표는 뺐다 — 날마다의 흐름은 '오늘의 운세'에서 매일 본다
+  // 이달의 일자별 표와 날짜 가이드는 뺐다(사용자 요청) — 날마다의 흐름은 '오늘의 운세'에서 매일 본다
 
   return `
     <div class="result-header">
@@ -324,16 +322,6 @@ function render(form, r, f) {
         <h3 class="rp-card-h"><span aria-hidden="true">🗓️</span> ${esc(v.month.label)}의 운세</h3>
         ${flowHead(f.month, 'month')}
         <ul class="rp-bul">${areaItems(f.month, 'month')}</ul>
-        <h4 class="rp-h4">📌 이달의 날짜 가이드</h4>
-        <ul class="rp-bul">
-          ${item('🚚', '이동·이사', dayList(L.move))}
-          ${item('📝', '계약·면접·문서', dayList(L.contract))}
-          ${item('💰', '돈이 도는 날', dayList(L.money))}
-          ${item('🤝', '사람 만나기', dayList(L.love))}
-          ${item('🙌', '도와줄 사람이 붙는 날', dayList(L.helper))}
-          ${item('⏸️', '미루면 좋은 날', L.avoid.length ? `${dayList(L.avoid)} — 기운이 넘쳐 무리하기 쉬운 날입니다.${L.worst.length ? ` 그다음은 ${dayList(L.worst)}.` : ''}` : '')}
-        </ul>
-        <p class="rp-fine">이미 잡힌 수술·계약·면접 일정을 이 날짜 때문에 바꾸실 필요는 없습니다. 고를 수 있을 때 참고만 하세요.</p>
       </section>`)}
 
 

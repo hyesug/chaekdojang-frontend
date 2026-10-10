@@ -113,7 +113,9 @@ test('잘 맞는 일은 한 갈래로 모이고, 일을 키우려면도 같은 �
   const r = readFortune(A);
   const focus = careerFocus(r);
   const html = personal(A);
-  if (focus.name) assert.match(html, rx(`여러 점술이 함께 가리키는 쪽은 ${focus.name}입니다`));
+  // 머리말("여러 점술이 함께 가리키는 쪽은")은 뺐다 — 고른 갈래의 분야만 싣는다
+  assert.doesNotMatch(html, /여러 점술이 함께 가리키는 쪽은/);
+  if (focus.verified.length) assert.match(html, rx(`${focus.verified.join(', ')} 분야가 가능성이 높습니다`));
   assert.equal(html.includes('일을 키우려면'), focus.workFits);
 });
 

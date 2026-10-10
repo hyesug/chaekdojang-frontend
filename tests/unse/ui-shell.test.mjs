@@ -39,6 +39,8 @@ test('결과는 계산값·오늘/이달·통합 리포트·AI 순서로 읽게 
 
   // '해석 · 핵심 종합'은 아래 리포트와 겹쳐 뺐다
   assert.doesNotMatch(ui, /해석 · 핵심 종합/);
+  // 이달의 일자별 표와 날짜 가이드는 뺐다(사용자 요청)
+  assert.doesNotMatch(ui, /이달의 날짜 가이드|일자별로 보기/);
   const calculation = personalRender.indexOf('${chartPanel(r)}');
   const interpretation = 0;
   // 통합 리포트는 AI 해석 위에 둔다 — 무료로 먼저 읽고, 더 궁금한 것만 AI 에 묻게 한다

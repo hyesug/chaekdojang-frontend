@@ -18,7 +18,7 @@
 import { ELEMENTS, computeDaeun } from './core/ganzhi.js';
 import { dictEntries, coreField, ziweiPalaceEntry, pairReading, themeContrast } from './semantic/dict.js';
 import { readFortune } from './engine.js';
-import { futureDigest, seasonNow, togetherTurn } from './report.js';
+import { futureDigest, seasonNow, togetherTurn, careerFocus, lifeEventItems } from './report.js';
 import { AREAS } from './forecast.js';
 import { candidatesToward, DIR8 } from './hires/location.js';
 import { yearDirections } from './systems/gujeong.js';
@@ -394,7 +394,10 @@ function formatDict(r) {
   row('잘 맞는 일', d.direction.fields);
   row('돈을 키우는 방향', d.direction.earn);
   row('곁에 두면 좋은 사람', d.direction.drawn);
+  // 일을 키우려면(자미 관록궁)은 리포트처럼 "잘 맞는 일"과 같은 갈래일 때만 — 다르면 직업 말이 엇갈린다
+  const workFits = careerFocus(r).workFits;
   for (const [which, name] of [['career', '일을 키우려면'], ['money', '돈을 키우려면'], ['spouse', '앞으로 함께할 사람'], ['children', '자녀와의 관계']]) {
+    if (which === 'career' && !workFits) continue;
     const e = ziweiPalaceEntry(r, which);
     if (e) L.push(`${name}: ${e.h} ${e.g} (조심: ${e.c})`);
   }
@@ -407,6 +410,8 @@ function formatDict(r) {
   row('지금 시기에', sn?.cur?.e?.c);
   row('늘 조심할 것', d.caution.careful);
   row('지켜야 할 원칙', d.caution.principles);
+  L.push('### 앞으로 마주할 중요한 일 (무슨 일이, 어떤 모양으로, 어떻게 대비할지 — 나이는 무렵으로만)');
+  for (const it of lifeEventItems(r)) L.push(`- ${it.when} · ${it.title}: ${it.what} 대비: ${it.prep}`);
   L.push('위 내용은 손님이 받은 리포트에 실린 해석이다. 무엇을 물어도 이것을 먼저 근거로 쓰고, 리포트와 반대되는 말을 하지 말 것. 문장을 그대로 베끼지 말고 질문에 맞게 풀어서 말할 것.');
   return L.join('\n');
 }

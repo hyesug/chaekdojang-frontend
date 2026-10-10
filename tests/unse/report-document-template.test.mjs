@@ -65,7 +65,7 @@ test('개인 리포트는 한눈에 보는 나·나는 어떤 사람인가·커�
   }
   for (const tag of ['DO', 'KEY']) assert.match(html, rx(`>${tag}<`));
   // 자세한 장은 접어 두고, 겹치던 장(사업·로또, 질문별 색인)은 다시 넣지 않는다
-  for (const chapter of ['일과 돈', '사랑과 가족', '시기 한눈에 보기']) {
+  for (const chapter of ['일과 돈', '사랑과 가족', '앞으로 마주할 중요한 일']) {
     assert.match(html, rx(chapter));
   }
   // 태어난 해 하나로 정해져 또래가 같은 글을 받던 칸과, 사전과 겹치던 칸은 다시 넣지 않는다
@@ -95,15 +95,26 @@ test('"나는 어떤 사람인가"는 성격의 뼈대 체계를 먼저 쓰고 �
   assert.ok(!got.includes('숙요'), '앞서 고른 "신중·차분"과 반대 결인 "빠르다"가 함께 실렸다');
 });
 
-test('사례 부족 시기 예측은 근거 문구 없이 신호만 제시한다', () => {
+test('앞으로 마주할 중요한 일은 시기표가 아니라 사건·모양·대비로 쓴다', () => {
   const html = personal(A);
 
   assert.doesNotMatch(html, /잠정 선택|사전 후보|사람별 검증/);
-  assert.match(html, /일에서 가장 큰 기회와 변화가 오는 때는 <strong>/);
-  assert.match(html, /돈이 가장 크게 들어오는 때는 <strong>/);
+  // '시기 한눈에 보기'(분야별 몇 년 몇 월 신호표)는 뺐다 — 사건마다 나이 무렵과 대비를 쓴다
+  assert.doesNotMatch(html, /시기 한눈에 보기|가장 큰 기회와 변화가 오는 때는 <strong>/);
+  assert.match(html, /<b>대비<\/b> — /);
+  assert.match(html, /세 무렵/);
   // 결혼·출산 연도는 검증에서 떨어져 내지 않는다
   assert.doesNotMatch(html, /인연·관계가 가장 무르익는 때는 <strong>/);
   assert.doesNotMatch(html, /출산·가족 확장 신호가 높은 때는 <strong>/);
+});
+
+test('잘 맞는 일은 한 갈래로 모이고, 일을 키우려면도 같은 갈래일 때만 싣는다', async () => {
+  const { careerFocus } = await import('../../public/unse/src/report.js');
+  const r = readFortune(A);
+  const focus = careerFocus(r);
+  const html = personal(A);
+  if (focus.name) assert.match(html, rx(`여러 점술이 함께 가리키는 쪽은 ${focus.name}입니다`));
+  assert.equal(html.includes('일을 키우려면'), focus.workFits);
 });
 
 test('개인 리포트 화면 글에는 전문용어·한자·강조 표시가 남지 않는다', () => {

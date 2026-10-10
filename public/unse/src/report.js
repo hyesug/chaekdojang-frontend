@@ -270,9 +270,11 @@ function s13(r) {
 
   // 자미 관록궁·재백궁 사전(별 조합 39가지)이 있으면 그것으로, 없으면 예전 풀이로
   const work = ziweiPalaceEntry(r, 'career'), money = ziweiPalaceEntry(r, 'money');
-  return labeled('일을 키우려면', work ? `${work.h} ${work.g}` : readingText(r, '자미두수', '관록궁'))
+  // 자미 관록궁 문장이 위 "잘 맞는 일"과 다른 갈래면 싣지 않는다 — 한 리포트 안에서 직업 말이 엇갈렸다(피드백)
+  const fits = careerFocus(r).workFits;
+  return (fits ? labeled('일을 키우려면', `${work.h} ${work.g}`) : '')
     + labeled('돈을 키우려면', money ? `${money.h} ${money.g}` : readingText(r, '자미두수', '재백궁'))
-    + labeled('일과 돈에서 조심할 것', [work?.c ?? (nat?.risk?.length ? `${nat.risk.join(', ')}.` : ''), money?.c].filter(Boolean).join(' '))
+    + labeled('일과 돈에서 조심할 것', [fits ? work.c : (nat?.risk?.length ? `${nat.risk.join(', ')}.` : ''), money?.c].filter(Boolean).join(' '))
     + para(nextLine);
 }
 
@@ -395,31 +397,6 @@ function personalPrinciples(r) {
     if (nat?.risk?.[0]) out.unshift(`${nat.risk[0].replace(/다$/, '다')} — 이 버릇이 나오는 순간을 알아차리는 것이 첫 번째 원칙입니다.`);
   } catch { /* */ }
   return [...new Set(out.filter(Boolean))];
-}
-
-/* ── 6. 시기 한눈에 보기 ────────────────────────────────── */
-
-function finale(r) {
-  const items = [];
-  for (const [domain, icon, what] of [
-    ['직업', '💼', '일에서 가장 큰 기회와 변화가 오는 때'],
-    ['재물', '💰', '돈이 가장 크게 들어오는 때'],
-    ['이사', '🏠', '이사·이동하기 가장 좋은 때'],
-    ['건강', '🩺', '몸에 일이 생기기 쉬워 특히 챙겨야 하는 때'],
-  ]) {
-    const windows = selectedWindows(r, domain, 15, 2);
-    if (!windows.length) continue;
-    const spans = windows.map((w) => selectedSpan(r, w));
-    const text = (spans.length === 1
-      ? `${esc(what)}는 <strong>${esc(spans[0])}</strong>에 신호가 가장 높습니다.`
-      : `${esc(what)}는 <strong>${esc(spans.join(', '))}</strong> 순으로 신호가 높습니다.`);
-    items.push(`<li><span class="rp-ic" aria-hidden="true">${icon}</span><div><p>${text}</p></div></li>`);
-  }
-  // 실행 원칙은 맨 위 "조심해야 할 것"으로 옮겼다
-  const timingNotice = items.length
-    ? `<ul class="rp-bul">${items.join('')}</ul>`
-    : '<p class="rp-t rp-when">이 명반에서는 선택된 체계가 기간 안에서 서로 다른 달을 가르지 못했습니다.</p>';
-  return sub('', '앞으로 15년, 분야마다 신호가 모이는 때', timingNotice);
 }
 
 /* ── 문서 전체 ──────────────────────────────────────────── */
@@ -802,6 +779,136 @@ export function seasonNow(r) {
 }
 
 /**
+ * 잘 맞는 일 — 여러 체계가 **가장 많이 함께 가리키는 분야 하나**로 모은다.
+ * 체계마다 "맞는 분야" 문장을 하나씩 가져오면 실무·디자인·강의처럼 서로 다른 말이 한 칸에
+ * 나란히 놓였다(피드백). 각 문장·자미 관록궁·검증된 직업 범주가 분야 갈래에 표를 던지고,
+ * 가장 많은 표를 받은 갈래의 문장만 쓴다. 검증된 직업 범주는 두 표.
+ */
+const CAREER_CATS = [
+  ['돈과 숫자를 다루는 일', /금융|재무|회계|숫자|돈과 실무|투자|보험|은행|자산/],
+  ['깊이 파는 전문 분야', /연구|전문|분석|조사|법률|정확|기술직|엔지니어/],
+  ['말과 가르침으로 하는 일', /강의|교육|가르치|상담|컨설팅|말과|글|출판|언론/],
+  ['감각과 표현을 쓰는 일', /디자인|예술|창작|감각|미디어|콘텐츠|무대|방송|홍보/],
+  ['사람을 돕고 돌보는 일', /서비스|복지|돌봄|사람을 돕|의료|치유|간호|건강|요식/],
+  ['조직을 이끌고 관리하는 일', /관리|운영|조직|행정|공공|총괄|리더|대표|직책|공무/],
+  ['새 길을 여는 일', /IT|기획|새로운 방식|개척|창업|사업|무역|해외/],
+  ['몸과 현장을 쓰는 일', /체육|운동|제조|건설|현장|생산|농업|운송|군|경찰|몸을 쓰/],
+];
+const catsOf = (t) => CAREER_CATS.map(([, re], i) => (re.test(t) ? i : -1)).filter((i) => i >= 0);
+export function careerFocus(r) {
+  let es = [];
+  try { es = dictEntries(r); } catch { /* */ }
+  const lines = coreField(es, 'w', 30, 0, (t) => FIELD_FIT.test(t)).map((x) => x.text);
+  const work = ziweiPalaceEntry(r, 'career');
+  let vc = null;
+  try { vc = verifiedCareer(r.input); } catch { /* */ }
+  const votes = CAREER_CATS.map(() => 0);
+  for (const t of lines) for (const i of catsOf(t)) votes[i] += 1;
+  if (work) for (const i of catsOf(`${work.h} ${work.g}`)) votes[i] += 1;
+  // 사례로 확인한 직업 범주가 가장 무겁다(세 표) — 이것과 다른 갈래를 내세우면 같은 카드 안에서 말이 엇갈린다
+  if (vc?.available) for (const x of vc.top) for (const i of catsOf(x.label)) votes[i] += 3;
+  const best = votes.reduce((b, v, i) => (v > votes[b] ? i : b), 0);
+  const verified = vc?.available ? vc.top.map((x) => x.label) : [];
+  if (!votes[best]) return { name: '', verified, lines: lines.slice(0, 1), workFits: !!work };
+  return {
+    name: CAREER_CATS[best][0],
+    verified,
+    lines: lines.filter((t) => catsOf(t).includes(best)).slice(0, 2),
+    // 자미 관록궁 문장이 같은 갈래일 때만 "일을 키우려면"에 싣는다 — 다르면 리포트 안에서 직업 말이 엇갈린다
+    workFits: !!work && catsOf(`${work.h} ${work.g}`).includes(best),
+  };
+}
+
+/**
+ * 앞으로 마주할 중요한 일 — 시기표 대신 **무슨 일이, 어떤 모양으로, 어떻게 대비할지**를 사건 단위로.
+ *   · 앞으로의 10년 운이 타고난 기둥(집안·나와 배우자·자녀와 결과물)과 부딪치거나 맞물리는 것
+ *   · 실제 사례로 고른 체계가 짚는 일의 변화·목돈·이사·건강 (나이 무렵으로만 적는다)
+ * 결혼·출산 시기는 사례 검증에서 떨어져 쓰지 않는다.
+ */
+const SEAT_EVENT = {
+  day: {
+    충: ['생활의 중심이 크게 바뀌는 일', '배우자·연인과의 관계나 매일의 생활 방식이 크게 흔들리기 쉽습니다. 이사·동거·따로 살기·이직처럼 하루의 틀 자체가 바뀌는 모양으로 나타납니다.', '바뀌는 것을 한꺼번에 몰아 결정하지 말고 하나씩 차례로 정리하세요. 가장 가까운 사람과 먼저 계획을 맞춰 두면 흔들림이 작아집니다.'],
+    형: ['가까운 사이에서 같은 갈등이 되풀이되는 일', '배우자나 가장 가까운 사람과 같은 문제로 거듭 부딪치기 쉽습니다. 크게 터지기보다 오래 끄는 모양입니다.', '반복되는 다툼 주제를 적어 두고 둘만의 규칙으로 정하세요. 참았다가 한 번에 터뜨리지 마세요.'],
+    합: ['새 동반자·협력자가 생기는 일', '삶을 함께할 사람이나 오래 갈 파트너가 생기기 쉽습니다. 연애·결혼뿐 아니라 동업·협업의 형태로도 나타납니다.', '좋은 인연일수록 역할과 약속을 분명히 해 두세요. 들뜬 마음에 큰 결정을 서두르지 마세요.'],
+  },
+  year: {
+    충: ['집안·윗사람 쪽의 큰 변화', '부모님의 건강이나 거처, 집안의 형편, 또는 직장 윗선이 바뀌는 일이 생기기 쉽습니다. 내가 책임을 나눠 져야 하는 자리에 서게 됩니다.', '부모님과 집안 일을 미리 의논해 두고, 혼자 떠안지 말고 형제·가족과 몫을 나누세요.'],
+    형: ['집안 문제가 오래 끄는 일', '집안이나 윗사람과 얽힌 일이 크게 터지지 않은 채 오래 신경을 씁니다.', '선을 정해 두고, 감정이 아니라 사실과 문서로 정리하세요.'],
+    합: ['윗사람·집안의 도움이 들어오는 일', '부모님이나 윗사람, 오래 알던 사람에게서 도움이나 기회가 들어오기 쉽습니다.', '도움을 받을 때 조건과 기대를 분명히 해 두면 나중에 서운함이 남지 않습니다.'],
+  },
+  hour: {
+    충: ['자녀·아랫사람이나 내 결과물 쪽의 큰 변화', '자녀의 진학·독립, 함께 일하던 사람의 교체, 오래 붙든 일이나 작품의 정리처럼 내가 키워 온 것이 크게 바뀌기 쉽습니다.', '떠나보낼 것은 정리하고 새로 시작할 것을 고르는 계기로 삼으세요. 붙잡을수록 소모가 큽니다.'],
+    형: ['아랫사람·결과물 쪽에서 같은 문제가 되풀이되는 일', '자녀나 후배, 내가 맡은 일에서 같은 문제가 거듭 생기기 쉽습니다.', '그때그때 넘기지 말고 원인을 한 번 제대로 짚어 고치세요.'],
+    합: ['내가 키운 것이 결실을 맺는 일', '자녀·후배가 자리를 잡거나, 오래 공들인 일이 결과로 돌아오기 쉽습니다.', '결실을 다음 단계로 잇는 계획을 미리 세워 두세요.'],
+  },
+};
+const DOMAIN_EVENT = {
+  직업: ['일의 큰 변화', '하던 일의 방향이 바뀌거나 자리를 옮기는 일이 생기기 쉽습니다. 스스로 옮길 수도, 밖에서 제안이 올 수도, 맡은 일이 바뀔 수도 있습니다.', '1~2년 전부터 해 온 일을 정리하고 다음에 갈 쪽을 알아 두세요.'],
+  재물: ['목돈이 움직이는 일', '큰돈이 들어오거나, 집·투자·사업처럼 큰돈을 쓰는 결정이 생기기 쉽습니다.', '들어온 돈의 일부는 먼저 떼어 두고, 큰 지출은 한 번에 몰지 말고 나눠 결정하세요.'],
+  이사: ['사는 곳을 옮기는 일', '이사·이주처럼 생활의 근거지가 바뀌기 쉽습니다.', '옮길 곳의 일·가족 사정을 함께 따져 미리 후보를 좁혀 두세요.'],
+  건강: ['몸을 챙겨야 하는 일', '몸에 신호가 오거나 치료·관리가 필요한 일이 생기기 쉽습니다.', '그 무렵에는 검진을 미루지 말고 일정과 잠을 먼저 챙기세요.'],
+};
+function lifeEvents(r) {
+  return lifeEventItems(r).map((it) =>
+    `<article class="rp-signature"><h4 class="rp-h4">${esc(it.title)} <small>· ${esc(it.when)}</small></h4>`
+    + `<p>${esc(it.what)}</p><p class="rp-fine"><b>대비</b> — ${esc(it.prep)}</p></article>`).join('');
+}
+
+/** 앞으로 마주할 중요한 일의 목록 (리포트·AI 공용) — {y, when, title, what, prep} */
+export function lifeEventItems(r) {
+  const items = [];
+  const now = Number(r.input.currentYear);
+  const ageOf = (y) => y - r.input.year;
+  try {
+    const ds = computeDaeun(r.chart, r.input.isMale, r.input.jdUT);
+    const yearAt = (exact) => new Date((r.input.jdUT - 2440587.5 + exact * 365.2425) * 864e5).getUTCFullYear();
+    const seen = new Set();
+    for (const d of ds?.list ?? []) {
+      const from = yearAt(d.fromExact), to = yearAt(d.toExact) - 1;
+      if (to < now || from > now + 30) continue;
+      for (const key of ['day', 'year', 'hour']) {
+        const p = r.chart.pillars[key];
+        if (!p) continue;
+        const rels = branchRelations(p.branch, d.branch).filter((x) => !x.minor);
+        const rel = rels.find((x) => x.kind === '충') ?? rels.find((x) => /형/.test(x.kind)) ?? rels.find((x) => /합/.test(x.kind));
+        if (!rel) continue;
+        const kind = rel.kind === '충' ? '충' : /형/.test(rel.kind) ? '형' : '합';
+        if (seen.has(key + kind)) continue;
+        seen.add(key + kind);
+        const [title, what, prep] = SEAT_EVENT[key][kind];
+        const y = Math.max(from, now);
+        items.push({ y, when: `${ageOf(y)}~${d.toAge}세 무렵`, title, what, prep });
+      }
+    }
+  } catch { /* */ }
+  for (const domain of ['직업', '재물', '이사', '건강']) {
+    const w = selectedWindows(r, domain, 20, 1)[0];
+    if (!w) continue;
+    const y = Number(String(w.peakAt ?? w.from).slice(0, 4));
+    if (y < now) continue;
+    const [title, what, prep] = DOMAIN_EVENT[domain];
+    items.push({ y, when: `${ageOf(y)}세 무렵`, title, what, prep });
+  }
+  // 사건마다 그 사람 몫의 말을 붙인다 — 일은 맞는 갈래, 돈은 돈을 키우는 방향, 건강은 가장 옅은 기운
+  const focus = careerFocus(r);
+  let es = [];
+  try { es = dictEntries(r); } catch { /* */ }
+  const earn = coreField(es, 'm', 1, 0, (t) => EARN.test(t) && !IMPERATIVE.test(t))[0]?.text;
+  let weak = null;
+  try {
+    const c = elementDistribution(r.chart.pillars).count;
+    weak = ELEM_FILL[ELEM_KEYS[[0, 1, 2, 3, 4].reduce((x, i) => (c[i] < c[x] ? i : x), 0)]];
+  } catch { /* */ }
+  for (const it of items) {
+    if (it.title === '일의 큰 변화' && focus.name) it.prep += ` 옮긴다면 ${focus.name} 쪽이 이 명반에 맞습니다.`;
+    if (it.title === '목돈이 움직이는 일' && earn) it.what += ` 이 명반은 ${earn}`;
+    if (it.title === '몸을 챙겨야 하는 일' && weak) it.prep += ` 이 명반에서 가장 옅은 것은 ${weak.name} 기운(${weak.means})이라, ${weak.how}`;
+  }
+  items.sort((a, b) => a.y - b.y);
+  return items.slice(0, 8);
+}
+
+/**
  * 리포트 맨 위 네 카드의 내용 — 지금 시기 · 앞으로 가야 할 방향 · 알아 두면 좋은 나 · 조심해야 할 것.
  * AI 상담 문맥(aiContext.js)도 이 함수를 그대로 써서, 리포트와 AI가 같은 말을 같은 순서로 한다.
  */
@@ -809,15 +916,19 @@ export function futureDigest(r) {
   let es = [];
   try { es = dictEntries(r); } catch { /* */ }
   const pick = (f, n, keep, skip = 0) => coreField(es, f, n, skip, keep).map((x) => x.text);
-  let vc = null;
-  try { vc = verifiedCareer(r.input); } catch { /* */ }
   const careful = pick('c', 3);
+  const focus = careerFocus(r);
   return {
     hasDict: es.length > 0,
     season: seasonNow(r),
     direction: {
-      career: vc?.available ? `${vc.top.map((x) => x.label).join(', ')} 쪽입니다.` : '',
-      fields: pick('w', 3, (t) => FIELD_FIT.test(t)),
+      // 직업 분야와 맞는 일을 한 칸으로 — 두 칸으로 나눠 두니 서로 다른 말을 했다
+      career: '',
+      fields: [
+        focus.name ? `여러 점술이 함께 가리키는 쪽은 ${focus.name}입니다.` : '',
+        focus.verified.length ? `가능성이 높은 분야는 ${focus.verified.join(', ')}입니다.` : '',
+        ...focus.lines,
+      ].filter(Boolean),
       earn: pick('m', 2, (t) => EARN.test(t) && !IMPERATIVE.test(t)),
       drawn: pick('r', 2, (t) => DRAWN_TO.test(t)),
     },
@@ -894,7 +1005,8 @@ export function renderReport(form, r, f, v) {
     sec(1, '일과 돈', careerLife(v, r), '앞으로 키워 갈 일과 돈'),
     sec(2, '사랑과 가족', relations(v, r), '배우자·자녀·형제'),
     // '올해'와 '일이 풀리고 막히는 흐름' 장은 뺐다(사용자 요청) — 앞으로의 방향은 위 카드와 시기 장이 맡는다
-    sec(3, '시기 한눈에 보기', finale(r), '일·돈·인연·이사가 가장 유력한 해'),
+    // '시기 한눈에 보기'는 뺐다(사용자 요청) — 언제보다 무슨 일이 어떤 모양으로 오는지를 쓴다
+    sec(3, '앞으로 마주할 중요한 일', lifeEvents(r), '무슨 일이, 어떤 모양으로 오고, 어떻게 대비할지'),
   ].filter(Boolean).join('');
 
   return `

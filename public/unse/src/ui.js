@@ -64,7 +64,8 @@ export async function run(mode, box, next) {
     setTimeout(() => {
       const p = last?.people ?? {};
       const el = box.querySelector('.rp-pair-events');
-      if (el && p.a && p.b) el.innerHTML = pairEventsHtml(p.a, p.b, form.name, formB.name);
+      const married = [form.marital, formB.marital].includes('married');
+      if (el && p.a && p.b) el.innerHTML = pairEventsHtml(p.a, p.b, form.name, formB.name, { married });
       initCompatAI(form, formB, c);
     }, 30);
     await next();
@@ -135,8 +136,8 @@ function collect(p, mode) {
     homePlace: $(`#${p}homePlace`).value.trim() || '서울',
     dst: $(`#${p}dst`).checked,
     inputCalendar: cal,
-    // 결혼 여부는 첫 사람 칸에만 있다(궁합의 두 번째 사람 칸에는 없다). 고르지 않으면 null
-    marital: $(`#${p}marital`)?.value || null,
+    // 결혼 여부는 궁합에서만 묻는다 — 개인 운세에서는 칸을 숨기고 값도 쓰지 않는다. 고르지 않으면 null
+    marital: mode === 'pair' ? ($(`#${p}marital`)?.value || null) : null,
   };
 }
 

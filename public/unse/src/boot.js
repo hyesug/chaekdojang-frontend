@@ -74,6 +74,8 @@ document.querySelectorAll('.mode').forEach((btn) => {
     });
     $('#personB').hidden = mode !== 'pair';
     document.querySelectorAll('.person-title').forEach((t) => { t.hidden = mode !== 'pair'; });
+    // 결혼 여부는 궁합에서만 묻는다(기혼이면 부부용 궁합 리포트)
+    document.querySelectorAll('.pair-only').forEach((t) => { t.hidden = mode !== 'pair'; });
     $('.go').textContent = mode === 'pair' ? '궁합 명반 생성하기' : '명반 생성하기';
     $('#result').classList.remove('on');
     // 아직 안 받았으면 지울 결과도 없다

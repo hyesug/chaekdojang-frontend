@@ -176,3 +176,17 @@ test('좋은 방향과 피할 방향에 같은 방위가 함께 나오지 않는
     assert.deepEqual(good.filter((d) => bad.includes(d)), [], `겹침: ${good} / ${bad}`);
   }
 });
+
+test('궁합에서 기혼을 고르면 부부용 리포트 — 결혼 여부를 다시 판정하지 않고, 결혼 자체를 앞날 사건으로 내지 않는다', () => {
+  const married = pair({ ...A, marital: 'married' }, B);
+  for (const heading of ['두 사람은 어떤 부부인가', '두 사람 사이의 설렘과 대화', '함께 사는 일', '함께 살며 — 재산·육아·일', '아이가 두 사람에게 주는 의미']) {
+    assert.match(married, rx(heading));
+  }
+  for (const gone of ['연애 궁합인가, 결혼 궁합인가', '결혼해서 더 잘 맞는', '연애할 때 더 잘 맞는', '관계를 공식적으로 묶는 일', '몇 명이 좋을까']) {
+    assert.doesNotMatch(married, rx(gone));
+  }
+  // 미혼·선택 안 함은 그대로, 재산·육아·일은 "함께 산다면"으로 보인다
+  const single = pair(A, B);
+  assert.match(single, /함께 산다면 — 재산·육아·일/);
+  for (const k of ['재산은 이렇게 모으면 좋습니다', '육아는 누가', '둘 다 일할까']) assert.match(single, rx(k));
+});

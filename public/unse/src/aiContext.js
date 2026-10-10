@@ -741,21 +741,25 @@ function formatPairDict(formA, formB, c) {
   const nA = formA.name || '첫째', nB = formB.name || '둘째';
   let v = null;
   try { v = buildCompatView(formA, formB, c); } catch { /* 축 점수만 빠진다 */ }
-  const d = pairLoveDigest(rA, rB, nA, nB, v);
-  // 궁합 리포트와 같은 순서 — 연애 궁합인가 결혼 궁합인가 → 연애할 때 → 결혼하면 → 배려 → 고칠 점 → 자녀 → 마주할 일
+  // 한 사람이라도 기혼을 골랐으면 부부용 — 리포트와 같은 판단
+  const married = [formA.marital, formB.marital].includes('married');
+  const d = pairLoveDigest(rA, rB, nA, nB, v, { married });
+  // 궁합 리포트와 같은 순서와 같은 제목
   const out = ['## 두 사람의 해석 (손님이 받은 궁합 리포트와 같은 내용 — 답은 이 내용을 바탕으로)'];
+  if (married) out.push('두 사람은 이미 결혼한 부부다. 결혼을 할지·언제 할지, 연애 궁합인지 결혼 궁합인지를 다시 판정하지 말고, 함께 사는 지금과 앞으로를 기준으로 답할 것. 아이가 이미 있을 수 있으니 아이 수를 단정하지 말 것.');
   const sec = (title, rows) => { if (rows.length) out.push(`### ${title}`, ...rows.map((t) => `- ${t}`)); };
-  sec('연애 궁합인가, 결혼 궁합인가', [d.verdict.text, d.relation].filter(Boolean));
-  sec('연애할 때 — 좋은 점', d.dating.good);
-  sec('연애할 때 — 아쉬운 점', d.dating.bad);
-  sec('결혼하면 — 좋은 점', d.marriage.good);
-  sec('결혼하면 — 아쉬운 점', d.marriage.bad);
+  sec(married ? '두 사람은 어떤 부부인가' : '연애 궁합인가, 결혼 궁합인가', [d.verdict.text, d.relation].filter(Boolean));
+  sec(`${married ? '두 사람 사이의 설렘과 대화' : '연애할 때'} — 좋은 점`, d.dating.good);
+  sec(`${married ? '두 사람 사이의 설렘과 대화' : '연애할 때'} — 아쉬운 점`, d.dating.bad);
+  sec(`${married ? '함께 사는 일' : '결혼하면'} — 좋은 점`, d.marriage.good);
+  sec(`${married ? '함께 사는 일' : '결혼하면'} — 아쉬운 점`, d.marriage.bad);
+  sec(married ? '함께 살며 — 재산·육아·일' : '함께 산다면 — 재산·육아·일', d.home.map(([k, t]) => `${k}: ${t}`));
   sec('서로 배려할 점', d.care.map(([k, t]) => `${k}: ${t}`));
   sec('각자 고쳐야 할 점', d.fix.map(([k, t]) => `${k}: ${t}`));
   sec('자녀와 함께라면 (두 사람 궁합으로 본 권하는 말이다 — "몇 명을 낳게 된다"는 예측으로 바꿔 말하지 말 것)', d.kids.map(([k, t]) => `${k}: ${t}`));
   // 리포트의 사건 장과 같은 목록(각자의 일·목돈·이사 사건까지) — 시기 계산은 캐시를 다시 쓴다
   let events = [];
-  try { events = pairEventItems(rA, rB, nA, nB); } catch { /* */ }
+  try { events = pairEventItems(rA, rB, nA, nB, { married }); } catch { /* */ }
   sec('앞으로 두 사람이 마주할 중요한 일 (무슨 일이, 어떤 모양으로, 어떻게 대비할지)', events.map((it) => `${it.when} · ${it.title}: ${it.what} 대비: ${it.prep}`));
   out.push('');
   return out;
@@ -876,9 +880,12 @@ export function buildCompatContext(formA, formB, c, forecastA = null, forecastB 
 /** 궁합 화면을 열었을 때 자동으로 받는 요청문 */
 export const COMPAT_PROMPT =
   '위 결과를 바탕으로 두 사람의 궁합을 풀어 주세요. ' +
-  '궁합 리포트와 같은 순서로 소제목을 넣어 (1) 연애 궁합인가, 결혼 궁합인가 (2) 연애할 때 좋은 점과 아쉬운 점 (3) 결혼하면 좋은 점과 아쉬운 점 ' +
-  '(4) 서로 배려할 점 (5) 각자 고쳐야 할 점 (6) 자녀와 함께라면 (7) 앞으로 두 사람이 마주할 중요한 일 순으로 정리해 주세요. ' +
-  '(6)은 리포트의 "아이를 낳으면", "몇 명이 좋을까"를 바탕으로 두 사람 궁합에서 권하는 방향으로 말하고, "몇 명을 낳게 된다"처럼 예측하지는 마세요. 아이를 키울 때의 두 사람 모습과 조심할 점도 함께 말해 주세요. ' +
-  '(7)은 목록에서 가장 큰 두세 가지를 골라 무슨 일이, 어떤 모양으로 오고, 어떻게 대비할지로 풀어 주세요. ' +
+  '궁합 리포트와 같은 순서·같은 제목으로 소제목을 넣어 정리해 주세요 — 위 "두 사람의 해석"에 적힌 제목을 그대로 씁니다' +
+  '(부부면 "두 사람은 어떤 부부인가 / 두 사람 사이의 설렘과 대화 / 함께 사는 일 / 함께 살며 — 재산·육아·일", ' +
+  '아니면 "연애 궁합인가, 결혼 궁합인가 / 연애할 때 / 결혼하면 / 함께 산다면 — 재산·육아·일"), 이어서 서로 배려할 점, 각자 고쳐야 할 점, ' +
+  '자녀와 함께라면, 앞으로 두 사람이 마주할 중요한 일 순서입니다. ' +
+  '재산·육아·일은 리포트의 권하는 말을 바탕으로 누가 무엇을 맡으면 좋은지 구체적으로 풀어 주세요. ' +
+  '자녀는 리포트의 권하는 말을 바탕으로 말하고, "몇 명을 낳게 된다"처럼 예측하지는 마세요. ' +
+  '마주할 중요한 일은 목록에서 가장 큰 두세 가지를 골라 무슨 일이, 어떤 모양으로 오고, 어떻게 대비할지로 풀어 주세요. ' +
   '각 소제목은 두 사람이 앞으로 무엇을 하면 좋은지 구체적인 행동으로 끝내 주세요. ' +
   '열일곱 체계가 어긋나는 지점이 있으면 그것도 짚어 주세요.';

@@ -15,7 +15,7 @@ import { compareFortune } from './compat.js';
 import { lunarToSolar } from './core/lunar.js';
 import { elementDistribution } from './core/ganzhi.js';
 import { j } from './core/josa.js';
-import { encodeState, decodeState } from './share.js';
+import { encodeState, decodeState, shareLink } from './share.js';
 import { readForecast, areaText } from './forecast.js';
 import { renderReport, renderPairReport, periodFlow, pairEventsHtml } from './report.js';
 import { buildView, buildCompatView } from './viewmodel.js';
@@ -181,6 +181,8 @@ function renderCompat(formA, formB, r) {
       b: elementDistribution(r.B?.chart?.pillars ?? {}).count,
     }, people)}
 
+    ${shareBlock()}
+
     <div class="section-label">AI 명반 해석</div>
     ${aiSection('pair', v)}
 
@@ -337,6 +339,8 @@ function render(form, r, f) {
     <div class="section-label">인생 데이터 분석</div>
     ${renderReport(form, r, f, v)}
 
+    ${shareBlock()}
+
     <div class="section-label">AI 명반 해석</div>
     ${aiSection('solo', v)}
 
@@ -382,6 +386,31 @@ async function fillProfileCard(form) {
 // ─────────────────────────────────────────────────────────────
 // 저장하고 나누기
 // ─────────────────────────────────────────────────────────────
+
+/**
+ * 결과 공유 — 링크 하나만(이미지·PDF 저장은 결과가 길어 뺐다). 링크를 열면 같은 결과가 다시 계산된다.
+ * 링크에 출생 정보가 담긴다는 것을 버튼 옆에 밝힌다.
+ */
+function shareBlock() {
+  return `
+    <div class="share-card">
+      <div class="sharebar" style="margin:0">
+        <button type="button" data-act="share">🔗 결과 링크 공유하기</button>
+      </div>
+      <p class="agree-note" style="margin:8px 0 0">링크를 받은 사람도 같은 결과를 볼 수 있습니다. 링크에 생년월일과 태어난 시각이 담기니 믿는 사람에게만 보내세요.</p>
+    </div>`;
+}
+
+$('#result').addEventListener('click', async (e) => {
+  const btn = e.target.closest('[data-act="share"]');
+  if (!btn || !last) return;
+  const url = location.origin + location.pathname + encodeState(last.mode, last.formA, last.formB);
+  const title = last.mode === 'pair'
+    ? `${last.formA.name || '나'} · ${last.formB.name || '상대'} 궁합 — 책도장`
+    : `${last.formA.name || '나'}의 운세 — 책도장`;
+  const how = await shareLink(url, title);
+  if (how === 'copied') toast('링크를 복사했습니다. 원하는 곳에 붙여 넣어 보내세요.');
+});
 
 function toast(msg, ok = true) {
   let el = $('#toast');

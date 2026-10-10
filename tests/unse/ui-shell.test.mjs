@@ -66,3 +66,16 @@ test('AI 영역은 질문권 상태와 소진 paywall을 기록 안에서 표시
   assert.match(ai, /id="ai-credit-status"/);
   assert.match(ai, /className = 'ai-paywall'/);
 });
+
+test('결과 아래에 링크 공유 버튼이 있고, 링크는 궁합의 결혼 여부까지 되살린다', async () => {
+  const ui = await read('src/ui.js');
+  assert.match(ui, /data-act="share"/);
+  assert.match(ui, /링크에 생년월일과 태어난 시각이 담기니/);
+  const { encodeState, decodeState } = await import('../../public/unse/src/share.js');
+  const a = { name: '가', gender: 'female', year: 1993, month: 5, day: 17, hour: 14, minute: 20, birthPlace: '서울', homePlace: '서울', marital: 'married' };
+  const b = { ...a, name: '나', gender: 'male', marital: null };
+  const st = decodeState(encodeState('pair', a, b));
+  assert.equal(st.mode, 'pair');
+  assert.equal(st.formA.marital, 'married');
+  assert.equal(st.formB.marital, null);
+});

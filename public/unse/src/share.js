@@ -36,6 +36,8 @@ const packPerson = (f) => [
   f.name, f.gender === 'male' ? 1 : 0, f.year, f.month, f.day,
   f.hour ?? '', f.minute ?? 0, f.birthPlace, f.homePlace,
   f.dst ? 1 : 0, f.inputCalendar ?? 'solar',
+  // 궁합의 결혼 여부 — 링크로 열어도 부부용 리포트가 그대로 나오게
+  f.marital === 'married' ? 'm' : f.marital === 'single' ? 's' : '',
 ];
 
 const unpackPerson = (a) => ({
@@ -44,7 +46,26 @@ const unpackPerson = (a) => ({
   hour: a[5] === '' ? null : +a[5], minute: +a[6],
   birthPlace: a[7], homePlace: a[8],
   dst: !!a[9], inputCalendar: a[10] || 'solar',
+  marital: a[11] === 'm' ? 'married' : a[11] === 's' ? 'single' : null,
 });
+
+/**
+ * 결과 링크 공유 — 휴대폰은 공유 시트(카카오톡·메시지 등), 안 되면 링크를 복사한다.
+ * 링크에는 입력값(생년월일·시각·장소)이 담긴다. 서버에 아무것도 남기지 않는 대신 링크가 곧 데이터다.
+ * @returns {'shared'|'copied'|'cancelled'}
+ */
+export async function shareLink(url, title = '책도장 운세') {
+  if (navigator.share) {
+    try { await navigator.share({ title, url }); return 'shared'; }
+    catch (e) { if (e?.name === 'AbortError') return 'cancelled'; }
+  }
+  try { await navigator.clipboard.writeText(url); return 'copied'; }
+  catch {
+    // 클립보드 권한이 없는 브라우저(일부 인앱 브라우저) — 고를 수 있게 띄운다
+    window.prompt('아래 링크를 복사해 보내세요', url);
+    return 'copied';
+  }
+}
 
 export function encodeState(mode, formA, formB) {
   const payload = mode === 'pair'

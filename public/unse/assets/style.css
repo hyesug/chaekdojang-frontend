@@ -672,6 +672,9 @@ details.pool[open] > summary::before { content: '▾ '; }
 .compat-extremes { border-top: 1px solid var(--line-soft); padding: 16px 0 18px; }
 .compat-extremes .say-text + .say-text { margin-top: 14px; }
 .profile-card { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 15px; }
+/* 결과 링크 공유 — 리포트 바로 아래, AI 해석 위 */
+.share-card { margin: 18px 0 6px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+.share-card .sharebar button { flex: 1; font-weight: 600; }
 .cite { font-size: 12px; color: var(--ink-3); white-space: normal; }
 
 @media print {

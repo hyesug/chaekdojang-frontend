@@ -90,3 +90,16 @@ test('책 카드는 저자가 길어도 화면 밖으로 밀려나지 않는다'
   assert.match(css, /\.rp-book-list li \{ min-width: 0; \}/);
   assert.doesNotMatch(css, /\.rp-book-meta small \{[^}]*white-space: nowrap/);
 });
+
+test('결과 칸마다 피드백(👍/👎 + 한 줄)을 붙이고, 출생 정보는 보내지 않는다', async () => {
+  const ui = await read('src/ui.js');
+  const fb = await read('src/feedback.js');
+  assert.match(ui, /attachFeedback\(box, \{ mode: 'solo', names: \[form\.name\] \}\)/);
+  assert.match(ui, /attachFeedback\(box, \{ mode: 'pair', names: \[form\.name, formB\.name\] \}\)/);
+  assert.match(fb, /fetch\('\/api\/fortune\/feedback'/);
+  // 보내는 필드는 mode·section·verdict·snippet·comment 뿐 — 생년월일·시각·이름 필드가 없다
+  const payload = fb.match(/const payload = [^\n]+/)[0];
+  assert.match(payload, /\{ mode, section, verdict, snippet: snippetOf\(el, names\), comment \}/);
+  assert.doesNotMatch(fb, /year|month|day|hour|birth/);
+  assert.match(fb, /split\(n\)\.join\('○○'\)/);   // 문장 속 이름은 지운다
+});

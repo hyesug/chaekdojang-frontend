@@ -5,10 +5,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import ReviewDetailModal from "../components/ReviewDetailModal";
+import FortuneFeedbackPanel from "./FortuneFeedbackPanel";
 import { API_BASE } from "../lib/api";
 import { authFetch, getValidToken } from "../lib/auth";
 
-type Tab = "dashboard" | "users" | "reviews" | "groups" | "inquiries" | "officialProfiles" | "actions" | "security" | "audit" | "aiCredits";
+type Tab = "dashboard" | "users" | "reviews" | "groups" | "inquiries" | "officialProfiles" | "actions" | "security" | "audit" | "aiCredits" | "fortuneFeedback";
 
 interface PageResponse<T> {
   content: T[];
@@ -357,6 +358,7 @@ const tabs: Array<{ key: Tab; label: string }> = [
   { key: "security", label: "보안·오류" },
   { key: "audit", label: "관리자 이력" },
   { key: "aiCredits", label: "AI 질문권" },
+  { key: "fortuneFeedback", label: "운세 피드백" },
 ];
 
 const LIST_PAGE_SIZE = 50;
@@ -2616,6 +2618,8 @@ export default function AdminPage() {
               </form>
             </section>
           )}
+
+          {tab === "fortuneFeedback" && <FortuneFeedbackPanel />}
         </div>
       )}
       {selectedReviewId != null && (

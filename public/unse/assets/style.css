@@ -1326,3 +1326,11 @@ input, select, textarea, button.go, .ask-btn, .mode, .lt, .ft, .planned span {
   border-radius: var(--radius); padding: 14px; box-shadow: 0 12px 40px rgb(0 0 0 / 25%); }
 .share-preview-in img { display: block; width: 100%; height: auto; border-radius: var(--radius-sm); }
 .share-preview .sharebar { margin: 12px 0 0; }
+
+/* 결과 칸 피드백 (feedback.js) */
+.fb { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 14px; padding-top: 10px; border-top: 1px dashed var(--line-soft); font-size: 13px; color: var(--ink-3); }
+.fb button { font: inherit; font-size: 13px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg-soft); color: var(--ink-2); cursor: pointer; }
+.fb button:disabled { opacity: .5; cursor: default; }
+.fb-form { display: flex; gap: 6px; width: 100%; }
+.fb-form input { flex: 1; min-width: 0; font: inherit; font-size: 14px; padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); color: var(--ink); }
+.fb-done { color: var(--gold); }

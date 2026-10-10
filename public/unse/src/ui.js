@@ -17,6 +17,7 @@ import { elementDistribution } from './core/ganzhi.js';
 import { j } from './core/josa.js';
 import { encodeState, decodeState, shareLink, buildShareCard, saveCanvas } from './share.js';
 import { buildHighlights, buildPairHighlights, renderHighlights } from './highlights.js';
+import { attachFeedback } from './feedback.js';
 import { readForecast, areaText } from './forecast.js';
 import { renderReport, renderPairReport, pairDigestFor, periodFlow, pairEventsHtml } from './report.js';
 import { buildView, buildCompatView } from './viewmodel.js';
@@ -60,6 +61,7 @@ export async function run(mode, box, next) {
     await loadDicts().catch(() => null);
     await next();
     box.innerHTML = renderCompat(form, formB, c);
+    attachFeedback(box, { mode: 'pair', names: [form.name, formB.name] });
     // 화면부터 띄우고, 무거운 계산(두 사람의 시기 → 사건 장, AI 문맥)은 그다음에 — 예전에는 둘 다 끝나야 화면이 떴다.
     // AI 문맥은 사건 장이 계산해 둔 시기를 출생 정보 캐시로 다시 쓰므로 뒤에 두면 금방 끝난다.
     setTimeout(() => {
@@ -82,6 +84,7 @@ export async function run(mode, box, next) {
     await loadDicts().catch(() => null);
     await next();
     box.innerHTML = render(form, r, f);
+    attachFeedback(box, { mode: 'solo', names: [form.name] });
     fillBooks(box);
     initAI(form, r, f);
     await next();

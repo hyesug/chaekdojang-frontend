@@ -17,7 +17,7 @@ import { elementDistribution } from './core/ganzhi.js';
 import { j } from './core/josa.js';
 import { encodeState, decodeState } from './share.js';
 import { readForecast, areaText } from './forecast.js';
-import { renderReport, renderPairReport } from './report.js';
+import { renderReport, renderPairReport, periodFlow } from './report.js';
 import { buildView, buildCompatView } from './viewmodel.js';
 import { SYSTEM_META, TIER_LABEL, SOURCE_LABEL } from './meta.js';
 import { loadProfile, saveProfile, deleteProfile, loginUrl } from './profile.js';
@@ -275,10 +275,18 @@ function render(form, r, f) {
     ? `<li><span class="rp-ic" aria-hidden="true">${icon}</span><div><b>${esc(label)}</b><p>${esc(text)}</p></div></li>`
     : '';
   const AREA_ICON = { 총운: '🌐', 애정운: '💗', 금전운: '💰', 직장운: '💼', 건강운: '🌿' };
-  const areaItems = (block_, kind) => ['총운', '애정운', '금전운', '직장운', '건강운']
-    .map((a) => block_.areas[a]?.score == null ? ''
-      : item(AREA_ICON[a], a === '총운' ? '전체 흐름' : a.replace('운', ''), areaText(a, block_.areas[a].score, kind)))
-    .join('');
+  // 분야마다 점수 구간의 정해진 한 줄만 내던 것을, 그날·그달의 기운이 이 사람에게 무엇인지로 바꿨다(report.js periodFlow)
+  const flowOf = (block_, kind) => { try { return periodFlow(r, block_, kind); } catch { return null; } };
+  const areaItems = (block_, kind) => {
+    const fl = flowOf(block_, kind);
+    const rows = fl?.areas ?? ['총운', '애정운', '금전운', '직장운', '건강운']
+      .filter((a) => block_.areas[a]?.score != null).map((a) => [a, areaText(a, block_.areas[a].score, kind)]);
+    return rows.map(([a, t]) => item(AREA_ICON[a], a === '총운' ? '전체 흐름' : a.replace('운', ''), t)).join('');
+  };
+  const flowHead = (block_, kind) => {
+    const fl = flowOf(block_, kind);
+    return [fl?.theme, fl?.seat].filter(Boolean).map((t) => `<p class="rp-t">${esc(t)}</p>`).join('');
+  };
   const todayInfo = v.month.days.find((x) => x.d === f.today.d);
 
   const pane = (id, on, html) =>
@@ -307,12 +315,14 @@ function render(form, r, f) {
         <h3 class="rp-card-h"><span aria-hidden="true">☀️</span> 오늘의 운세 · ${f.today.m}월 ${f.today.d}일${todayInfo?.weekday ? `(${esc(todayInfo.weekday)})` : ''}</h3>
         ${v.now.grade ? `<p class="rp-chips"><span>오늘의 컨디션 · ${esc(v.now.grade)}</span></p>` : ''}
         ${v.now.line ? `<blockquote class="rp-quote">${esc(v.now.line)}</blockquote>` : ''}
+        ${flowHead(f.day, 'day')}
         <ul class="rp-bul">${areaItems(f.day, 'day')}</ul>
       </section>`)}
 
     ${pane('month', false, `
       <section class="rp-card rp-card-solo">
         <h3 class="rp-card-h"><span aria-hidden="true">🗓️</span> ${esc(v.month.label)}의 운세</h3>
+        ${flowHead(f.month, 'month')}
         <ul class="rp-bul">${areaItems(f.month, 'month')}</ul>
         <h4 class="rp-h4">📌 이달의 날짜 가이드</h4>
         <ul class="rp-bul">

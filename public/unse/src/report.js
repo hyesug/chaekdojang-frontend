@@ -17,6 +17,7 @@
  * ── 여기서 문장을 새로 짓지 않는다 ─────────────────────────
  * 고르고 배열만 한다. 새로 지으면 어느 계산에서 나온 말인지 추적할 수 없다.
  */
+import { areaText } from './forecast.js';
 import { currentDaeun, computeDaeun, TEN_GOD_GROUP, elementDistribution, tenGod, tenGodDistribution, branchRelations } from './core/ganzhi.js';
 import { buildBoard, decadeLimits } from './hires/ziwei.js';
 import { yearTimeline } from './reading.js';
@@ -30,7 +31,7 @@ import { readChildren, childPalaceStars, childrenVerdict } from './semantic/stru
 import { childrenPack, marriagePack } from './hires/vedicExt.js';
 import { verifiedCareer } from './semantic/index.js';
 import { distinctReadings, ownSentences } from './semantic/distinct.js';
-import { dictEntries, dictField, coreField, daeunEntry, ziweiPalaceEntry, pairReading, themeContrast, eventEntry } from './semantic/dict.js';
+import { dictEntries, dictField, coreField, daeunEntry, ziweiPalaceEntry, pairReading, themeContrast, eventEntry, dictLoaded } from './semantic/dict.js';
 import { lifeChapters, chapterTurns } from './semantic/compose/life.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
@@ -751,6 +752,45 @@ const lineList = (xs) => (xs.length ? `<ul class="rp-ul">${xs.map((t) => `<li>${
 const h4 = (icon, t) => `<h4 class="rp-h4">${icon} ${esc(t)}</h4>`;
 
 /** 지금 내가 서 있는 10년의 반쪽(앞 다섯 해·뒤 다섯 해)과 바로 다음 반쪽 — 일간 × 10년 운 사전 */
+/**
+ * 오늘·이달의 흐름 (화면·AI 공용) — 분야마다 점수 구간으로 정해진 한 줄("특별히 좋지도 나쁘지도 않은
+ * 날입니다")만 내던 것을 걷고(피드백: 의미가 없다), 그날·그달의 기운이 **이 사람에게 무엇인가**(일간 기준
+ * 십신, dict/flow.json)와 그날·그달의 지지가 **내 일지와 맺는 관계**로 쓴다. 같은 날이라도 사람마다 갈린다.
+ * @param {'day'|'month'} kind
+ * @returns {{god, theme, seat, areas: Array<[area, text]>}|null}
+ */
+const SEAT_FLOW = {
+  충: (u) => `${u} 내 생활의 중심과 정면으로 부딪칩니다. 가까운 사람과 다투거나 계획이 틀어지기 쉬우니 큰 결정은 미루세요.`,
+  합: (u) => `${u} 내 자리와 잘 맞물립니다. 만남·협력·부탁이 잘 풀리니 미뤄 둔 연락을 해 보세요.`,
+  형: (u) => `${u} 지난 문제가 다시 불거지기 쉽습니다. 끝난 이야기를 다시 꺼내지 마세요.`,
+  원진: (u) => `${u} 까닭 없이 거슬리는 일이 생기기 쉽습니다. 말투를 한 번 더 부드럽게 하세요.`,
+};
+export function periodFlow(r, block, kind) {
+  const flow = dictLoaded()?.flow;
+  if (!block) return null;
+  const god = String(block.results?.find((x) => x.id === 'saju')?.headline ?? '').split('·').at(-1).trim();
+  const e = flow?.[god];
+  const unit = kind === 'day' ? '오늘은' : '이번 달은';
+  let seat = '';
+  try {
+    const b = kind === 'day' ? block.period.gz.day.branch : block.period.gz.month.branch;
+    const rels = branchRelations(r.chart.pillars.day.branch, b);
+    const k = rels.find((x) => x.kind === '충') ? '충' : rels.find((x) => /형/.test(x.kind)) ? '형'
+      : rels.find((x) => /합/.test(x.kind)) ? '합' : rels.find((x) => x.kind === '원진') ? '원진' : null;
+    if (k) seat = SEAT_FLOW[k](unit);
+  } catch { /* */ }
+  const areas = ['총운', '애정운', '금전운', '직장운', '건강운'].map((a) => {
+    const s = block.areas?.[a]?.score;
+    if (s == null) return null;
+    if (!e?.[a]) return [a, areaText(a, s, kind)];
+    // 점수는 같은 결 안에서의 세기로만 덧붙인다
+    const tail = s >= 62 ? ' 이 분야는 흐름도 좋은 편입니다.' : s < 42 ? ' 이 분야는 흐름이 약한 편이라 한 번 더 확인하세요.' : '';
+    return [a, `${e[a]}${tail}`];
+  }).filter(Boolean);
+  // 십신 이름은 화면에 쓰지 않는다(용어) — 뜻만
+  return { god, theme: e?.h ? `${unit} ${e.h}` : '', seat, areas };
+}
+
 /** 두 사람의 다음 시기가 두 해 안쪽으로 함께 바뀌면, 생활의 틀을 같이 다시 짤 때다 (궁합 리포트·AI 공용) */
 export function togetherTurn(snA, snB) {
   // 두 해까지 넓히면 40쌍 중 33쌍, 한 해까지도 24쌍에 붙어 누구에게나 하는 말이 됐다 — 같은 해에 바뀔 때만
@@ -809,12 +849,16 @@ export function careerFocus(r) {
   // 사례로 확인한 직업 범주가 가장 무겁다(세 표) — 이것과 다른 갈래를 내세우면 같은 카드 안에서 말이 엇갈린다
   if (vc?.available) for (const x of vc.top) for (const i of catsOf(x.label)) votes[i] += 3;
   const best = votes.reduce((b, v, i) => (v > votes[b] ? i : b), 0);
-  const verified = vc?.available ? vc.top.map((x) => x.label) : [];
-  if (!votes[best]) return { name: '', verified, lines: lines.slice(0, 1), workFits: !!work };
+  // 여러 분야를 늘어놓으면 "잘 맞는 일이 너무 여러 개"가 된다(피드백) — 고른 갈래에 드는 것만 남긴다
+  const verifiedAll = vc?.available ? vc.top.map((x) => x.label) : [];
+  if (!votes[best]) return { name: '', verified: verifiedAll.slice(0, 1), lines: lines.slice(0, 1), workFits: !!work };
+  const verified = verifiedAll.filter((l) => catsOf(l).includes(best));
+  // 문장도 하나만 — 그 갈래에만 드는(다른 갈래와 덜 섞인) 문장을 고른다
+  const own = lines.filter((t) => catsOf(t).includes(best)).sort((a, b) => catsOf(a).length - catsOf(b).length);
   return {
     name: CAREER_CATS[best][0],
     verified,
-    lines: lines.filter((t) => catsOf(t).includes(best)).slice(0, 2),
+    lines: own.slice(0, 1),
     // 자미 관록궁 문장이 같은 갈래일 때만 "일을 키우려면"에 싣는다 — 다르면 리포트 안에서 직업 말이 엇갈린다
     workFits: !!work && catsOf(`${work.h} ${work.g}`).includes(best),
   };
@@ -851,8 +895,8 @@ const DOMAIN_EVENT = {
 };
 function lifeEvents(r) {
   return lifeEventItems(r).map((it) =>
-    `<article class="rp-signature"><h4 class="rp-h4">${esc(it.title)} <small>· ${esc(it.when)}</small></h4>`
-    + `<p>${esc(it.what)}</p><p class="rp-fine"><b>대비</b> — ${esc(it.prep)}</p></article>`).join('');
+    `<article class="rp-event"><h4 class="rp-h4">${esc(it.title)} <small>· ${esc(it.when)}</small></h4>`
+    + `<p>${esc(it.what)}</p><p class="rp-prep"><b>대비</b> — ${esc(it.prep)}</p></article>`).join('');
 }
 
 /** 앞으로 마주할 중요한 일의 목록 (리포트·AI 공용) — {y, when, title, what, prep} */
@@ -990,7 +1034,9 @@ export function futureDigest(r) {
       career: '',
       fields: [
         focus.name ? `여러 점술이 함께 가리키는 쪽은 ${focus.name}입니다.` : '',
-        focus.verified.length ? `가능성이 높은 분야는 ${focus.verified.join(', ')}입니다.` : '',
+        focus.verified.length
+          ? (focus.name ? `그중에서도 ${focus.verified.join(', ')} 분야가 가능성이 높습니다.` : `가능성이 높은 분야는 ${focus.verified.join(', ')}입니다.`)
+          : '',
         ...focus.lines,
       ].filter(Boolean),
       earn: pick('m', 2, (t) => EARN.test(t) && !IMPERATIVE.test(t)),
@@ -1186,8 +1232,8 @@ export function renderPairReport(formA, formB, c, v, elementDist, people = {}) {
 
   // 앞으로 두 사람이 마주할 중요한 일 — 개인 리포트처럼 시기표가 아니라 사건·모양·대비로
   const eventHtml = events.map((it) =>
-    `<article class="rp-signature"><h4 class="rp-h4">${esc(it.title)} <small>· ${esc(it.when)}</small></h4>`
-    + `<p>${esc(it.what)}</p><p class="rp-fine"><b>대비</b> — ${esc(it.prep)}</p></article>`).join('');
+    `<article class="rp-event"><h4 class="rp-h4">${esc(it.title)} <small>· ${esc(it.when)}</small></h4>`
+    + `<p>${esc(it.what)}</p><p class="rp-prep"><b>대비</b> — ${esc(it.prep)}</p></article>`).join('');
   const chapters = sec(1, '앞으로 두 사람이 마주할 중요한 일', eventHtml, '무슨 일이, 어떤 모양으로 오고, 어떻게 대비할지')
     + sec(2, '서로 채워주는 기운', table2(['기운', '두 사람'], elemRows), '두 사람의 기운 비교');
 

@@ -11,7 +11,7 @@ const dict = await loadDicts();
 
 test('모든 항목이 칸을 채운다 — 성향 사전은 다섯 칸, 10년 운 사전은 세 칸', () => {
   for (const [group, entries] of Object.entries(dict)) {
-    const fields = group === 'event' ? ['t', 'w', 'p'] : group.startsWith('daeun') || group.startsWith('pair-') || (group.startsWith('ziwei-') && group !== 'ziwei-ming') ? ['h', 'g', 'c'] : ['p', 'w', 'm', 'r', 'c'];
+    const fields = group === 'flow' ? ['h', '총운', '애정운', '금전운', '직장운', '건강운'] : group === 'event' ? ['t', 'w', 'p'] : group.startsWith('daeun') || group.startsWith('pair-') || (group.startsWith('ziwei-') && group !== 'ziwei-ming') ? ['h', 'g', 'c'] : ['p', 'w', 'm', 'r', 'c'];
     for (const [key, e] of Object.entries(entries)) {
       for (const f of fields) assert.ok(e[f]?.length > 5, `${group}|${key} 의 ${f} 칸이 비었다`);
     }
@@ -67,4 +67,17 @@ test('AI 문맥은 리포트와 같은 "앞으로 마주할 중요한 일" 목�
   const pctx = buildCompatContext(a, b, compareFortune(a, b));
   for (const it of pairEventItems(ra, rb, '가', '나')) assert.ok(pctx.includes(it.title), `궁합 AI 문맥에 사건이 없다: ${it.title}`);
   assert.doesNotMatch(pctx, /결혼 시기를 물을 때 반드시/);
+});
+
+test('오늘·이달의 운세는 점수 구간의 정해진 한 줄이 아니라 그날 기운이 이 사람에게 무엇인지로 쓴다', async () => {
+  const { periodFlow } = await import('../../public/unse/src/report.js');
+  const { readForecast } = await import('../../public/unse/src/forecast.js');
+  const form = { gender: 'female', year: 1992, month: 1, day: 30, hour: 16, minute: 28, birthPlace: '여주', homePlace: '대전' };
+  const r = readFortune(form), f = readForecast(form);
+  for (const kind of ['day', 'month']) {
+    const fl = periodFlow(r, f[kind], kind);
+    assert.ok(fl.theme.length > 10, `${kind} 결 문장이 없다`);
+    assert.equal(fl.areas.length, 5);
+    for (const [, t] of fl.areas) assert.doesNotMatch(t, /특별히 좋지도 나쁘지도|평소대로 흘러가는/);
+  }
 });

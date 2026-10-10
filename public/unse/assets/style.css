@@ -1217,6 +1217,16 @@ footer .ver { font-size: 11.5px; color: var(--ink-3); margin-top: 18px; letter-s
 .rp-cap { margin: 14px 0 4px; color: var(--ink-3); font-size: 12.5px; font-weight: 700; letter-spacing: .04em; }
 .rp-fine { margin: 8px 0 0; color: var(--ink-3); font-size: 13px; line-height: 1.65; }
 
+/* 앞으로 마주할 중요한 일 — 사건 하나를 한 덩어리로. 사이를 띄우고 선으로 갈라
+   "대비" 줄이 다음 사건에 붙어 보이지 않게 한다(피드백) */
+.rp-event { padding: 14px 0 16px; border-bottom: 1px solid var(--line-soft); }
+.rp-event:first-child { padding-top: 4px; }
+.rp-event:last-child { border-bottom: none; padding-bottom: 4px; }
+.rp-event .rp-h4 { margin-bottom: 6px; }
+.rp-event .rp-h4 small { color: var(--ink-3); font-weight: 500; }
+.rp-event p { margin: 0; color: var(--ink-2); font-size: 15px; line-height: 1.75; }
+.rp-event .rp-prep { margin-top: 8px; padding: 8px 12px; border-radius: 8px; background: var(--line-soft); color: var(--ink-2); font-size: 14px; }
+
 /* 체계별 풀이 — 제목 한 줄 + 본문 */
 .rp-reads { list-style: none; margin: 4px 0 8px; padding: 0; }
 .rp-reads li { padding: 10px 0; border-bottom: 1px dashed var(--line-soft); }

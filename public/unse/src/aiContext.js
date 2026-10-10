@@ -18,7 +18,7 @@
 import { ELEMENTS, computeDaeun } from './core/ganzhi.js';
 import { dictEntries, coreField, ziweiPalaceEntry, pairReading, themeContrast } from './semantic/dict.js';
 import { readFortune } from './engine.js';
-import { futureDigest, seasonNow, togetherTurn, careerFocus, lifeEventItems, pairEventItems } from './report.js';
+import { futureDigest, seasonNow, togetherTurn, careerFocus, lifeEventItems, pairEventItems, periodFlow } from './report.js';
 import { AREAS } from './forecast.js';
 import { candidatesToward, DIR8 } from './hires/location.js';
 import { yearDirections } from './systems/gujeong.js';
@@ -502,6 +502,12 @@ export function buildContext(form, r, f = null) {
         .map((x) => `${x.name}(${x.headline})`)
         .join(', ');
       out.push(`  주요 근거: ${top}`);
+      // 화면의 오늘·이달의 운세와 같은 문장 — 그날·그달 기운이 이 사람에게 무엇인지, 내 일지와 무엇을 맺는지
+      if (label !== '올해') {
+        const fl = periodFlow(r, block, label === '오늘' ? 'day' : 'month');
+        if (fl?.theme) out.push(`  화면에 보인 ${label}의 결: ${fl.theme}${fl.seat ? ` ${fl.seat}` : ''}`);
+        if (fl?.areas?.length) out.push(`  화면에 보인 분야별 조언: ${fl.areas.map(([a, t]) => `${a.replace('운', '')} — ${t}`).join(' / ')}`);
+      }
     }
     out.push('');
     out.push('올해 열두 달 (절기 기준)');

@@ -82,3 +82,16 @@ test('오늘·이달의 운세는 점수 구간의 정해진 한 줄이 아니�
     for (const [, t] of fl.areas) assert.doesNotMatch(t, /특별히 좋지도 나쁘지도|평소대로 흘러가는/);
   }
 });
+
+test('평생 성향 사전(자미 명궁·관록궁)은 "이직·업종 변경이 잦다"고 단정하지 않는다', async () => {
+  // 사례 검증: 파군이 명궁·관록궁에 있는 4명 모두 이직 기록이 없었다(미용실 운영·헬스트레이너·대리점 운영 등)
+  const { readFile } = await import('node:fs/promises');
+  for (const f of ['ziwei-ming.json', 'ziwei-career.json']) {
+    const d = JSON.parse(await readFile(new URL(`../../public/unse/dict/${f}`, import.meta.url), 'utf8'));
+    for (const [k, e] of Object.entries(d)) {
+      for (const t of Object.values(e)) {
+        assert.doesNotMatch(String(t), /이직이나 업종 변경|업종 변경을 .*자주|직업.{0,8}여러 번 바꾸|판을 자주 바꿉/, `${f} ${k}`);
+      }
+    }
+  }
+});

@@ -220,3 +220,14 @@ test('책 추천 주제는 같은 사람이라도 달마다 바뀐다(이번 달
   const months = ['2026-10-10', '2026-11-15', '2027-03-10', '2027-06-10'].map(at);
   assert.ok(new Set(months).size >= 3, `달마다 주제가 거의 같다: ${months.join(' / ')}`);
 });
+
+test('사건은 "무언가" 없이 구체적으로, "무렵"은 한 해(못 좁히면 세 해)로', async () => {
+  const { pairEventItems, lifeEventItems } = await import('../../public/unse/src/report.js');
+  const ra = readFortune(A), rb = readFortune(B);
+  const items = [...pairEventItems(ra, rb, '가', '나'), ...lifeEventItems(ra), ...lifeEventItems(rb)];
+  for (const e of items) {
+    assert.doesNotMatch(`${e.title} ${e.what}`, /무언가/);
+    const m = e.when.match(/(\d+)~(\d+)/);
+    if (m) assert.ok(Number(m[2]) - Number(m[1]) <= 2, `무렵이 길다: ${e.when}`);
+  }
+});

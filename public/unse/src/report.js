@@ -1000,6 +1000,21 @@ function lifeEvents(r) {
 }
 
 /** 앞으로 마주할 중요한 일의 목록 (리포트·AI 공용) — {y, when, title, what, prep} */
+/**
+ * 10년 운이 어떤 자리와 맺는 관계(충·형·합)가 그 10년 안에서 **그해의 기운으로 한 번 더** 맺어지는 첫 해.
+ * 10년 전체를 "무렵"으로 쓰면 기간이 너무 길다(피드백) — 그 관계가 겹치는 해로 좁힌다. 없으면 null.
+ */
+function peakYear(from, to, branch, kind) {
+  for (let y = from; y <= to; y++) {
+    const yb = (((y - 4) % 12) + 12) % 12;
+    const rels = branchRelations(yb, branch).filter((x) => !x.minor);
+    const k = rels.some((x) => x.kind === '충') ? '충' : rels.some((x) => /형/.test(x.kind)) ? '형'
+      : rels.some((x) => /합/.test(x.kind)) ? '합' : null;
+    if (k === kind) return y;
+  }
+  return null;
+}
+
 export function lifeEventItems(r) {
   const items = [];
   const now = Number(r.input.currentYear);
@@ -1026,9 +1041,16 @@ export function lifeEventItems(r) {
         const kind = rel.kind === '충' ? '충' : /형/.test(rel.kind) ? '형' : '합';
         if (seen.has(key + kind)) continue;
         seen.add(key + kind);
-        const [title, what, prep] = pickEvent(`seat|${key}|${kind}|${group}`, SEAT_EVENT[key][kind]);
-        const y = Math.max(from, now);
-        items.push({ y, when: `${ageOf(y)}~${d.toAge}세 무렵`, title, what, prep });
+        // 10년 전체(예: 36~45세) 대신 그 안에서 같은 관계가 한 번 더 맞물리는 해로 좁힌다
+        const peak = peakYear(Math.max(from, now), to, p.branch, kind);
+        const y = peak ?? Math.max(from, now);
+        // 성별로 뜻이 갈리는 사건(식상 — 여자는 자녀, 남자는 재주·결과물)은 그 사람의 성별 글을 먼저.
+        // 아이 이야기는 마흔다섯까지만 — 그 뒤에는 함께 일을 벌이는 쪽 글로
+        const base = `seat|${key}|${kind}|${group}`;
+        const sex = r.input.isMale || ageOf(y) > 45 ? 'male' : 'female';
+        const [title, what, prep] = eventEntry(`${base}|${sex}`)
+          ? pickEvent(`${base}|${sex}`, null) : pickEvent(base, SEAT_EVENT[key][kind]);
+        items.push({ y, when: peak ? `${ageOf(y)}세 무렵` : `${ageOf(y)}~${ageOf(y) + 2}세 무렵`, title, what, prep });
       }
     }
   } catch { /* */ }
@@ -1092,11 +1114,16 @@ export function pairEventItems(rA, rB, A, B, { withLife = true, married = false 
         seen.add(kind);
         const key = `pair|${kind}|${TEN_GOD_GROUP[d.god]}`;
         if (married && key === 'pair|합|관성') continue;
-        const e = eventEntry(key);
+        // 10년 전체(예: 2033~2042년) 대신 그 안에서 같은 관계가 한 번 더 맞물리는 해로 좁힌다(피드백: 무렵이 너무 길다)
+        const peak = peakYear(Math.max(from, now), to, seat, kind);
+        const y = peak ?? Math.max(from, now);
+        // 성별로 뜻이 갈리는 사건은 그 일을 겪는 사람(X)의 성별 글을 먼저 — "무언가를 낳고 키우는 일"이 모호했다(피드백).
+        // 아이 이야기는 마흔다섯까지만 — 그 뒤에는 함께 일을 벌이는 쪽 글로
+        const sex = rX.input.isMale || y - rX.input.year > 45 ? 'male' : 'female';
+        const e = eventEntry(`${key}|${sex}`) ?? eventEntry(key);
         if (!e) continue;
         const [title, what, prep] = fill(e, X, Y);
-        const y = Math.max(from, now);
-        items.push({ y, when: `${y}~${to}년 무렵`, title, what, prep });
+        items.push({ y, when: peak ? `${y}년 무렵` : `${y}~${y + 2}년 무렵`, title, what, prep });
       }
     } catch { /* */ }
     for (const it of withLife ? lifeEventItems(rX) : []) {
@@ -1444,7 +1471,7 @@ export function pairLoveDigest(rA, rB, A, B, v, { married = false } = {}) {
     good: [pr?.hap?.h, ...same.slice(0, 2).map((p) => `${both(p)} — 이 점이 닮아 말하지 않아도 통합니다.`)].filter(Boolean),
     bad: [...clash.slice(0, 2).map((p) => `${both(p)} — 이 차이로 부딪치기 쉽습니다.`), pr?.stem?.c, pr?.hap?.c].filter(Boolean),
   };
-  const goodEv = evOf(/묶는|함께 무언가|커지는|기대고|한 팀/);
+  const goodEv = evOf(/묶는|아이|함께 일|키워 가는|커지는|기대고|한 팀/);
   const badEv = evOf(/흔들리는|되풀이|끼어드는|쌓이는|부딪치는/);
   const marriage = {
     good: [seatGood ? `${pr.seat.h} ${pr.seat.g}` : '', pr?.stem?.g ? `같이 살 때는 역할이 이렇게 나뉘면 좋습니다. ${pr.stem.g}` : '', money.same[0] ? `${both(money.same[0])} — 돈을 대하는 생각이 닮아 살림을 꾸리기 수월합니다.` : '',
@@ -1473,7 +1500,8 @@ export function pairLoveDigest(rA, rB, A, B, v, { married = false } = {}) {
 
   // 자녀 — 각자의 자미 자녀궁(어떤 아이와 인연인지, 잘 되는 것, 조심할 것)
   const chA = ziweiPalaceEntry(rA, 'children'), chB = ziweiPalaceEntry(rB, 'children');
-  const kidsEv = evOf(/낳고 키우는|자녀/);
+  // 아이와 이어지는 사건만 — 남자 쪽 "함께 일이나 사업을 시작하는 일"은 자녀 칸에 넣지 않는다
+  const kidsEv = evOf(/아이/);
   const rec = kidsAdvice(rA, rB, kidsEv.length > 0);
   // 부부는 이미 아이가 있을 수 있다 — "낳으면 / 몇 명"이 아니라 아이가 주는 의미와, 계획이 남아 있을 때의 말로
   const kids = [
@@ -1482,7 +1510,7 @@ export function pairLoveDigest(rA, rB, A, B, v, { married = false } = {}) {
     chA ? [`${A}님 쪽에서 보면`, `${chA.h} ${chA.g}`] : null,
     chB ? [`${B}님 쪽에서 보면`, `${chB.h} ${chB.g}`] : null,
     chA || chB ? ['아이를 키울 때 조심할 것', [chA?.c, chB?.c].filter(Boolean).join(' ')] : null,
-    kidsEv.length ? ['함께 키울 것이 생기는 때', `${kidsEv.join(', ')}.`] : null,
+    kidsEv.length ? ['아이와 관련된 일이 생기기 쉬운 때', `${kidsEv.join(', ')}.`] : null,
   ].filter(Boolean);
 
   return { married, verdict, relation: pr?.stem?.h ?? '', dating, marriage, care, fix, kids, events,

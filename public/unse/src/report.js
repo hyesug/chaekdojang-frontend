@@ -223,22 +223,6 @@ const AREA = {
   질액궁: '건강', 천이궁: '바깥 활동과 이동', 노복궁: '주변 사람', 관록궁: '일과 명예',
   전택궁: '집과 재산', 복덕궁: '마음의 여유', 부모궁: '부모·윗사람',
 };
-/**
- * 사전 한 항목(h 어떤 시기·자리인지, g 잘 되는 것, c 조심할 것)을 한 문단으로 잇는다.
- * 모든 칸이 "잘 되는 것 — … 조심할 것 — …" 같은 틀로 읽히지 않게 이음말을 문장마다 바꾼다
- * (문장 내용으로 고르므로 같은 사람에게는 늘 같은 글이 나온다).
- */
-const HGC_FORMS = [
-  (h, g, c) => `${h} ${g} 다만 ${c}`,
-  (h, g, c) => `${h} ${g} 그래도 ${c}`,
-  (h, g, c) => `${h} ${g} 한편 ${c}`,
-];
-function hgc(e, withCaution = true) {
-  if (!e) return '';
-  let n = 0;
-  for (const ch of String(e.h)) n = (n * 31 + ch.charCodeAt(0)) % 9973;
-  return withCaution ? HGC_FORMS[n % HGC_FORMS.length](e.h, e.g, e.c) : `${e.h} ${e.g}`;
-}
 
 
 
@@ -789,11 +773,14 @@ function lifeFlow(r) {
     const de = daeunEntry(r.chart.dayStem, d.stem, d.branch);
     if (de.front && de.back) {
       const mid = from + 5;
-      const half = (e) => hgc(e);
+      // 짧게(피드백: 이 카드가 너무 길다) — 시기마다 "어떤 시기인지 한 문장 + 잘 되는 것", 덧붙임은 그 10년에 하나만
+      const half = (e) => `${String(e.h).split(/(?<=[.])\s/)[0]} ${e.g}`;
       const extra = parts.filter((p) => !p.startsWith('\x27') || !p.includes('의 시기입니다'));
+      const one = extra[0] ? [extra[0]] : [];
       // 이미 지나간 다섯 해는 싣지 않는다 — 지금과 앞으로만
-      if (mid - 1 >= now) rows.push([`${d.fromAge}~${d.fromAge + 4}세 (${from}~${mid - 1}년)${nowMark(from, mid - 1)}`, [half(de.front), ...extra.slice(0, 2)].join(' ')]);
-      rows.push([`${d.fromAge + 5}~${d.toAge}세 (${mid}~${to}년)${nowMark(mid, to)}`, [half(de.back), ...extra.slice(mid - 1 >= now ? 2 : 0)].join(' ')]);
+      const frontShown = mid - 1 >= now;
+      if (frontShown) rows.push([`${d.fromAge}~${d.fromAge + 4}세 (${from}~${mid - 1}년)${nowMark(from, mid - 1)}`, [half(de.front), ...one].join(' ')]);
+      rows.push([`${d.fromAge + 5}~${d.toAge}세 (${mid}~${to}년)${nowMark(mid, to)}`, [half(de.back), ...(frontShown ? [] : one)].join(' ')]);
       continue;
     }
     if (info && !seenGroup.has(group)) {
@@ -811,14 +798,8 @@ function lifeFlow(r) {
   // 그 해에 **무엇이** 바뀌는지 — 주기마다 쉬운 이름과, 새로 시작되는 구간의 뜻
   // 그 해에 삶의 무엇이 바뀌는지만 말한다 — 어느 체계의 어떤 주기인지는 손님이 알 필요가 없다
   const startLine = (st) => {
-    if (st.system === '사주') {
-      // 새로 시작되는 10년의 앞 다섯 해 해석(일간 × 대운 천간 사전) — 사람마다 갈린다
-      const d = (ds?.list ?? []).find((x) => yearAt(x.fromExact) === st.fromYear);
-      const de = d ? daeunEntry(r.chart.dayStem, d.stem, d.branch) : null;
-      if (de?.front) return `${de.front.h.replace(/[.]$/, '')}`;
-      const g = TEN_GOD_GROUP[String(st.detail ?? '').replace(/^천간\s*/, '')];
-      return g ? `'${GOD_FIELD[g]}'이 삶의 중심 주제로 올라옵니다` : '';
-    }
+    // 사주의 새 10년은 위 시기 줄이 이미 말한다 — 꺾이는 해에서 되풀이하지 않는다
+    if (st.system === '사주') return '';
     if (st.system === '자미두수') {
       const pal = String(st.label ?? '').match(/원국의\s*(\S+궁)/)?.[1];
       // 그 10년 궁의 별로 이때 두드러지는 내 모습까지
@@ -832,16 +813,15 @@ function lifeFlow(r) {
       const p = String(st.label ?? '').split(' ')[0];
       return PLANET_TERM[p] ? `${j(PLANET_TERM[p], '이')} 오래 이어질 주제가 됩니다` : '';
     }
-    // 구성학·카발라의 주기는 같은 해에 난 사람에게 같은 해에 돌아온다 — 그 사람 몫의 말이 없어 적지 않는다
-    if (st.system === '고전 서양') return '삶의 큰 무대가 바뀝니다';
-    if (st.system === '태을신수') return '오래 이어진 흐름이 한 바퀴를 돌아 새로 시작됩니다';
+    // 구성학·카발라·태을신수·고전 서양의 주기 문장("오래 이어진 흐름이 한 바퀴를 돌아…", "삶의 큰 무대가
+    // 바뀝니다")은 무엇이 바뀌는지 말하지 못해 애매했다(피드백) — 싣지 않는다
     return '';
   };
+  // 무엇이 바뀌는지 구체적으로 말할 수 있는 해만, 두 해까지
   const turnRows = turns.map((t) => {
     const what = [...new Set(t.starts.map(startLine).filter(Boolean))];
-    return [`${t.year}년 (${t.age}세)`,
-      what.length ? `${what.join('. ')}.` : '하던 일의 방향이나 생활의 틀을 다시 짜게 되기 쉬운 때입니다.'];
-  });
+    return what.length ? [`${t.year}년 (${t.age}세)`, `${what.join('. ')}.`] : null;
+  }).filter(Boolean).slice(0, 2);
 
   return (rows.length ? timeline(rows) : '')
     + (turnRows.length ? `<h4 class="rp-h4">🔀 흐름이 크게 꺾이는 해</h4>${timeline(turnRows)}` : '');

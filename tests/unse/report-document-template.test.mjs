@@ -70,6 +70,8 @@ test('개인 리포트는 한눈에 보는 나·나는 어떤 사람인가·커�
   const now = new Date().getFullYear();
   for (const m of flow.matchAll(/\((\d{4})~(\d{4})년\)/g)) assert.ok(Number(m[2]) >= now, `지난 시기가 남았다: ${m[0]}`);
   assert.ok([...flow.matchAll(/\((\d{4})~(\d{4})년\)/g)].length <= 4);
+  // 무엇이 바뀌는지 말하지 못하는 주기 문장은 싣지 않는다
+  assert.doesNotMatch(flow, /한 바퀴를 돌아 새로 시작|삶의 큰 무대가 바뀝니다|생활의 틀을 다시 짜게 되기 쉬운 때/);
   // 자세한 장은 접어 두고, 겹치던 장(사업·로또, 질문별 색인)은 다시 넣지 않는다
   for (const chapter of ['일과 돈', '사랑과 가족', '건강', '앞으로 마주할 중요한 일', '어떤 일이 맞는가', '일하는 방식', '돈을 버는 방식', '쓰는 습관과 모으는 법', '타고난 몸의 결']) {
     assert.match(html, rx(chapter));

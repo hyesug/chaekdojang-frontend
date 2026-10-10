@@ -50,7 +50,8 @@ export const SIHWA_KIND = ['화록', '화권', '화과', '화기'];
 export function palaceStems(yearStem) {
   const inStem = mod10((yearStem % 5) * 2 + 2);   // 인궁(2번 지지)의 천간
   const out = new Array(12);
-  for (let b = 0; b < 12; b++) out[b] = mod10(inStem + b - 2);
+  // 인궁부터 순행 — 子·丑궁은 인궁에서 10·11칸 뒤다(b - 2 로 두면 子·丑의 천간이 둘 어긋났다)
+  for (let b = 0; b < 12; b++) out[b] = mod10(inStem + mod12(b - 2));
   return out;
 }
 

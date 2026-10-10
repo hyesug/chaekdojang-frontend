@@ -709,8 +709,10 @@ test('1위가 혼자 서 있지 않으면 시기를 고르지 않는다', () => 
   // 열두 달이 48~47%로 몰려 1998년부터 2017년까지 걸쳐 있는 후보가 실제로
   // 있었다. 그 상태로 "1위는 2014년 11월"이라고 하면 20년 폭 동률에서
   // 하나를 뽑아 단정하는 셈이다.
+  // 상위 달이 동률로 몰리는 명반이어야 이 회귀를 잴 수 있다
+  // (자미 궁간 수정 뒤 17시 명반은 동률이 2개로 줄어 13시로 옮겼다)
   const r = readFortune({ name: 'G', gender: 'male', year: 1966, month: 3, day: 6,
-    hour: 17, minute: 0, birthPlace: '여주', homePlace: '구미' }, { now: NOW });
+    hour: 13, minute: 0, birthPlace: '여주', homePlace: '구미' }, { now: NOW });
   const chunks = [];
   for (let y = 2008; y < 2027; y += 5) {
     chunks.push(buildGrid(r.input, r.chart, { fromYear: y, years: Math.min(5, 2027 - y), domain: '이사' }));

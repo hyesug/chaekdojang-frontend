@@ -33,7 +33,9 @@ test('영점보다 나빴던 속성은 담당이 비어 있다', () => {
 });
 
 test('비운 속성은 어떤 체계가 말해도 답으로 나가지 않는다', () => {
-  const r = person();
+  // 전택궁에 별이 있는 명반이어야 '읽기는 살아 있다'를 잴 수 있다
+  // (자미 궁간 수정 뒤 10시 명반은 전택궁이 비어 8시로 옮겼다)
+  const r = person({ hour: 8 });
   const best = IN.bestRead(readsOf(r));
   // 자미 전택궁 읽기 자체는 살아 있다 — 비운 것은 '담당'이지 '계산'이 아니다
   const ziwei = readsOf(r).find((x) => x.system === '자미두수');

@@ -147,3 +147,19 @@ test('주간 자동 수정: 고친(사전에서 사라진) 문장의 피드백�
   assert.deepEqual(fixedIds(before, index).sort(), [1, 2]);
   assert.deepEqual(fixedIds({}, index), []);
 });
+
+test('자미두수: 명궁이 子·丑궁이어도 오호둔 궁간이 맞다 (子궁 천간은 인궁에서 10칸 뒤)', async () => {
+  const { palaceStems } = await import('../../public/unse/src/hires/ziwei.js');
+  // 辛년(7): 丙辛→庚寅. 寅庚 卯辛 … 亥己 子庚 丑辛
+  const st = palaceStems(7);
+  assert.equal(st[2], 6);   // 寅 庚
+  assert.equal(st[0], 6);   // 子 庚 (예전: 戊)
+  assert.equal(st[1], 7);   // 丑 辛 (예전: 己)
+  // 실제 사례(다른 만세력과 대조): 1991-08-23 15:49 여 — 명궁 庚子, 토5국, 자미 卯, 명궁 주성 태양
+  const { readFortune } = await import('../../public/unse/src/engine.js');
+  const r = readFortune({ name: 'x', year: 1991, month: 8, day: 23, hour: 15, minute: 49, birthPlace: '서울', homePlace: '서울', gender: 'female' });
+  const f = (k) => r.results.find((x) => x.id === 'jamidusu').facts.find((x) => x.label === k);
+  assert.match(f('오행국').note, /庚子/);
+  assert.match(f('자미성').value, /卯/);
+  assert.match(`${f('명궁').value} ${f('명궁').note ?? ''}`, /태양/);
+});

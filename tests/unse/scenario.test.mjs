@@ -562,7 +562,9 @@ test('18. 시기 신호가 없는 사건은 상태 기계만 보고 만들어지
 });
 
 test('19. 현재 상태가 미래 사건 원재료를 미리 지우지 않는다', () => {
-  const opts = { birth: BIRTH, question: '2027년부터 2030년 사이에 이직할까?', now: NOW };
+  // 그 기간 원재료에 승진 후보가 있는 명반이어야 '지우지 않는다'를 잴 수 있다
+  // (자미 궁간 수정 뒤 15시 명반은 승진 후보가 없어 13시로 옮겼다)
+  const opts = { birth: { ...BIRTH, hour: 13 }, question: '2027년부터 2030년 사이에 이직할까?', now: NOW };
   const emp = prepareScenario({ ...opts, currentState: { employmentType: 'employed' } });
   const un = prepareScenario({ ...opts, currentState: { employmentType: 'none' } });
 

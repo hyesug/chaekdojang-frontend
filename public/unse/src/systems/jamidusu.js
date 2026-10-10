@@ -175,7 +175,8 @@ export function analyze(input) {
   // 2) 오행국 — 명궁의 간지를 납음으로
   const yearStem = ((sajuYear - 4) % 10 + 10) % 10;
   const inStem = ((yearStem % 5) * 2 + 2) % 10;              // 오호둔: 인궁의 천간
-  const myeongStem = ((inStem + myeong - 2) % 10 + 10) % 10;
+  // 인궁부터 순행 — 子·丑궁은 인궁에서 10·11칸 뒤다(뒤로 2·1칸으로 세면 천간이 둘 어긋난다)
+  const myeongStem = (inStem + ((myeong - 2 + 12) % 12)) % 10;
   let sexa = -1;
   for (let i = 0; i < 60; i++) if (i % 10 === myeongStem && i % 12 === myeong) { sexa = i; break; }
   const guk = GUK[NAYEUM[Math.floor(sexa / 2)]];
@@ -461,7 +462,8 @@ function chartOf(x) {
   const myeong = ((2 + lm - 1 - x.hourBranch) % 12 + 12) % 12;
   const yearStem = (((x.ziweiYear ?? x.sajuYear) - 4) % 10 + 10) % 10;
   const inStem = ((yearStem % 5) * 2 + 2) % 10;
-  const myeongStem = ((inStem + myeong - 2) % 10 + 10) % 10;
+  // 인궁부터 순행 — 子·丑궁은 인궁에서 10·11칸 뒤다(뒤로 2·1칸으로 세면 천간이 둘 어긋난다)
+  const myeongStem = (inStem + ((myeong - 2 + 12) % 12)) % 10;
   let sexa = 0;
   for (let i = 0; i < 60; i++) if (i % 10 === myeongStem && i % 12 === myeong) { sexa = i; break; }
   const guk = GUK[NAYEUM[Math.floor(sexa / 2)]];
@@ -564,7 +566,8 @@ export function forecast(input, chart, period) {
 
   const yearStem = (((input.ziweiYear ?? chart.sajuYear) - 4) % 10 + 10) % 10;
   const inStem = ((yearStem % 5) * 2 + 2) % 10;
-  const myeongStem = ((inStem + myeong - 2) % 10 + 10) % 10;
+  // 인궁부터 순행 — 子·丑궁은 인궁에서 10·11칸 뒤다(뒤로 2·1칸으로 세면 천간이 둘 어긋난다)
+  const myeongStem = (inStem + ((myeong - 2 + 12) % 12)) % 10;
   let sexa = 0;
   for (let i = 0; i < 60; i++) if (i % 10 === myeongStem && i % 12 === myeong) { sexa = i; break; }
   const guk = GUK[NAYEUM[Math.floor(sexa / 2)]];

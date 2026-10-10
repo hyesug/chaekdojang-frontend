@@ -1045,23 +1045,56 @@ const BOOK_LABEL = {
 };
 
 /** 한 사람에게 지금 필요한 책 주제 셋 — [{theme, reason}] */
-export function bookNeeds(r, d = futureDigest(r)) {
+/** 이번 달의 결(일간 기준 십신) → 이달에 읽으면 좋은 주제 */
+const MONTH_BOOK = {
+  비견: ['INDEPENDENCE', '내 고집이 세지고 홀로 서려는 달이라'],
+  겁재: ['RELATION', '경쟁이 붙고 사람과 부딪히기 쉬운 달이라'],
+  식신: ['EXPRESSION', '재주를 쓰고 즐기는 달이라'],
+  상관: ['RELATION', '말이 날카로워지기 쉬운 달이라'],
+  편재: ['CHALLENGE', '기회와 사람이 넓게 들어오는 달이라'],
+  정재: ['MONEY', '차근차근 챙기면 그만큼 남는 달이라'],
+  편관: ['REST', '압박과 긴장이 커지는 달이라'],
+  정관: ['LEADERSHIP', '책임과 평가가 앞에 서는 달이라'],
+  편인: ['MIND', '생각이 깊어지고 혼자 있고 싶어지는 달이라'],
+  정인: ['STUDY', '배우고 정비하기 좋은 달이라'],
+};
+
+/**
+ * 한 사람에게 지금 필요한 책 주제 셋 — [{theme, reason}]. 시기마다 바뀐다(피드백: 사람이 같아도 시기마다 달라야).
+ *   1. 지금의 10년(대운) — 몇 년 단위로 바뀐다
+ *   2. 이번 달의 결(월운) — 달마다 바뀐다
+ *   3. 나에게 늘 필요한 것 — 가장 옅은 기운과 조심할 버릇을 달마다 번갈아
+ * 책 자체도 달마다 다른 책이 나오도록 seed 에 이번 달을 섞는다(bookSeed).
+ * @param {object} [f] readForecast 결과 — 없으면 이번 달 주제를 빼고 나머지로 채운다
+ */
+export function bookNeeds(r, d = futureDigest(r), f = null) {
   const out = [];
   const add = (theme, reason) => { if (theme && !out.some((x) => x.theme === theme)) out.push({ theme, reason }); };
   try {
     const dae = currentDaeun(computeDaeun(r.chart, r.input.isMale, r.input.jdUT), r.input.elapsedYears ?? r.input.age);
     const s = dae ? SEASON_BOOK[TEN_GOD_GROUP[dae.god]] : null;
-    if (s) add(s[0], `지금은 ${s[1]} ${j(BOOK_LABEL[s[0]], "을")} 다룬 책이 힘이 됩니다.`);
+    if (s) add(s[0], `지금은 ${s[1]} ${j(BOOK_LABEL[s[0]], '을')} 다룬 책이 힘이 됩니다.`);
   } catch { /* */ }
   try {
-    const c = elementDistribution(r.chart.pillars).count;
-    const w = WEAK_BOOK[ELEM_KEYS[[0, 1, 2, 3, 4].reduce((x, i) => (c[i] < c[x] ? i : x), 0)]];
-    if (w) add(w[0], `${w[1]}, 이 힘을 길러 주는 ${BOOK_LABEL[w[0]]} 책을 권합니다.`);
+    const god = f?.month ? periodFlow(r, f.month, 'month')?.god : null;
+    const m = god ? MONTH_BOOK[god] : null;
+    if (m) add(m[0], `이번 달은 ${m[1]} 이달에 읽기 좋은 ${BOOK_LABEL[m[0]]} 책입니다.`);
   } catch { /* */ }
-  for (const t of d?.caution?.careful ?? []) {
-    const hit = CAUTION_BOOK.find(([re, theme]) => re.test(t) && !out.some((x) => x.theme === theme));
-    if (hit) { add(hit[1], `'${t.split(/(?<=[.])\s/)[0].replace(/[.]$/, '')}' — 이 버릇을 다루는 데 도움이 되는 책입니다.`); break; }
-  }
+  const weak = () => {
+    try {
+      const c = elementDistribution(r.chart.pillars).count;
+      const w = WEAK_BOOK[ELEM_KEYS[[0, 1, 2, 3, 4].reduce((x, i) => (c[i] < c[x] ? i : x), 0)]];
+      if (w) add(w[0], `${w[1]}, 이 힘을 길러 주는 ${BOOK_LABEL[w[0]]} 책을 권합니다.`);
+    } catch { /* */ }
+  };
+  const habit = () => {
+    for (const t of d?.caution?.careful ?? []) {
+      const hit = CAUTION_BOOK.find(([re, theme]) => re.test(t) && !out.some((x) => x.theme === theme));
+      if (hit) { add(hit[1], `'${t.split(/(?<=[.])\s/)[0].replace(/[.]$/, '')}' — 이 버릇을 다루는 데 도움이 되는 책입니다.`); break; }
+    }
+  };
+  // 늘 필요한 것은 달마다 번갈아 — 홀수 달은 옅은 기운, 짝수 달은 조심할 버릇(못 채우면 다른 쪽)
+  if ((f?.today?.m ?? 1) % 2) { weak(); habit(); } else { habit(); weak(); }
   add('CAREER', '잘 맞는 일 쪽으로 나아갈 때 길잡이가 되는 책입니다.');
   return out.slice(0, 3);
 }
@@ -1078,6 +1111,8 @@ function pairBookNeeds({ married, clash, money, rec }) {
 
 /** 사람마다 다른 책을 고르게 하는 값 — 출생 순간(분 단위)에서 만든다 */
 const bookSeed = (r) => Math.abs(Math.round((r?.input?.jdUT ?? 0) * 1440)) % 100003;
+/** 이번 달 번호 — seed 에 더해 같은 사람이라도 달이 바뀌면 다른 책이 나오게(같은 달 안에서는 같은 책) */
+const monthIndex = (now = new Date()) => now.getFullYear() * 12 + now.getMonth();
 
 /** 책 카드의 자리 — 주제와 이유만 담아 두고 책은 화면이 뜬 뒤 채운다 */
 function bookCard(icon, title, needs, seed = 0) {
@@ -1167,7 +1202,7 @@ function lifeReport(form, r, f, v) {
     + card('🚀', '앞으로 가야 할 방향', direction)
     + card('💡', '알아 두면 좋은 나', know || distinctCard(r))
     + card('⚠️', '조심해야 할 것', caution)
-    + bookCard('📚', '내 명반에 어울리는 책', bookNeeds(r, d), bookSeed(r))
+    + bookCard('📚', '내 명반에 어울리는 책', bookNeeds(r, d, f), bookSeed(r) + monthIndex())
     + card('🌊', '인생의 큰 흐름 — 앞으로 십 년마다 무엇이 오는가', lifeFlow(r))
     + card('🎯', '당장 실행해볼 수 있는 Action Item 3가지',
       `<ol class="rp-act">`
@@ -1432,7 +1467,7 @@ export function renderPairReport(formA, formB, c, v, elementDist, people = {}) {
       ${card('🤝', '서로 배려할 점', pairs(d.care))}
       ${card('🔧', '각자 고쳐야 할 점', pairs(d.fix))}
       ${card('👶', '자녀와 함께라면', pairs(d.kids))}
-      ${bookCard('📚', '두 사람이 함께 읽으면 좋은 책', d.books, bookSeed(rA) + bookSeed(rB))}
+      ${bookCard('📚', '두 사람이 함께 읽으면 좋은 책', d.books, bookSeed(rA) + bookSeed(rB) + monthIndex())}
       <h3 class="rp-more">더 자세히 보기</h3>
       <div class="rp-chs">${chapters}</div>
       <p class="rp-note">점술은 상징적 해석 도구이며 실제 미래를 확정하지 않습니다. 결혼·이별·임신·투자·건강과 관련된 결정은

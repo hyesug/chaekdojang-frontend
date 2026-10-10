@@ -201,3 +201,11 @@ test('책 추천 — 그 사람에게 필요한 주제 셋을 이유와 함께 �
   assert.match(personal(A), /class="rp-card rp-books-card" hidden data-book-seed="\d+" data-book-needs=/);
   assert.match(pair(A, B), /두 사람이 함께 읽으면 좋은 책/);
 });
+
+test('책 추천 주제는 같은 사람이라도 달마다 바뀐다(이번 달의 결 + 늘 필요한 것을 번갈아)', async () => {
+  const { bookNeeds, futureDigest } = await import('../../public/unse/src/report.js');
+  const r = readFortune(A);
+  const at = (iso) => bookNeeds(r, futureDigest(r), readForecast(A, new Date(iso))).map((x) => x.theme).join(',');
+  const months = ['2026-10-10', '2026-11-15', '2027-03-10', '2027-06-10'].map(at);
+  assert.ok(new Set(months).size >= 3, `달마다 주제가 거의 같다: ${months.join(' / ')}`);
+});

@@ -81,3 +81,12 @@ test('결과 아래에 링크 공유 버튼이 있고, 링크는 궁합의 결�
   assert.equal(st.formA.marital, 'married');
   assert.equal(st.formB.marital, null);
 });
+
+test('책 카드는 저자가 길어도 화면 밖으로 밀려나지 않는다', async () => {
+  const ui = await read('src/ui.js');
+  const css = await read('assets/style.css');
+  assert.match(ui, /function shortAuthors\(author\)/);
+  assert.match(ui, /외 \$\{xs\.length - 2\}명/);
+  assert.match(css, /\.rp-book-list li \{ min-width: 0; \}/);
+  assert.doesNotMatch(css, /\.rp-book-meta small \{[^}]*white-space: nowrap/);
+});

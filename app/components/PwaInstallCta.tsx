@@ -22,14 +22,14 @@ export default function PwaInstallCta({ variant = "card" }: Props) {
     <button
       type="button"
       onClick={promptInstall}
-      className="rounded-full bg-brown-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brown-700"
+      className="cdj-button cdj-button--primary cdj-button--sm"
     >
       {buttonText}
     </button>
   ) : (
     <Link
       href={href}
-      className="rounded-full bg-brown-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brown-700"
+      className="cdj-button cdj-button--primary cdj-button--sm"
     >
       {buttonText}
     </Link>
@@ -48,7 +48,7 @@ export default function PwaInstallCta({ variant = "card" }: Props) {
   }
 
   return (
-    <div className="rounded-xl border border-cream-200 bg-white px-4 py-3">
+    <div className="cdj-card px-4 py-3">
       <p className="text-sm font-semibold text-brown-800">책도장을 앱처럼 사용해보세요</p>
       <p className="mt-1 text-xs text-brown-500">{guideText}</p>
       <div className="mt-3 flex flex-wrap items-center gap-2">

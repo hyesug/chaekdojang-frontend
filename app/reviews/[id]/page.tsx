@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import BackButton from "../../components/BackButton";
@@ -14,6 +13,8 @@ import ReviewContinuations from "../../components/ReviewContinuations";
 import ReviewReflectionPanel from "../../components/ReviewReflectionPanel";
 import SpoilerContent from "../../components/SpoilerContent";
 import ReviewViewTracker from "../../components/ReviewViewTracker";
+import ProfileAvatar from "../../components/ProfileAvatar";
+import StarRating from "../../components/ui/StarRating";
 import { bookReturnStorageKey } from "../../lib/returnMemory";
 import {
   fetchApiData,
@@ -85,15 +86,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-function Stars({ rating }: { rating: number }) {
-  return (
-    <span aria-label={`별점 ${rating}점`}>
-      <span className="text-amber-500">{"★".repeat(rating)}</span>
-      <span className="text-cream-300">{"★".repeat(5 - rating)}</span>
-    </span>
-  );
-}
-
 function safeInternalHref(value?: string) {
   if (!value) return null;
   const candidates = [value];
@@ -144,8 +136,16 @@ export default async function PublicReviewPage({ params, searchParams }: Props) 
     datePublished: review.createdAt,
   };
 
+  const kindLabel =
+    review.previousReviewId != null
+      ? "재독 독후감"
+      : review.sourceReviewId != null
+        ? "이어 쓴 독후감"
+        : "독후감";
+  const authorHref = `/u/${encodeURIComponent(review.author.nickname)}`;
+
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,#fff8ea_0,#faf6ef_34%,#f2e4ce_100%)]">
+    <div className="min-h-screen">
       <ReviewReturnMemory
         bookId={review.book?.id ?? null}
         reviewId={review.id}
@@ -157,79 +157,69 @@ export default async function PublicReviewPage({ params, searchParams }: Props) 
         suppressHydrationWarning
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <article className="max-w-3xl mx-auto px-4 py-8 sm:py-12">
-        <div className="mb-5 flex items-center justify-between gap-3">
+      <article className="cdj-page cdj-page--reading">
+        <div className="mb-6 flex items-center justify-between gap-3">
           <BackButton
             fallbackHref={bookReviewsHref}
             fallbackStorageKey={review.book?.id ? bookReturnStorageKey(review.book.id) : undefined}
             preferFallback={Boolean(returnTo)}
             storageKey={returnStorageKey}
           />
-          <Link
-            href="/write"
-            className="px-4 py-2 rounded-full bg-brown-700 text-white text-sm hover:bg-brown-800"
-          >
+          <Link href="/write" className="cdj-button cdj-button--secondary cdj-button--sm">
             나도 도장 찍기
           </Link>
         </div>
 
-        <div className="bg-white border border-brown-100 shadow-sm rounded-lg overflow-hidden">
-          <div className="px-5 sm:px-8 pt-7 pb-5 border-b border-cream-200 bg-cream-50">
-            <div className="flex gap-4">
+        <div className="cdj-card overflow-hidden">
+          {/* 책 머리 */}
+          <header className="flex gap-5 border-b border-cream-300 bg-cream-100/60 px-5 py-6 sm:px-8 sm:py-8">
+            <div className="cdj-cover w-[84px] sm:w-[96px]">
               {review.book?.thumbnail ? (
-                <Image
-                  src={review.book.thumbnail}
-                  alt={review.book.title}
-                  width={76}
-                  height={108}
-                  className="rounded shadow object-cover flex-shrink-0"
-                />
+                <img src={review.book.thumbnail} alt={review.book.title} />
               ) : (
-                <div className="w-[76px] h-[108px] rounded bg-brown-300 flex-shrink-0" />
+                <span className="block h-full bg-brown-300" />
               )}
-              <div className="min-w-0">
-                <p className="text-xs text-brown-400 mb-1">
-                  {review.previousReviewId != null
-                    ? "재독 독후감"
-                    : review.sourceReviewId != null
-                      ? "이어 쓴 독후감"
-                      : "공개 독후감"}
-                </p>
-                <h1 className="font-serif text-2xl sm:text-3xl font-bold text-brown-800 leading-tight">
-                  {review.book?.title ?? "독후감"}
-                </h1>
-                {review.book && (
-                  <p className="mt-1 text-sm text-brown-500">{review.book.author}</p>
-                )}
-                <div className="mt-3 text-sm">
-                  <Stars rating={review.rating} />
-                </div>
-              </div>
             </div>
-          </div>
+            <div className="flex min-w-0 flex-col justify-center">
+              <p className="cdj-kicker">{kindLabel}</p>
+              <h1 className="mt-1.5 font-serif text-2xl font-bold leading-tight text-brown-800 sm:text-[1.875rem]">
+                {review.book?.id ? (
+                  <Link href={bookReviewsHref} className="transition-colors hover:text-brown-600">
+                    {review.book.title}
+                  </Link>
+                ) : (
+                  review.book?.title ?? "독후감"
+                )}
+              </h1>
+              {review.book && <p className="mt-1 text-sm text-sage-600">{review.book.author}</p>}
+              <StarRating rating={review.rating} size={16} className="mt-3" />
+            </div>
+          </header>
 
-          <div className="px-5 sm:px-8 py-6">
+          <div className="px-5 py-6 sm:px-8 sm:py-8">
             <ReviewOwnerActions reviewId={review.id} authorId={review.author.id ?? null} />
-            <div className="mb-6 flex items-center justify-between gap-3 text-sm">
-              {review.author.id != null ? (
-                <Link
-                  href={`/u/${encodeURIComponent(review.author.nickname)}`}
-                  className="font-semibold text-brown-700 hover:underline"
-                >
-                  {review.author.nickname}
-                </Link>
-              ) : (
-                <span className="font-semibold text-brown-700">{review.author.nickname}</span>
-              )}
-              <time className="text-brown-300" dateTime={review.createdAt}>
-                {review.createdAt.slice(0, 10)}
-              </time>
+
+            {/* 작성자 */}
+            <div className="flex items-center gap-3">
+              <ProfileAvatar src={review.author.profileImage} name={review.author.nickname} size="sm" />
+              <div className="min-w-0 leading-tight">
+                {review.author.id != null ? (
+                  <Link href={authorHref} className="text-[15px] font-semibold text-brown-800 hover:underline">
+                    {review.author.nickname}
+                  </Link>
+                ) : (
+                  <span className="text-[15px] font-semibold text-brown-800">{review.author.nickname}</span>
+                )}
+                <time className="cdj-meta mt-0.5 block" dateTime={review.createdAt}>
+                  {review.createdAt.slice(0, 10).replaceAll("-", ".")}
+                </time>
+              </div>
             </div>
 
             {review.keywords && review.keywords.length > 0 && (
-              <div className="mt-5 flex flex-wrap gap-2">
+              <div className="mt-5 flex flex-wrap gap-1.5">
                 {review.keywords.map((keyword) => (
-                  <span key={keyword} className="rounded-full bg-cream-100 px-3 py-1 text-xs text-brown-500">
+                  <span key={keyword} className="rounded bg-cream-200/80 px-2 py-0.5 text-xs text-sage-700">
                     #{keyword}
                   </span>
                 ))}
@@ -239,7 +229,7 @@ export default async function PublicReviewPage({ params, searchParams }: Props) 
             {review.spoiler ? (
               <SpoilerContent content={review.content} />
             ) : (
-              <p className="mt-6 text-base leading-8 text-brown-800 whitespace-pre-wrap">
+              <p className="mt-7 whitespace-pre-wrap text-[16.5px] leading-[1.95] text-brown-900">
                 {review.content}
               </p>
             )}
@@ -264,7 +254,7 @@ export default async function PublicReviewPage({ params, searchParams }: Props) 
                   bookId={review.book.id}
                   href={bookReviewsHref}
                   preferHref={Boolean(returnTo)}
-                  className="text-brown-600 hover:underline"
+                  className="font-medium text-brown-700 underline decoration-brown-200 underline-offset-4 hover:decoration-brown-700"
                 >
                   이 책의 다른 독후감 보기
                 </BookReturnLink>
@@ -285,10 +275,8 @@ export default async function PublicReviewPage({ params, searchParams }: Props) 
         </div>
 
         {relatedReviews.length > 0 && (
-          <section className="mt-8">
-            <h2 className="font-serif text-xl font-bold text-brown-800 mb-4">
-              같은 책에 찍힌 다른 도장
-            </h2>
+          <section className="mt-12">
+            <h2 className="cdj-heading mb-4">같은 책에 찍힌 다른 도장</h2>
             <div className="flex flex-col gap-4">
               {relatedReviews.map((item) => (
                 <ReviewCard key={item.id} post={item} returnTo={bookReviewsHref} />

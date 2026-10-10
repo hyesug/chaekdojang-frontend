@@ -161,7 +161,7 @@ export default function GroupInviteShare({
         <button
           type="button"
           onClick={() => void copyInviteLink()}
-          className="rounded-full border border-cream-300 px-4 py-2 text-sm font-semibold text-brown-600 hover:bg-cream-50"
+          className="cdj-button cdj-button--secondary"
         >
           초대 링크 복사
         </button>

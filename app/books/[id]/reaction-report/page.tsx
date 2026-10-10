@@ -87,7 +87,7 @@ export default async function BookReactionReportPage({ params }: Props) {
         </Link>
       </div>
 
-      <section className="rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+      <section className="cdj-card p-5">
         <div className="flex gap-4">
           {report.book.thumbnail ? (
             <Image
@@ -136,7 +136,7 @@ export default async function BookReactionReportPage({ params }: Props) {
       )}
 
       {report.aggregateAvailable && (
-        <section className="mt-5 rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+        <section className="cdj-card mt-5 p-5">
           <h2 className="font-serif text-lg font-bold text-brown-900">여러 독후감에서 확인된 관점</h2>
           <p className="mt-1 text-xs text-brown-400">AI의 추측이 아니라 사용자가 직접 선택한 키워드와 별점만 집계합니다.</p>
           {report.commonReviewKeywords.length > 0 && (
@@ -161,7 +161,7 @@ export default async function BookReactionReportPage({ params }: Props) {
 
       {hasCards && (
         <>
-          <section className="mt-5 rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+          <section className="cdj-card mt-5 p-5">
             <p className="text-sm font-semibold text-brown-400">최근 생성된 AI 카드의 한 줄 감상</p>
             <p className="mt-2 font-serif text-xl font-bold leading-8 text-brown-900">
               {report.representativeOneLineReview ?? "대표 한 줄 감상이 아직 없어요."}
@@ -169,7 +169,7 @@ export default async function BookReactionReportPage({ params }: Props) {
           </section>
 
           {report.aggregateAvailable && (
-            <section className="mt-5 rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+            <section className="cdj-card mt-5 p-5">
               <h2 className="font-serif text-lg font-bold text-brown-900">공통 감정 키워드</h2>
               {report.commonEmotionKeywords.length === 0 ? (
                 <p className="mt-3 text-sm text-brown-400">아직 반복해서 확인된 감정 키워드가 없어요.</p>
@@ -226,7 +226,7 @@ export default async function BookReactionReportPage({ params }: Props) {
 
 function SummaryCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+    <div className="cdj-card p-4">
       <p className="text-xs font-medium text-brown-400">{label}</p>
       <p className="mt-1 font-serif text-2xl font-bold text-brown-900">{value}</p>
     </div>
@@ -235,7 +235,7 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
 
 function InsightCard({ title, body }: { title: string; body: string | null }) {
   return (
-    <div className="rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+    <div className="cdj-card p-5">
       <h2 className="font-serif text-lg font-bold text-brown-900">{title}</h2>
       <p className="mt-2 text-sm leading-6 text-brown-600">{body || "아직 표시할 내용이 충분하지 않아요."}</p>
     </div>
@@ -244,7 +244,7 @@ function InsightCard({ title, body }: { title: string; body: string | null }) {
 
 function EmptyReport({ title, body }: { title: string; body: string }) {
   return (
-    <section className="mt-5 rounded-2xl border border-cream-200 bg-white px-5 py-12 text-center shadow-sm">
+    <section className="cdj-card mt-5 px-5 py-12 text-center">
       <p className="font-serif text-lg font-bold text-brown-900">{title}</p>
       <p className="mt-2 text-sm leading-6 text-brown-400">{body}</p>
     </section>

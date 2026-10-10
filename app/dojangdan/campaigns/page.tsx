@@ -31,8 +31,8 @@ export default async function CampaignListPage() {
   const others = campaigns.filter((campaign) => campaign.status !== "RECRUITING");
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8">
-      <section className="rounded-3xl border border-cream-200 bg-white p-6 shadow-sm">
+    <main className="cdj-page cdj-page--reading">
+      <section className="cdj-card p-6">
         <p className="text-sm font-semibold text-brown-400">책도장단</p>
         <h1 className="mt-2 font-serif text-3xl font-bold text-brown-900">
           지금 모집 중인 서평단
@@ -57,7 +57,7 @@ export default async function CampaignListPage() {
       </section>
 
       {campaigns.length === 0 ? (
-        <p className="mt-8 rounded-2xl border border-cream-200 bg-white p-6 text-center text-sm text-brown-500">
+        <p className="cdj-card mt-8 p-6 text-center text-sm text-brown-500">
           아직 공개된 서평단이 없습니다.
         </p>
       ) : (
@@ -81,7 +81,7 @@ function CampaignSection({ title, campaigns }: { title: string; campaigns: Campa
           <Link
             key={campaign.id}
             href={`/dojangdan/campaigns/${campaign.id}`}
-            className="flex gap-4 rounded-2xl border border-cream-200 bg-white p-4 shadow-sm hover:border-brown-200"
+            className="cdj-card flex gap-4 p-4 hover:border-brown-200"
           >
             {campaign.bookThumbnail ? (
               // eslint-disable-next-line @next/next/no-img-element

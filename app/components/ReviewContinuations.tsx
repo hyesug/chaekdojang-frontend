@@ -68,7 +68,7 @@ export default function ReviewContinuations({ reviewId }: { reviewId: number }) 
       )}
 
       {(data.totalCount > 0 || data.canContinue) && (
-        <div className="rounded-2xl border border-cream-200 bg-white p-4 sm:p-5">
+        <div className="cdj-card p-4 sm:p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h2 className="font-serif text-lg font-bold text-brown-800">이 독후감에서 이어진 생각</h2>
@@ -79,7 +79,7 @@ export default function ReviewContinuations({ reviewId }: { reviewId: number }) 
             {data.canContinue && (
               <Link
                 href={`/write?continueFrom=${reviewId}`}
-                className="shrink-0 rounded-full border border-brown-300 px-4 py-2 text-center text-sm font-semibold text-brown-700 hover:bg-cream-50"
+                className="cdj-button cdj-button--secondary shrink-0 text-center"
               >
                 이 글을 읽고 내 생각 남기기
               </Link>

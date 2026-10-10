@@ -1,5 +1,6 @@
 "use client";
 
+import StarRating from "./ui/StarRating";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { authFetch } from "../lib/auth";
@@ -66,7 +67,7 @@ export default function ReviewRereadHistory({ reviewId }: { reviewId: number }) 
         {history.canCreateReread && (
           <Link
             href={`/write?rereadFrom=${history.latestReviewId}`}
-            className="shrink-0 rounded-full bg-brown-700 px-4 py-2 text-center text-sm font-semibold text-white hover:bg-brown-800"
+            className="cdj-button cdj-button--primary shrink-0 text-center"
           >
             다시 읽고 기록하기
           </Link>
@@ -81,7 +82,7 @@ export default function ReviewRereadHistory({ reviewId }: { reviewId: number }) 
                 {record.sequence}번째 기록 · {recordDate(record.createdAt)}
               </span>
               <span className="text-xs text-brown-400">
-                <span className="text-amber-500">{"★".repeat(record.rating)}</span>
+                <StarRating rating={record.rating} size={11} className="mr-1 align-[-1px]" />
                 {record.hidden && " · 비공개"}
                 {record.current && " · 지금 보는 기록"}
               </span>
@@ -96,7 +97,7 @@ export default function ReviewRereadHistory({ reviewId }: { reviewId: number }) 
               ) : (
                 <Link
                   href={`/reviews/${record.id}`}
-                  className="flex flex-col gap-1 rounded-xl border border-cream-200 bg-white px-4 py-3 text-sm hover:border-brown-200 hover:bg-cream-50"
+                  className="cdj-card flex flex-col gap-1 px-4 py-3 text-sm hover:border-brown-200 hover:bg-cream-50"
                 >
                   {content}
                 </Link>

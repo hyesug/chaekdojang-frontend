@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Library } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -92,7 +93,7 @@ export default async function NicknameProfilePage({ params }: Props) {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-5 sm:py-8">
-      <div className="mb-5 rounded-2xl border border-cream-200 bg-white p-4 shadow-sm sm:p-5">
+      <div className="cdj-card mb-5 p-4 sm:p-5">
         <div className="flex items-center gap-3 sm:gap-4">
           <ProfileAvatar src={profile.profileImage} name={profile.nickname} size="lg" />
           <div className="min-w-0 flex-1">
@@ -134,7 +135,7 @@ export default async function NicknameProfilePage({ params }: Props) {
           href={`/u/${encodedNickname}/library`}
           className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-cream-200 bg-white px-3 py-1.5 text-xs font-medium text-brown-500 transition-colors hover:bg-cream-50 hover:text-brown-700"
         >
-          <span aria-hidden="true">📚</span>
+          <Library size={14} aria-hidden="true" />
           서재 보기
         </Link>
       </div>

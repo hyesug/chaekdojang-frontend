@@ -157,12 +157,12 @@ export default function ReadingGroupQuestions({ slug, groupBookId }: { slug: str
   }
 
   if (loading) {
-    return <section className="mt-6 rounded-2xl border border-cream-200 bg-white p-5 text-sm text-brown-400">질문을 불러오는 중이에요…</section>;
+    return <section className="cdj-card mt-6 p-5 text-sm text-brown-400">질문을 불러오는 중이에요…</section>;
   }
   if (!data) return null;
 
   return (
-    <section id="questions" className="mt-6 scroll-mt-24 rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+    <section id="questions" className="cdj-card mt-6 scroll-mt-24 p-5">
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-green-700">함께 읽는 중</p>
         <h2 className="mt-1 font-serif text-xl font-bold text-brown-900">모임 질문과 중간 생각</h2>
@@ -181,10 +181,10 @@ export default function ReadingGroupQuestions({ slug, groupBookId }: { slug: str
               maxLength={1000}
               rows={3}
               placeholder="예: 지금까지 읽으며 가장 오래 머문 생각은 무엇인가요?"
-              className="w-full rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm text-brown-800 outline-none focus:border-green-500"
+              className="cdj-field text-sm w-full"
             />
             <div className="flex flex-wrap gap-2">
-              <button disabled={working || !newQuestion.trim()} className="rounded-full bg-brown-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">
+              <button disabled={working || !newQuestion.trim()} className="cdj-button cdj-button--primary">
                 질문 공개
               </button>
               <button type="button" disabled={working} onClick={generateAiDraft} className="rounded-full border border-green-300 bg-white px-4 py-2 text-sm font-semibold text-green-700 disabled:opacity-40">
@@ -222,11 +222,11 @@ export default function ReadingGroupQuestions({ slug, groupBookId }: { slug: str
                     onChange={(event) => setQuestionDrafts((current) => ({ ...current, [question.id]: event.target.value }))}
                     maxLength={1000}
                     rows={3}
-                    className="w-full rounded-xl border border-cream-300 px-3 py-2 text-sm font-medium leading-6 text-brown-900 outline-none focus:border-green-500"
+                    className="cdj-field text-sm w-full"
                   />
                   <div className="mt-2 flex flex-wrap gap-2">
-                    <button type="button" disabled={working || !questionDrafts[question.id]?.trim()} onClick={() => updateQuestion(question.id)} className="rounded-full bg-brown-800 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40">저장</button>
-                    <button type="button" disabled={working} onClick={() => cancelEditingQuestion(question)} className="rounded-full border border-cream-300 px-3 py-1.5 text-xs font-semibold text-brown-600 disabled:opacity-40">취소</button>
+                    <button type="button" disabled={working || !questionDrafts[question.id]?.trim()} onClick={() => updateQuestion(question.id)} className="cdj-button cdj-button--primary cdj-button--sm">저장</button>
+                    <button type="button" disabled={working} onClick={() => cancelEditingQuestion(question)} className="cdj-button cdj-button--secondary cdj-button--sm">취소</button>
                   </div>
                 </div>
               ) : (
@@ -235,7 +235,7 @@ export default function ReadingGroupQuestions({ slug, groupBookId }: { slug: str
 
               {data.canManage && !editingQuestions[question.id] && (
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <button type="button" disabled={working} onClick={() => startEditingQuestion(question)} className="rounded-full border border-cream-300 px-3 py-1.5 text-xs font-semibold text-brown-700 disabled:opacity-40">수정</button>
+                  <button type="button" disabled={working} onClick={() => startEditingQuestion(question)} className="cdj-button cdj-button--secondary cdj-button--sm">수정</button>
                   {!question.published && data.canAddQuestions && <button type="button" disabled={working} onClick={() => publishQuestion(question.id)} className="rounded-full bg-green-700 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40">검토 후 공개</button>}
                   <button type="button" disabled={working} onClick={() => deleteQuestion(question.id)} className="rounded-full px-3 py-1.5 text-xs font-semibold text-red-500 disabled:opacity-40">질문 삭제</button>
                 </div>
@@ -258,10 +258,10 @@ export default function ReadingGroupQuestions({ slug, groupBookId }: { slug: str
                         maxLength={2000}
                         rows={3}
                         placeholder="아직 정리되지 않은 생각이어도 괜찮아요."
-                        className="mt-2 w-full rounded-xl border border-cream-300 px-3 py-2 text-sm leading-6 text-brown-800 outline-none focus:border-green-500"
+                        className="cdj-field text-sm mt-2 w-full"
                       />
                       <div className="mt-2 flex gap-2">
-                        <button type="button" disabled={working || !answerDrafts[question.id]?.trim()} onClick={() => saveAnswer(question.id)} className="rounded-full bg-brown-800 px-4 py-2 text-xs font-semibold text-white disabled:opacity-40">{mine ? "내 생각 수정" : "중간 생각 저장"}</button>
+                        <button type="button" disabled={working || !answerDrafts[question.id]?.trim()} onClick={() => saveAnswer(question.id)} className="cdj-button cdj-button--primary cdj-button--sm">{mine ? "내 생각 수정" : "중간 생각 저장"}</button>
                         {mine && <button type="button" disabled={working} onClick={() => deleteAnswer(question.id)} className="rounded-full px-3 py-2 text-xs font-semibold text-red-500 disabled:opacity-40">삭제</button>}
                       </div>
                     </div>

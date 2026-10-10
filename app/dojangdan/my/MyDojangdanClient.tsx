@@ -67,15 +67,15 @@ export default function MyDojangdanClient() {
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8">
-      <h1 className="font-serif text-2xl font-bold text-brown-900">내 서평단 현황</h1>
+    <main className="cdj-page cdj-page--reading">
+      <h1 className="cdj-title">내 서평단 현황</h1>
 
       {trackRecord && <TrackRecordCard record={trackRecord} />}
 
       <section className="mt-8">
         <h2 className="font-serif text-lg font-bold text-brown-900">신청 내역</h2>
         {applications.length === 0 ? (
-          <p className="mt-4 rounded-2xl border border-cream-200 bg-white p-6 text-center text-sm text-brown-500">
+          <p className="cdj-card mt-4 p-6 text-center text-sm text-brown-500">
             아직 신청한 서평단이 없습니다.{" "}
             <Link href="/dojangdan/campaigns" className="font-semibold underline">
               모집 중인 서평단 보기
@@ -130,7 +130,7 @@ function FollowIntentSection({
         새 서평단이 열리면 공개 모집보다 먼저 알려드립니다. 언제든 해제할 수 있습니다.
       </p>
       {intents.length === 0 ? (
-        <p className="mt-4 rounded-2xl border border-cream-200 bg-white p-6 text-center text-sm text-brown-500">
+        <p className="cdj-card mt-4 p-6 text-center text-sm text-brown-500">
           아직 소식을 받기로 한 곳이 없습니다.
         </p>
       ) : (
@@ -138,7 +138,7 @@ function FollowIntentSection({
           {intents.map((intent) => (
             <li
               key={intent.profileId}
-              className="flex items-center justify-between gap-3 rounded-2xl border border-cream-200 bg-white px-4 py-3"
+              className="cdj-card flex items-center justify-between gap-3 px-4 py-3"
             >
               <div className="min-w-0">
                 <Link
@@ -167,7 +167,7 @@ function FollowIntentSection({
 
 function TrackRecordCard({ record }: { record: ReaderTrackRecord }) {
   return (
-    <section className="mt-5 rounded-2xl border border-brown-100 bg-white p-5 shadow-sm">
+    <section className="cdj-card mt-5 p-5">
       <h2 className="font-serif text-lg font-bold text-brown-900">내 서평단 이력</h2>
       <p className="mt-1 text-xs text-brown-400">
         완주 이력은 서평단을 모집하는 출판사·작가에게 닉네임과 함께 보입니다. 이메일·연락처는 공개되지 않습니다.
@@ -271,7 +271,7 @@ function ApplicationCard({
   }
 
   return (
-    <article id={`campaign-${application.campaignId}`} className="scroll-mt-6 rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
+    <article id={`campaign-${application.campaignId}`} className="cdj-card scroll-mt-6 p-4">
       <div className="flex gap-4">
         {application.bookThumbnail ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -315,7 +315,7 @@ function ApplicationCard({
             <button
               type="button"
               onClick={openPicker}
-              className="rounded-full bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800"
+              className="cdj-button cdj-button--primary"
             >
               독후감 제출하기
             </button>
@@ -349,7 +349,7 @@ function ApplicationCard({
                       type="button"
                       onClick={() => submit(candidate.id)}
                       disabled={submitting}
-                      className="rounded-full bg-brown-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brown-800 disabled:opacity-60"
+                      className="cdj-button cdj-button--primary cdj-button--sm"
                     >
                       이 독후감 제출
                     </button>
@@ -373,7 +373,7 @@ function ApplicationCard({
               type="button"
               onClick={() => updateFollowIntent(true)}
               disabled={intentBusy}
-              className="rounded-full bg-brown-700 px-4 py-2 text-xs font-semibold text-white hover:bg-brown-800 disabled:opacity-60"
+              className="cdj-button cdj-button--primary cdj-button--sm"
             >
               예, 알려주세요
             </button>

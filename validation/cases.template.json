@@ -1,0 +1,314 @@
+[
+  {
+    "id": "사람1",
+    "birth": {
+      "name": "사람1",
+      "gender": "male",
+      "year": 1990,
+      "month": 1,
+      "day": 1,
+      "hour": 12,
+      "minute": 0,
+      "birthPlace": "서울",
+      "homePlace": "서울"
+    },
+    "events": [
+      {
+        "domain": "직업",
+        "year": 2020,
+        "month": 1,
+        "what": "무슨 일이 있었는지"
+      },
+      {
+        "domain": "이사",
+        "year": 2021,
+        "what": "월을 모르면 month 를 빼세요"
+      },
+      {
+        "domain": "결혼",
+        "year": 2022,
+        "month": 6,
+        "what": ""
+      },
+      {
+        "domain": "재물",
+        "year": 2023,
+        "month": 3,
+        "what": ""
+      }
+    ]
+  },
+  {
+    "id": "사람2",
+    "birth": {
+      "name": "사람2",
+      "gender": "male",
+      "year": 1990,
+      "month": 1,
+      "day": 1,
+      "hour": 12,
+      "minute": 0,
+      "birthPlace": "서울",
+      "homePlace": "서울"
+    },
+    "events": [
+      {
+        "domain": "직업",
+        "year": 2020,
+        "month": 1,
+        "what": "무슨 일이 있었는지"
+      },
+      {
+        "domain": "이사",
+        "year": 2021,
+        "what": "월을 모르면 month 를 빼세요"
+      },
+      {
+        "domain": "결혼",
+        "year": 2022,
+        "month": 6,
+        "what": ""
+      },
+      {
+        "domain": "재물",
+        "year": 2023,
+        "month": 3,
+        "what": ""
+      }
+    ]
+  },
+  {
+    "id": "사람3",
+    "birth": {
+      "name": "사람3",
+      "gender": "male",
+      "year": 1990,
+      "month": 1,
+      "day": 1,
+      "hour": 12,
+      "minute": 0,
+      "birthPlace": "서울",
+      "homePlace": "서울"
+    },
+    "events": [
+      {
+        "domain": "직업",
+        "year": 2020,
+        "month": 1,
+        "what": "무슨 일이 있었는지"
+      },
+      {
+        "domain": "이사",
+        "year": 2021,
+        "what": "월을 모르면 month 를 빼세요"
+      },
+      {
+        "domain": "결혼",
+        "year": 2022,
+        "month": 6,
+        "what": ""
+      },
+      {
+        "domain": "재물",
+        "year": 2023,
+        "month": 3,
+        "what": ""
+      }
+    ]
+  },
+  {
+    "id": "사람4",
+    "birth": {
+      "name": "사람4",
+      "gender": "male",
+      "year": 1990,
+      "month": 1,
+      "day": 1,
+      "hour": 12,
+      "minute": 0,
+      "birthPlace": "서울",
+      "homePlace": "서울"
+    },
+    "events": [
+      {
+        "domain": "직업",
+        "year": 2020,
+        "month": 1,
+        "what": "무슨 일이 있었는지"
+      },
+      {
+        "domain": "이사",
+        "year": 2021,
+        "what": "월을 모르면 month 를 빼세요"
+      },
+      {
+        "domain": "결혼",
+        "year": 2022,
+        "month": 6,
+        "what": ""
+      },
+      {
+        "domain": "재물",
+        "year": 2023,
+        "month": 3,
+        "what": ""
+      }
+    ]
+  },
+  {
+    "id": "사람5",
+    "birth": {
+      "name": "사람5",
+      "gender": "male",
+      "year": 1990,
+      "month": 1,
+      "day": 1,
+      "hour": 12,
+      "minute": 0,
+      "birthPlace": "서울",
+      "homePlace": "서울"
+    },
+    "events": [
+      {
+        "domain": "직업",
+        "year": 2020,
+        "month": 1,
+        "what": "무슨 일이 있었는지"
+      },
+      {
+        "domain": "이사",
+        "year": 2021,
+        "what": "월을 모르면 month 를 빼세요"
+      },
+      {
+        "domain": "결혼",
+        "year": 2022,
+        "month": 6,
+        "what": ""
+      },
+      {
+        "domain": "재물",
+        "year": 2023,
+        "month": 3,
+        "what": ""
+      }
+    ]
+  },
+  {
+    "id": "사람6",
+    "birth": {
+      "name": "사람6",
+      "gender": "male",
+      "year": 1990,
+      "month": 1,
+      "day": 1,
+      "hour": 12,
+      "minute": 0,
+      "birthPlace": "서울",
+      "homePlace": "서울"
+    },
+    "events": [
+      {
+        "domain": "직업",
+        "year": 2020,
+        "month": 1,
+        "what": "무슨 일이 있었는지"
+      },
+      {
+        "domain": "이사",
+        "year": 2021,
+        "what": "월을 모르면 month 를 빼세요"
+      },
+      {
+        "domain": "결혼",
+        "year": 2022,
+        "month": 6,
+        "what": ""
+      },
+      {
+        "domain": "재물",
+        "year": 2023,
+        "month": 3,
+        "what": ""
+      }
+    ]
+  },
+  {
+    "id": "사람7",
+    "birth": {
+      "name": "사람7",
+      "gender": "male",
+      "year": 1990,
+      "month": 1,
+      "day": 1,
+      "hour": 12,
+      "minute": 0,
+      "birthPlace": "서울",
+      "homePlace": "서울"
+    },
+    "events": [
+      {
+        "domain": "직업",
+        "year": 2020,
+        "month": 1,
+        "what": "무슨 일이 있었는지"
+      },
+      {
+        "domain": "이사",
+        "year": 2021,
+        "what": "월을 모르면 month 를 빼세요"
+      },
+      {
+        "domain": "결혼",
+        "year": 2022,
+        "month": 6,
+        "what": ""
+      },
+      {
+        "domain": "재물",
+        "year": 2023,
+        "month": 3,
+        "what": ""
+      }
+    ]
+  },
+  {
+    "id": "사람8",
+    "birth": {
+      "name": "사람8",
+      "gender": "male",
+      "year": 1990,
+      "month": 1,
+      "day": 1,
+      "hour": 12,
+      "minute": 0,
+      "birthPlace": "서울",
+      "homePlace": "서울"
+    },
+    "events": [
+      {
+        "domain": "직업",
+        "year": 2020,
+        "month": 1,
+        "what": "무슨 일이 있었는지"
+      },
+      {
+        "domain": "이사",
+        "year": 2021,
+        "what": "월을 모르면 month 를 빼세요"
+      },
+      {
+        "domain": "결혼",
+        "year": 2022,
+        "month": 6,
+        "what": ""
+      },
+      {
+        "domain": "재물",
+        "year": 2023,
+        "month": 3,
+        "what": ""
+      }
+    ]
+  }
+]

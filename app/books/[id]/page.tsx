@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { BarChart3, BookOpen, PenLine } from "lucide-react";
 import BackButton from "../../components/BackButton";
+import { EmptyState } from "../../components/ui/EmptyState";
 import BookReturnMemory from "../../components/BookReturnMemory";
 import ReviewCard from "../../components/ReviewCard";
 import {
@@ -190,8 +191,15 @@ export default async function BookDetailPage({ params, searchParams }: Props) {
     },
   };
 
+  const unit = isWebNovel ? "작품" : "책";
+  const stats = [
+    { label: "찍힌 도장", value: `${book.reviewCount}`, suffix: "개" },
+    { label: "평균 별점", value: `${averageRating(reviews)}`, suffix: "" },
+    { label: "참여 독자", value: `${book.readerCount}`, suffix: "명" },
+  ];
+
   return (
-    <main className="mx-auto max-w-2xl px-4 py-8">
+    <div className="cdj-page cdj-page--reading">
       <BookReturnMemory bookId={book.id} href={currentBookPath} />
       <script
         type="application/ld+json"
@@ -199,114 +207,95 @@ export default async function BookDetailPage({ params, searchParams }: Props) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <div className="mb-4">
+      <div className="mb-6">
         <BackButton fallbackHref="/search" />
       </div>
 
-      <section className="rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
-        <div className="flex gap-4">
+      {/* 책 머리 */}
+      <section className="flex flex-col gap-6 sm:flex-row sm:gap-8">
+        <div className="cdj-cover w-[132px] self-center sm:w-[156px] sm:self-start">
           {book.thumbnail ? (
-            <Image
-              src={book.thumbnail}
-              alt={`${book.title} 책 표지`}
-              width={78}
-              height={112}
-              className="h-28 w-[78px] flex-shrink-0 rounded object-cover shadow-sm"
-              priority
-            />
+            <img src={book.thumbnail} alt={`${book.title} ${unit} 표지`} />
           ) : (
-            <div className="h-28 w-[78px] flex-shrink-0 rounded bg-cream-200" />
+            <span className="block h-full bg-cream-300" />
           )}
-          <div className="min-w-0 flex-1">
-            <h1 className="font-serif text-2xl font-bold text-brown-900">{book.title}</h1>
-            <p className="mt-1 text-sm text-brown-600">{book.author}</p>
-            {book.publisher && <p className="text-sm text-brown-500">{book.publisher}</p>}
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <Link
-                href={writeHref(book)}
-                className="rounded-full bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800"
-              >
-                나도 이 {isWebNovel ? "작품" : "책"}에 도장 찍기
-              </Link>
-              <Link
-                href={`/books/${book.id}/reaction-report`}
-                className="rounded-full border border-cream-300 px-3 py-2 text-xs font-medium text-brown-500 hover:bg-cream-50 hover:text-brown-800"
-              >
-                독자 반응 리포트 보기
-              </Link>
-            </div>
+        </div>
+        <div className="min-w-0 flex-1 text-center sm:text-left">
+          {isWebNovel && <span className="cdj-tag mb-2">웹소설</span>}
+          <h1 className="cdj-title">{book.title}</h1>
+          <p className="mt-2 text-[15px] text-sage-600">
+            {book.author}
+            {book.publisher && <span className="text-sage-500"> · {book.publisher}</span>}
+          </p>
+
+          <dl className="mt-5 inline-grid grid-cols-3 divide-x divide-cream-300 rounded-xl border border-cream-300 bg-cream-50 sm:inline-flex">
+            {stats.map((stat) => (
+              <div key={stat.label} className="px-4 py-2.5 text-center sm:min-w-[96px] sm:text-left">
+                <dt className="text-[11px] font-medium text-sage-600">{stat.label}</dt>
+                <dd className="mt-0.5 text-lg font-bold text-brown-800 tabular">
+                  {stat.value}
+                  {stat.suffix && <span className="ml-0.5 text-sm font-medium text-sage-600">{stat.suffix}</span>}
+                </dd>
+              </div>
+            ))}
+          </dl>
+
+          <div className="mt-5 flex flex-wrap justify-center gap-2 sm:justify-start">
+            <Link href={writeHref(book)} className="cdj-button cdj-button--primary">
+              <PenLine size={16} aria-hidden="true" />
+              이 {unit}에 도장 찍기
+            </Link>
+            <Link href={`/books/${book.id}/reaction-report`} className="cdj-button cdj-button--secondary">
+              <BarChart3 size={16} aria-hidden="true" />
+              독자 반응 리포트
+            </Link>
           </div>
         </div>
       </section>
 
-      <section className="mt-5 rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
-        <p className="text-xs font-semibold text-brown-400">{isWebNovel ? "웹소설 소개" : "책 소개"}</p>
-        <h2 className="mt-1 font-serif text-xl font-bold text-brown-900">{isWebNovel ? "작품 소개" : "책 줄거리"}</h2>
+      {/* 소개 */}
+      <section className="mt-12 border-t border-cream-300 pt-8">
+        <h2 className="text-lg font-bold text-brown-800">{isWebNovel ? "작품 소개" : "책 소개"}</h2>
         {book.synopsis ? (
-          <p className="mt-3 whitespace-pre-line text-sm leading-7 text-brown-600">
-            {book.synopsis}
+          <p className="mt-3 whitespace-pre-line text-[15px] leading-7 text-brown-900/85">{book.synopsis}</p>
+        ) : (
+          <p className="mt-3 text-sm text-sage-600">아직 제공된 {isWebNovel ? "작품 소개" : "줄거리"} 정보가 없어요.</p>
+        )}
+      </section>
+
+      {/* 독자 반응 요약 */}
+      <section className="mt-10 border-t border-cream-300 pt-8">
+        <h2 className="text-lg font-bold text-brown-800">독자들의 한 줄 감상</h2>
+        {emotionKeywords.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            <span className="mr-1 text-[13px] text-sage-600">많이 남긴 감정</span>
+            {emotionKeywords.map((keyword) => (
+              <span key={keyword} className="cdj-tag">{keyword}</span>
+            ))}
+          </div>
+        )}
+        {oneLines.length === 0 ? (
+          <p className="mt-4 text-sm text-sage-600">
+            아직 한 줄 감상이 없어요. 독후감을 남기면 이 {unit}의 감상 모음에 표시돼요.
           </p>
         ) : (
-          <p className="mt-3 rounded-xl bg-cream-50 px-4 py-4 text-sm text-brown-400">
-            아직 제공된 {isWebNovel ? "작품 소개" : "줄거리"} 정보가 없어요.
-          </p>
+          <ul className="mt-5 space-y-4">
+            {oneLines.map((line, index) => (
+              <li key={`${line}-${index}`} className="cdj-quote text-[15px]">
+                {line}
+              </li>
+            ))}
+          </ul>
         )}
       </section>
 
-      <section className="mt-5 space-y-4">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
-            <p className="text-xs font-medium text-brown-400">이 {isWebNovel ? "작품" : "책"}에 찍힌 도장</p>
-            <p className="mt-1 font-serif text-2xl font-bold text-brown-900">{book.reviewCount}개</p>
-          </div>
-          <div className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
-            <p className="text-xs font-medium text-brown-400">평균 별점</p>
-            <p className="mt-1 font-serif text-2xl font-bold text-brown-900">{averageRating(reviews)}</p>
-          </div>
-          <div className="col-span-2 rounded-2xl border border-cream-200 bg-white p-4 shadow-sm sm:col-span-1">
-            <p className="text-xs font-medium text-brown-400">참여 독자</p>
-            <p className="mt-1 font-serif text-2xl font-bold text-brown-900">{book.readerCount}명</p>
-          </div>
-        </div>
-
-        {emotionKeywords.length > 0 && (
-          <div className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
-            <p className="text-sm font-semibold text-brown-800">많이 남긴 감정</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {emotionKeywords.map((keyword) => (
-                <span key={keyword} className="rounded-full bg-cream-100 px-3 py-1 text-sm text-brown-600">
-                  {keyword}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm">
-          <h2 className="font-serif text-lg font-bold text-brown-900">한 줄 감상 모아보기</h2>
-          {oneLines.length === 0 ? (
-            <p className="mt-3 rounded-xl bg-cream-50 px-4 py-5 text-center text-sm text-brown-400">
-              아직 한 줄 감상이 없습니다. 독후감을 남기면 이 {isWebNovel ? "작품" : "책"}의 감상 모음에 표시됩니다.
-            </p>
-          ) : (
-            <ul className="mt-3 space-y-2">
-              {oneLines.map((line, index) => (
-                <li key={`${line}-${index}`} className="rounded-xl bg-cream-50 px-4 py-3 text-sm leading-6 text-brown-700">
-                  {line}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </section>
-
-      <section className="mt-8">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="font-serif text-xl font-bold text-brown-900">
-            이 {isWebNovel ? "작품" : "책"}을 읽은 사람들의 독후감{" "}
-            <span className="font-sans text-base font-normal text-brown-400">{book.reviewCount}개</span>
+      {/* 독후감 목록 */}
+      <section className="mt-12">
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-3 border-b border-cream-300">
+          <h2 className="pb-3 text-lg font-bold text-brown-800">
+            독후감 <span className="ml-1 text-base font-medium text-sage-600 tabular">{book.reviewCount}</span>
           </h2>
-          <div className="flex rounded-full border border-cream-200 bg-white p-1">
+          <nav className="-mb-px flex" aria-label="독후감 정렬">
             {SORT_OPTIONS.map((option) => {
               const active = option.value === sort;
               const sortParams = new URLSearchParams();
@@ -322,30 +311,24 @@ export default async function BookDetailPage({ params, searchParams }: Props) {
                   key={option.value}
                   href={href}
                   scroll={false}
-                  className={`rounded-full px-3 py-1.5 text-sm transition ${
-                    active
-                      ? "bg-brown-700 font-semibold text-white"
-                      : "text-brown-500 hover:bg-cream-50 hover:text-brown-800"
-                  }`}
+                  className="cdj-tab text-sm"
+                  aria-current={active ? "page" : undefined}
                 >
                   {option.label}
                 </Link>
               );
             })}
-          </div>
+          </nav>
         </div>
 
         {reviews.length === 0 ? (
-          <div className="rounded-2xl border border-cream-200 bg-white py-16 text-center text-brown-400">
-            <p>아직 공개 독후감이 없어요.</p>
-            <p className="mt-1 text-sm">첫 번째 도장을 찍어보세요.</p>
-            <Link
-              href={writeHref(book)}
-              className="mt-5 inline-flex rounded-full bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800"
-            >
-              나도 이 {isWebNovel ? "작품" : "책"}에 도장 찍기
-            </Link>
-          </div>
+          <EmptyState
+            title="아직 공개 독후감이 없어요"
+            icon={<BookOpen size={22} aria-hidden="true" />}
+            action={<Link href={writeHref(book)} className="cdj-button cdj-button--primary">첫 도장 찍기</Link>}
+          >
+            이 {unit}의 첫 번째 독자가 되어보세요.
+          </EmptyState>
         ) : (
           <div className="flex flex-col gap-4">
             {reviews.map((review) => (
@@ -354,6 +337,6 @@ export default async function BookDetailPage({ params, searchParams }: Props) {
           </div>
         )}
       </section>
-    </main>
+    </div>
   );
 }

@@ -1,4 +1,10 @@
 import type { Metadata, Viewport } from "next";
+import Link from "next/link";
+// 글꼴은 사이트에 함께 싣는다. 사용자 PC에 설치된 글꼴에 따라 화면이 달라지지 않도록.
+// 두 파일 모두 글자 범위별로 쪼개져 있어 화면에 쓰인 글자 조각만 내려받는다.
+import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
+import "@fontsource/noto-serif-kr/korean-600.css";
+import "@fontsource/noto-serif-kr/korean-700.css";
 import "./globals.css";
 import Header from "./components/Header";
 import AnalyticsTracker from "./components/AnalyticsTracker";
@@ -8,7 +14,7 @@ import IosInstallBanner from "./components/IosInstallBanner";
 import { shareText } from "./lib/serverApi";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.chaekdojang.com";
-const themeColor = "#6E4A36";
+const themeColor = "#174A46";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -106,12 +112,26 @@ export default function RootLayout({
         <Header />
         <main className="flex-1">{children}</main>
         <IosInstallBanner />
-        <footer className="px-4 py-8 text-center text-sm text-brown-400 border-t border-cream-200">
-          <p>2026 책도장. 읽은 책에 나만의 감상을 찍다</p>
-          <nav className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
-            <a href="/privacy" className="hover:text-brown-600">개인정보처리방침</a>
-            <a href="/terms" className="hover:text-brown-600">이용약관</a>
-          </nav>
+        <footer className="mt-12 border-t border-cream-300 bg-cream-50">
+          <div className="mx-auto flex max-w-6xl flex-col gap-6 px-5 py-10 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <Link href="/" className="inline-flex items-center gap-2 font-serif text-lg font-bold text-brown-800">
+                <span className="stamp-mark pointer-events-none" aria-hidden="true">冊</span>
+                책도장
+              </Link>
+              <p className="mt-2 text-sm text-sage-600">읽은 책에 나만의 감상을 찍다</p>
+            </div>
+            <nav aria-label="서비스 정보" className="flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-sage-600">
+              <Link href="/cs" className="transition-colors hover:text-brown-800">고객센터</Link>
+              <Link href="/install" className="transition-colors hover:text-brown-800">앱 설치</Link>
+              <Link href="/terms" className="transition-colors hover:text-brown-800">이용약관</Link>
+              <Link href="/privacy" className="font-semibold text-brown-700 transition-colors hover:text-brown-800">개인정보처리방침</Link>
+              <Link href="/payment-info" className="transition-colors hover:text-brown-800">환불·결제 안내</Link>
+            </nav>
+          </div>
+          <div className="border-t border-cream-300">
+            <p className="mx-auto max-w-6xl px-5 py-4 text-xs text-sage-600">© 2026 책도장. All rights reserved.</p>
+          </div>
         </footer>
       </body>
     </html>

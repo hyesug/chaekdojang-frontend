@@ -39,7 +39,7 @@ export default function DojangdanDemoPage() {
         </p>
       </section>
 
-      <section className="mb-8 rounded-lg border border-cream-200 bg-white p-5 shadow-sm">
+      <section className="cdj-card mb-8 p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs text-brown-300">이번 도장단 책</p>
@@ -81,7 +81,7 @@ export default function DojangdanDemoPage() {
       <div className="mt-8 text-center">
         <Link
           href="/books/demian"
-          className="inline-flex rounded-full bg-brown-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brown-800"
+          className="cdj-button cdj-button--primary inline-flex"
         >
           전체 독후감 보기
         </Link>

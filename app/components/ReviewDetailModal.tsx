@@ -7,6 +7,10 @@ import ProfileAvatar from "./ProfileAvatar";
 import ReviewViewTracker from "./ReviewViewTracker";
 import { API_BASE } from "../lib/api";
 import { authFetch, getValidToken } from "../lib/auth";
+import { ModalShell } from "./ui/ModalShell";
+import StarRating, { StarInput } from "./ui/StarRating";
+import { LoadingState } from "./ui/LoadingState";
+import { Heart, MessageCircle, X } from "lucide-react";
 
 const BASE = API_BASE;
 
@@ -35,32 +39,6 @@ type Me = {
 
 function getToken(): string | null {
   return getValidToken();
-}
-
-function Stars({ rating }: { rating: number }) {
-  return (
-    <span>
-      <span className="text-amber-500">{"★".repeat(rating)}</span>
-      <span className="text-cream-300">{"★".repeat(5 - rating)}</span>
-    </span>
-  );
-}
-
-function EditableStars({ rating, onChange }: { rating: number; onChange: (r: number) => void }) {
-  return (
-    <span>
-      {[1, 2, 3, 4, 5].map((n) => (
-        <button
-          key={n}
-          type="button"
-          onClick={() => onChange(n)}
-          className={`text-base leading-none transition-colors ${n <= rating ? "text-amber-500" : "text-cream-300 hover:text-amber-300"}`}
-        >
-          ★
-        </button>
-      ))}
-    </span>
-  );
 }
 
 type Props = {
@@ -254,11 +232,9 @@ export default function ReviewDetailModal({ reviewId, onClose, onEngagementChang
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+    <>
       <ReviewViewTracker reviewId={reviewId} />
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-
-      <div className="relative z-10 w-full sm:max-w-xl bg-white rounded-t-2xl sm:rounded-2xl max-h-[92vh] flex flex-col shadow-xl overflow-hidden">
+      <ModalShell title="독후감" onClose={onClose} className="sm:max-w-xl">
         {/* 헤더 */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-cream-200 flex-shrink-0">
           <span className="font-serif font-bold text-brown-800 text-sm">독후감</span>
@@ -284,12 +260,12 @@ export default function ReviewDetailModal({ reviewId, onClose, onEngagementChang
                 수정
               </button>
             )}
-            <button onClick={onClose} className="text-brown-400 hover:text-brown-600 text-xl leading-none">✕</button>
+            <button onClick={onClose} className="cdj-icon-button" aria-label="닫기"><X size={20} strokeWidth={1.75} aria-hidden="true" /></button>
           </div>
         </div>
 
         {loading ? (
-          <div className="flex-1 flex items-center justify-center text-brown-400 text-sm">불러오는 중…</div>
+          <div className="flex flex-1 items-center justify-center"><LoadingState label="독후감을 불러오는 중" /></div>
         ) : !review ? (
           <div className="flex-1 flex items-center justify-center text-brown-400 text-sm">독후감을 불러올 수 없습니다.</div>
         ) : (
@@ -300,11 +276,11 @@ export default function ReviewDetailModal({ reviewId, onClose, onEngagementChang
                 <img
                   src={review.book.thumbnail}
                   alt={review.book.title}
-                  className="w-14 h-20 rounded shadow-sm object-cover flex-shrink-0"
+                  className="h-[84px] w-14 flex-shrink-0 rounded-[3px] object-cover shadow-[0_4px_12px_-4px_rgb(16_42_44/22%)]"
                 />
               ) : (
                 <div className="w-14 h-20 rounded shadow-sm flex-shrink-0 bg-brown-200 flex items-center justify-center text-white font-bold">
-                  {review.book?.title?.[0] ?? "📖"}
+                  {review.book?.title?.[0] ?? ""}
                 </div>
               )}
               <div className="flex-1 min-w-0">
@@ -346,8 +322,8 @@ export default function ReviewDetailModal({ reviewId, onClose, onEngagementChang
                 </div>
                 <div className="mt-1">
                   {editing
-                    ? <EditableStars rating={editRating} onChange={setEditRating} />
-                    : <Stars rating={review.rating} />
+                    ? <StarInput rating={editRating} onChange={setEditRating} size={20} />
+                    : <StarRating rating={review.rating} />
                   }
                 </div>
               </div>
@@ -361,27 +337,27 @@ export default function ReviewDetailModal({ reviewId, onClose, onEngagementChang
                     value={editContent}
                     onChange={(e) => setEditContent(e.target.value)}
                     rows={10}
-                    className="w-full rounded-xl border border-cream-200 px-3 py-2 text-sm text-brown-700 focus:outline-none focus:border-brown-400 resize-none"
+                    className="cdj-field resize-none text-[15px] leading-7"
                     autoFocus
                   />
                   <div className="flex gap-2 mt-2 justify-end">
                     <button
                       onClick={() => setEditing(false)}
-                      className="px-3 py-1.5 text-xs text-brown-500 bg-cream-100 rounded-lg hover:bg-cream-200 transition-colors"
+                      className="cdj-button cdj-button--ghost cdj-button--sm"
                     >
                       취소
                     </button>
                     <button
                       onClick={handleSave}
                       disabled={saving || !editContent.trim()}
-                      className="px-3 py-1.5 text-xs text-white bg-brown-600 rounded-lg hover:bg-brown-700 disabled:opacity-40 transition-colors"
+                      className="cdj-button cdj-button--primary cdj-button--sm"
                     >
                       {saving ? "저장 중…" : "저장"}
                     </button>
                   </div>
                 </>
               ) : (
-                <p className="text-sm text-brown-700 leading-relaxed whitespace-pre-wrap">{review.content}</p>
+                <p className="whitespace-pre-wrap text-[15px] leading-[1.85] text-brown-900">{review.content}</p>
               )}
             </div>
 
@@ -392,18 +368,16 @@ export default function ReviewDetailModal({ reviewId, onClose, onEngagementChang
                 className="flex items-center gap-1.5 text-sm group transition-colors"
                 aria-label={liked ? "좋아요 취소" : "좋아요"}
               >
-                <span className={`text-lg leading-none transition-colors ${liked ? "text-red-500" : "text-brown-300 group-hover:text-red-400"}`}>
-                  {liked ? "♥" : "♡"}
-                </span>
-                <span className={liked ? "text-red-500 text-sm" : "text-brown-400 text-sm"}>{likeCount}</span>
+                <Heart size={18} strokeWidth={1.75} className={liked ? "fill-wine-500 text-wine-500" : "text-sage-600 group-hover:text-wine-500"} aria-hidden="true" />
+                <span className={`text-sm font-medium tabular ${liked ? "text-wine-500" : "text-sage-600"}`}>{likeCount}</span>
               </button>
-              <span className="text-sm text-brown-400">💬 {comments.length}</span>
+              <span className="flex items-center gap-1.5 text-sm font-medium text-sage-600"><MessageCircle size={18} strokeWidth={1.75} aria-hidden="true" /><span className="tabular">{comments.length}</span></span>
             </div>
 
             {/* 댓글 목록 */}
             <div className="px-5 py-3 space-y-4">
               {comments.length === 0 ? (
-                <p className="text-center text-xs text-brown-300 py-4">첫 댓글을 남겨보세요</p>
+                <p className="py-4 text-center text-[13px] text-sage-600">아직 댓글이 없어요. 첫 댓글을 남겨보세요</p>
               ) : (
                 comments.map((c) => (
                   <div key={c.id} className="flex items-start gap-2">
@@ -431,7 +405,7 @@ export default function ReviewDetailModal({ reviewId, onClose, onEngagementChang
         {/* 댓글 입력창 */}
         <form
           onSubmit={handleCommentSubmit}
-          className="px-5 py-3 border-t border-cream-200 flex gap-2 items-end flex-shrink-0 bg-white"
+          className="flex flex-shrink-0 items-end gap-2 border-t border-cream-300 bg-cream-50 px-4 py-3"
         >
           {isLoggedIn ? (
             <>
@@ -444,15 +418,15 @@ export default function ReviewDetailModal({ reviewId, onClose, onEngagementChang
                     handleCommentSubmit(e as unknown as React.FormEvent);
                   }
                 }}
-                placeholder="댓글을 입력하세요…"
+                placeholder="댓글을 입력하세요" aria-label="댓글 입력"
                 rows={1}
                 disabled={submitting}
-                className="flex-1 resize-none rounded-xl border border-cream-200 px-3 py-2 text-sm text-brown-700 placeholder:text-brown-300 focus:outline-none focus:border-brown-400 disabled:opacity-60"
+                className="cdj-field flex-1 resize-none text-sm"
               />
               <button
                 type="submit"
                 disabled={!commentText.trim() || submitting}
-                className="px-4 py-2 bg-brown-600 text-white text-sm rounded-xl hover:bg-brown-700 disabled:opacity-40 transition-colors"
+                className="cdj-button cdj-button--primary"
               >
                 등록
               </button>
@@ -461,13 +435,13 @@ export default function ReviewDetailModal({ reviewId, onClose, onEngagementChang
             <button
               type="button"
               onClick={() => router.push("/auth/login")}
-              className="flex-1 py-2 text-sm text-brown-500 bg-cream-100 rounded-xl hover:bg-cream-200 transition-colors"
+              className="cdj-button cdj-button--secondary flex-1"
             >
               로그인하고 댓글 남기기
             </button>
           )}
         </form>
-      </div>
-    </div>
+      </ModalShell>
+    </>
   );
 }

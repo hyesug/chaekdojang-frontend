@@ -1,16 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { prepareInput } from '../../public/unse-8f3k2m/src/engine.js';
-import { dayRange, rankSurgeryDays } from '../../public/unse-8f3k2m/src/reading.js';
+import { prepareInput } from '../../public/unse/src/engine.js';
+import { dayRange, rankSurgeryDays } from '../../public/unse/src/reading.js';
 
 const FORM = {
-  name: '이대희',
-  year: 1999,
-  month: 4,
-  day: 28,
-  hour: 10,
-  minute: 15,
+  name: '테스트',
+  year: 1998,
+  month: 8,
+  day: 21,
+  hour: 9,
+  minute: 35,
   birthPlace: '대전',
   homePlace: '대전',
   gender: 'male',
@@ -23,7 +23,7 @@ const days = dayRange(input, chart, { y: 2026, m: 9, d: 15 }, 120);
 const ranked = rankSurgeryDays(input, chart, days);
 
 const key = (x) => `${x.y}-${String(x.m).padStart(2, '0')}-${String(x.d).padStart(2, '0')}`;
-const byDate = new Map(ranked.candidates.map((x, i) => [key(x), { x, i }]));
+const byDate = new Map([...ranked.candidates, ...ranked.excluded].map((x, i) => [key(x), { x, i }]));
 
 test('수술 후보에서는 일지충·양인만 강하게 제외한다', () => {
   for (const x of ranked.candidates) {
@@ -49,39 +49,29 @@ test('수술 참고 후보는 복합 참고점수 내림차순을 보존한다',
 });
 
 test('천의는 절대 게이트가 아니며 비천의 후보도 천의 후보보다 앞설 수 있다', () => {
-  const firstCheonui = ranked.candidates.findIndex((x) => x.surgery.cheonui);
-  assert.ok(firstCheonui > 0, '천의 후보 앞에 비천의 후보가 하나 이상 있어야 한다');
+  // 복합 참고점수에서는 천의 여부 하나가 전체 순서를 고정하면 안 된다 —
+  // 비천의 후보가 그보다 뒤의 천의 후보보다 앞서는 경우가 하나라도 있어야 한다
+  const c = ranked.candidates.map((x) => x.surgery.cheonui);
+  const firstNon = c.indexOf(false);
+  assert.ok(firstNon >= 0 && c.slice(firstNon + 1).includes(true));
+});
+
+test('원국·대운의 직접 충과 형해파를 실제 후보마다 잡는다', () => {
+  // 익명 고정 명반(1998 戊寅년 · 癸亥대운)
+  const d0928 = byDate.get('2026-09-28');   // 乙巳일
+  const d1001 = byDate.get('2026-10-01');   // 戊申일
+  for (const v of [d0928, d1001]) assert.ok(v);
   assert.ok(
-    ranked.candidates.slice(0, firstCheonui).some((x) => !x.surgery.cheonui),
-    '복합 참고점수에서는 천의 여부 하나가 전체 순서를 고정하면 안 된다',
+    d0928.x.surgery.branchRisk.some((r) => r.label === '대운' && r.relation === '충'),
+    '巳일은 癸亥대운의 亥와 巳亥충이 잡혀야 한다',
+  );
+  assert.ok(
+    d1001.x.surgery.branchRisk.some((r) => r.label === '년지' && r.relation === '충'),
+    '申일은 원국 寅년지와 寅申충이 잡혀야 한다',
   );
 });
 
-test('대희 원국·대운의 직접 충과 형해파를 실제 후보마다 잡는다', () => {
-  const d0928 = byDate.get('2026-09-28');
-  const d1001 = byDate.get('2026-10-01');
-  const d1120 = byDate.get('2026-11-20');
-  const d1202 = byDate.get('2026-12-02');
-
-  for (const v of [d0928, d1001, d1120, d1202]) assert.ok(v);
-
-  assert.ok(
-    d0928.x.surgery.branchRisk.some((r) => r.label === '대운' && r.relation === '삼형'),
-    '9/28 巳일은 丙寅대운의 寅과 형 관계가 잡혀야 한다',
-  );
-  assert.ok(
-    d1001.x.surgery.branchRisk.some((r) => r.label === '대운' && r.relation === '충'),
-    '10/1 申일은 丙寅대운의 寅과 충이 잡혀야 한다',
-  );
-  for (const v of [d1120, d1202]) {
-    assert.ok(
-      v.x.surgery.branchRisk.some((r) => r.label === '월지' && r.relation === '충'),
-      '戌일은 원국 辰월지와 辰戌충이 잡혀야 한다',
-    );
-  }
-});
-
-test('대희 2026 남은 평일 상위 후보를 로그로 남긴다', () => {
+test('2026 남은 평일 상위 후보를 로그로 남긴다', () => {
   const weekdays = ranked.candidates
     .filter((x) => x.y === 2026 && !['토', '일'].includes(x.weekday))
     .slice(0, 12);
@@ -131,7 +121,11 @@ test('대희 2026 남은 평일 상위 후보를 로그로 남긴다', () => {
 });
 
 test('대운 전환 45일 이내 후보에는 전환 주의 정보를 붙인다', () => {
-  const near = ranked.candidates.filter((x) => x.surgery.daeunTransition);
+  // 시험 기간 안에 대운이 바뀌는 익명 명반
+  const T = prepareInput({ ...FORM, year: 1985, month: 1, day: 10, hour: 12, minute: 0, birthPlace: '서울', homePlace: '서울', gender: 'female' },
+    { now: new Date('2026-09-15T03:00:00Z') });
+  const tr = rankSurgeryDays(T.input, T.chart, dayRange(T.input, T.chart, { y: 2026, m: 9, d: 15 }, 120));
+  const near = tr.candidates.filter((x) => x.surgery.daeunTransition);
   assert.ok(near.length > 0);
   for (const x of near) {
     assert.ok(Math.abs(x.surgery.daeunTransition.delta) <= 45);

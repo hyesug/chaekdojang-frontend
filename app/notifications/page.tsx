@@ -1,5 +1,11 @@
 "use client";
 
+import {
+  Award, Bell, BookOpen, Check, ChevronRight, CornerUpRight, FileText, Heart, Mail, MessageCircle,
+  UserPlus, Users, X, type LucideIcon,
+} from "lucide-react";
+import { EmptyState } from "../components/ui/EmptyState";
+import { LoadingState } from "../components/ui/LoadingState";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { API_BASE } from "../lib/api";
@@ -25,21 +31,22 @@ function getToken(): string | null {
   return getValidToken();
 }
 
-function typeIcon(type: NotificationType) {
+
+function typeIcon(type: NotificationType): { Icon: LucideIcon; tone: string } {
   switch (type) {
-    case "LIKE": return "♥";
-    case "COMMENT": return "💬";
-    case "FOLLOW": return "👤";
-    case "SAME_BOOK_REVIEW": return "📚";
-    case "GROUP_JOIN_REQUEST": return "👥";
-    case "GROUP_JOINED": return "👥";
-    case "GROUP_JOIN_APPROVED": return "✓";
-    case "REVIEW_CONTINUED": return "↗";
-    case "CAMPAIGN_SELECTED": return "✓";
-    case "CAMPAIGN_REJECTED": return "📚";
-    case "CAMPAIGN_INVITED": return "✉";
-    case "CONTEST_AWARDED": return "🏆";
-    case "CONTEST_NOT_AWARDED": return "📄";
+    case "LIKE": return { Icon: Heart, tone: "bg-wine-50 text-wine-500" };
+    case "COMMENT": return { Icon: MessageCircle, tone: "bg-brown-100 text-brown-700" };
+    case "FOLLOW": return { Icon: UserPlus, tone: "bg-brown-100 text-brown-700" };
+    case "SAME_BOOK_REVIEW": return { Icon: BookOpen, tone: "bg-cream-200 text-sage-700" };
+    case "GROUP_JOIN_REQUEST": return { Icon: Users, tone: "bg-cream-200 text-sage-700" };
+    case "GROUP_JOINED": return { Icon: Users, tone: "bg-cream-200 text-sage-700" };
+    case "GROUP_JOIN_APPROVED": return { Icon: Check, tone: "bg-brown-100 text-brown-700" };
+    case "REVIEW_CONTINUED": return { Icon: CornerUpRight, tone: "bg-brown-100 text-brown-700" };
+    case "CAMPAIGN_SELECTED": return { Icon: Check, tone: "bg-brown-100 text-brown-700" };
+    case "CAMPAIGN_REJECTED": return { Icon: BookOpen, tone: "bg-cream-200 text-sage-700" };
+    case "CAMPAIGN_INVITED": return { Icon: Mail, tone: "bg-cream-200 text-sage-700" };
+    case "CONTEST_AWARDED": return { Icon: Award, tone: "bg-amber-50 text-amber-600" };
+    case "CONTEST_NOT_AWARDED": return { Icon: FileText, tone: "bg-cream-200 text-sage-700" };
   }
 }
 
@@ -169,50 +176,44 @@ export default function NotificationsPage() {
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
+
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-6">
+    <div className="cdj-page cdj-page--reading">
+      <div className="mb-6 flex items-end justify-between gap-4">
         <div>
-          <h1 className="font-serif text-2xl font-bold text-brown-800">알림</h1>
+          <h1 className="cdj-title">알림</h1>
           {unreadCount > 0 && (
-            <p className="text-xs text-brown-400 mt-0.5">읽지 않은 알림 {unreadCount}개</p>
+            <p className="cdj-lead mt-1.5">읽지 않은 알림 <span className="font-semibold text-brown-800 tabular">{unreadCount}</span>개</p>
           )}
         </div>
         {notifications.length > 0 && (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1">
             {unreadCount > 0 && (
-              <button
-                onClick={markAllAsRead}
-                className="text-xs text-brown-400 hover:text-brown-600 underline underline-offset-2 transition-colors"
-              >
+              <button onClick={markAllAsRead} className="cdj-button cdj-button--ghost cdj-button--sm">
                 모두 읽음
               </button>
             )}
-            <button
-              onClick={deleteAllNotifications}
-              className="text-xs text-brown-300 hover:text-red-400 underline underline-offset-2 transition-colors"
-            >
+            <button onClick={deleteAllNotifications} className="cdj-button cdj-button--ghost cdj-button--sm hover:!text-wine-500">
               전체 삭제
             </button>
           </div>
         )}
       </div>
 
-      {subscriptionError && <p role="alert" className="mb-4 text-sm text-red-600">{subscriptionError}</p>}
+      {subscriptionError && <p role="alert" className="cdj-alert cdj-alert--error mb-4">{subscriptionError}</p>}
       {loading ? (
-        <div className="text-center py-12 text-brown-400">불러오는 중...</div>
+        <LoadingState label="알림을 불러오는 중" />
       ) : notifications.length === 0 ? (
-        <div className="text-center py-20 text-brown-400">
-          <p className="text-5xl mb-4">🔔</p>
-          <p>아직 알림이 없어요</p>
-          <p className="text-sm mt-1">좋아요, 댓글, 팔로우 알림이 여기에 표시돼요</p>
-        </div>
+        <EmptyState title="아직 알림이 없어요" icon={<Bell size={22} aria-hidden="true" />}>
+          좋아요, 댓글, 팔로우 알림이 여기에 표시돼요
+        </EmptyState>
       ) : (
-        <div className="flex flex-col gap-1">
+        <ul className="cdj-card divide-y divide-cream-200 overflow-hidden">
           {notifications.map((n) => {
             const href = notificationHref(n);
+            const { Icon, tone } = typeIcon(n.type);
             return (
-              <div
+              <li
                 key={n.id}
                 role="button"
                 tabIndex={0}
@@ -223,68 +224,57 @@ export default function NotificationsPage() {
                     openNotification(n);
                   }
                 }}
-                className={`group flex items-center gap-3 rounded-2xl border px-4 py-3.5 shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-brown-300 ${
-                  href
-                    ? "cursor-pointer hover:-translate-y-0.5 hover:border-brown-300 hover:bg-white hover:shadow-md active:translate-y-0"
-                    : "cursor-pointer hover:bg-cream-50"
-                } ${
-                  n.isRead ? "border-cream-200 bg-white" : "border-cream-300 bg-cream-100"
+                className={`group relative flex cursor-pointer items-start gap-3 px-4 py-4 transition-colors hover:bg-cream-100 sm:px-5 ${
+                  n.isRead ? "" : "bg-brown-100/40"
                 }`}
                 aria-label={href ? `${n.message} 상세 페이지로 이동` : `${n.message} 읽음 처리`}
               >
-              {/* 타입 아이콘 */}
-              <div className="w-9 h-9 rounded-full bg-brown-100 flex-shrink-0 flex items-center justify-center text-base">
-                {typeIcon(n.type)}
-              </div>
+                {/* 읽지 않음 표시 */}
+                {!n.isRead && (
+                  <span className="absolute left-1.5 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-brown-700 sm:left-2" aria-label="읽지 않음" />
+                )}
 
-              {/* 내용 */}
-              <div className="flex-1 min-w-0">
-                <p className={`text-sm leading-snug ${n.isRead ? "text-brown-600" : "text-brown-800 font-medium"}`}>
-                  {n.message}
-                </p>
-                <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                  <p className="text-xs text-brown-300">{n.createdAt.slice(0, 10)}</p>
-                  {href && (
-                    <span className="text-xs font-medium text-brown-400 transition-colors group-hover:text-brown-700">
-                      상세 보기 →
-                    </span>
+                {/* 타입 아이콘 */}
+                <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full ${tone}`}>
+                  <Icon size={17} strokeWidth={1.75} aria-hidden="true" />
+                </div>
+
+                {/* 내용 */}
+                <div className="min-w-0 flex-1">
+                  <p className={`text-sm leading-snug ${n.isRead ? "text-brown-900/80" : "font-semibold text-brown-800"}`}>
+                    {n.message}
+                  </p>
+                  <p className="cdj-meta mt-1">{n.createdAt.slice(0, 10).replaceAll("-", ".")}</p>
+                  {n.type === "CAMPAIGN_INVITED" && (
+                    <button
+                      type="button"
+                      onClick={(event) => { event.stopPropagation(); void unsubscribeInvitation(n.id); }}
+                      onKeyDown={(event) => event.stopPropagation()}
+                      disabled={unsubscribing !== null || unsubscribed.includes(n.id)}
+                      className="mt-2 text-xs text-sage-600 underline underline-offset-2 hover:text-brown-800 disabled:opacity-60"
+                    >
+                      {unsubscribed.includes(n.id) ? "소식 받기를 해제했습니다" : "이 출판사·작가 소식 받지 않기"}
+                    </button>
                   )}
                 </div>
-                {n.type === "CAMPAIGN_INVITED" && (
+
+                <div className="flex flex-shrink-0 items-center">
+                  {/* 삭제 */}
                   <button
-                    type="button"
-                    onClick={(event) => { event.stopPropagation(); void unsubscribeInvitation(n.id); }}
-                    onKeyDown={(event) => event.stopPropagation()}
-                    disabled={unsubscribing !== null || unsubscribed.includes(n.id)}
-                    className="mt-2 text-xs text-brown-500 underline disabled:opacity-60"
+                    onClick={(e) => { e.stopPropagation(); deleteNotification(n.id); }}
+                    className="flex h-8 w-8 items-center justify-center rounded-md text-sage-500 transition-colors hover:bg-cream-200 hover:text-wine-500 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
+                    aria-label="알림 삭제"
                   >
-                    {unsubscribed.includes(n.id) ? "소식 받기를 해제했습니다" : "이 출판사·작가 소식 받지 않기"}
+                    <X size={15} aria-hidden="true" />
                   </button>
-                )}
-              </div>
-
-              {/* 읽지 않음 표시 */}
-              {!n.isRead && (
-                <div className="w-2 h-2 rounded-full bg-brown-500 flex-shrink-0" />
-              )}
-
-              {/* 삭제 */}
-              <button
-                onClick={(e) => { e.stopPropagation(); deleteNotification(n.id); }}
-                className="flex-shrink-0 text-xs text-brown-300 hover:text-red-400 transition-colors ml-1"
-                aria-label="알림 삭제"
-              >
-                ✕
-              </button>
-              {href && (
-                <span className="hidden text-lg text-brown-300 transition-transform group-hover:translate-x-0.5 group-hover:text-brown-600 sm:block">
-                  →
-                </span>
-              )}
-            </div>
+                  {href && (
+                    <ChevronRight size={18} className="hidden text-sage-400 transition-transform group-hover:translate-x-0.5 group-hover:text-brown-700 sm:block" aria-hidden="true" />
+                  )}
+                </div>
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
     </div>
   );

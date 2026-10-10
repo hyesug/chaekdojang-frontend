@@ -50,20 +50,20 @@ export default function BookSearchSelect({
             }
           }}
           placeholder="책 제목 검색"
-          className="min-w-0 flex-1 rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm text-brown-800 focus:border-brown-400 focus:outline-none"
+          className="cdj-field text-sm min-w-0 flex-1"
         />
         <button
           type="button"
           onClick={searchBooks}
           disabled={loading}
-          className="rounded-xl border border-cream-300 px-3 py-2 text-sm text-brown-600 hover:bg-white disabled:opacity-50"
+          className="cdj-button cdj-button--secondary"
         >
           {loading ? "검색 중" : "검색"}
         </button>
       </div>
 
       {results.length > 0 && (
-        <div className="max-h-60 overflow-y-auto rounded-xl border border-cream-200 bg-white">
+        <div className="cdj-card max-h-60 overflow-y-auto">
           {results.slice(0, 10).map((book) => {
             const label = `${book.title} · ${book.author}`;
             return (

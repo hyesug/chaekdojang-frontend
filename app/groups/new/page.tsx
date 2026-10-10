@@ -56,20 +56,20 @@ export default function NewGroupPage() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-8">
-      <h1 className="font-serif text-2xl font-bold text-brown-900">독서모임 만들기</h1>
+    <main className="cdj-page cdj-page--reading">
+      <h1 className="cdj-title">독서모임 만들기</h1>
       <p className="mt-2 text-sm leading-6 text-brown-500">
         모임장이 선정 책을 등록하고, 멤버들이 쓴 독후감을 모아볼 수 있습니다.
       </p>
 
-      <form onSubmit={submit} className="mt-6 space-y-4 rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+      <form onSubmit={submit} className="cdj-card mt-6 space-y-4 p-5">
         <label className="block">
           <span className="text-sm font-medium text-brown-700">모임 이름</span>
           <input
             value={name}
             onChange={(event) => setName(event.target.value)}
             maxLength={100}
-            className="mt-1 w-full rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-900 focus:border-brown-400 focus:outline-none"
+            className="cdj-field text-sm mt-1 w-full"
             placeholder="예: 일요일 아침 독서모임"
           />
         </label>
@@ -81,7 +81,7 @@ export default function NewGroupPage() {
             onChange={(event) => setDescription(event.target.value)}
             rows={5}
             maxLength={2000}
-            className="mt-1 w-full rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-900 focus:border-brown-400 focus:outline-none"
+            className="cdj-field text-sm mt-1 w-full"
             placeholder="어떤 책을 어떤 방식으로 읽는 모임인지 적어주세요."
           />
         </label>
@@ -96,7 +96,7 @@ export default function NewGroupPage() {
                 setVisibility(nextVisibility);
                 if (nextVisibility === "PRIVATE") setJoinPolicy("APPROVAL");
               }}
-              className="mt-1 w-full rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm text-brown-700 focus:border-brown-400 focus:outline-none"
+              className="cdj-field text-sm mt-1 w-full"
             >
               <option value="PUBLIC">공개</option>
               <option value="PRIVATE">비공개</option>
@@ -108,7 +108,7 @@ export default function NewGroupPage() {
               value={effectiveJoinPolicy}
               onChange={(event) => setJoinPolicy(event.target.value as "OPEN" | "APPROVAL")}
               disabled={visibility === "PRIVATE"}
-              className="mt-1 w-full rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm text-brown-700 focus:border-brown-400 focus:outline-none"
+              className="cdj-field text-sm mt-1 w-full"
             >
               {visibility === "PUBLIC" && <option value="OPEN">바로 가입</option>}
               <option value="APPROVAL">승인 후 가입</option>

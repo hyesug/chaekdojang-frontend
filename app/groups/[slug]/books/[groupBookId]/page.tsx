@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import StarRating from "../../../../components/ui/StarRating";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -86,10 +87,10 @@ export default async function GroupBookReviewsPage({ params }: Props) {
   const currentGroupBookPath = `/groups/${encodeURIComponent(group.slug)}/books/${encodeURIComponent(groupBookId)}`;
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-8">
+    <main className="cdj-page cdj-page--reading">
       <BackButton fallbackHref={`/groups/${group.slug}`} />
 
-      <section className="mt-4 rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+      <section className="cdj-card mt-4 p-5">
         <div className="flex gap-4">
           {book.thumbnail ? (
             <Image src={book.thumbnail} alt={`${book.title} 책 표지`} width={72} height={104} className="h-28 w-[72px] rounded object-cover shadow-sm" />
@@ -111,7 +112,7 @@ export default async function GroupBookReviewsPage({ params }: Props) {
             {reviews.length > 0 ? (
               <Link
                 href={`${currentGroupBookPath}/result`}
-                className="mt-4 inline-flex rounded-full bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800"
+                className="cdj-button cdj-button--primary mt-4 inline-flex"
               >
                 AI 결과 보기
               </Link>
@@ -160,26 +161,26 @@ export default async function GroupBookReviewsPage({ params }: Props) {
                   </>
                 )}
               </div>
-              <div className="mt-2 text-yellow-400">{"★".repeat(review.rating)}<span className="text-cream-300">{"★".repeat(Math.max(0, 5 - review.rating))}</span></div>
+              <StarRating rating={review.rating} className="mt-2" />
               <p className={`mt-3 text-sm leading-6 text-brown-700 ${review.hidden ? "whitespace-pre-line" : "line-clamp-4"}`}>{review.content}</p>
             </>
           );
           return review.hidden ? (
-            <article key={review.id} className="rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+            <article key={review.id} className="cdj-card p-5">
               {content}
             </article>
           ) : (
             <Link
               key={review.id}
               href={`/reviews/${review.reviewId}?returnTo=${encodeURIComponent(currentGroupBookPath)}`}
-              className="block rounded-2xl border border-cream-200 bg-white p-5 shadow-sm hover:bg-cream-50"
+              className="cdj-card block p-5 hover:bg-cream-50"
             >
               {content}
             </Link>
           );
         })}
         {reviews.length === 0 && (
-          <div className="rounded-2xl border border-cream-200 bg-white py-16 text-center text-brown-400">
+          <div className="cdj-card py-16 text-center text-brown-400">
             <p>아직 이 모임에 연결된 독후감이 없어요.</p>
             <p className="mt-1 text-sm">멤버들이 독후감을 연결하면 이곳에 모입니다.</p>
           </div>

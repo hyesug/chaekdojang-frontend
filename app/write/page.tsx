@@ -1,5 +1,6 @@
 "use client";
 
+import { Star } from "lucide-react";
 import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -140,15 +141,14 @@ function StarPicker({ value, onChange }: { value: number; onChange: (v: number) 
             onClick={() => onChange(star)}
             onMouseEnter={() => setHover(star)}
             onMouseLeave={() => setHover(0)}
-            className={`text-3xl transition-colors leading-none ${
-              star <= (hover || value) ? "text-amber-500" : "text-cream-300"
-            }`}
+            className="rounded p-0.5 transition-transform hover:scale-110"
+            aria-label={`${star}점`}
           >
-            ★
+            <Star size={30} strokeWidth={1.5} aria-hidden="true" className={star <= (hover || value) ? "fill-star text-star" : "fill-cream-200 text-cream-300"} />
           </button>
         ))}
       </div>
-      <p className="mt-1.5 text-sm text-brown-400 h-5">{LABELS[hover || value]}</p>
+      <p className="mt-1.5 h-5 text-sm font-medium text-sage-600">{LABELS[hover || value]}</p>
     </div>
   );
 }
@@ -675,7 +675,7 @@ function WriteContent() {
     <div className="max-w-2xl mx-auto px-4 py-6 sm:py-8 pb-28 sm:pb-8">
       {submitting && (
         <div className="fixed inset-0 z-50 bg-white/80 backdrop-blur-sm flex items-center justify-center px-4">
-          <div className="w-full max-w-xs rounded-2xl border border-cream-200 bg-white p-6 text-center shadow-lg">
+          <div className="cdj-card w-full max-w-xs p-6 text-center">
             <div className="mx-auto mb-4 h-8 w-8 rounded-full border-2 border-brown-200 border-t-brown-600 animate-spin" />
             <p className="font-serif text-lg font-bold text-brown-800">독후감 등록 중</p>
             <p className="mt-2 text-sm text-brown-400">저장이 끝나면 피드로 이동해요. 잠시만 기다려 주세요.</p>
@@ -697,7 +697,7 @@ function WriteContent() {
             ← 피드로
           </Link>
         )}
-        <h1 className="font-serif text-2xl font-bold text-brown-800">
+        <h1 className="cdj-title">
           {isEditMode
             ? "독후감 수정"
             : isRereadMode
@@ -737,7 +737,7 @@ function WriteContent() {
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
 
         {/* 1. 작품 선택 */}
-        <section className="bg-white rounded-lg border border-cream-200 p-5 sm:p-6 shadow-sm">
+        <section className="cdj-card p-5 sm:p-6">
           <h2 className="font-serif text-lg font-bold text-brown-700 mb-4">1. 어떤 작품을 읽었나요?</h2>
 
           {selectedBook ? (
@@ -822,13 +822,13 @@ function WriteContent() {
                   onChange={(e) => { setQuery(e.target.value); setHasSearched(false); }}
                   onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), searchBooks())}
                   placeholder={searchMode === "BOOK" ? "책 제목 또는 저자 검색" : "웹소설 제목 검색"}
-                  className="flex-1 px-4 py-2.5 rounded-xl border border-cream-300 text-sm text-brown-800 bg-cream-50 placeholder:text-brown-300 focus:outline-none focus:border-brown-400 focus:ring-2 focus:ring-brown-100 transition"
+                  className="cdj-field text-sm flex-1"
                 />
                 <button
                   type="button"
                   onClick={searchBooks}
                   disabled={searching}
-                  className="px-5 py-2.5 bg-brown-600 text-white rounded-xl text-sm font-medium hover:bg-brown-700 transition-colors disabled:opacity-50"
+                  className="cdj-button cdj-button--primary"
                 >
                   {searching ? "..." : "검색"}
                 </button>
@@ -894,7 +894,7 @@ function WriteContent() {
                       <input
                         value={webNovelTitle}
                         onChange={(event) => setWebNovelTitle(event.target.value)}
-                        className="mt-1 w-full rounded-lg border border-cream-300 bg-white px-3 py-2 text-sm text-brown-800 focus:border-brown-400 focus:outline-none"
+                        className="cdj-field text-sm mt-1 w-full"
                       />
                     </label>
                     <label className="block text-xs font-medium text-brown-600">
@@ -903,7 +903,7 @@ function WriteContent() {
                         value={webNovelAuthor}
                         onChange={(event) => setWebNovelAuthor(event.target.value)}
                         placeholder="작가명"
-                        className="mt-1 w-full rounded-lg border border-cream-300 bg-white px-3 py-2 text-sm text-brown-800 placeholder:text-brown-300 focus:border-brown-400 focus:outline-none"
+                        className="cdj-field text-sm mt-1 w-full"
                       />
                     </label>
                   </div>
@@ -985,7 +985,7 @@ function WriteContent() {
                           value={directWorkUrl}
                           onChange={(event) => setDirectWorkUrl(event.target.value)}
                           placeholder="https://..."
-                          className="mt-1 w-full rounded-lg border border-cream-300 bg-white px-3 py-2 text-sm text-brown-800 placeholder:text-brown-300 focus:border-brown-400 focus:outline-none"
+                          className="cdj-field text-sm mt-1 w-full"
                         />
                       </label>
                       <div className="grid gap-3 sm:grid-cols-2">
@@ -995,7 +995,7 @@ function WriteContent() {
                             value={directWorkTitle}
                             onChange={(event) => setDirectWorkTitle(event.target.value)}
                             placeholder="작품명"
-                            className="mt-1 w-full rounded-lg border border-cream-300 bg-white px-3 py-2 text-sm text-brown-800 placeholder:text-brown-300 focus:border-brown-400 focus:outline-none"
+                            className="cdj-field text-sm mt-1 w-full"
                           />
                         </label>
                         <label className="block text-xs font-medium text-brown-600">
@@ -1004,7 +1004,7 @@ function WriteContent() {
                             value={directWorkAuthor}
                             onChange={(event) => setDirectWorkAuthor(event.target.value)}
                             placeholder="작가명"
-                            className="mt-1 w-full rounded-lg border border-cream-300 bg-white px-3 py-2 text-sm text-brown-800 placeholder:text-brown-300 focus:border-brown-400 focus:outline-none"
+                            className="cdj-field text-sm mt-1 w-full"
                           />
                         </label>
                       </div>
@@ -1025,7 +1025,7 @@ function WriteContent() {
         </section>
 
         {/* 2. 감상 작성 */}
-        <section className="bg-white rounded-lg border border-cream-200 p-5 sm:p-6 shadow-sm">
+        <section className="cdj-card p-5 sm:p-6">
           <h2 className="font-serif text-lg font-bold text-brown-700 mb-4">2. 이 작품 어땠나요?</h2>
           <div className="space-y-5">
 
@@ -1037,7 +1037,7 @@ function WriteContent() {
                 value={oneLineReview}
                 onChange={(event) => setOneLineReview(event.target.value)}
                 placeholder="이 책을 한 마디로 표현하면?"
-                className="w-full rounded-xl border border-cream-300 bg-cream-50 px-4 py-3 text-sm text-brown-800 placeholder:text-brown-300 focus:border-brown-400 focus:outline-none focus:ring-2 focus:ring-brown-100"
+                className="cdj-field text-sm w-full"
               />
             </div>
 
@@ -1074,9 +1074,9 @@ function WriteContent() {
                   onChange={(event) => setEmotionInput(event.target.value)}
                   onKeyDown={(event) => event.key === "Enter" && (event.preventDefault(), addEmotionKeyword())}
                   placeholder="직접 입력"
-                  className="min-w-0 flex-1 rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm text-brown-800 placeholder:text-brown-300 focus:border-brown-400 focus:outline-none"
+                  className="cdj-field text-sm min-w-0 flex-1"
                 />
-                <button type="button" onClick={addEmotionKeyword} className="rounded-xl border border-cream-300 px-3 py-2 text-sm text-brown-500">
+                <button type="button" onClick={addEmotionKeyword} className="cdj-button cdj-button--secondary">
                   추가
                 </button>
               </div>
@@ -1092,7 +1092,7 @@ function WriteContent() {
                   type="checkbox"
                   checked={isPublic}
                   onChange={(event) => setIsPublic(event.target.checked)}
-                  className="h-5 w-5 rounded border-cream-300 text-brown-700 focus:ring-brown-300"
+                  className="cdj-field text-sm h-5 w-5"
                 />
               </label>
               <label className="flex items-center justify-between gap-3 rounded-xl bg-cream-50 px-4 py-3">
@@ -1104,7 +1104,7 @@ function WriteContent() {
                   type="checkbox"
                   checked={hasSpoiler}
                   onChange={(event) => setHasSpoiler(event.target.checked)}
-                  className="h-5 w-5 rounded border-cream-300 text-brown-700 focus:ring-brown-300"
+                  className="cdj-field text-sm h-5 w-5"
                 />
               </label>
               <label className="flex items-center justify-between gap-3 rounded-xl bg-cream-50 px-4 py-3">
@@ -1122,7 +1122,7 @@ function WriteContent() {
                   type="checkbox"
                   checked={generateAiSummary}
                   onChange={(event) => setGenerateAiSummary(event.target.checked)}
-                  className="h-5 w-5 rounded border-cream-300 text-brown-700 focus:ring-brown-300"
+                  className="cdj-field text-sm h-5 w-5"
                 />
               </label>
             </div>
@@ -1130,7 +1130,7 @@ function WriteContent() {
         </section>
 
         {/* 3. 자세히 쓰기 (선택) */}
-        <section className="bg-white rounded-lg border border-cream-200 p-5 sm:p-6 shadow-sm">
+        <section className="cdj-card p-5 sm:p-6">
           <h2 className="font-serif text-lg font-bold text-brown-700 mb-1">
             3. 자세히 쓰기{" "}
             <span className="text-sm font-normal text-brown-400">(선택)</span>
@@ -1150,7 +1150,7 @@ function WriteContent() {
                 type="button"
                 onClick={requestFeedback}
                 disabled={!canRequestFeedback}
-                className="rounded-xl bg-brown-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brown-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="cdj-button cdj-button--primary"
               >
                 {feedbackLoading ? "코멘트 작성 중..." : "도장 코멘트 받기"}
               </button>
@@ -1175,7 +1175,7 @@ function WriteContent() {
             onChange={(e) => setContent(e.target.value)}
             placeholder="더 깊은 감상이 있다면 자유롭게 적어주세요."
             rows={10}
-            className="w-full min-h-[42vh] sm:min-h-0 px-4 py-3 rounded-xl border border-cream-300 text-base sm:text-sm text-brown-800 bg-cream-50 placeholder:text-brown-300 focus:outline-none focus:border-brown-400 focus:ring-2 focus:ring-brown-100 transition resize-none leading-relaxed"
+            className="cdj-field text-sm w-full min-h-[42vh] sm:min-h-0 resize-none"
           />
           <div className="mt-1.5 flex flex-col gap-1 text-xs sm:flex-row sm:items-center sm:justify-between">
             <p className={isFeedbackTooShort || isFeedbackTooLong ? "text-amber-600" : "text-brown-300"}>
@@ -1307,7 +1307,7 @@ function WriteContent() {
                   href={feedbackConfig.betaApplyUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="mt-3 inline-flex rounded-xl border border-brown-200 px-4 py-2 text-sm font-medium text-brown-700 hover:bg-cream-50"
+                  className="cdj-button cdj-button--secondary mt-3 inline-flex"
                 >
                   1:1 독후감 첨삭 베타 신청
                 </a>

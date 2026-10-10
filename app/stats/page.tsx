@@ -1,5 +1,6 @@
 "use client";
 
+import StarRating from "../components/ui/StarRating";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -47,7 +48,7 @@ export default function StatsPage() {
   if (!data) return <main className="mx-auto max-w-3xl px-4 py-16 text-center text-brown-400">회고 데이터를 불러오지 못했습니다.</main>;
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8">
+    <main className="cdj-page cdj-page--reading">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-semibold text-sage-700">경쟁이 아닌 나의 흐름</p>
@@ -76,17 +77,17 @@ export default function StatsPage() {
           <h2 className="font-serif text-xl font-bold text-brown-900">1년 전 이맘때</h2>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {data.memories.map((memory) => (
-              <Link key={memory.reviewId} href={`/reviews/${memory.reviewId}`} className="rounded-2xl border border-cream-200 bg-white p-4 hover:border-brown-300">
+              <Link key={memory.reviewId} href={`/reviews/${memory.reviewId}`} className="cdj-card p-4 hover:border-brown-300">
                 <p className="font-semibold text-brown-800">{memory.bookTitle}</p>
-                <p className="mt-1 text-xs text-brown-400">{memory.createdAt.slice(0, 10)} · {"★".repeat(memory.rating)}</p>
-                <p className="mt-2 text-xs font-medium text-brown-600">당시 기록 다시 읽기 →</p>
+                <p className="mt-1 text-xs text-brown-400">{memory.createdAt.slice(0, 10).replaceAll("-", ".")} · <StarRating rating={memory.rating} size={11} className="align-[-1px]" /></p>
+                <p className="mt-2 text-xs font-medium text-brown-600">당시 기록 다시 읽기</p>
               </Link>
             ))}
           </div>
         </section>
       )}
 
-      <section className="mt-7 rounded-2xl border border-cream-200 bg-white p-5">
+      <section className="cdj-card mt-7 p-5">
         <h2 className="font-serif text-xl font-bold text-brown-900">월별 독후감</h2>
         {data.monthlyReviews.length > 0 ? (
           <div className="mt-4 space-y-2">
@@ -102,7 +103,7 @@ export default function StatsPage() {
       </section>
 
       <div className="mt-7 grid gap-5 sm:grid-cols-2">
-        <section className="rounded-2xl border border-cream-200 bg-white p-5">
+        <section className="cdj-card p-5">
           <h2 className="font-serif text-lg font-bold text-brown-900">연도별 기록한 책</h2>
           {data.yearlyBooks.length > 0 ? (
             <div className="mt-3 space-y-2">
@@ -116,7 +117,7 @@ export default function StatsPage() {
           ) : <p className="mt-3 text-sm text-brown-400">연도별 흐름이 쌓이면 여기에 나타납니다.</p>}
         </section>
 
-        <section className="rounded-2xl border border-cream-200 bg-white p-5">
+        <section className="cdj-card p-5">
           <h2 className="font-serif text-lg font-bold text-brown-900">해마다 머문 장르</h2>
           <p className="mt-1 text-xs leading-5 text-brown-400">책 소개를 바탕으로 넓은 장르로 묶어 보여드려요.</p>
           {data.genreTimeline.length > 0 ? (
@@ -137,14 +138,14 @@ export default function StatsPage() {
       </div>
 
       <div className="mt-7 grid gap-5 sm:grid-cols-2">
-        <section className="rounded-2xl border border-cream-200 bg-white p-5">
+        <section className="cdj-card p-5">
           <h2 className="font-serif text-lg font-bold text-brown-900">자주 남긴 키워드</h2>
           <div className="mt-3 flex flex-wrap gap-2">
             {data.frequentKeywords.map((item) => <span key={item.keyword} className="rounded-full bg-cream-100 px-3 py-1 text-sm text-brown-600">#{item.keyword} {item.count}</span>)}
             {data.frequentKeywords.length === 0 && <p className="text-sm text-brown-400">다음 독후감에서 감정·주제 키워드를 남겨보세요.</p>}
           </div>
         </section>
-        <section className="rounded-2xl border border-cream-200 bg-white p-5">
+        <section className="cdj-card p-5">
           <h2 className="font-serif text-lg font-bold text-brown-900">오래 이어진 책</h2>
           {data.longestRecordedBook ? (
             <Link href={`/books/${data.longestRecordedBook.bookId}`} className="mt-3 block">
@@ -160,7 +161,7 @@ export default function StatsPage() {
           <h2 className="font-serif text-xl font-bold text-brown-900">다시 읽고 기록한 책</h2>
           <div className="mt-3 space-y-2">
             {data.rereadBooks.map((book) => (
-              <Link key={book.bookId} href={`/books/${book.bookId}`} className="flex items-center justify-between rounded-xl border border-cream-200 bg-white px-4 py-3 hover:bg-cream-50">
+              <Link key={book.bookId} href={`/books/${book.bookId}`} className="cdj-card flex items-center justify-between px-4 py-3 hover:bg-cream-50">
                 <span className="font-medium text-brown-700">{book.title}</span>
                 <span className="text-xs text-brown-400">기록 {book.recordCount}회</span>
               </Link>
@@ -173,5 +174,5 @@ export default function StatsPage() {
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-2xl border border-cream-200 bg-white p-4"><p className="text-xs text-brown-400">{label}</p><p className="mt-1 font-serif text-xl font-bold text-brown-900">{value}</p></div>;
+  return <div className="cdj-card p-4"><p className="text-xs text-brown-400">{label}</p><p className="mt-1 font-serif text-xl font-bold text-brown-900">{value}</p></div>;
 }

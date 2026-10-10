@@ -1,5 +1,6 @@
 "use client";
 
+import { Bookmark } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import ReviewCard, { type Review } from "../components/ReviewCard";
@@ -49,14 +50,14 @@ export default function BookmarksPage() {
   }, [router]);
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
-      <h1 className="font-serif text-2xl font-bold text-brown-800 mb-6">저장한 독후감</h1>
+    <div className="cdj-page cdj-page--reading">
+      <h1 className="cdj-title mb-6">저장한 독후감</h1>
 
       {loading ? (
         <div className="text-center py-12 text-brown-400">불러오는 중...</div>
       ) : reviews.length === 0 ? (
         <div className="text-center py-20 text-brown-400">
-          <p className="text-5xl mb-4">🔖</p>
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-cream-200 text-sage-600"><Bookmark size={22} aria-hidden="true" /></div>
           <p>저장한 독후감이 없어요</p>
           <p className="text-sm mt-1">마음에 드는 독후감의 북마크 버튼을 눌러보세요</p>
         </div>

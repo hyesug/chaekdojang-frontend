@@ -3,6 +3,9 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { API_BASE } from "../lib/api";
+import { Alert } from "../components/ui/Alert";
+import { Button } from "../components/ui/Button";
+import { Field, Input, Textarea } from "../components/ui/Field";
 
 interface InquirySummary {
   id: number;
@@ -23,15 +26,12 @@ export default function CustomerSupportPage() {
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
-    const t: string | null = "cookie-session";
-    const valid = t && t !== "undefined" && t !== "null" ? t : null;
-    setToken(valid);
+    const session: string | null = "cookie-session";
+    setToken(session && session !== "undefined" && session !== "null" ? session : null);
   }, []);
 
-  const isLoggedIn = !!token;
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
     if (!title.trim() || !content.trim()) { setError("제목과 내용을 입력해주세요."); return; }
     setLoading(true); setError("");
     try {
@@ -45,11 +45,11 @@ export default function CustomerSupportPage() {
         setTitle(""); setContent("");
       } else {
         const body = await res.json().catch(() => null);
-        const msg = body?.message ?? body?.error ?? null;
-        setError(msg ? `오류: ${msg} (${res.status})` : `오류가 발생했어요. (HTTP ${res.status})`);
+        const message = body?.message ?? body?.error ?? null;
+        setError(message ? `오류: ${message} (${res.status})` : `오류가 발생했어요. (HTTP ${res.status})`);
       }
-    } catch (err) {
-      setError(`네트워크 오류가 발생했어요. (${err instanceof Error ? err.message : "unknown"})`);
+    } catch (caught) {
+      setError(`네트워크 오류가 발생했어요. (${caught instanceof Error ? caught.message : "unknown"})`);
     } finally {
       setLoading(false);
     }
@@ -59,129 +59,43 @@ export default function CustomerSupportPage() {
     if (!token) return;
     setListLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/inquiries/my`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const json = await res.json();
-        setMyList(json.data ?? []);
-      }
+      const res = await fetch(`${API_BASE}/api/inquiries/my`, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) { const json = await res.json(); setMyList(json.data ?? []); }
     } finally {
       setListLoading(false);
     }
   }
 
-  useEffect(() => {
-    if (tab === "list" && token) loadMyList();
-  }, [tab, token]);
+  useEffect(() => { if (tab === "list" && token) loadMyList(); }, [tab, token]);
 
-  // 비로그인 안내 화면
   if (token === null && typeof window !== "undefined") {
-    return (
-      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-        <p className="text-2xl mb-3">📩</p>
-        <p className="text-brown-800 font-medium mb-1">문의는 회원만 가능해요</p>
-        <p className="text-sm text-brown-400 mb-6">로그인 후 문의를 남겨주세요</p>
-        <Link
-          href="/auth/login"
-          className="px-6 py-3 bg-brown-600 text-white rounded-xl text-sm font-medium hover:bg-brown-700 transition-colors"
-        >
-          로그인하기
-        </Link>
-      </div>
-    );
+    return <main className="cdj-page max-w-2xl text-center"><p className="cdj-kicker">Customer support</p><h1 className="cdj-title mt-3 text-3xl">문의는 회원만 가능해요</h1><p className="mt-3 text-sm text-brown-400">로그인 후 문의를 남겨주세요.</p><Link href="/auth/login" className="cdj-button cdj-button--primary mt-6">로그인하기</Link></main>;
   }
 
+  const titleError = error && !title.trim() ? error : undefined;
+  const contentError = error && !content.trim() ? error : undefined;
+  const requestError = error && title.trim() && content.trim() ? error : undefined;
+
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-brown-800">고객센터</h1>
-        <p className="text-sm text-brown-400 mt-1">문의사항이나 건의사항을 남겨주세요</p>
+    <main className="cdj-page max-w-2xl">
+      <header className="mb-8"><p className="cdj-kicker">Customer support</p><h1 className="cdj-title mt-3 text-3xl">고객센터</h1><p className="mt-2 text-sm text-brown-400">문의사항이나 건의사항을 남겨주세요.</p></header>
+
+      <div role="tablist" aria-label="고객센터 메뉴" className="mb-6 flex border-b border-cream-300">
+        {(["write", "list"] as const).map((item) => <button key={item} type="button" role="tab" aria-selected={tab === item} aria-controls={`cs-${item}`} onClick={() => setTab(item)} className={`min-h-11 border-b-2 px-4 text-sm ${tab === item ? "border-brown-700 text-brown-800" : "border-transparent text-brown-400 hover:text-brown-600"}`}>{item === "write" ? "문의 작성" : "내 문의"}</button>)}
       </div>
 
-      <div className="flex gap-1 mb-6 bg-cream-200 rounded-xl p-1">
-        {(["write", "list"] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`flex-1 py-2 text-xs font-medium rounded-lg transition-colors ${
-              tab === t ? "bg-white text-brown-800 shadow-sm" : "text-brown-400 hover:text-brown-600"
-            }`}
-          >
-            {t === "write" ? "✏️ 문의 작성" : "📋 내 문의"}
-          </button>
-        ))}
-      </div>
+      {tab === "write" && <section id="cs-write" role="tabpanel" className="cdj-surface p-5 sm:p-6">
+        {success ? <div className="py-8 text-center"><p className="text-brown-800 font-medium">문의가 접수되었어요</p><p className="mt-1 text-sm text-brown-400">답변은 내 문의 탭에서 확인하실 수 있어요.</p><Button onClick={() => setSuccess(false)} className="mt-5">새 문의 작성</Button></div> : <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <Field label="제목" error={titleError}>{({ id, ...aria }) => <Input id={id} type="text" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="제목" {...aria} />}</Field>
+          <Field label="문의 내용" hint="모든 문의는 비밀글로 처리됩니다." error={contentError}>{({ id, ...aria }) => <Textarea id={id} value={content} onChange={(event) => setContent(event.target.value)} placeholder="문의 내용을 입력해주세요" rows={6} {...aria} />}</Field>
+          {requestError && <Alert tone="error">{requestError}</Alert>}
+          <Button type="submit" disabled={loading} className="w-full">{loading ? "전송 중..." : "문의 보내기"}</Button>
+        </form>}
+      </section>}
 
-      {tab === "write" && (
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-cream-200">
-          {success ? (
-            <div className="text-center py-8">
-              <p className="text-2xl mb-2">✅</p>
-              <p className="text-brown-800 font-medium">문의가 접수되었어요</p>
-              <p className="text-sm text-brown-400 mt-1">답변은 내 문의 탭에서 확인하실 수 있어요</p>
-              <button
-                onClick={() => setSuccess(false)}
-                className="mt-4 px-4 py-2 text-sm bg-brown-600 text-white rounded-xl hover:bg-brown-700"
-              >
-                새 문의 작성
-              </button>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              <input
-                type="text"
-                placeholder="제목"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="px-4 py-3 rounded-xl border border-cream-300 text-sm text-brown-800 placeholder-brown-300 focus:outline-none focus:border-brown-400"
-              />
-              <textarea
-                placeholder="문의 내용을 입력해주세요"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                rows={6}
-                className="px-4 py-3 rounded-xl border border-cream-300 text-sm text-brown-800 placeholder-brown-300 focus:outline-none focus:border-brown-400 resize-none"
-              />
-              {error && <p className="text-red-500 text-xs">{error}</p>}
-              <p className="text-xs text-brown-300">🔒 모든 문의는 비밀글로 처리됩니다</p>
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3 bg-brown-600 text-white rounded-xl text-sm font-medium hover:bg-brown-700 disabled:opacity-50"
-              >
-                {loading ? "전송 중..." : "문의 보내기"}
-              </button>
-            </form>
-          )}
-        </div>
-      )}
-
-      {tab === "list" && (
-        <div>
-          {listLoading ? (
-            <p className="text-center text-brown-300 py-8">불러오는 중...</p>
-          ) : myList.length === 0 ? (
-            <p className="text-center text-brown-300 py-8">문의 내역이 없어요</p>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {myList.map((item) => (
-                <Link
-                  key={item.id}
-                  href={`/cs/${item.id}`}
-                  className="bg-white rounded-2xl p-4 shadow-sm border border-cream-200 hover:border-brown-300 transition-colors"
-                >
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-brown-800">{item.title}</p>
-                    <span className="text-xs text-brown-300">🔒</span>
-                  </div>
-                  <p className="text-xs text-brown-400 mt-1">{new Date(item.createdAt).toLocaleDateString("ko-KR")}</p>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+      {tab === "list" && <section id="cs-list" role="tabpanel">
+        {listLoading ? <p className="py-8 text-center text-sm text-brown-400">불러오는 중...</p> : myList.length === 0 ? <p className="py-8 text-center text-sm text-brown-400">문의 내역이 없어요.</p> : <div className="cdj-surface divide-y divide-cream-300">{myList.map((item) => <Link key={item.id} href={`/cs/${item.id}`} className="block px-4 py-4 transition-colors hover:bg-cream-100"><div className="flex items-center justify-between gap-4"><p className="text-sm font-medium text-brown-800">{item.title}</p><span className="text-xs text-brown-400">비밀글</span></div><p className="mt-1 text-xs text-brown-400">{new Date(item.createdAt).toLocaleDateString("ko-KR")}</p></Link>)}</div>}
+      </section>}
+    </main>
   );
 }

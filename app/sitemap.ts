@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { bookPathSegment, fetchApiData, SITE_URL, type BookDetail, type ReviewDetail } from "./lib/serverApi";
+import { IS_PRODUCTION } from "./lib/deployEnv";
 
 type ReviewPage = {
   content: ReviewDetail[];
@@ -21,6 +22,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: "/privacy", changeFrequency: "yearly", priority: 0.2 },
     { path: "/terms", changeFrequency: "yearly", priority: 0.2 },
     { path: "/cs", changeFrequency: "monthly", priority: 0.3 },
+    // 운세는 운영에서만 검색에 연다(staging 은 색인하지 않는다)
+    ...(IS_PRODUCTION ? [{ path: "/unse", changeFrequency: "monthly", priority: 0.7 } as const] : []),
   ] satisfies Array<{
     path: string;
     changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"];

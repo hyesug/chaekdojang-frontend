@@ -5,6 +5,12 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import ReviewDetailModal from "./ReviewDetailModal";
 import ProfileAvatar from "./ProfileAvatar";
+import StarRating, { StarInput } from "./ui/StarRating";
+import { ModalHeader, ModalShell } from "./ui/ModalShell";
+import { LoadingState } from "./ui/LoadingState";
+import {
+  Bookmark, Camera, Check, ChevronRight, EyeOff, Globe, Heart, Link2, Lock, MessageCircle, Share2,
+} from "lucide-react";
 import { API_BASE } from "../lib/api";
 import { authFetch, getValidToken } from "../lib/auth";
 import { buildSearchLinks } from "../lib/purchaseLinks";
@@ -64,39 +70,8 @@ function getToken(): string | null {
   return getValidToken();
 }
 
-function Stars({ rating }: { rating: number }) {
-  return (
-    <span className="text-sm">
-      <span className="text-amber-500">{"★".repeat(rating)}</span>
-      <span className="text-cream-300">{"★".repeat(5 - rating)}</span>
-    </span>
-  );
-}
-
-function EditableStars({
-  rating,
-  onChange,
-}: {
-  rating: number;
-  onChange: (r: number) => void;
-}) {
-  return (
-    <span className="text-sm">
-      {[1, 2, 3, 4, 5].map((n) => (
-        <button
-          key={n}
-          type="button"
-          onClick={() => onChange(n)}
-          className={`text-base leading-none transition-colors ${
-            n <= rating ? "text-amber-500" : "text-brown-200 hover:text-amber-300"
-          }`}
-        >
-          ★
-        </button>
-      ))}
-    </span>
-  );
-}
+const shareRowCls =
+  "flex w-full items-center gap-3 rounded-lg border border-cream-300 bg-cream-50 px-4 py-3 text-left text-sm font-medium text-brown-800 transition-colors hover:border-brown-200 hover:bg-cream-100";
 
 // ─────────────────────────────────────────────
 // 댓글 모달
@@ -188,98 +163,74 @@ function CommentModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+    <ModalShell title="댓글" onClose={onClose} className="sm:max-w-lg">
+      <ModalHeader
+        title={<>댓글 <span className="ml-1 text-sm font-medium text-sage-600 tabular">{comments.length || ""}</span></>}
+        onClose={onClose}
+      />
 
-      <div className="relative z-10 w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl max-h-[80vh] flex flex-col shadow-xl">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-cream-200">
-          <h2 className="font-serif font-bold text-brown-800">댓글</h2>
-          <button
-            onClick={onClose}
-            className="text-brown-400 hover:text-brown-600 text-xl leading-none"
-            aria-label="닫기"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-5 py-3 space-y-4">
-          {loading ? (
-            <p className="text-center text-brown-400 text-sm py-8">불러오는 중…</p>
-          ) : comments.length === 0 ? (
-            <p className="text-center text-brown-400 text-sm py-8">
-              첫 댓글을 남겨보세요 ✏️
-            </p>
-          ) : (
-            comments.map((c) => (
-              <div key={c.id} className="flex items-start gap-2">
-                <ProfileAvatar src={c.author.profileImage} name={c.author.nickname} size="xs" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-2 mb-0.5">
-                    <span className="text-xs font-semibold text-brown-600">
-                      {c.author.nickname}
-                    </span>
-                    <span className="text-xs text-brown-300">
-                      {c.createdAt.slice(0, 10)}
-                    </span>
-                  </div>
-                  <p className="text-sm text-brown-700 leading-relaxed">
-                    {c.content}
-                  </p>
+      <div className="min-h-40 flex-1 space-y-5 overflow-y-auto px-5 py-4">
+        {loading ? (
+          <LoadingState label="댓글을 불러오는 중" />
+        ) : comments.length === 0 ? (
+          <div className="flex flex-col items-center py-10 text-center">
+            <MessageCircle size={28} strokeWidth={1.5} className="text-sage-400" aria-hidden="true" />
+            <p className="mt-3 text-sm font-semibold text-brown-800">아직 댓글이 없어요</p>
+            <p className="mt-1 text-xs text-sage-600">첫 댓글로 감상을 나눠보세요</p>
+          </div>
+        ) : (
+          comments.map((c) => (
+            <div key={c.id} className="flex items-start gap-3">
+              <ProfileAvatar src={c.author.profileImage} name={c.author.nickname} size="xs" />
+              <div className="min-w-0 flex-1">
+                <div className="mb-0.5 flex items-baseline gap-2">
+                  <span className="text-[13px] font-semibold text-brown-800">{c.author.nickname}</span>
+                  <span className="cdj-meta">{c.createdAt.slice(0, 10).replaceAll("-", ".")}</span>
                 </div>
-                {currentUserId !== null && currentUserId === c.author.id && (
-                  <button
-                    onClick={() => handleDelete(c.id)}
-                    className="flex-shrink-0 text-xs text-red-400 hover:text-red-600 mt-0.5"
-                  >
-                    삭제
-                  </button>
-                )}
+                <p className="whitespace-pre-line text-sm leading-relaxed text-brown-900">{c.content}</p>
               </div>
-            ))
-          )}
-        </div>
-
-        <form
-          onSubmit={handleSubmit}
-          className="px-5 py-3 border-t border-cream-200 flex gap-2 items-end"
-        >
-          {isLoggedIn ? (
-            <>
-              <textarea
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSubmit(e as unknown as React.FormEvent);
-                  }
-                }}
-                placeholder="댓글을 입력하세요…"
-                rows={1}
-                disabled={submitting}
-                className="flex-1 resize-none rounded-xl border border-cream-200 px-3 py-2 text-sm text-brown-700 placeholder:text-brown-300 focus:outline-none focus:border-brown-400 disabled:opacity-60"
-              />
-              <button
-                type="submit"
-                disabled={!text.trim() || submitting}
-                className="px-4 py-2 bg-brown-600 text-white text-sm rounded-xl hover:bg-brown-700 disabled:opacity-40 transition-colors"
-              >
-                등록
-              </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              onClick={() => router.push("/auth/login")}
-              className="flex-1 py-2 text-sm text-brown-500 bg-cream-100 rounded-xl hover:bg-cream-200 transition-colors"
-            >
-              로그인하고 댓글 남기기
-            </button>
-          )}
-        </form>
+              {currentUserId !== null && currentUserId === c.author.id && (
+                <button
+                  onClick={() => handleDelete(c.id)}
+                  className="mt-0.5 flex-shrink-0 text-xs text-sage-600 transition-colors hover:text-wine-500"
+                >
+                  삭제
+                </button>
+              )}
+            </div>
+          ))
+        )}
       </div>
-    </div>
+
+      <form onSubmit={handleSubmit} className="flex items-end gap-2 border-t border-cream-300 bg-cream-50 px-4 py-3">
+        {isLoggedIn ? (
+          <>
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit(e as unknown as React.FormEvent);
+                }
+              }}
+              placeholder="댓글을 입력하세요"
+              aria-label="댓글 입력"
+              rows={1}
+              disabled={submitting}
+              className="cdj-field flex-1 resize-none text-sm"
+            />
+            <button type="submit" disabled={!text.trim() || submitting} className="cdj-button cdj-button--primary">
+              등록
+            </button>
+          </>
+        ) : (
+          <button type="button" onClick={() => router.push("/auth/login")} className="cdj-button cdj-button--secondary w-full">
+            로그인하고 댓글 남기기
+          </button>
+        )}
+      </form>
+    </ModalShell>
   );
 }
 
@@ -303,50 +254,36 @@ function EditModal({
   const [rating, setRating] = useState(initialRating);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="relative z-10 w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl flex flex-col shadow-xl">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-cream-200">
-          <h2 className="font-serif font-bold text-brown-800">독후감 수정</h2>
-          <button
-            onClick={onClose}
-            className="text-brown-400 hover:text-brown-600 text-xl leading-none"
-            aria-label="닫기"
-          >
-            ✕
-          </button>
+    <ModalShell title="독후감 수정" onClose={onClose} className="sm:max-w-lg">
+      <ModalHeader title="독후감 수정" onClose={onClose} />
+      <div className="space-y-4 overflow-y-auto px-5 py-5">
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-medium text-sage-600">별점</span>
+          <StarInput rating={rating} onChange={setRating} />
         </div>
-        <div className="px-5 py-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-brown-500">별점</span>
-            <EditableStars rating={rating} onChange={setRating} />
-          </div>
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            rows={10}
-            className="w-full rounded-xl border border-cream-200 px-3 py-2 text-sm text-brown-700 focus:outline-none focus:border-brown-400 resize-none"
-            placeholder="독후감을 입력하세요…"
-            autoFocus
-          />
-        </div>
-        <div className="flex gap-2 px-5 pb-5 justify-end">
-          <button
-            onClick={onClose}
-            className="px-3 py-1.5 text-xs text-brown-500 bg-cream-100 rounded-lg hover:bg-cream-200 transition-colors"
-          >
-            취소
-          </button>
-          <button
-            onClick={() => onSave(content, rating)}
-            disabled={saving || !content.trim()}
-            className="px-3 py-1.5 text-xs text-white bg-brown-600 rounded-lg hover:bg-brown-700 disabled:opacity-40 transition-colors"
-          >
-            {saving ? "저장 중…" : "저장"}
-          </button>
-        </div>
+        <textarea
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          rows={10}
+          aria-label="독후감 내용"
+          className="cdj-field resize-none text-[15px] leading-7"
+          placeholder="독후감을 입력하세요"
+          autoFocus
+        />
       </div>
-    </div>
+      <div className="flex justify-end gap-2 border-t border-cream-300 px-5 py-3">
+        <button onClick={onClose} className="cdj-button cdj-button--ghost">
+          취소
+        </button>
+        <button
+          onClick={() => onSave(content, rating)}
+          disabled={saving || !content.trim()}
+          className="cdj-button cdj-button--primary"
+        >
+          {saving ? "저장 중…" : "저장"}
+        </button>
+      </div>
+    </ModalShell>
   );
 }
 
@@ -660,266 +597,246 @@ export default function ReviewCard({
 
   if (deleted) return null;
 
+  const profileHref = `/u/${encodeURIComponent(post.author.nickname)}`;
+  const purchaseLinks = post.book ? buildSearchLinks(post.book.title, post.book.source, post.book.sourceUrl) : [];
+
   return (
     <>
-      <article className="stamp-card bg-white rounded-lg border border-cream-200 p-5 hover:shadow-md transition-shadow overflow-hidden">
-        <div className="flex gap-4">
-          {/* 책 표지 */}
-          {post.book?.thumbnail ? (
-            <img
-              src={post.book.thumbnail}
-              alt={post.book.title}
-              className="flex-shrink-0 w-11 h-16 rounded shadow-sm object-cover"
-            />
-          ) : (
-            <div
-              className="flex-shrink-0 w-11 h-16 rounded shadow-sm flex items-end justify-center pb-1 text-white/70 text-xs font-bold"
-              style={{ backgroundColor: coverColor }}
-              aria-hidden
-            >
-              {post.book?.title?.[0] ?? "📖"}
-            </div>
-          )}
+      <article className="cdj-card cdj-card--interactive overflow-hidden">
+        {/* 작성자 줄: 프로필 · 팔로우 · (내 글이면) 관리 · 날짜 */}
+        <header className="flex items-center justify-between gap-3 px-5 pt-4">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <Link href={profileHref} className="shrink-0">
+              <ProfileAvatar src={post.author.profileImage} name={post.author.nickname} size="xs" />
+            </Link>
+            {post.author.id != null ? (
+              <Link href={profileHref} className="truncate text-[13px] font-semibold text-brown-800 hover:underline">
+                {post.author.nickname}
+              </Link>
+            ) : (
+              <span className="truncate text-[13px] font-semibold text-brown-800">{post.author.nickname}</span>
+            )}
+            {isOther && (
+              <>
+                <span className="text-cream-300" aria-hidden="true">·</span>
+                <button
+                  onClick={handleFollow}
+                  disabled={followLoading}
+                  className={`flex-shrink-0 text-[13px] font-semibold transition-colors disabled:opacity-50 ${
+                    following ? "text-sage-600 hover:text-wine-500" : "text-brown-700 hover:text-brown-800"
+                  }`}
+                >
+                  {following ? "팔로잉" : "팔로우"}
+                </button>
+              </>
+            )}
+          </div>
 
-          <div className="flex-1 min-w-0">
-            {/* 작성자 + 팔로우 버튼 + 날짜/수정/삭제 */}
-            <div className="flex items-start justify-between gap-3 mb-1">
-              {/* 왼쪽: 작성자 + 팔로우 버튼 */}
-              <div className="flex min-w-0 flex-1 items-center gap-1.5">
-                <Link href={`/u/${encodeURIComponent(post.author.nickname)}`} className="shrink-0">
-                  <ProfileAvatar src={post.author.profileImage} name={post.author.nickname} size="xs" />
-                </Link>
-                {post.author.id != null ? (
-                  <Link
-                    href={`/u/${encodeURIComponent(post.author.nickname)}`}
-                    className="text-xs text-brown-400 font-medium hover:text-brown-700 hover:underline transition-colors truncate"
-                  >
-                    {post.author.nickname}
-                  </Link>
+          <div className="flex flex-shrink-0 items-center gap-1 whitespace-nowrap">
+            {isOwner && !editing && (
+              <>
+                <button
+                  onClick={handleVisibilityToggle}
+                  disabled={visibilitySaving}
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold transition-colors disabled:opacity-50 ${
+                    hidden ? "bg-wine-50 text-wine-700 hover:bg-red-100" : "bg-brown-100 text-brown-700 hover:bg-brown-200"
+                  }`}
+                  title={hidden ? "누르면 공개로 바뀝니다" : "누르면 비공개로 바뀝니다"}
+                >
+                  {hidden ? <Lock size={11} aria-hidden="true" /> : <Globe size={11} aria-hidden="true" />}
+                  {visibilitySaving ? "저장 중" : hidden ? "비공개" : "공개"}
+                </button>
+                <button
+                  onClick={() => router.push(`/write?reviewId=${post.id}`)}
+                  className="rounded px-1.5 py-0.5 text-xs text-sage-600 transition-colors hover:bg-cream-200 hover:text-brown-800"
+                >
+                  수정
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="rounded px-1.5 py-0.5 text-xs text-sage-600 transition-colors hover:bg-wine-50 hover:text-wine-500"
+                >
+                  삭제
+                </button>
+              </>
+            )}
+            <time className="cdj-meta ml-1" dateTime={post.createdAt}>
+              {post.createdAt.slice(0, 7).replace("-", ".")}
+            </time>
+          </div>
+        </header>
+
+        <div className="px-5 pb-1 pt-4">
+          {/* 책 정보 */}
+          <div className="flex gap-4">
+            {post.book?.id ? (
+              <Link href={bookHref} className="cdj-cover w-[60px]" onClick={(e) => e.stopPropagation()} tabIndex={-1} aria-hidden="true">
+                {post.book.thumbnail ? (
+                  <img src={post.book.thumbnail} alt="" loading="lazy" />
                 ) : (
-                  <span className="text-xs text-brown-400 font-medium truncate">
-                    {post.author.nickname}
+                  <span className="flex h-full items-end justify-center pb-2 font-serif text-sm font-bold text-white/80" style={{ backgroundColor: coverColor }}>
+                    {post.book.title?.[0]}
                   </span>
                 )}
-                {isOther && (
-                  <button
-                    onClick={handleFollow}
-                    disabled={followLoading}
-                    className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full border transition-colors ${
-                      following
-                        ? "border-brown-300 text-brown-400 hover:border-red-300 hover:text-red-400"
-                        : "border-brown-400 text-brown-600 hover:bg-brown-50"
-                    } disabled:opacity-50`}
-                  >
-                    {following ? "팔로잉" : "팔로우"}
-                  </button>
+              </Link>
+            ) : (
+              <div className="cdj-cover w-[60px]" aria-hidden="true">
+                {post.book?.thumbnail ? (
+                  <img src={post.book.thumbnail} alt="" loading="lazy" />
+                ) : (
+                  <span className="flex h-full items-end justify-center pb-2 font-serif text-sm font-bold text-white/80" style={{ backgroundColor: coverColor }}>
+                    {post.book?.title?.[0] ?? ""}
+                  </span>
                 )}
               </div>
+            )}
 
-              {/* 오른쪽: 수정/삭제(내 글일 때) + 날짜 */}
-              <div className="flex flex-shrink-0 items-center justify-end gap-2 whitespace-nowrap">
-                {isOwner && !editing && (
-                  <>
-                    <button
-                      onClick={handleVisibilityToggle}
-                      disabled={visibilitySaving}
-                      className={`text-xs rounded-full px-2 py-0.5 transition-colors disabled:opacity-50 ${
-                        hidden
-                          ? "bg-red-50 text-red-500 hover:bg-red-100"
-                          : "bg-green-50 text-green-600 hover:bg-green-100"
-                      }`}
-                      title={hidden ? "누르면 공개로 바뀝니다" : "누르면 비공개로 바뀝니다"}
-                    >
-                      {visibilitySaving ? "저장 중" : hidden ? "비공개" : "공개"}
-                    </button>
-                    <button
-                      onClick={() => router.push(`/write?reviewId=${post.id}`)}
-                      className="text-xs text-brown-400 hover:text-brown-700 transition-colors"
-                    >
-                      수정
-                    </button>
-                    <button
-                      onClick={handleDelete}
-                      className="text-xs text-red-400 hover:text-red-600 transition-colors"
-                    >
-                      삭제
-                    </button>
-                  </>
-                )}
-                <time className="text-xs text-brown-300" dateTime={post.createdAt}>
-                  {post.createdAt.slice(0, 7).replace("-", ".")}
-                </time>
-              </div>
-            </div>
-
-            {/* 책 정보 */}
-            {post.book && (
-              <>
-                {post.book.id ? (
+            <div className="flex min-w-0 flex-1 flex-col justify-center">
+              {post.book &&
+                (post.book.id ? (
                   <Link
                     href={bookHref}
-                    className="font-serif text-base font-bold text-brown-800 leading-snug hover:text-brown-600 hover:underline transition-colors"
+                    className="line-clamp-2 font-serif text-[17px] font-bold leading-snug text-brown-800 transition-colors hover:text-brown-600"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {post.book.title}
                   </Link>
                 ) : (
-                  <p className="font-serif text-base font-bold text-brown-800 leading-snug">
-                    {post.book.title}
-                  </p>
-                )}
-                <p className="text-xs text-brown-400 mb-0.5">{post.book.author}</p>
-                {/* 구매 링크 */}
-                <div className="flex items-center gap-2 mb-1">
-                  {buildSearchLinks(post.book.title, post.book.source, post.book.sourceUrl).map((link, idx) => (
-                    <span key={link.provider} className="contents">
-                      {idx > 0 && <span className="text-brown-200 text-xs">|</span>}
-                      <a
-                        href={link.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-brown-300 hover:text-brown-500 hover:underline transition-colors"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {link.label} →
-                      </a>
-                    </span>
-                  ))}
-                </div>
-              </>
-            )}
-
-            <Stars rating={displayRating} />
+                  <p className="line-clamp-2 font-serif text-[17px] font-bold leading-snug text-brown-800">{post.book.title}</p>
+                ))}
+              {post.book?.author && <p className="mt-0.5 truncate text-[13px] text-sage-600">{post.book.author}</p>}
+              <StarRating rating={displayRating} className="mt-2" />
+            </div>
           </div>
+
+          {post.aiSummary?.oneLineReview && (
+            <p className="cdj-quote mt-4 text-[15px]">{post.aiSummary.oneLineReview}</p>
+          )}
+
+          {/* 본문 — 짧은 감상과 본문이 함께 저장된 경우에만 첫 문단을 건너뜀 */}
+          {(() => {
+            const paragraphs = displayContent.split("\n\n");
+            const bodyWithoutShortReview = paragraphs.length > 1
+              ? paragraphs.slice(1).join("\n\n").trim()
+              : "";
+            const bodyText = post.aiSummary?.oneLineReview && bodyWithoutShortReview
+              ? bodyWithoutShortReview
+              : displayContent.trim();
+            if (!bodyText) return null;
+            if (post.spoiler && !spoilerRevealed) {
+              return (
+                <button
+                  type="button"
+                  onClick={() => setSpoilerRevealed(true)}
+                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-amber-400/60 bg-amber-50 px-4 py-4 text-sm font-medium text-amber-700"
+                >
+                  <EyeOff size={15} aria-hidden="true" />
+                  스포일러가 있어요 · 눌러서 보기
+                </button>
+              );
+            }
+            const body = (
+              <>
+                <p className="line-clamp-3 text-[15px] leading-7 text-brown-900/85 transition-colors group-hover:text-brown-900">
+                  {bodyText}
+                </p>
+                <span className="mt-1 inline-flex items-center text-[13px] font-medium text-sage-600 transition-colors group-hover:text-brown-700">
+                  더 보기
+                  <ChevronRight size={14} aria-hidden="true" />
+                </span>
+              </>
+            );
+            return canOpenHiddenDetail ? (
+              <button type="button" className="group mt-3 block w-full text-left" onClick={() => setShowDetail(true)}>
+                {body}
+              </button>
+            ) : (
+              <Link
+                href={hidden ? "#" : reviewHref}
+                className="group mt-3 block w-full text-left"
+                onClick={(e) => {
+                  if (hidden) { e.preventDefault(); return; }
+                  onNavigateToDetail?.();
+                  rememberReturnTo();
+                }}
+              >
+                {body}
+              </Link>
+            );
+          })()}
+
+          {post.keywords && post.keywords.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {post.keywords.map((keyword) => (
+                <span key={keyword} className="rounded bg-cream-200/80 px-2 py-0.5 text-xs text-sage-700">
+                  #{keyword}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
-        {post.aiSummary?.oneLineReview && (
-          <p className="mt-2.5 border-l-2 border-[#c47f56]/50 pl-3 font-serif text-sm font-semibold leading-snug text-brown-800">
-            {post.aiSummary.oneLineReview}
-          </p>
-        )}
-
-        {post.keywords && post.keywords.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {post.keywords.map((keyword) => (
-              <span key={keyword} className="rounded-full bg-cream-100 px-2 py-0.5 text-[11px] text-brown-500">
-                #{keyword}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* 본문 — 짧은 감상과 본문이 함께 저장된 경우에만 첫 문단을 건너뜀 */}
-        {(() => {
-          const paragraphs = displayContent.split("\n\n");
-          const bodyWithoutShortReview = paragraphs.length > 1
-            ? paragraphs.slice(1).join("\n\n").trim()
-            : "";
-          const bodyText = post.aiSummary?.oneLineReview && bodyWithoutShortReview
-            ? bodyWithoutShortReview
-            : displayContent.trim();
-          if (!bodyText) return null;
-          if (post.spoiler && !spoilerRevealed) {
-            return (
-              <button
-                type="button"
-                onClick={() => setSpoilerRevealed(true)}
-                className="mt-3 w-full rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-700"
-              >
-                스포일러 포함 · 눌러서 내용 보기
-              </button>
-            );
-          }
-          return canOpenHiddenDetail ? (
-            <button
-              type="button"
-              className="mt-3 text-left w-full group block"
-              onClick={() => setShowDetail(true)}
-            >
-              <p className="text-sm text-brown-600 leading-relaxed line-clamp-3 group-hover:text-brown-800 transition-colors">
-                {bodyText}
-              </p>
-              <span className="text-xs text-brown-300 group-hover:text-brown-500 transition-colors mt-1 inline-block">
-                더 보기
-              </span>
-            </button>
-          ) : (
-            <Link
-              href={hidden ? "#" : reviewHref}
-              className="mt-3 text-left w-full group block"
-              onClick={(e) => {
-                if (hidden) { e.preventDefault(); return; }
-                onNavigateToDetail?.();
-                rememberReturnTo();
-              }}
-            >
-              <p className="text-sm text-brown-600 leading-relaxed line-clamp-3 group-hover:text-brown-800 transition-colors">
-                {bodyText}
-              </p>
-              <span className="text-xs text-brown-300 group-hover:text-brown-500 transition-colors mt-1 inline-block">
-                더 보기
-              </span>
-            </Link>
-          );
-        })()}
-
-        {/* 좋아요 / 댓글 버튼 */}
-        <div className="flex items-center gap-5 mt-3 pt-3 border-t border-cream-100">
+        {/* 반응 줄 */}
+        <footer className="mt-3 flex items-center gap-1 border-t border-cream-200 px-3 py-1.5">
           <button
             onClick={handleLike}
-            className="flex items-center gap-1.5 text-sm transition-colors group"
+            className={`flex h-9 items-center gap-1.5 rounded-md px-2 text-[13px] font-medium transition-colors hover:bg-cream-200 ${
+              liked ? "text-wine-500" : "text-sage-600 hover:text-brown-800"
+            }`}
             aria-label={liked ? "좋아요 취소" : "좋아요"}
+            aria-pressed={liked}
           >
-            <span
-              className={`text-base leading-none transition-colors ${
-                liked
-                  ? "text-red-500"
-                  : "text-brown-300 group-hover:text-red-400"
-              }`}
-            >
-              {liked ? "♥" : "♡"}
-            </span>
-            <span className={liked ? "text-red-500" : "text-brown-400"}>
-              {likeCount}
-            </span>
+            <Heart size={18} strokeWidth={1.75} className={liked ? "fill-wine-500" : ""} aria-hidden="true" />
+            <span className="tabular">{likeCount}</span>
           </button>
 
           <button
             onClick={() => setShowComments(true)}
-            className="flex items-center gap-1.5 text-sm text-brown-400 hover:text-brown-600 transition-colors"
+            className="flex h-9 items-center gap-1.5 rounded-md px-2 text-[13px] font-medium text-sage-600 transition-colors hover:bg-cream-200 hover:text-brown-800"
             aria-label="댓글 보기"
           >
-            <span className="text-base leading-none">💬</span>
-            <span>{commentCount}</span>
+            <MessageCircle size={18} strokeWidth={1.75} aria-hidden="true" />
+            <span className="tabular">{commentCount}</span>
           </button>
 
-          {/* 공유 버튼 */}
           <button
             onClick={() => setShowShare(true)}
-            className="flex items-center gap-1 text-sm text-brown-300 hover:text-brown-500 transition-colors"
+            className="flex h-9 items-center rounded-md px-2 text-sage-600 transition-colors hover:bg-cream-200 hover:text-brown-800"
             aria-label="공유"
           >
-            <span className="text-base leading-none">↗</span>
+            <Share2 size={17} strokeWidth={1.75} aria-hidden="true" />
           </button>
 
-          {/* 북마크 버튼 — 오른쪽 끝 */}
+          {purchaseLinks.length > 0 && (
+            <div className="ml-auto hidden items-center gap-3 pr-1 sm:flex">
+              {purchaseLinks.map((link) => (
+                <a
+                  key={link.provider}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-sage-600 transition-colors hover:text-brown-800 hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {link.label}
+                </a>
+              ))}
+            </div>
+          )}
+
           <button
             onClick={handleBookmark}
             disabled={bookmarkSaving}
-            className={`ml-auto flex min-w-[88px] items-center justify-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-60 ${
-              bookmarked
-                ? "border-brown-500 bg-brown-50 text-brown-700"
-                : "border-cream-200 bg-white text-brown-300 hover:border-brown-300 hover:text-brown-500"
+            className={`${purchaseLinks.length > 0 ? "sm:ml-1" : ""} ml-auto flex h-9 items-center gap-1 rounded-md px-2 text-[13px] font-medium transition-colors hover:bg-cream-200 disabled:opacity-60 ${
+              bookmarked ? "text-brown-700" : "text-sage-600 hover:text-brown-800"
             }`}
             aria-label={bookmarked ? "북마크 해제" : "북마크"}
             aria-pressed={bookmarked}
           >
-            <span className="text-sm leading-none">
-              {bookmarked ? "★" : "☆"}
-            </span>
-            <span>{bookmarkFeedback || (bookmarked ? "저장됨" : "저장")}</span>
+            <Bookmark size={18} strokeWidth={1.75} className={bookmarked ? "fill-brown-700" : ""} aria-hidden="true" />
+            {bookmarkFeedback && <span className="text-xs">{bookmarkFeedback}</span>}
           </button>
-        </div>
+        </footer>
       </article>
 
       {editing && (
@@ -955,32 +872,19 @@ export default function ReviewCard({
       )}
 
       {showShare && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setShowShare(false)} />
-          <div className="relative z-10 bg-white rounded-2xl p-5 shadow-xl w-72">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-serif font-bold text-brown-800">공유하기</h3>
-              <button
-                onClick={() => setShowShare(false)}
-                className="text-brown-400 hover:text-brown-600 text-lg leading-none"
-              >
-                ✕
-              </button>
-            </div>
-            {post.book?.title && (
-              <p className="text-xs text-brown-400 mb-4 truncate">{post.book.title}</p>
-            )}
+        <ModalShell title="공유하기" onClose={() => setShowShare(false)} className="sm:max-w-sm">
+          <ModalHeader title="공유하기" onClose={() => setShowShare(false)} />
+          <div className="px-5 pb-5 pt-4">
+            {post.book?.title && <p className="mb-4 truncate text-sm text-sage-600">{post.book.title}</p>}
             {(() => {
               const shareUrl = `${window.location.origin}/reviews/${post.id}`;
               const shareText = `${SHARE_COPY} ${post.book?.title ?? "독후감"}`;
               return (
                 <div className="flex flex-col gap-2">
                   {/* 링크 복사 */}
-                  <button
-                    onClick={handleCopyLink}
-                    className="w-full py-3 text-sm text-brown-700 bg-cream-100 rounded-xl hover:bg-cream-200 transition-colors flex items-center justify-center gap-2"
-                  >
-                    🔗 링크 복사{copied && <span className="text-xs text-brown-500">복사됨!</span>}
+                  <button onClick={handleCopyLink} className={shareRowCls}>
+                    {copied ? <Check size={18} className="text-brown-700" aria-hidden="true" /> : <Link2 size={18} className="text-sage-600" aria-hidden="true" />}
+                    {copied ? "링크를 복사했어요" : "링크 복사"}
                   </button>
 
                   {/* 트위터(X) */}
@@ -989,9 +893,10 @@ export default function ReviewCard({
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={() => setShowShare(false)}
-                    className="w-full py-3 text-sm text-brown-700 bg-cream-100 rounded-xl hover:bg-cream-200 transition-colors flex items-center justify-center gap-2"
+                    className={shareRowCls}
                   >
-                    𝕏 트위터에 공유
+                    <span className="flex w-[18px] justify-center text-base font-bold leading-none text-sage-700" aria-hidden="true">𝕏</span>
+                    X(트위터)에 공유
                   </a>
 
                   {/* 페이스북 */}
@@ -1000,9 +905,10 @@ export default function ReviewCard({
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={() => setShowShare(false)}
-                    className="w-full py-3 text-sm text-brown-700 bg-cream-100 rounded-xl hover:bg-cream-200 transition-colors flex items-center justify-center gap-2"
+                    className={shareRowCls}
                   >
-                    📘 페이스북에 공유
+                    <span className="flex w-[18px] justify-center text-base font-bold leading-none text-sage-700" aria-hidden="true">f</span>
+                    페이스북에 공유
                   </a>
 
                   {/* 인스타그램 — 직접 공유 API 없음, 링크 복사 후 안내 */}
@@ -1014,19 +920,21 @@ export default function ReviewCard({
                         setTimeout(() => setInstaCopied(false), 3000);
                       } catch { /* 무시 */ }
                     }}
-                    className="w-full py-3 text-sm text-brown-700 bg-cream-100 rounded-xl hover:bg-cream-200 transition-colors flex flex-col items-center justify-center gap-0.5"
+                    className={shareRowCls}
                   >
-                    <span>📸 인스타그램 공유</span>
-                    {instaCopied
-                      ? <span className="text-xs text-brown-500">링크 복사됨! 인스타그램에 붙여넣기하세요</span>
-                      : <span className="text-xs text-brown-400">링크를 복사해서 붙여넣기하세요</span>
-                    }
+                    {instaCopied ? <Check size={18} className="text-brown-700" aria-hidden="true" /> : <Camera size={18} className="text-sage-600" aria-hidden="true" />}
+                    <span className="flex flex-col">
+                      인스타그램 공유
+                      <span className="text-xs font-normal text-sage-600">
+                        {instaCopied ? "링크를 복사했어요. 인스타그램에 붙여넣으세요" : "링크를 복사해 붙여넣어 주세요"}
+                      </span>
+                    </span>
                   </button>
                 </div>
               );
             })()}
           </div>
-        </div>
+        </ModalShell>
       )}
     </>
   );

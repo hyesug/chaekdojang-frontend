@@ -149,7 +149,7 @@ export default function ChatRoomPage() {
           onKeyDown={handleKey}
           placeholder="메시지를 입력하세요..."
           rows={1}
-          className="flex-1 resize-none border border-gray-200 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-blue-400"
+          className="cdj-field text-sm flex-1 resize-none"
         />
         <button
           onClick={sendMessage}

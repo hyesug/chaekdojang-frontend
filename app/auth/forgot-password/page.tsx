@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { API_BASE } from "../../lib/api";
+import { Button } from "../../components/ui/Button";
+import { Field, Input } from "../../components/ui/Field";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -37,18 +39,18 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center px-4 py-12">
+    <div className="cdj-page flex min-h-[calc(100vh-8rem)] items-center justify-center">
       <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <h1 className="font-serif text-3xl font-bold text-brown-800 mb-2">비밀번호 찾기</h1>
+        <div className="mb-8 text-center">
+          <p className="cdj-kicker">Account recovery</p>
+          <h1 className="cdj-title mt-3 text-3xl">비밀번호 찾기</h1>
           <p className="text-sm text-brown-400">
             가입 시 사용한 이메일을 입력하시면<br />비밀번호 재설정 링크를 보내드립니다
           </p>
         </div>
 
         {sent ? (
-          <div className="bg-white rounded-2xl border border-cream-200 p-6 shadow-sm text-center">
-            <div className="text-4xl mb-4">📬</div>
+          <div className="cdj-surface p-6 text-center">
             <p className="text-brown-700 font-medium mb-1">이메일을 발송했습니다</p>
             <p className="text-sm text-brown-400 mb-6">
               <span className="text-brown-600 font-medium">{email}</span>의<br />
@@ -56,7 +58,7 @@ export default function ForgotPasswordPage() {
             </p>
             <Link
               href="/auth/login"
-              className="text-sm text-brown-600 font-medium hover:underline"
+              className="cdj-button cdj-button--text mt-2"
             >
               로그인으로 돌아가기
             </Link>
@@ -65,35 +67,28 @@ export default function ForgotPasswordPage() {
           <>
             <form
               onSubmit={handleSubmit}
-              className="bg-white rounded-2xl border border-cream-200 p-6 shadow-sm"
+              className="cdj-surface p-6"
             >
               <div className="flex flex-col gap-4">
-                <div>
-                  <label className="block text-sm text-brown-600 mb-1.5" htmlFor="email">
-                    이메일
-                  </label>
-                  <input
-                    id="email"
+                <Field label="이메일" error={error}>
+                  {({ id, ...aria }) => <Input
+                    id={id}
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="가입 시 사용한 이메일"
-                    className="w-full px-4 py-2.5 rounded-xl border border-cream-300 text-sm text-brown-800 bg-cream-50 placeholder:text-brown-300 focus:outline-none focus:border-brown-400 focus:ring-2 focus:ring-brown-100 transition"
-                  />
-                </div>
+                    {...aria}
+                  />}
+                </Field>
 
-                {error && (
-                  <p className="text-sm text-red-500 bg-red-50 px-4 py-2.5 rounded-xl">{error}</p>
-                )}
-
-                <button
+                <Button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-2.5 bg-brown-600 text-white rounded-xl text-sm font-medium hover:bg-brown-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-1"
+                  className="mt-1 w-full"
                 >
                   {loading ? "발송 중..." : "재설정 링크 받기"}
-                </button>
+                </Button>
               </div>
             </form>
 

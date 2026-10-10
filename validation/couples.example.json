@@ -1,0 +1,7 @@
+[
+  {
+    "id": "C01",
+    "a": { "gender": "female", "year": 1990, "month": 3, "day": 14, "hour": 9, "minute": 30, "birthPlace": "서울", "homePlace": "서울" },
+    "b": { "gender": "male", "year": 1988, "month": 11, "day": 2, "hour": null, "minute": null, "birthPlace": "부산", "homePlace": "서울" }
+  }
+]

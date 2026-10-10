@@ -8,8 +8,8 @@ export const metadata: Metadata = {
 
 export default function InstallPage() {
   return (
-    <main className="mx-auto max-w-2xl px-4 py-8">
-      <section className="rounded-2xl border border-cream-200 bg-white p-6 shadow-sm">
+    <main className="cdj-page cdj-page--reading">
+      <section className="cdj-card p-6">
         <p className="text-sm font-semibold text-brown-400">PWA 설치 안내</p>
         <h1 className="mt-2 font-serif text-2xl font-bold text-brown-900">
           책도장을 앱처럼 사용해보세요
@@ -20,7 +20,7 @@ export default function InstallPage() {
       </section>
 
       <section className="mt-6 grid gap-4">
-        <div className="rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+        <div className="cdj-card p-5">
           <h2 className="font-serif text-lg font-bold text-brown-800">iPhone / iPad</h2>
           <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-6 text-brown-600">
             <li>Safari에서 책도장에 접속합니다.</li>
@@ -33,7 +33,7 @@ export default function InstallPage() {
           </p>
         </div>
 
-        <div className="rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+        <div className="cdj-card p-5">
           <h2 className="font-serif text-lg font-bold text-brown-800">Android / Chrome</h2>
           <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-6 text-brown-600">
             <li>Chrome에서 책도장에 접속합니다.</li>
@@ -44,7 +44,7 @@ export default function InstallPage() {
           </ol>
         </div>
 
-        <div className="rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+        <div className="cdj-card p-5">
           <h2 className="font-serif text-lg font-bold text-brown-800">PC Chrome</h2>
           <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-6 text-brown-600">
             <li>Chrome에서 책도장에 접속합니다.</li>
@@ -53,7 +53,7 @@ export default function InstallPage() {
           </ol>
         </div>
 
-        <div className="rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+        <div className="cdj-card p-5">
           <h2 className="font-serif text-lg font-bold text-brown-800">설치 후 확인할 것</h2>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-brown-600">
             <li>홈 화면의 책도장 아이콘으로 실행되는지 확인합니다.</li>

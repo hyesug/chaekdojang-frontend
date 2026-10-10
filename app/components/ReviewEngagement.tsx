@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import ProfileAvatar from "./ProfileAvatar";
+import { Heart, MessageCircle } from "lucide-react";
 import { API_BASE } from "../lib/api";
 import { authFetch } from "../lib/auth";
 
@@ -143,41 +144,47 @@ export default function ReviewEngagement({
   }
 
   return (
-    <section className="mt-7 pt-5 border-t border-cream-200">
-      <div className="flex flex-wrap items-center gap-4 text-sm text-brown-400">
+    <section className="mt-10 border-t border-cream-300 pt-5">
+      <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={handleLike}
-          className="flex items-center gap-1.5 transition-colors group"
+          className={`flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-semibold transition-colors ${
+            liked
+              ? "border-wine-500/40 bg-wine-50 text-wine-500"
+              : "border-cream-300 bg-cream-50 text-brown-800 hover:border-brown-200"
+          }`}
           aria-label={liked ? "좋아요 취소" : "좋아요"}
+          aria-pressed={liked}
         >
-          <span className={`text-lg leading-none ${liked ? "text-red-500" : "text-brown-300 group-hover:text-red-400"}`}>
-            {liked ? "♥" : "♡"}
-          </span>
-          <span className={liked ? "text-red-500" : "text-brown-400"}>{likeCount}</span>
+          <Heart size={17} strokeWidth={1.75} className={liked ? "fill-wine-500" : ""} aria-hidden="true" />
+          <span className="tabular">{likeCount}</span>
         </button>
-        <span>댓글 {commentCount}</span>
+        <span className="flex h-10 items-center gap-2 px-2 text-sm text-sage-600">
+          <MessageCircle size={17} strokeWidth={1.75} aria-hidden="true" />
+          댓글 <span className="tabular font-semibold text-brown-800">{commentCount}</span>
+        </span>
       </div>
 
-      <div className="mt-5 space-y-4">
+      <div className="mt-6 space-y-5">
         {comments.length === 0 ? (
-          <p className="text-sm text-brown-300">첫 댓글을 남겨보세요</p>
+          <p className="text-sm text-sage-600">아직 댓글이 없어요. 첫 댓글로 감상을 나눠보세요.</p>
         ) : (
           comments.map((comment) => (
-            <div key={comment.id} className="flex items-start gap-2">
+            <div key={comment.id} className="flex items-start gap-3">
               <ProfileAvatar src={comment.author.profileImage} name={comment.author.nickname} size="xs" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-xs font-semibold text-brown-600">{comment.author.nickname}</span>
-                  <span className="text-xs text-brown-300">{comment.createdAt.slice(0, 10)}</span>
+                  <span className="text-[13px] font-semibold text-brown-800">{comment.author.nickname}</span>
+                  <span className="cdj-meta">{comment.createdAt.slice(0, 10).replaceAll("-", ".")}</span>
                 </div>
-                <p className="mt-0.5 text-sm leading-relaxed text-brown-700">{comment.content}</p>
+                <p className="mt-0.5 whitespace-pre-line text-sm leading-relaxed text-brown-900">{comment.content}</p>
               </div>
               {currentUserId !== null && currentUserId === comment.author.id && (
                 <button
                   type="button"
                   onClick={() => handleCommentDelete(comment.id)}
-                  className="flex-shrink-0 text-xs text-red-400 hover:text-red-600"
+                  className="flex-shrink-0 text-xs text-sage-600 transition-colors hover:text-wine-500"
                 >
                   삭제
                 </button>
@@ -187,19 +194,20 @@ export default function ReviewEngagement({
         )}
       </div>
 
-      <form onSubmit={handleCommentSubmit} className="mt-5 flex gap-2 items-end">
+      <form onSubmit={handleCommentSubmit} className="mt-6 flex items-end gap-2">
         <textarea
           value={commentText}
           onChange={(e) => setCommentText(e.target.value)}
           rows={1}
           disabled={submitting}
-          placeholder="댓글을 입력하세요..."
-          className="min-h-10 flex-1 resize-none rounded-lg border border-cream-200 px-3 py-2 text-sm text-brown-700 placeholder:text-brown-300 focus:outline-none focus:border-brown-400 disabled:opacity-60"
+          placeholder="댓글을 입력하세요"
+          aria-label="댓글 입력"
+          className="cdj-field flex-1 resize-none text-sm"
         />
         <button
           type="submit"
           disabled={!commentText.trim() || submitting}
-          className="rounded-lg bg-brown-700 px-4 py-2 text-sm text-white hover:bg-brown-800 disabled:opacity-40"
+          className="cdj-button cdj-button--primary"
         >
           등록
         </button>

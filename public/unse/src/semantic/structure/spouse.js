@@ -1,0 +1,245 @@
+/**
+ * spouse.js — **배우자를 체계마다 따로 말한다 (직업·나이차·시기)**
+ *
+ * `children.js` 와 같은 자리다. 표는 이미 `hires/profile.js` 의 `MAIN_STAR` 에
+ * 있었고(직업·나이차·안정성까지), 계산도 되고 있었는데 **출력이 막혀** 있었다.
+ *
+ * 종합은 `compose/consensus.js` 의 규칙을 그대로 쓴다 —
+ * **겹치면 단정, 갈리면 빼고, 하나뿐이면 보수적으로.**
+ *
+ * ── 지키는 선 ──────────────────────────────────────────────
+ * 출전이 있는 표만 쓰고, 체계 이름을 반드시 붙이고, 유파가 갈리면 갈린다고
+ * 적고, **맞는다고 말하지 않는다.** 이 저장소는 배우자 속성을 검증한 적이 없다.
+ * 특히 **혼인 안정**은 재 봤더니 찍는 것보다 나빴다(5명 중 3, 영점 75%) —
+ * 그 사실을 함께 적는다.
+ */
+import { MAIN_HIDDEN, tenGod, TEN_GOD_GROUP, BRANCHES_KR } from '../../core/ganzhi.js';
+import { j } from '../../core/josa.js';
+import { buildBoard } from '../../hires/ziwei.js';
+import { PALACES } from '../../systems/jamidusu.js';
+import { consensusOf } from '../compose/consensus.js';
+import { natureOf } from './stars.js';
+
+/**
+ * 자미 부처궁 주성이 그리는 배우자.
+ *
+ * `hires/profile.js` 의 `MAIN_STAR` 와 같은 표다. 그쪽은 해석 층이고 이쪽은
+ * 구조 층이라 서로 가져다 쓰지 않는다 — **고칠 때는 양쪽 다** 고쳐야 한다.
+ * `older` 는 나이차(+ 연상 / − 연하), `stable` 은 관계의 안정성이다.
+ */
+const SPOUSE_STAR = {
+  자미: { trade: '조직에서 자리를 맡는 사람', older: 1, stable: 2 },
+  천부: { trade: '모으고 지키는 실무·재무 쪽', older: 1, stable: 2 },
+  무곡: { trade: '돈과 기술을 직접 다루는 실무형', older: 0, stable: 1 },
+  천상: { trade: '조율하고 보좌하는 자리', older: 0, stable: 2 },
+  천량: { trade: '원칙을 세우고 돌보는 일, 연장자 같은 사람', older: 2, stable: 2 },
+  태양: { trade: '드러나는 자리 — 공공·교육·영업', older: 1, stable: 1 },
+  태음: { trade: '섬세하게 쌓는 일 — 재무·기획·연구', older: -1, stable: 1 },
+  천동: { trade: '모나지 않은 서비스·관리', older: -1, stable: 1 },
+  천기: { trade: '기획·분석처럼 머리 쓰는 일', older: -1, stable: 0 },
+  거문: { trade: '말과 전문성으로 먹고사는 일', older: 0, stable: 0 },
+  탐랑: { trade: '재주가 여럿인 사람 — 영업·예술·사교', older: -1, stable: -1 },
+  염정: { trade: '원칙과 욕망의 낙차가 큰 사람', older: 0, stable: -1 },
+  칠살: { trade: '개척하는 일 — 혼자 판을 여는 쪽', older: 0, stable: -1 },
+  파군: { trade: '틀을 갈아엎는 일 — 변동이 큰 쪽', older: -1, stable: -2 },
+};
+
+/** 부처궁에 든 주성 — 자미는 시각 없이 명궁을 못 세운다 */
+export function spousePalaceStars(input) {
+  if (input?.timeKnown === false) return [];
+  try {
+    const b = buildBoard(input);
+    const idx = PALACES.findIndex(([kr]) => kr === '부처궁');
+    if (idx < 0) return [];
+    const pos = ((b.myeong - idx) % 12 + 12) % 12;
+    return (b.board[pos] ?? []).filter((s) => SPOUSE_STAR[s]);
+  } catch { return []; }
+}
+
+/** 일지(배우자궁)에 무엇이 앉았나 — 사주 */
+function spouseSeat(chart) {
+  const d = chart.pillars?.day;
+  if (!d) return null;
+  const god = tenGod(chart.dayStem, MAIN_HIDDEN[d.branch]);
+  const grp = TEN_GOD_GROUP[god];
+  const KO = {
+    비겁: { text: '나와 같은 힘이 앉았습니다. 친구처럼 나란히 서는 관계가 편하고, 기대거나 기대게 하는 쪽은 잘 안 맞습니다.', older: 0 },
+    식상: { text: '관을 눌러 내는 힘이 앉았습니다. 규격에 맞는 상대보다 내가 이끌고 돌보는 쪽으로 기울고, 전통적으로 연하를 봅니다.', older: -1 },
+    재성: { text: '재성이 앉았습니다. 현실을 같이 굴리는 관계, 생활이 맞물리는 쪽입니다.', older: 0 },
+    관성: { text: '관성이 앉았습니다. 배우자 자리에 배우자를 뜻하는 것이 바로 앉은 모양이라, 관계가 한 줄기로 이어지기 쉽습니다.', older: 1 },
+    인성: { text: '인성이 앉았습니다. 기댈 언덕으로 삼거나 나이 차가 나는 쪽, 보살핌을 주고받는 관계입니다.', older: 1 },
+  };
+  return { god, branch: BRANCHES_KR[d.branch], ...KO[grp] };
+}
+
+/**
+ * 나이차 한 줄 — 리포트(readSpouse)와 AI 맥락(hires/profile.js)이 같은 답을 내도록
+ * 판정 규칙을 여기 하나에 둔다. 일지 십성이 말하면 그것, 아니면 성별 경향.
+ *
+ * @param {{dayStem:number, dayBranch:number, gender?:string}} p
+ * @returns {{stance:'연상'|'연하', fallback:boolean, why:string}|null}
+ */
+export function partnerAgeLean({ dayStem, dayBranch, gender }) {
+  if (dayStem == null || dayBranch == null) return null;
+  const god = tenGod(dayStem, MAIN_HIDDEN[dayBranch]);
+  const older = { 관성: 1, 인성: 1, 식상: -1 }[TEN_GOD_GROUP[god]] ?? 0;
+  if (older) {
+    return { stance: older > 0 ? '연상' : '연하', fallback: false, why: `사주 일지 ${god}` };
+  }
+  if (gender !== 'female' && gender !== 'male') return null;
+  return { stance: gender === 'female' ? '연상' : '연하', fallback: true,
+    why: `일지 ${god}은 나이차를 가리지 않아 일반 경향으로 채움` };
+}
+
+/**
+ * 배우자를 체계마다 읽는다.
+ *
+ * @param {object} chart  `readFortune(...).chart` + `gender`
+ * @param {string[]} stars 부처궁 주성
+ * @param {object} [vedic] `marriagePack(input)` 결과
+ * @param {string[]} [allStars] 부처궁의 **모든** 별 — 성격을 읽는 데 쓴다
+ */
+export function readSpouse(chart, stars = [], vedic = null, allStars = []) {
+  const out = [];
+
+  // ── 배우자가 **어떤 사람인가.** 직업(trade)만 내고 성격을 버리고 있었다
+  const nat = natureOf(allStars.length ? allStars : stars, '배우자');
+  if (nat) {
+    out.push({
+      system: '자미두수', topicKey: '성향', what: `부처궁 ${nat.stars.join('·')}`,
+      text: nat.text,
+      source: '자미두수전서 성계 각론 — 궁이 대상을 정한다(부처궁=배우자의 상)',
+      traits: nat.traits,
+    });
+  }
+
+  // ── 자미 부처궁 — 직업·나이차 표가 실제로 있다 ──
+  if (stars.length) {
+    const rows = stars.map((s) => ({ star: s, ...SPOUSE_STAR[s] }));
+    const older = rows.reduce((a, r) => a + r.older, 0);
+    const stable = rows.reduce((a, r) => a + r.stable, 0);
+    out.push({
+      system: '자미두수', topicKey: '직업', what: `부처궁 ${stars.join('·')}`,
+      text: `부처궁에 ${j(stars.join('·'), '이')} 들었습니다. 이 별들이 그리는 상대는`
+        + ` **${rows.map((r) => r.trade).join(' / ')}** 쪽입니다.`,
+      source: '자미두수 — 부처궁 주성이 배우자의 결을 그린다',
+      stance: null,
+      trade: rows.map((r) => r.trade),
+    });
+    // 나이차 판정에는 쓰지 않는다 — 실제 사례 10명에 대 보니 말한 5명 중 3명만
+    // 맞았다(2026-10-09). 전통이 뭐라 하는지만 참고로 남긴다
+    out.push({
+      system: '자미두수', topicKey: '나이차참고', what: `부처궁 ${stars.join('·')}`,
+      text: (older > 0 ? `전통적으로는 **연상 쪽**으로 봅니다(${stars.join('·')}).`
+        : older < 0 ? `전통적으로는 **연하 쪽**으로 봅니다(${stars.join('·')}).`
+        : `나이차는 한쪽으로 기울지 않습니다(${stars.join('·')}).`),
+      source: '자미두수 — 부처궁 주성의 연상·연하 배당',
+      stance: null,
+      measured: '판정 제외',
+    });
+    // **재 봤더니 진 축.** 그래도 내되 결과를 함께 적는다
+    out.push({
+      system: '자미두수', topicKey: '안정', what: `부처궁 ${stars.join('·')}`,
+      text: `관계의 안정성은 ${stable >= 2 ? '받쳐지는 쪽' : stable <= -1 ? '흔들리는 쪽' : '중간'}으로 적혀 있습니다.`,
+      source: '자미두수 부처궁',
+      stance: null,
+      measured: '영점보다 나쁨',
+    });
+  } else if (chart.timeKnown !== false) {
+    out.push({
+      system: '자미두수', topicKey: '직업', what: '부처궁 공궁',
+      text: '부처궁에 주성이 없습니다(공궁). 마주 보는 궁을 빌려 읽는 자리라 직업을 표에서 뽑지 않습니다.',
+      source: '자미두수 — 공궁은 대궁을 빌려 본다',
+    });
+  }
+
+  // ── 사주 일지 — 배우자궁 ──
+  const seat = spouseSeat(chart);
+  if (seat) {
+    out.push({
+      system: '사주', topicKey: '결', what: `일지 ${seat.branch} ${seat.god}`,
+      text: `배우자 자리(일지)에 ${j(seat.god, '이')} 앉았습니다. ${seat.text}`,
+      source: '연해자평 — 日支는 配偶宮이다',
+      stance: null,
+    });
+    // 나이차는 이 자리가 결정한다 — 사례 10명 중 이 자리가 말한 6명에서 5명 적중,
+    // 성별 경향과 합치면 10명 중 9명(한 사람 빼기 교차검증도 9/10, 2026-10-09).
+    // 일지가 말하지 않으면(비겁·재성) 성별 경향으로 채운다 — 그 자체로 10명 중 8명이다
+    if (seat.older) {
+      out.push({
+        system: '사주', topicKey: '나이차', what: `일지 ${seat.god}`,
+        text: `일지 ${seat.god}은 ${seat.older > 0 ? '연상' : '연하'} 쪽으로 봅니다.`,
+        source: '연해자평 — 日支 十星의 연상·연하 배당',
+        stance: seat.older > 0 ? '연상' : '연하',
+      });
+    }
+  }
+  if (!seat?.older && (chart.gender === 'female' || chart.gender === 'male')) {
+    const stance = chart.gender === 'female' ? '연상' : '연하';
+    out.push({
+      system: '일반 경향', topicKey: '나이차', what: '체계가 나이차를 가리지 않는 경우',
+      text: `명반이 나이차를 따로 가리키지 않아, ${chart.gender === 'female' ? '여성은 연상' : '남성은 연하'}과`
+        + ' 맺어지는 경우가 많다는 일반적인 경향으로 봅니다.',
+      source: '일반 경향',
+      stance,
+      fallback: true,
+    });
+  }
+
+  // ── 베딕 — 7하우스와 D9 ──
+  if (vedic) {
+    const bits = [];
+    if (vedic.d1_7?.sign) bits.push(`7하우스 ${vedic.d1_7.sign}`);
+    if (vedic.d1_7?.lord) bits.push(`7궁주 ${j(vedic.d1_7.lord, '이')} ${vedic.d1_7.lordIn}하우스`);
+    if (vedic.d9Lagna != null) bits.push(`D9 라그나 ${vedic.d9Lagna}`);
+    // 다라카라카는 객체다 — 그대로 끼우면 [object Object] 가 나간다
+    const dk = vedic.darakaraka;
+    if (dk?.planet) {
+      bits.push(`다라카라카 ${dk.planet}`
+        + (dk.d1?.house ? ` (D1 ${dk.d1.sign} ${dk.d1.house}하우스)` : '')
+        // 도수 차가 작으면 카라카 순서가 뒤집힐 수 있다 — 엔진이 신고하면 적는다
+        + (dk.uncertain ? ' ※ 도수가 가까워 순서가 뒤집힐 수 있는 자리' : ''));
+    }
+    if (bits.length) {
+      out.push({
+        system: '베딕', topicKey: '결', what: '7하우스 · D9',
+        text: `베딕은 배우자를 7하우스와 D9(나밤샤)로 봅니다. ${bits.join(' · ')}.`,
+        source: 'BPHS — 배우자는 7하우스와 D9, 다라카라카로 본다',
+        stance: null,
+      });
+    }
+  }
+
+  return out;
+}
+
+/** 종합 — children 과 같은 규칙 */
+export function spouseVerdict(reads) {
+  const lines = [];
+
+  const trades = reads.filter((r) => r.trade).flatMap((r) => r.trade);
+  if (trades.length) {
+    lines.push(`직업은 **${trades.join(' / ')}** 쪽으로 나옵니다.`
+      + ` 자미두수 부처궁 한 곳에서만 나온 값입니다.`);
+  }
+
+  // 나이차는 합의가 아니라 측정으로 고른 한 자리(사주 일지)가 정한다.
+  // 다른 체계를 섞으면 10명 중 5명으로 떨어졌다
+  const ageReads = reads.filter((r) => r.topicKey === '나이차' && r.stance);
+  const pick = ageReads.find((r) => r.system === '사주') ?? ageReads.find((r) => r.fallback);
+  const age = consensusOf(pick ? [pick] : []);
+  if (pick?.fallback) {
+    lines.push(`나이는 ${pick.stance} 쪽으로 봅니다.`);
+  } else if (pick) {
+    lines.push(`나이는 **${pick.stance}** 쪽입니다. 사주 배우자 자리(${pick.what})에서 나온 답입니다.`);
+  } else if (age.verdict === '겹침') {
+    lines.push(`나이는 **${age.stance}** 쪽입니다. ${age.say}`);
+  } else if (age.verdict === '하나') {
+    lines.push(`나이는 ${age.stance} 쪽으로 나옵니다.`
+      + ` ${age.agree[0].system} 한 곳에서만 나온 말이라 세게 말하지 않겠습니다.`);
+  } else if (age.verdict === '갈림') {
+    lines.push(age.say);
+  }
+
+  return { age, lines };
+}

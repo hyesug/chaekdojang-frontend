@@ -35,8 +35,8 @@ export default async function ContestListPage() {
   const announced = contests.filter((contest) => contest.status === "ANNOUNCED");
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8">
-      <section className="rounded-3xl border border-cream-200 bg-white p-6 shadow-sm">
+    <main className="cdj-page cdj-page--reading">
+      <section className="cdj-card p-6">
         <p className="text-sm font-semibold text-brown-400">공모전</p>
         <h1 className="mt-2 font-serif text-3xl font-bold text-brown-900">
           지금 열려 있는 독후감 공모전
@@ -62,7 +62,7 @@ export default async function ContestListPage() {
       </section>
 
       {contests.length === 0 ? (
-        <p className="mt-8 rounded-2xl border border-cream-200 bg-white p-6 text-center text-sm text-brown-500">
+        <p className="cdj-card mt-8 p-6 text-center text-sm text-brown-500">
           아직 공개된 공모전이 없습니다.
         </p>
       ) : (
@@ -87,7 +87,7 @@ function ContestSection({ title, contests }: { title: string; contests: ContestS
           <Link
             key={contest.id}
             href={`/contests/${contest.id}`}
-            className="flex gap-4 rounded-2xl border border-cream-200 bg-white p-4 shadow-sm hover:border-brown-200"
+            className="cdj-card flex gap-4 p-4 hover:border-brown-200"
           >
             {contest.books[0]?.thumbnail ? (
               // eslint-disable-next-line @next/next/no-img-element

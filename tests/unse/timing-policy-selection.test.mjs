@@ -1,0 +1,145 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+import { selectTimingPolicy, selectProvisionalPolicy } from '../../public/unse/src/validation/timingPolicy.js';
+import { reportTimingPolicy } from '../../public/unse/src/semantic/timing/policy.js';
+
+const row = (person, baseline, candidate, precision = 'month') => ({
+  person, precision, scores: { baseline, candidate },
+});
+
+test('사람 여섯 명에게 일관되게 나은 후보만 시기 정책으로 승격한다', () => {
+  const rows = [
+    row('A', 50, 70), row('B', 50, 70), row('C', 50, 70),
+    row('D', 50, 70), row('E', 50, 70), row('F', 50, 70),
+    row('A', 50, 70), row('B', 50, 70),
+  ];
+
+  const verdict = selectTimingPolicy(rows, {
+    baseline: 'baseline', shuffledSelectedScores: Array(100).fill(50),
+  });
+
+  assert.equal(verdict.promote, true);
+  assert.equal(verdict.selected, 'candidate');
+  assert.equal(verdict.loo.selected, 70);
+  assert.equal(verdict.loo.baseline, 50);
+});
+
+test('사례 하나만 잘 맞는 후보는 다른 사람에서 꺾이면 승격하지 않는다', () => {
+  const rows = [
+    row('A', 50, 100), row('A', 50, 100),
+    row('B', 50, 20), row('C', 50, 20), row('D', 50, 20),
+    row('E', 50, 20), row('F', 50, 20), row('G', 50, 20),
+  ];
+
+  const verdict = selectTimingPolicy(rows, { baseline: 'baseline' });
+
+  assert.equal(verdict.promote, false);
+  assert.equal(verdict.selected, 'baseline');
+});
+
+test('사건이 많아도 사람이 한 명이면 시기 정책을 학습하지 않는다', () => {
+  const rows = Array.from({ length: 12 }, () => row('A', 50, 90));
+
+  const verdict = selectTimingPolicy(rows, { baseline: 'baseline' });
+
+  assert.equal(verdict.promote, false);
+  assert.match(verdict.reason, /사람/);
+});
+
+test('쌍 후보가 단독 후보보다 LOO 성적이 낮으면 채택하지 않는다', () => {
+  const rows = [
+    { person: 'A', precision: 'month', scores: { baseline: 40, vedic: 80, saju_vedic: 70 } },
+    { person: 'B', precision: 'month', scores: { baseline: 40, vedic: 80, saju_vedic: 70 } },
+    { person: 'C', precision: 'month', scores: { baseline: 40, vedic: 80, saju_vedic: 70 } },
+    { person: 'D', precision: 'month', scores: { baseline: 40, vedic: 80, saju_vedic: 70 } },
+    { person: 'E', precision: 'month', scores: { baseline: 40, vedic: 80, saju_vedic: 70 } },
+    { person: 'F', precision: 'month', scores: { baseline: 40, vedic: 80, saju_vedic: 70 } },
+    { person: 'G', precision: 'month', scores: { baseline: 40, vedic: 80, saju_vedic: 70 } },
+    { person: 'H', precision: 'month', scores: { baseline: 40, vedic: 80, saju_vedic: 70 } },
+  ];
+  const verdict = selectTimingPolicy(rows, {
+    baseline: 'baseline', shuffledSelectedScores: Array(100).fill(40),
+    candidateSystems: { vedic: ['vedic'], saju_vedic: ['saju', 'vedic'] },
+  });
+  assert.equal(verdict.selected, 'vedic');
+  assert.equal(verdict.scope, 'service');
+  assert.equal(verdict.pairComparison, null);
+});
+
+test('개인 사례로 얻은 결과는 서비스용 정책을 덮어쓰지 않는다', () => {
+  const personalOnly = {
+    직업: { scope: 'personal', systems: ['vedic'], basis: 'personal-development' },
+  };
+  assert.equal(reportTimingPolicy('직업', personalOnly), null);
+});
+
+test('잠정 정책은 근거 등급을 보존한 채 구체 사건 신호로 리포트에 쓸 수 있다', () => {
+  const provisional = {
+    결혼: { scope: 'provisional', systems: ['saju'], eventKind: 'wedding_ceremony', basis: 'personal-development' },
+  };
+  assert.deepEqual(reportTimingPolicy('결혼', 'wedding_ceremony', provisional), provisional.결혼);
+  assert.equal(reportTimingPolicy('결혼', 'birth', provisional), null);
+});
+
+test('서비스 정책은 선언한 사건 종류와 일치할 때만 리포트에 쓸 수 있다', () => {
+  const service = {
+    자녀: { scope: 'service', systems: ['saju'], eventKind: 'birth', resolution: 'year', basis: 'loo-and-shuffle' },
+  };
+  assert.deepEqual(reportTimingPolicy('자녀', 'birth', service), service.자녀);
+  assert.equal(reportTimingPolicy('자녀', 'wedding_ceremony', service), null);
+});
+
+test('잠정 정책은 빼고 고르기에서 가장 많이 뽑힌 후보를 고르고 동점은 함께 남긴다', () => {
+  // 사건 하나를 뺄 때마다 최고 후보를 다시 고른다. lucky 는 첫 사건이 빠지면 밀리지만
+  // 나머지 두 번은 뽑혀 2표, baseline 1표 → lucky
+  const fluke = [0, 1, 2].map((i) => ({ person: 'P', precision: 'month',
+    scores: { baseline: 60, lucky: [100, 55, 55][i] } }));
+  const a = selectProvisionalPolicy(fluke, { baseline: 'baseline' });
+  assert.equal(a.unit, 'event', '한 사람뿐이면 사건 단위로 뺀다');
+  assert.equal(a.method, 'loo-vote');
+  assert.deepEqual(a.votes, { baseline: 1, lucky: 2 });
+  assert.equal(a.selected, 'lucky');
+
+  // 어느 사건을 빼도 뽑히는 후보는 만장일치다
+  const steady = [0, 1, 2].map((i) => ({ person: 'P', precision: 'month',
+    scores: { baseline: 60, good: [80, 75, 85][i] } }));
+  const b = selectProvisionalPolicy(steady, { baseline: 'baseline' });
+  assert.equal(b.selected, 'good');
+  assert.equal(b.agreement, 1);
+
+  // 표가 같더라도 사례 전체 점수가 다르면 더 잘 맞은 쪽 하나를 쓴다
+  const tie = [0, 1].map((i) => ({ person: 'P', precision: 'month',
+    scores: { baseline: 50, x: [90, 40][i], y: [40, 80][i] } }));
+  const c = selectProvisionalPolicy(tie, { baseline: 'baseline' });
+  assert.deepEqual(c.votes, { x: 1, y: 1 });
+  assert.equal(c.selected, 'x', 'x 65 > y 60');
+  assert.deepEqual(c.tied, ['x']);
+
+  // 표와 전체 점수까지 같으면 임의로 하나를 버리지 않고 함께 보여 준다
+  const exactTie = [0, 1].map((i) => ({ person: 'P', precision: 'month',
+    scores: { baseline: 50, x: [90, 40][i], y: [40, 90][i] } }));
+  const d = selectProvisionalPolicy(exactTie, { baseline: 'baseline' });
+  assert.equal(d.selected, 'x');
+  assert.deepEqual(d.tied, ['x', 'y']);
+  assert.match(d.reason, /동점/);
+});
+
+test('사람이 세 명 이상이면 사람 단위로 빼고 고르고, 사례가 한 건이면 그 사례 최고를 쓴다', () => {
+  const rows = ['A', 'B', 'C', 'D'].map((person) => ({ person, precision: 'month', scores: { baseline: 50, good: 70 } }));
+  const v = selectProvisionalPolicy(rows, { baseline: 'baseline' });
+  assert.equal(v.unit, 'person');
+  assert.equal(v.units, 4);
+  assert.equal(v.selected, 'good');
+  const one = selectProvisionalPolicy([{ person: 'A', precision: 'month', scores: { baseline: 40, z: 90 } }], { baseline: 'baseline' });
+  assert.equal(one.method, 'single');
+  assert.equal(one.selected, 'z');
+});
+
+test('사례가 전혀 없으면 사전에 정한 분야 기본 체계를 잠정 후보로 쓴다', () => {
+  const prior = selectProvisionalPolicy([], { baseline: 'baseline', prior: 'saju' });
+  assert.equal(prior.method, 'prior');
+  assert.equal(prior.selected, 'saju');
+  assert.deepEqual(prior.tied, ['saju']);
+  assert.match(prior.reason, /사례가 없어/);
+});

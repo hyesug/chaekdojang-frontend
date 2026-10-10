@@ -65,7 +65,7 @@ export default function CampaignEditForm({ detail, onSaved, onCancel }: Props) {
   }
 
   return (
-    <section className="mt-4 rounded-2xl border border-brown-100 bg-white p-5 shadow-sm">
+    <section className="cdj-card mt-4 p-5">
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="font-serif text-lg font-bold text-brown-900">캠페인 수정</h2>
@@ -87,7 +87,7 @@ export default function CampaignEditForm({ detail, onSaved, onCancel }: Props) {
           value={title}
           onChange={(event) => setTitle(event.target.value)}
           maxLength={150}
-          className="w-full rounded-xl border border-cream-200 px-3 py-2 text-sm text-brown-800 outline-none focus:border-brown-300"
+          className="cdj-field text-sm w-full"
         />
       </Field>
 
@@ -97,7 +97,7 @@ export default function CampaignEditForm({ detail, onSaved, onCancel }: Props) {
           onChange={(event) => setDescription(event.target.value)}
           rows={4}
           maxLength={5000}
-          className="w-full rounded-xl border border-cream-200 px-3 py-2 text-sm text-brown-800 outline-none focus:border-brown-300"
+          className="cdj-field text-sm w-full"
         />
       </Field>
 

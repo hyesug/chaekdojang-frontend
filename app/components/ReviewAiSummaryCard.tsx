@@ -257,7 +257,7 @@ export default function ReviewAiSummaryCard({
               type="button"
               onClick={regenerate}
               disabled={saving}
-              className="rounded-full bg-brown-700 px-3 py-1.5 text-xs text-white hover:bg-brown-800 disabled:opacity-50"
+              className="cdj-button cdj-button--primary cdj-button--sm"
             >
               {saving ? "생성 요청 중" : "AI 독서카드 생성"}
             </button>
@@ -266,7 +266,7 @@ export default function ReviewAiSummaryCard({
             <button
               type="button"
               onClick={loadSummary}
-              className="ml-2 rounded-full border border-brown-300 px-3 py-1.5 text-xs text-brown-600 hover:border-brown-500"
+              className="cdj-button cdj-button--secondary cdj-button--sm ml-2"
             >
               다시 확인
             </button>
@@ -282,14 +282,14 @@ export default function ReviewAiSummaryCard({
                 type="button"
                 onClick={regenerate}
                 disabled={saving}
-                className="rounded-full bg-brown-700 px-3 py-1.5 text-xs text-white hover:bg-brown-800 disabled:opacity-50"
+                className="cdj-button cdj-button--primary cdj-button--sm"
               >
                 다시 생성
               </button>
               <button
                 type="button"
                 onClick={() => setEditing(true)}
-                className="rounded-full border border-brown-300 px-3 py-1.5 text-xs text-brown-600 hover:border-brown-500"
+                className="cdj-button cdj-button--secondary cdj-button--sm"
               >
                 직접 입력
               </button>
@@ -309,7 +309,7 @@ export default function ReviewAiSummaryCard({
               <button
                 type="button"
                 onClick={() => setEditing(true)}
-                className="rounded-full border border-brown-200 bg-white px-3 py-1.5 text-xs text-brown-500 hover:border-brown-400 hover:text-brown-800"
+                className="cdj-button cdj-button--secondary cdj-button--sm"
               >
                 수정하기
               </button>
@@ -317,7 +317,7 @@ export default function ReviewAiSummaryCard({
                 type="button"
                 onClick={regenerate}
                 disabled={saving}
-                className="rounded-full border border-brown-200 bg-white px-3 py-1.5 text-xs text-brown-500 hover:border-brown-400 hover:text-brown-800 disabled:opacity-50"
+                className="cdj-button cdj-button--secondary cdj-button--sm"
               >
                 AI로 다시 생성
               </button>
@@ -365,7 +365,7 @@ export default function ReviewAiSummaryCard({
               type="button"
               onClick={saveEdit}
               disabled={saving}
-              className="rounded-full bg-brown-700 px-3 py-1.5 text-xs text-white hover:bg-brown-800 disabled:opacity-50"
+              className="cdj-button cdj-button--primary cdj-button--sm"
             >
               저장
             </button>
@@ -475,7 +475,7 @@ function SummaryInput({
         placeholder={placeholder}
         maxLength={maxLength}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-lg border border-cream-200 bg-white px-3 py-2 text-sm text-brown-700 placeholder:text-brown-300 focus:border-brown-400 focus:outline-none"
+        className="cdj-field text-sm w-full"
       />
     </label>
   );

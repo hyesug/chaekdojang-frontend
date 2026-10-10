@@ -11,7 +11,6 @@ export default function ServiceStatusGuard() {
   const [status, setStatus] = useState<Status>(
     maintenanceMode ? "maintenance" : "checking"
   );
-  const [lastCheckedAt, setLastCheckedAt] = useState<Date | null>(null);
 
   useEffect(() => {
     if (maintenanceMode) return;
@@ -27,8 +26,6 @@ export default function ServiceStatusGuard() {
         setStatus(res.ok ? "up" : "down");
       } catch {
         if (!cancelled) setStatus("down");
-      } finally {
-        if (!cancelled) setLastCheckedAt(new Date());
       }
     }
 
@@ -43,13 +40,26 @@ export default function ServiceStatusGuard() {
 
   if (status === "checking" || status === "up") return null;
 
-  const isMaintenance = status === "maintenance";
-  const title = isMaintenance
-    ? "책도장을 점검하고 있어요"
-    : "책도장이 잠시 불안정해요";
-  const description = isMaintenance
-    ? "더 안정적인 서비스를 위해 잠시 정비 중입니다. 조금만 기다린 뒤 다시 접속해 주세요."
-    : "서버 연결이 원활하지 않아 독후감과 내 서재 정보를 불러오지 못하고 있습니다. 복구되는 대로 다시 이용할 수 있어요.";
+  // 서버 연결이 끊긴 것만으로는 화면 전체를 막지 않는다 — 메인 화면과 운세처럼 서버 없이도
+  // 보이는 곳은 그대로 쓰게 두고, 위에 얇은 안내 띠만 띄운다. 화면을 막는 것은 점검 모드뿐이다.
+  if (status === "down") {
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        className="sticky top-0 z-[100] flex flex-wrap items-center justify-center gap-x-3 gap-y-1 border-b border-brown-200 bg-cream-100 px-4 py-2 text-center text-xs text-brown-600"
+      >
+        <span>서버 연결이 원활하지 않아 독후감과 내 서재 정보를 잠시 불러오지 못하고 있어요.</span>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="font-semibold underline underline-offset-2"
+        >
+          다시 확인하기
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -57,32 +67,14 @@ export default function ServiceStatusGuard() {
       aria-live="assertive"
       className="fixed inset-0 z-[100] flex items-center justify-center bg-cream-100 px-5"
     >
-      <section className="w-full max-w-md rounded-lg border border-cream-300 bg-white px-6 py-8 text-center shadow-sm">
+      <section className="cdj-card w-full max-w-md px-6 py-8 text-center">
         <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full border-2 border-brown-200 text-brown-600">
           <span className="font-serif text-2xl font-bold">책</span>
         </div>
-        <h1 className="font-serif text-2xl font-bold text-brown-800">
-          {title}
-        </h1>
-        <p className="mt-4 text-sm leading-6 text-brown-500">{description}</p>
-        {!isMaintenance && (
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            className="mt-6 rounded-full bg-brown-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brown-700"
-          >
-            다시 확인하기
-          </button>
-        )}
-        {lastCheckedAt && !isMaintenance && (
-          <p className="mt-4 text-xs text-brown-300">
-            마지막 확인:{" "}
-            {lastCheckedAt.toLocaleTimeString("ko-KR", {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </p>
-        )}
+        <h1 className="cdj-title">책도장을 점검하고 있어요</h1>
+        <p className="mt-4 text-sm leading-6 text-brown-500">
+          더 안정적인 서비스를 위해 잠시 정비 중입니다. 조금만 기다린 뒤 다시 접속해 주세요.
+        </p>
       </section>
     </div>
   );

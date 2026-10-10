@@ -4,6 +4,9 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import ReviewCard, { type Review } from "./components/ReviewCard";
 import PwaInstallCta from "./components/PwaInstallCta";
+import { EmptyState } from "./components/ui/EmptyState";
+import { LoadingState, ReviewCardSkeleton } from "./components/ui/LoadingState";
+import { BookOpen, CheckCircle2, ChevronRight, LogIn, PenLine, Sparkles } from "lucide-react";
 import { API_BASE } from "./lib/api";
 
 const BASE = API_BASE;
@@ -204,118 +207,98 @@ export default function FeedClient({ initialPage }: FeedClientProps) {
   }, [tab, hasMore, loadingMore, loading]);
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
+    <div className="cdj-page cdj-page--reading">
       {/* 피드 헤더 */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="font-serif text-2xl font-bold text-brown-800">피드</h1>
-          <p className="text-xs text-brown-400 mt-0.5">이웃의 독후감</p>
-        </div>
-        <Link
-          href="/write"
-          className="px-4 py-2 text-sm bg-brown-600 text-white rounded-full hover:bg-brown-700 transition-colors"
-        >
-          + 독후감 쓰기
-        </Link>
-      </div>
-
-      <section className="mb-4 rounded-xl border border-cream-200 bg-white px-4 py-3">
-        <p className="text-xs leading-5 text-brown-500">
+      <header className="mb-8">
+        <h1 className="cdj-title">오늘의 독후감</h1>
+        <p className="cdj-lead mt-2">
           책도장은 독후감을 기록하고, 읽은 책을 서재에 모으고, 다른 독자의 감상과 책 취향을 나누는 독서 기록 SNS입니다.
         </p>
-      </section>
+        <Link
+          href="/write"
+          className="group mt-5 flex items-center gap-3 rounded-xl border border-cream-300 bg-cream-50 px-4 py-3.5 transition-colors hover:border-brown-200"
+        >
+          <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-brown-100 text-brown-700">
+            <PenLine size={17} aria-hidden="true" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-semibold text-brown-800">어떤 책을 읽으셨나요?</span>
+            <span className="block truncate text-[13px] text-sage-600">
+              긴 감상도 AI 독서카드로 한 줄 감상·감정 키워드까지 정리돼요
+            </span>
+          </span>
+          <ChevronRight size={18} className="flex-none text-sage-500 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+        </Link>
+      </header>
 
-      <section className="mb-5 rounded-md border border-cream-200 bg-cream-50 px-3 py-2.5">
-        <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-2">
-          <h2 className="text-sm font-medium text-brown-700">
-            긴 독후감을 AI 독서카드로 정리해보세요.
-          </h2>
-          <p className="text-xs leading-5 text-brown-400">
-            한 줄 감상, 감정 키워드, 추천 대상까지 자동으로 정리됩니다.
-          </p>
-        </div>
-      </section>
-
-      {/* 탭: 전체 / 팔로잉 / 취향 */}
       {createdNotice && (
-        <div className="mb-4 rounded-xl border border-green-100 bg-green-50 px-4 py-3 text-sm text-green-700">
-          독후감이 등록됐어요. 피드에 바로 반영했어요.
-          <PwaInstallCta variant="inline" />
+        <div className="cdj-alert mb-5 flex items-start gap-2" role="status">
+          <CheckCircle2 size={18} className="mt-0.5 flex-none text-brown-700" aria-hidden="true" />
+          <div>
+            독후감이 등록됐어요. 피드에 바로 반영했어요.
+            <PwaInstallCta variant="inline" />
+          </div>
         </div>
       )}
 
-      <div className="flex gap-1 mb-6 bg-cream-200 rounded-xl p-1">
-        {(
-          [
-            { value: "all", label: "📚 전체" },
-            { value: "following", label: "❤️ 팔로잉" },
-            { value: "taste", label: "✨ 취향" },
-          ] as const
-        ).map(({ value, label }) => (
-          <button
-            key={value}
-            onClick={() => setTab(value)}
-            className={`flex-1 py-2 text-xs font-medium rounded-lg transition-colors ${
-              tab === value
-                ? "bg-white text-brown-800 shadow-sm"
-                : "text-brown-400 hover:text-brown-600"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
+      {/* 탭: 전체 / 팔로잉 / 취향 + 정렬 */}
+      <div className="sticky top-16 z-20 -mx-1 mb-5 bg-cream-100 px-1 pt-1">
+        <div className="flex items-end justify-between gap-3 border-b border-cream-300">
+          <div className="-mb-px flex" role="tablist" aria-label="피드 필터">
+            {(
+              [
+                { value: "all", label: "전체" },
+                { value: "following", label: "팔로잉" },
+                { value: "taste", label: "취향" },
+              ] as const
+            ).map(({ value, label }) => (
+              <button
+                key={value}
+                onClick={() => setTab(value)}
+                role="tab"
+                aria-selected={tab === value}
+                className="cdj-tab"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {tab === "all" && (
+            <label className="mb-2 flex items-center gap-1 text-[13px] text-sage-600">
+              <span className="sr-only">정렬</span>
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value as SortType)}
+                className="cursor-pointer rounded-md bg-transparent py-1 pl-2 pr-1 font-medium text-brown-800 hover:bg-cream-200 focus:outline-none"
+              >
+                <option value="recent">최신순</option>
+                <option value="rating">별점순</option>
+                <option value="popular">인기순</option>
+              </select>
+            </label>
+          )}
+        </div>
       </div>
 
-      {/* 전체 탭 — 정렬 선택 */}
-      {tab === "all" && (
-        <div className="flex gap-2 mb-4">
-          {([{ value: "recent", label: "최신순" }, { value: "rating", label: "⭐ 별점순" }, { value: "popular", label: "🔥 인기순" }] as const).map(({ value, label }) => (
-            <button
-              key={value}
-              onClick={() => setSort(value)}
-              className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
-                sort === value
-                  ? "bg-brown-600 text-white border-brown-600"
-                  : "bg-white text-brown-500 border-cream-300 hover:border-brown-400"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      )}
-
       {/* 로딩 */}
-      {loading && (
-        <div className="text-center py-12 text-brown-400">불러오는 중...</div>
-      )}
+      {loading && <ReviewCardSkeleton />}
 
       {/* 취향/팔로잉 탭 — 미로그인 안내 */}
       {!loading && (tab === "following" || tab === "taste") && !loggedIn && (
-        <div className="text-center py-16 text-brown-400">
-          <p className="text-4xl mb-3">🔒</p>
-          <p className="font-medium text-brown-600 mb-1">
-            로그인 후 이용할 수 있어요
-          </p>
-          <p className="text-sm mb-6">
-            {tab === "taste" ? "취향이 비슷한 독자들의 독후감을 모아볼 수 있어요" : "팔로우한 사람들의 독후감만 모아볼 수 있어요"}
-          </p>
-          <Link
-            href="/auth/login"
-            className="inline-block px-6 py-2.5 bg-brown-600 text-white rounded-full text-sm font-medium hover:bg-brown-700 transition-colors"
-          >
-            로그인하기
-          </Link>
-        </div>
+        <EmptyState
+          title="로그인 후 이용할 수 있어요"
+          icon={<LogIn size={22} aria-hidden="true" />}
+          action={<Link href="/auth/login" className="cdj-button cdj-button--primary">로그인하기</Link>}
+        >
+          {tab === "taste" ? "취향이 비슷한 독자들의 독후감을 모아볼 수 있어요" : "팔로우한 사람들의 독후감만 모아볼 수 있어요"}
+        </EmptyState>
       )}
 
       {/* 취향 탭 — 로그인했지만 추천 없음 */}
       {!loading && tab === "taste" && loggedIn && reviews.length === 0 && (
-        <div className="text-center py-16 text-brown-400">
-          <p className="text-4xl mb-3">✨</p>
-          <p className="font-medium text-brown-600 mb-1">아직 추천할 독자가 없어요</p>
-          <p className="text-sm">책을 더 읽고 독후감을 남기면 취향이 맞는 독자를 찾아드려요</p>
-        </div>
+        <EmptyState title="아직 추천할 독자가 없어요" icon={<Sparkles size={22} aria-hidden="true" />}>
+          책을 더 읽고 독후감을 남기면 취향이 맞는 독자를 찾아드려요
+        </EmptyState>
       )}
 
       {/* 독후감 목록 */}
@@ -339,22 +322,26 @@ export default function FeedClient({ initialPage }: FeedClientProps) {
 
       {/* 전체 탭 — 무한 스크롤 sentinel */}
       {tab === "all" && (
-        <div ref={sentinelRef} className="py-6 text-center text-sm text-brown-300">
-          {loadingMore ? "불러오는 중..." : hasMore ? "" : reviews.length > 0 ? "마지막 독후감이에요" : ""}
+        <div ref={sentinelRef} className="py-8 text-center text-[13px] text-sage-500">
+          {loadingMore ? (
+            <LoadingState label="더 불러오는 중" />
+          ) : hasMore ? "" : reviews.length > 0 ? (
+            <span className="inline-flex items-center gap-3">
+              <span className="h-px w-8 bg-cream-300" aria-hidden="true" />
+              모든 독후감을 읽었어요
+              <span className="h-px w-8 bg-cream-300" aria-hidden="true" />
+            </span>
+          ) : ""}
         </div>
       )}
 
       {/* 빈 상태 */}
       {!loading && reviews.length === 0 && !(tab === "following" && !loggedIn) && !(tab === "taste" && loggedIn) && (
-        <div className="text-center py-24 text-brown-400">
-          <p className="text-5xl mb-4">📖</p>
-          <p className="font-medium">
-            {tab === "following"
-              ? "팔로우한 사람의 독후감이 없어요"
-              : "아직 독후감이 없어요"}
-          </p>
-          {tab === "all" && <p className="text-sm mt-2">첫 독후감을 작성해보세요!</p>}
-        </div>
+        <EmptyState
+          title={tab === "following" ? "팔로우한 사람의 독후감이 없어요" : "아직 독후감이 없어요"}
+          icon={<BookOpen size={22} aria-hidden="true" />}
+          action={tab === "all" ? <Link href="/write" className="cdj-button cdj-button--primary">첫 독후감 쓰기</Link> : undefined}
+        />
       )}
     </div>
   );

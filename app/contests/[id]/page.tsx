@@ -75,7 +75,7 @@ export default async function ContestDetailPage({ params, searchParams }: Props)
         </div>
       )}
 
-      <section className="mt-4 rounded-3xl border border-cream-200 bg-white p-6 shadow-sm">
+      <section className="cdj-card mt-4 p-6">
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-cream-100 px-2.5 py-0.5 text-xs font-semibold text-brown-600">
             {contestStatusLabel(contest)}
@@ -138,7 +138,7 @@ export default async function ContestDetailPage({ params, searchParams }: Props)
       </section>
 
       {detail.description && (
-        <section className="mt-6 rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+        <section className="cdj-card mt-6 p-5">
           <h2 className="font-serif text-lg font-bold text-brown-900">공모 요강</h2>
           <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-brown-600">
             {detail.description}
@@ -147,7 +147,7 @@ export default async function ContestDetailPage({ params, searchParams }: Props)
       )}
 
       {detail.prizeDescription && (
-        <section className="mt-6 rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+        <section className="cdj-card mt-6 p-5">
           <h2 className="font-serif text-lg font-bold text-brown-900">시상 내역</h2>
           <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-brown-600">
             {detail.prizeDescription}
@@ -156,7 +156,7 @@ export default async function ContestDetailPage({ params, searchParams }: Props)
       )}
 
       {detail.awards.length > 0 && (
-        <section className="mt-6 rounded-2xl border border-brown-100 bg-white p-5 shadow-sm">
+        <section className="cdj-card mt-6 p-5">
           <h2 className="font-serif text-lg font-bold text-brown-900">수상작</h2>
           <div className="mt-4 space-y-3">
             {detail.awards.map((award) => (
@@ -195,7 +195,7 @@ export default async function ContestDetailPage({ params, searchParams }: Props)
       )}
 
       {preview ? (
-        <section className="mt-6 rounded-2xl border border-cream-200 bg-white p-5 text-sm text-brown-500 shadow-sm">
+        <section className="cdj-card mt-6 p-5 text-sm text-brown-500">
           접수를 시작하면 이곳에 독자용 응모 영역이 표시됩니다.
         </section>
       ) : (

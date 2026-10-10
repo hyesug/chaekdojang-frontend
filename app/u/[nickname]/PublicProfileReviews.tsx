@@ -49,13 +49,13 @@ export default function PublicProfileReviews({ nickname, reviews }: Props) {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="책 제목, 저자, 내용 검색"
-            className="w-full rounded-xl border border-cream-300 bg-white px-4 py-2.5 text-sm text-brown-800 shadow-sm placeholder:text-brown-300 focus:border-brown-400 focus:outline-none focus:ring-2 focus:ring-brown-100"
+            className="cdj-field text-sm w-full"
           />
         </label>
       </div>
 
       {filteredReviews.length === 0 ? (
-        <div className="rounded-2xl border border-cream-200 bg-white py-12 text-center text-brown-400">
+        <div className="cdj-card py-12 text-center text-brown-400">
           검색 결과가 없어요.
         </div>
       ) : (

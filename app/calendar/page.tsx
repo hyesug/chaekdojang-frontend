@@ -1,5 +1,6 @@
 "use client";
 
+import StarRating from "../components/ui/StarRating";
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -80,13 +81,8 @@ function RatingMark({ rating }: { rating: number | null }) {
   }
 
   return (
-    <div
-      className="mt-0.5 text-[9px] leading-none text-amber-400 tracking-0"
-      aria-label={`내 평점 ${rating}점`}
-      title={`내 평점 ${rating}점`}
-    >
-      {"★".repeat(rating)}
-      <span className="text-cream-300">{"★".repeat(5 - rating)}</span>
+    <div className="mt-0.5 leading-none" title={`내 평점 ${rating}점`}>
+      <StarRating rating={rating} size={9} />
     </div>
   );
 }
@@ -222,10 +218,10 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
+    <div className="cdj-page cdj-page--reading">
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="font-serif text-2xl font-bold text-brown-800">
+          <h1 className="cdj-title">
             {publicNickname ? `${publicNickname}님의 독서 캘린더` : "독서 캘린더"}
           </h1>
           <p className="text-xs text-brown-400 mt-1">완독한 날마다 책 표지가 남아요</p>
@@ -314,7 +310,7 @@ export default function CalendarPage() {
 
       <div className="mt-4">
         {selectedDay && selectedBooks.length > 0 ? (
-          <div className="bg-white border border-cream-200 rounded-lg p-4">
+          <div className="cdj-card p-4">
             <p className="text-xs text-brown-400 mb-3">{selectedDay}</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {selectedBooks.map((item) => (
@@ -335,7 +331,7 @@ export default function CalendarPage() {
             </div>
           </div>
         ) : (
-          <div className="bg-white border border-cream-200 rounded-lg p-4 text-center text-sm text-brown-400">
+          <div className="cdj-card p-4 text-center text-sm text-brown-400">
             표지가 있는 날짜를 누르면 그날 완독한 책을 볼 수 있어요.
           </div>
         )}

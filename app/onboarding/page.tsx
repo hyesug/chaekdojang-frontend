@@ -62,9 +62,9 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8">
+    <div className="cdj-page cdj-page--reading">
       <div className="mb-7">
-        <h1 className="font-serif text-2xl font-bold text-brown-800">취향을 알려주세요</h1>
+        <h1 className="cdj-title">취향을 알려주세요</h1>
         <p className="mt-1 text-sm text-brown-400">관심 장르와 이웃을 고르면 피드가 더 빨리 살아나요.</p>
       </div>
 
@@ -92,7 +92,7 @@ export default function OnboardingPage() {
         <h2 className="mb-3 text-sm font-semibold text-brown-700">팔로우 추천</h2>
         <div className="flex flex-col gap-2">
           {recommendations.map((user) => (
-            <div key={user.id} className="flex items-center gap-3 rounded-lg border border-cream-200 bg-white px-4 py-3">
+            <div key={user.id} className="cdj-card flex items-center gap-3 px-4 py-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-cream-200 text-sm font-semibold text-brown-600">
                 {user.profileImage ? <img src={user.profileImage} alt="" className="h-10 w-10 rounded-full object-cover" /> : user.nickname.slice(0, 1)}
               </div>
@@ -104,7 +104,7 @@ export default function OnboardingPage() {
                 type="button"
                 onClick={() => follow(user.id)}
                 disabled={following.has(user.id)}
-                className="rounded-full border border-brown-300 px-3 py-1.5 text-xs text-brown-600 disabled:border-cream-300 disabled:text-brown-300"
+                className="cdj-button cdj-button--secondary cdj-button--sm"
               >
                 {following.has(user.id) ? "팔로잉" : "팔로우"}
               </button>

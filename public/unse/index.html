@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- 하위 폴더에 올릴 때 상대경로의 기준을 잡아준다.
+     예: 책도장에서는 /unse 로 서빙되는데, 슬래시가 없으면
+     assets/style.css 가 /assets/style.css 로 풀려 404 가 난다.
+     폴더 이름을 바꾸면 여기도 함께 바꿀 것. 루트에 둘 때는 "./" 로 두면 된다. -->
+<base href="/unse/">
+<!-- 바깥으로 나갈 때 이 페이지 주소를 흘리지 않는다 (구글 폰트 요청 등) -->
+<meta name="referrer" content="no-referrer">
+<title>종합 운세 — 책도장</title>
+<meta name="description" content="사주·자미두수·점성술·베딕 등 열일곱 가지 점술 체계를 한 번에 돌려, 겹치는 것과 갈리는 것을 함께 봅니다. 생년월일만 있으면 됩니다.">
+<!-- 정식 주소는 사이트맵·사이트 주소(www)와 같아야 한다. 색인 여부는 next.config.ts 가 운영에서만 연다 -->
+<link rel="canonical" href="https://www.chaekdojang.com/unse">
+
+<!-- 카카오톡 등으로 링크를 보냈을 때 뜨는 미리보기 -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.chaekdojang.com/unse">
+<meta property="og:site_name" content="책도장">
+<meta property="og:title" content="종합 운세 — 17가지 점술을 한 번에">
+<meta property="og:description" content="열일곱 가지 점술 체계를 한 번에 돌려, 겹치는 것과 갈리는 것을 함께 봅니다">
+<meta property="og:locale" content="ko_KR">
+
+<!-- 검색엔진·AI 검색이 읽는 구조화 데이터. FAQ 문장은 아래 '자주 묻는 질문'과 글자까지 같아야 한다 -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebApplication",
+      "name": "종합 운세 — 책도장",
+      "url": "https://www.chaekdojang.com/unse",
+      "applicationCategory": "LifestyleApplication",
+      "operatingSystem": "Web",
+      "inLanguage": "ko-KR",
+      "description": "생년월일시로 사주·자미두수·서양 점성술·베딕 점성술 등 17가지 점술 체계를 한 번에 계산해, 겹치는 것과 갈리는 것을 함께 보여주는 무료 운세 도구입니다.",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "KRW" },
+      "publisher": { "@type": "Organization", "name": "책도장", "url": "https://www.chaekdojang.com" }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        { "@type": "Question", "name": "무료인가요?", "acceptedAnswer": { "@type": "Answer", "text": "명반 계산과 17가지 체계의 풀이는 무료입니다. 명반을 두고 AI에게 질문하는 기능은 준비 중입니다." } },
+        { "@type": "Question", "name": "태어난 시간을 모르면 어떻게 하나요?", "acceptedAnswer": { "@type": "Answer", "text": "'태어난 시간을 모릅니다'를 고르면 시간이 없어도 되는 체계로 계산합니다. 시간이 꼭 필요한 자미두수와 상승점 같은 항목은 빠집니다." } },
+        { "@type": "Question", "name": "음력 생일로도 볼 수 있나요?", "acceptedAnswer": { "@type": "Answer", "text": "양력과 음력(평달·윤달)을 고를 수 있습니다. 음력은 역법 규칙으로 양력으로 바꾼 뒤 계산합니다." } },
+        { "@type": "Question", "name": "서머타임이 있던 해에 태어났으면요?", "acceptedAnswer": { "@type": "Answer", "text": "한국 출생이면 1948~1960년과 1987~1988년의 서머타임, 1954~1961년의 동경 127.5도 표준시를 자동으로 반영합니다. 해외 출생은 입력란에서 서머타임 여부를 직접 고릅니다." } },
+        { "@type": "Question", "name": "체계마다 결과가 다른 이유는 무엇인가요?", "acceptedAnswer": { "@type": "Answer", "text": "체계마다 보는 재료가 다르기 때문입니다. 사주는 간지를, 점성술은 행성 위치를, 자미두수는 별의 배치를 봅니다. 여러 체계가 함께 가리키는 주제와 서로 갈리는 지점을 나란히 보여드립니다." } },
+        { "@type": "Question", "name": "결과는 얼마나 정확한가요?", "acceptedAnswer": { "@type": "Answer", "text": "절기와 천체 위치 같은 계산은 천문 계산으로 분 단위까지 맞춥니다. 다만 풀이와 시기는 참고용입니다. 시기는 실제 사례로 검증해 분야마다 더 잘 맞았던 체계를 골라 씁니다." } },
+        { "@type": "Question", "name": "입력한 출생 정보는 저장되나요?", "acceptedAnswer": { "@type": "Answer", "text": "명반 계산은 이용자의 기기 안에서 진행됩니다. 로그인한 뒤 저장을 직접 선택했을 때만 출생 정보를 보관합니다." } }
+      ]
+    }
+  ]
+}
+</script>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🔮</text></svg>">
+<!-- 웹폰트를 쓰지 않는다. 책도장은 CSP 가 외부 스타일시트를 막고,
+     바깥 호스트에 요청이 나가면 이 페이지를 봤다는 사실이 그쪽에 남는다.
+     명조는 아래 style.css 에서 기기에 있는 글꼴로 대신한다. -->
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<!-- 책도장 공용 헤더.
+     이 페이지는 Next 앱이 아니라 public/ 에서 그대로 서빙되는 정적 사이트라
+     app/components/Header.tsx 를 가져다 쓸 수 없다. 같은 모양을 손으로 옮긴다.
+     **메뉴를 고칠 때는 양쪽 다 고쳐야 한다** — 한쪽만 바꾸면 여기만 옛 메뉴가 남는다.
+     로그인 상태가 필요한 알림·로그인 단추는 넣지 않았다. 정적 페이지라
+     토큰을 읽을 수 없고, 흉내만 내면 눌러도 아무 일이 없는 단추가 된다. -->
+<header class="cd-header">
+  <div class="cd-inner">
+    <a class="cd-logo" href="/" aria-label="책도장 홈으로 이동">
+      <span class="cd-stamp" aria-hidden="true">冊</span>책도장
+    </a>
+    <nav class="cd-nav" aria-label="주요 메뉴">
+      <a href="/">피드</a>
+      <a href="/search?tab=books">검색</a>
+      <a href="/library">서재</a>
+      <a href="/groups">독서모임</a>
+      <a href="/dojangdan">도장단</a>
+      <a href="/contests">공모전</a>
+      <a href="/stats">독서 인생지도</a>
+      <a href="/unse" class="on" aria-current="page">운세</a>
+      <a href="/cs">고객센터</a>
+    </nav>
+    <a class="cd-write" href="/write">독후감 쓰기</a>
+    <button type="button" class="cd-burger" id="cdBurger"
+            aria-label="메뉴 열기" aria-expanded="false" aria-controls="cdMenu">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+  </div>
+  <div class="cd-menu" id="cdMenu" hidden>
+    <a href="/">피드</a>
+    <a href="/search?tab=books">검색</a>
+    <a href="/library">서재</a>
+    <a href="/groups">독서모임</a>
+    <a href="/dojangdan">도장단</a>
+    <a href="/contests">공모전</a>
+    <a href="/stats">독서 인생지도</a>
+    <a href="/unse" class="on" aria-current="page">운세</a>
+    <a href="/write">독후감 쓰기</a>
+    <a href="/cs">고객센터</a>
+    <a href="/install">앱처럼 사용하기</a>
+  </div>
+</header>
+<script>
+  // 헤더 하나만 쓰는 스크립트라 번들에 넣지 않는다 — 첫 화면을 무겁게 할 값어치가 없다
+  (function () {
+    var b = document.getElementById('cdBurger');
+    var m = document.getElementById('cdMenu');
+    if (!b || !m) return;
+    b.addEventListener('click', function () {
+      var open = m.hidden;
+      m.hidden = !open;
+      b.setAttribute('aria-expanded', String(open));
+      b.setAttribute('aria-label', open ? '메뉴 닫기' : '메뉴 열기');
+    });
+  })();
+</script>
+
+<div class="wrap">
+
+  <header class="analysis-intro">
+    <p class="eyebrow">책도장 · 명반 분석</p>
+    <h1>종합 운세</h1>
+    <p>여러 계산 체계가 만나는 자리와 갈리는 자리를, 한 장의 기록처럼 읽습니다.</p>
+    <div class="rule"></div>
+  </header>
+
+  <div class="modes" role="group" aria-label="분석 종류">
+    <button type="button" class="mode on" data-mode="solo" aria-pressed="true">개인 운세</button>
+    <button type="button" class="mode" data-mode="pair" aria-pressed="false">궁합</button>
+  </div>
+
+  <form id="form" class="panel analysis-form" autocomplete="off" novalidate>
+   <p id="form-error" class="form-error" role="alert" hidden></p>
+   <div class="person" id="personA">
+    <div class="person-title" hidden>첫 번째 사람</div>
+    <fieldset class="analysis-fields">
+      <legend>분석할 사람의 출생 정보</legend>
+      <p class="fieldset-note">출생 시각과 장소는 명반의 시간·위치 보정에 사용합니다.</p>
+      <div class="grid three">
+        <div>
+          <label for="name">이름 <span aria-hidden="true">(선택)</span></label>
+          <input id="name" placeholder="홍길동" autocomplete="name">
+        </div>
+        <div>
+          <label for="gender">성별</label>
+          <select id="gender">
+            <option value="male">남</option>
+            <option value="female">여</option>
+          </select>
+        </div>
+        <div>
+          <label for="calendar">양력 / 음력</label>
+          <select id="calendar">
+            <option value="solar">양력</option>
+            <option value="lunar">음력 (평달)</option>
+            <option value="lunar-leap">음력 (윤달)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid three form-row">
+        <div>
+          <label for="year">태어난 해</label>
+          <input id="year" type="number" inputmode="numeric" placeholder="1990" min="1900" max="2100">
+        </div>
+        <div>
+          <label for="month">월</label>
+          <input id="month" type="number" inputmode="numeric" placeholder="5" min="1" max="12">
+        </div>
+        <div>
+          <label for="day">일</label>
+          <input id="day" type="number" inputmode="numeric" placeholder="15" min="1" max="31">
+        </div>
+      </div>
+
+      <div class="grid two form-row">
+        <div>
+          <label for="hour">태어난 시</label>
+          <input id="hour" type="number" inputmode="numeric" placeholder="14" min="0" max="23">
+        </div>
+        <div>
+          <label for="minute">분</label>
+          <input id="minute" type="number" inputmode="numeric" placeholder="30" min="0" max="59">
+        </div>
+      </div>
+      <label class="check"><input type="checkbox" id="noTime"> 태어난 시간을 모릅니다</label>
+
+      <div class="grid two form-row">
+        <div>
+          <label for="birthPlace">태어난 곳</label>
+          <input id="birthPlace" list="cities" placeholder="서울">
+          <p class="fieldnote">목록에 없으면 가장 가까운 시·군을 입력하세요.</p>
+        </div>
+        <div>
+          <label for="homePlace">지금 사는 곳</label>
+          <input id="homePlace" list="cities" placeholder="서울">
+        </div>
+      </div>
+
+      <!-- 궁합에서만 묻는다 — 기혼이면 궁합 리포트를 부부용으로 바꾼다. 개인 운세에서는 숨긴다 -->
+      <div class="grid two form-row pair-only" hidden>
+        <div>
+          <label for="marital">결혼 여부 <span aria-hidden="true">(선택)</span></label>
+          <select id="marital">
+            <option value="">선택 안 함</option>
+            <option value="single">미혼</option>
+            <option value="married">기혼</option>
+          </select>
+        </div>
+      </div>
+
+      <details class="input-options">
+        <summary>태어난 시간 보정과 거주지</summary>
+        <p>해외 출생 당시 서머타임이 적용됐다면 명반의 기준 시각을 보정합니다.</p>
+        <label class="check"><input type="checkbox" id="dst"> 해외 출생이고, 그때 서머타임 기간이었습니다</label>
+      </details>
+    </fieldset>
+   </div>
+
+   <!-- 궁합일 때 두 번째 사람 칸이 여기에 만들어진다 -->
+   <div class="person" id="personB" hidden></div>
+
+    <datalist id="cities"></datalist>
+
+    <p class="hint" id="profileNote" hidden>저장해 둔 프로필로 채웠습니다.</p>
+    <button class="go" type="submit">명반 생성하기</button>
+    <p class="hint data-note">
+      명반 계산은 이 기기에서 먼저 진행합니다. AI 해석을 요청할 때만 계산된 명반 정보가 책도장 서버를 거쳐 AI로 전송됩니다. 프로필은 저장을 선택한 경우에만 보관합니다.
+      <a href="/privacy">개인정보처리방침</a>
+    </p>
+  </form>
+
+  <div id="result" aria-live="polite" aria-atomic="false" aria-busy="false" tabindex="-1"></div>
+
+  <!-- 결과를 보기 전에도 읽히는 안내. 검색엔진·AI 검색은 이 글로 페이지를 이해한다 -->
+  <section class="about" aria-labelledby="about-title">
+    <h2 id="about-title">종합 운세는 무엇을 보나요</h2>
+    <p>
+      생년월일시 하나로 아래 열일곱 가지 점술 체계를 한 번에 계산합니다.
+      한 체계의 말만 듣는 대신, 여러 체계가 함께 가리키는 주제와 서로 갈리는 지점을 나란히 봅니다.
+    </p>
+    <dl class="about-systems">
+      <div><dt>사주</dt><dd>태어난 연·월·일·시의 간지 여덟 글자로 타고난 기질과 십 년 단위 흐름(대운)을 봅니다.</dd></div>
+      <div><dt>자미두수</dt><dd>음력 생년월일시로 열두 궁에 별을 놓아 일·돈·배우자·건강 같은 삶의 영역을 나눠 봅니다.</dd></div>
+      <div><dt>서양 점성술</dt><dd>태어난 순간의 행성 위치와 상승점·하우스로 성향과 시기를 봅니다.</dd></div>
+      <div><dt>베딕 점성술</dt><dd>인도 전통 점성술입니다. 달이 머문 별자리(나크샤트라)와 다샤 주기로 시기를 봅니다.</dd></div>
+      <div><dt>주역</dt><dd>예순네 괘로 지금 처한 상황과 변화의 방향을 읽습니다.</dd></div>
+      <div><dt>육임</dt><dd>시간의 간지로 판을 세워 일이 어떻게 전개되고 마무리되는지 봅니다.</dd></div>
+      <div><dt>홍국기문</dt><dd>아홉 칸에 문·별·신을 배치해 방향과 시기의 좋고 나쁨을 봅니다.</dd></div>
+      <div><dt>태을신수</dt><dd>여러 해에 걸친 큰 주기로 흐름을 봅니다.</dd></div>
+      <div><dt>구성학</dt><dd>아홉 별(구성)로 해마다의 기운과 방위를 봅니다.</dd></div>
+      <div><dt>숙요</dt><dd>달이 머무는 스물일곱 수로 기질과 사람 사이의 궁합을 봅니다.</dd></div>
+      <div><dt>토정비결</dt><dd>한 해의 운을 괘 하나로 풀어 보는 우리 전통 신수입니다.</dd></div>
+      <div><dt>카발라(수비학)</dt><dd>생년월일의 숫자로 성향과 해마다의 주기를 봅니다.</dd></div>
+      <div><dt>마하보테</dt><dd>미얀마 전통으로, 태어난 요일과 해로 기질과 시기를 봅니다.</dd></div>
+      <div><dt>태국 점성술</dt><dd>태어난 요일에 붙은 행성과 색으로 성향을 봅니다.</dd></div>
+      <div><dt>타로</dt><dd>생년월일에서 뽑은 카드로 올해의 주제를 봅니다.</dd></div>
+    </dl>
+
+    <h2 class="about-faq-title">자주 묻는 질문</h2>
+    <div class="about-faq">
+      <details><summary>무료인가요?</summary><p>명반 계산과 17가지 체계의 풀이는 무료입니다. 명반을 두고 AI에게 질문하는 기능은 준비 중입니다.</p></details>
+      <details><summary>태어난 시간을 모르면 어떻게 하나요?</summary><p>'태어난 시간을 모릅니다'를 고르면 시간이 없어도 되는 체계로 계산합니다. 시간이 꼭 필요한 자미두수와 상승점 같은 항목은 빠집니다.</p></details>
+      <details><summary>음력 생일로도 볼 수 있나요?</summary><p>양력과 음력(평달·윤달)을 고를 수 있습니다. 음력은 역법 규칙으로 양력으로 바꾼 뒤 계산합니다.</p></details>
+      <details><summary>서머타임이 있던 해에 태어났으면요?</summary><p>한국 출생이면 1948~1960년과 1987~1988년의 서머타임, 1954~1961년의 동경 127.5도 표준시를 자동으로 반영합니다. 해외 출생은 입력란에서 서머타임 여부를 직접 고릅니다.</p></details>
+      <details><summary>체계마다 결과가 다른 이유는 무엇인가요?</summary><p>체계마다 보는 재료가 다르기 때문입니다. 사주는 간지를, 점성술은 행성 위치를, 자미두수는 별의 배치를 봅니다. 여러 체계가 함께 가리키는 주제와 서로 갈리는 지점을 나란히 보여드립니다.</p></details>
+      <details><summary>결과는 얼마나 정확한가요?</summary><p>절기와 천체 위치 같은 계산은 천문 계산으로 분 단위까지 맞춥니다. 다만 풀이와 시기는 참고용입니다. 시기는 실제 사례로 검증해 분야마다 더 잘 맞았던 체계를 골라 씁니다.</p></details>
+      <details><summary>입력한 출생 정보는 저장되나요?</summary><p>명반 계산은 이용자의 기기 안에서 진행됩니다. 로그인한 뒤 저장을 직접 선택했을 때만 출생 정보를 보관합니다.</p></details>
+    </div>
+  </section>
+
+  <footer>
+    <p>
+      <strong>계산에 대하여.</strong>
+      절기·삭·달의 위치는 천문 계산으로 직접 구합니다. 출생 시각은 그 시대의
+      표준시와 서머타임, 출생지의 경도, 균시차를 모두 걷어내 진태양시로 바꾼 뒤 씁니다.
+      음력은 데이터표가 아니라 역법 규칙으로 계산합니다.
+    </p>
+    <p>
+      <strong>해석에 대하여.</strong>
+      천문·역법·전통 산식으로 계산한 값과, 그 값을 풀어 쓴 해석을 구분해 보여줍니다.
+      계산 방식과 결과(사주 팔자, 괘, 별, 숙 등)는 전통 산법을 따랐지만
+      그것을 풀어 쓴 <em>문장</em>은 원전의 번역이 아니라 이 사이트에서 새로 쓴 것입니다.
+      미래의 사건을 확정하지 않고, 여러 체계에서 반복되는 주제를 앞세워 읽습니다.
+      체계별 근거와 서로 갈리는 지점도 결과 안에서 함께 보실 수 있습니다.
+    </p>
+    <p class="ver" id="ver"></p>
+  </footer>
+
+</div>
+<!-- src/ 의 모듈 마흔아홉 개를 한 파일로 묶은 것이다 (npm run unse:bundle).
+     원본은 src/ 에 그대로 있고 테스트도 그쪽을 본다. 엔진을 고치는 동안에는
+     npm run unse:watch 를 켜두면 고치는 대로 다시 묶인다. -->
+<script type="module" src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,77 @@
+[
+ {
+  "_note": "지어낸 자료입니다. 실제 사람이 아닙니다. 실제 자료는 validation/people.json 에 두고 .gitignore 에 걸립니다.",
+  "id": "예시1",
+  "birth": {
+   "gender": "male", "year": 1990, "month": 3, "day": 14,
+   "hour": 9, "minute": 30, "birthPlace": "서울", "homePlace": "서울"
+  },
+  "labels": {
+   "career": {
+    "status": "known",
+    "category": "it_software",
+    "attributes": ["technical", "analytical", "organization"],
+    "employmentForm": "organization",
+    "switching": "한우물"
+   },
+   "relationship": { "status": "known", "marriedAtAge": 31, "unionTiming": "mid" },
+   "children": { "status": "known", "count": 1, "band": "average" },
+   "education": { "status": "known", "path": "formal_continuous" },
+   "residence": { "status": "unknown", "why": "물어보지 않았다" },
+   "wealth": { "status": "unknown" },
+   "health": { "status": "not_applicable", "why": "건강은 채점 대상으로 삼지 않는다" }
+  },
+  "plannedFutureEvents": []
+ },
+ {
+  "id": "예시2",
+  "birth": {
+   "gender": "female", "year": 1994, "month": 11, "day": 2,
+   "birthPlace": "부산", "homePlace": "부산"
+  },
+  "labels": {
+   "career": {
+    "status": "known",
+    "category": "beauty_design",
+    "attributes": ["aesthetic", "interpersonal", "commercial", "independence"],
+    "employmentForm": "self_employed",
+    "switching": "바꿈"
+   },
+   "relationship": {
+    "status": "censored",
+    "observedUntilAge": 31,
+    "why": "31세 현재 결혼 사건이 관측되지 않았다 — '결혼 안 함'이 아니다"
+   },
+   "children": { "status": "known", "count": 0, "band": "few" },
+   "education": { "status": "known", "path": "interrupted_detour" },
+   "residence": { "status": "unknown" },
+   "wealth": { "status": "unknown" },
+   "health": { "status": "not_applicable" }
+  },
+  "plannedFutureEvents": [
+   { "domain": "relationship", "date": "2027-10", "note": "결혼 예정 — 아직 일어나지 않았으므로 정답으로 쓰지 않는다" }
+  ]
+ },
+ {
+  "id": "예시3",
+  "birth": {
+   "gender": "male", "year": 1986, "month": 6, "day": 20,
+   "hour": 17, "minute": 0, "birthPlace": "대구", "homePlace": "대전"
+  },
+  "labels": {
+   "career": {
+    "status": "known",
+    "category": "sales_commerce",
+    "attributes": ["commercial", "independence", "physical"],
+    "employmentForm": "self_employed"
+   },
+   "relationship": { "status": "known", "marriedAtAge": 29, "unionTiming": "early" },
+   "children": { "status": "known", "count": 2, "band": "average" },
+   "education": { "status": "unknown" },
+   "residence": { "status": "unknown" },
+   "wealth": { "status": "unknown" },
+   "health": { "status": "not_applicable" }
+  },
+  "plannedFutureEvents": []
+ }
+]

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-import { traitLenses, verdictSummary } from '../../public/unse-8f3k2m/src/lens.js';
+import { traitLenses, verdictSummary } from '../../public/unse/src/lens.js';
 
 const coreResult = (name) => ({
   name,
@@ -57,8 +57,8 @@ test('궁합 총평은 좋음·무난·어려움 세 칸과 핵심/전체를 모
 
 test('사용자 현실을 알고 쓴 것처럼 보이는 잔존 문구를 막는다', async () => {
   const paths = [
-    new URL('../../public/unse-8f3k2m/src/reading.js', import.meta.url),
-    new URL('../../public/unse-8f3k2m/src/lens.js', import.meta.url),
+    new URL('../../public/unse/src/reading.js', import.meta.url),
+    new URL('../../public/unse/src/lens.js', import.meta.url),
   ];
   const source = (await Promise.all(paths.map((p) => readFile(p, 'utf8')))).join('\n');
 

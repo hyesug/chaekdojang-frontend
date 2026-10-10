@@ -43,3 +43,31 @@ frontend-local*.log
 next-env.d.ts
 
 .vercel
+
+# 블라인드 검증용 실제 사례 — 개인정보라 올리지 않는다 (보기는 cases.example.json)
+validation/cases.json
+validation/attributes.json
+validation/attribution.json
+validation/last-run.json
+validation/prereg-predictions.json
+validation/people.json
+validation/couples.json
+# 학습 장부 — 열다섯이 한 말 옆에 그 사람의 실제 삶을 적는 판이라 더 민감하다
+validation/ledger-*.md
+validation-data/profile-cases.json
+
+# 검증용 개인정보 — 올리지 않는다
+validation-data/
+bench.json
+people-bench.json
+casebook-benchmark.json
+evidence-report.json
+
+# 운세 정적 페이지용 글꼴 복사본 (npm run unse:bundle 이 node_modules 에서 만든다)
+public/unse/assets/fonts/
+
+# 실제 사례(개인정보)로 확인하는 테스트 — 저장소에 올리지 않는다
+tests/unse/private/
+
+# 개인 이름이 담긴 로컬 리포트 미리보기
+report-preview.html

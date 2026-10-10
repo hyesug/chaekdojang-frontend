@@ -73,7 +73,7 @@ export default function ExportPanel({
   }
 
   return (
-    <section className="mt-8 rounded-2xl border border-brown-100 bg-white p-5 shadow-sm">
+    <section className="cdj-card mt-8 p-5">
       <h2 className="font-serif text-lg font-bold text-brown-900">독후감 내보내기</h2>
 
       <div className="mt-3 rounded-xl bg-cream-50 px-4 py-3">

@@ -29,7 +29,7 @@ export default function AudienceCard({ profileId }: { profileId: number }) {
   if (!audience) return null;
 
   return (
-    <section className="mt-4 rounded-2xl border border-brown-100 bg-white p-5 shadow-sm">
+    <section className="cdj-card mt-4 p-5">
       <div className="flex items-baseline justify-between gap-2">
         <h2 className="font-serif text-lg font-bold text-brown-900">관심 독자</h2>
         <span className="text-xs text-brown-400">{audience.profileName}</span>

@@ -110,7 +110,7 @@ export default function EbookAccessPanel({
             type="button"
             onClick={download}
             disabled={busy || !access.readable}
-            className="mt-3 rounded-full bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800 disabled:opacity-60"
+            className="cdj-button cdj-button--primary mt-3"
           >
             {busy ? "준비 중…" : "PDF 받기"}
           </button>

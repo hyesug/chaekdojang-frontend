@@ -57,7 +57,7 @@ export default async function GroupBookResultPage({ params }: Props) {
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-8">
-      <section className="mb-8 rounded-lg border border-cream-200 bg-white p-5 shadow-sm">
+      <section className="cdj-card mb-8 p-5">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brown-300">
           Dojangdan Result
         </p>
@@ -69,7 +69,7 @@ export default async function GroupBookResultPage({ params }: Props) {
         </p>
       </section>
 
-      <section className="mb-8 rounded-lg border border-cream-200 bg-white p-5">
+      <section className="cdj-card mb-8 p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs text-brown-300">도장단 책</p>
@@ -94,7 +94,7 @@ export default async function GroupBookResultPage({ params }: Props) {
       />
 
       {!hasReviews ? (
-        <section className="rounded-2xl border border-cream-200 bg-white py-16 text-center text-brown-400">
+        <section className="cdj-card py-16 text-center text-brown-400">
           <p>아직 이 책에 등록된 독후감이 없어요.</p>
           <p className="mt-1 text-sm">독후감이 등록되면 AI 결과를 확인할 수 있어요.</p>
         </section>
@@ -112,7 +112,7 @@ export default async function GroupBookResultPage({ params }: Props) {
               ))}
             </div>
           ) : (
-            <div className="rounded-2xl border border-cream-200 bg-white py-12 text-center text-brown-400">
+            <div className="cdj-card py-12 text-center text-brown-400">
               아직 생성된 독자별 AI 독서카드가 없어요.
             </div>
           )}
@@ -122,7 +122,7 @@ export default async function GroupBookResultPage({ params }: Props) {
       <div className="mt-8 text-center">
         <Link
           href={`/groups/${encodeURIComponent(slug)}/books/${encodeURIComponent(groupBookId)}`}
-          className="inline-flex rounded-full bg-brown-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brown-800"
+          className="cdj-button cdj-button--primary inline-flex"
         >
           전체 독후감 보기
         </Link>

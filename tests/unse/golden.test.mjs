@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { readFortune } from '../../public/unse-8f3k2m/src/engine.js';
+import { readFortune } from '../../public/unse/src/engine.js';
 
 const NOW = new Date('2026-09-15T00:00:00Z');
 
@@ -24,34 +24,37 @@ const CASES = [
   {
     form: {
       name: '골든 A',
-      year: 1992, month: 1, day: 30, hour: 16, minute: 28,
+      year: 1993, month: 3, day: 17, hour: 15, minute: 42,
       birthPlace: '여주', homePlace: '대전', gender: 'female',
     },
-    pillars: '辛未 辛丑 乙巳 甲申',
-    ziweiMing: '巳궁',
-    asc: '게자리 23.9°',
-    mc: '양자리 9.2°',
+    // 가상 인물이다(실제 사례 출생 정보는 저장소에 두지 않는다). 사주 기둥은 손으로 검산했다:
+    // 경칩~청명 사이라 卯월, 일진 (JDN+49)%60=33 丁酉, 진태양시 15:04 申시
+    pillars: '癸酉 乙卯 丁酉 戊申',
+    ziweiMing: '미궁(未)',
+    asc: '사자자리 21.8°',
+    mc: '황소자리 15.5°',
     vedicLagna: '카르카 (게)',
-    vedicLagnaDegree: '0.1°',
-    nak: 'Jye',
-    daeun: '현재 乙巳',
-    dasha: '태양 다샤',
+    vedicLagnaDegree: '28.0°',
+    nak: 'Uttara Ashadha',
+    daeun: '현재 戊午',
+    dasha: '라후 다샤',
   },
   {
     form: {
       name: '골든 B',
-      year: 1999, month: 4, day: 28, hour: 10, minute: 15,
+      year: 1998, month: 8, day: 21, hour: 9, minute: 35,
       birthPlace: '대전', homePlace: '대전', gender: 'male',
     },
-    pillars: '己卯 戊辰 庚戌 辛巳',
-    ziweiMing: '亥궁',
-    asc: '게자리 17.8°',
-    mc: '양자리 1.9°',
-    vedicLagna: '미투나 (쌍둥이)',
-    vedicLagnaDegree: '23.9°',
-    nak: 'Hasta',
-    daeun: '현재 丙寅',
-    dasha: '라후 다샤',
+    // 가상 인물. 입추~백로 사이라 庚申월, 일진 36 庚子, 진태양시 09:01 巳시
+    pillars: '戊寅 庚申 庚子 辛巳',
+    ziweiMing: '인궁(寅)',
+    asc: '천칭자리 12.6°',
+    mc: '게자리 14.1°',
+    vedicLagna: '칸야 (처녀)',
+    vedicLagnaDegree: '18.8°',
+    nak: 'Ashlesha',
+    daeun: '현재 癸亥',
+    dasha: '금성 다샤',
   },
 ];
 

@@ -1,3 +1,5 @@
+import { Library } from "lucide-react";
+import StarRating from "../../../components/ui/StarRating";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -128,7 +130,7 @@ export default async function PublicLibraryPage({ params, searchParams }: Props)
         </Link>
       </div>
 
-      <section className="mb-5 rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+      <section className="cdj-card mb-5 p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-brown-400">공개 서재</p>
@@ -136,7 +138,7 @@ export default async function PublicLibraryPage({ params, searchParams }: Props)
           </div>
           <Link
             href={`/calendar?userId=${profile.id}&nickname=${encodedNickname}`}
-            className="rounded-full border border-brown-300 px-4 py-2 text-sm font-medium text-brown-600 hover:bg-cream-100"
+            className="cdj-button cdj-button--secondary"
           >
             월별 캘린더
           </Link>
@@ -165,8 +167,8 @@ export default async function PublicLibraryPage({ params, searchParams }: Props)
       </div>
 
       {filtered.length === 0 ? (
-        <div className="rounded-2xl border border-cream-200 bg-white py-14 text-center text-brown-400">
-          <p className="text-4xl">📚</p>
+        <div className="cdj-card py-14 text-center text-brown-400">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-cream-200 text-sage-600"><Library size={22} aria-hidden="true" /></div>
           <p className="mt-3 text-sm">아직 표시할 책이 없어요.</p>
         </div>
       ) : (
@@ -176,7 +178,7 @@ export default async function PublicLibraryPage({ params, searchParams }: Props)
             return (
               <article
                 key={`${item.id ?? "review"}-${item.book.id}`}
-                className="flex gap-4 rounded-2xl border border-cream-200 bg-white p-4 shadow-sm"
+                className="cdj-card flex gap-4 p-4"
               >
                 <Link href={`/books/${item.book.id}`} className="shrink-0">
                   {item.book.thumbnail ? (
@@ -202,10 +204,7 @@ export default async function PublicLibraryPage({ params, searchParams }: Props)
                       {STATUS_LABELS[item.status]}
                     </span>
                     {review && (
-                      <span className="text-xs text-amber-400">
-                        {"★".repeat(review.rating)}
-                        <span className="text-cream-300">{"★".repeat(5 - review.rating)}</span>
-                      </span>
+                      <StarRating rating={review.rating} size={12} />
                     )}
                   </div>
                   <Link
@@ -218,14 +217,14 @@ export default async function PublicLibraryPage({ params, searchParams }: Props)
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Link
                       href={`/books/${item.book.id}`}
-                      className="rounded-full border border-cream-300 px-3 py-1.5 text-xs text-brown-500 hover:bg-cream-50"
+                      className="cdj-button cdj-button--secondary cdj-button--sm"
                     >
                       책 보기
                     </Link>
                     {review && (
                       <Link
                         href={`/reviews/${review.id}`}
-                        className="rounded-full bg-brown-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-brown-800"
+                        className="cdj-button cdj-button--primary cdj-button--sm"
                       >
                         독후감 보기
                       </Link>

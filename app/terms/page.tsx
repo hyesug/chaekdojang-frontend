@@ -11,7 +11,7 @@ export default function TermsPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-10 text-brown-700">
       <h1 className="font-serif text-3xl font-bold text-brown-800 mb-4">이용약관</h1>
-      <p className="text-sm text-brown-400 mb-8">시행일: 2026년 6월 19일</p>
+      <p className="text-sm text-brown-400 mb-8">버전: 0.1 · 시행일: 2026년 6월 19일</p>
 
       <div className="space-y-7 leading-7">
         <section>
@@ -99,8 +99,9 @@ export default function TermsPage() {
         <section>
           <h2 className="font-serif text-xl font-bold text-brown-800 mb-2">9. 유료 기능</h2>
           <p>
-            현재 책도장은 무료 서비스를 기본으로 제공합니다. 향후 유료 기능이나 프리미엄 노출 기능이 도입되는 경우
-            가격, 결제, 환불, 해지 조건을 별도로 안내합니다.
+            운세 AI 풀이에는 무료 질문 또는 유료 질문권을 사용할 수 있습니다. 모델별 차감 횟수, 기간권의 사용 기간,
+            상품 가격과 결제·환불의 핵심 조건은 결제 전 화면과 <Link href="/payment-info" className="underline hover:text-brown-900">결제·환불 안내</Link>에서 확인할 수 있습니다.
+            유료 판매는 판매자 정보, 정책, PG 심사가 완료된 경우에만 열립니다.
           </p>
         </section>
 

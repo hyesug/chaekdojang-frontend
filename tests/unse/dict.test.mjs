@@ -121,3 +121,17 @@ test('피드백 문장에서 사전 출처를 거꾸로 찾는다(관리자 운�
   assert.equal(keyLabel('saju-ilju-1', '경진'), '庚辰(경진) 일주');
   assert.deepEqual(traceSources('', index), []);
 });
+
+test('주간 자동 수정: 같은 출처에 👎 3개·60% 이상일 때만 고칠 후보로 올린다', async () => {
+  const { summarize, MIN_DOWN, MIN_DOWN_RATE } = await import('../../scripts/fortune-feedback-report.mjs');
+  const { buildSentenceIndex } = await import('../../public/unse/src/semantic/sourceTrace.js');
+  const index = buildSentenceIndex({ 'ziwei-ming': { 파군: { p: '정해진 방식이 마음에 안 들면 그냥 넘어가지 못합니다.' } } });
+  const line = '정해진 방식이 마음에 안 들면 그냥 넘어가지 못합니다.';
+  const fb = (verdict, n) => Array.from({ length: n }, () => ({ verdict, snippet: `핵심 요약 ${line}`, comment: verdict === 'down' ? '아니에요' : null }));
+  assert.equal(MIN_DOWN, 3); assert.equal(MIN_DOWN_RATE, 0.6);
+  assert.equal(summarize(fb('down', 2), index).candidates.length, 0);                 // 👎 2개 — 아직
+  assert.equal(summarize([...fb('down', 3), ...fb('up', 3)], index).candidates.length, 0); // 50% — 아직
+  const ok = summarize([...fb('down', 3), ...fb('up', 1)], index);
+  assert.equal(ok.candidates.length, 1);
+  assert.equal(ok.candidates[0].key, '파군');
+});

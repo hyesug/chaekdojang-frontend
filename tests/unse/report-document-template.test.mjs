@@ -49,7 +49,6 @@ test('개인 리포트는 한눈에 보는 나·나는 어떤 사람인가·커�
     '보고서 개인님의 인생 데이터 분석 리포트',
     '한눈에 보는 나',
     '나는 어떤 사람인가', '성격', '일할 때', '조심할 점',
-    '명반을 가르는 핵심 구조',
     '커리어 &amp; 재물: 나의 시장 가치와 돈 버는 법',
     '어떤 일을 할 때 빛나는가', '수익 스타일',
     '인생의 큰 흐름 — 십 년마다 무엇이 오는가',
@@ -71,24 +70,24 @@ test('개인 리포트는 한눈에 보는 나·나는 어떤 사람인가·커�
   // 태어난 해 하나로 정해져 또래가 같은 글을 받던 칸과, 사전과 겹치던 칸은 다시 넣지 않는다
   for (const gone of ['2-2. 책도장', '로또 분석과 횡재운', '질문별 답변 통합 색인', '세부 계산 보기',
     '방향과 이동', '올해의 메인 테마', '타고난 기질', '타고난 요일의 성향', '사회에서 보이는 나',
-    '한눈에 보는 내 인생의 핵심 키워드', '이 힘이 흔들리는 조건', '잘 되는 것 —']) {
+    '한눈에 보는 내 인생의 핵심 키워드', '이 힘이 흔들리는 조건', '잘 되는 것 —',
+    '명반을 가르는 핵심 구조', '어린 시절 집안 환경의 변화', '일자별로 보기']) {
     assert.doesNotMatch(html, rx(gone));
   }
 });
 
-test('개인 리포트는 명반 고유의 핵심 구조를 결론만으로 보여준다', () => {
-  const r = readFortune(A);
-  const f = readForecast(A);
-  const v = buildView(A, r, f);
-  const html = renderReport(A, r, f, v);
-
-  const heading = html.indexOf('명반을 가르는 핵심 구조');
-  assert.ok(heading >= 0, '첫머리에 핵심 구조가 없다');
-  assert.ok(heading < html.indexOf('커리어 &amp; 재물'));
-  for (const item of v.signature) {
-    assert.match(html, rx(item.title));
-    assert.match(html, rx(item.conclusion));
-  }
+test('"나는 어떤 사람인가"는 성격의 뼈대 체계를 먼저 쓰고 사건을 점치는 판은 쓰지 않는다', async () => {
+  const { coreField } = await import('../../public/unse/src/semantic/dict.js');
+  const es = [
+    { label: '육임(결말)', share: 0.001, entry: { p: '일의 끝에 기쁜 결과와 재물이 따릅니다.' } },
+    { label: '숙요', share: 0.01, entry: { p: '결단이 빠르고 행동이 앞섭니다.' } },
+    { label: '서양 점성(달)', share: 0.08, entry: { p: '조용하고 혼자 생각하는 시간이 필요합니다.' } },
+    { label: '사주', share: 0.08, entry: { p: '신중하고 차분하게 움직입니다.' } },
+  ];
+  const got = coreField(es, 'p', 4).map((x) => x.label);
+  assert.equal(got[0], '사주');
+  assert.ok(!got.includes('육임(결말)'), '사건을 점치는 판이 성격 칸에 들어갔다');
+  assert.ok(!got.includes('숙요'), '앞서 고른 "신중·차분"과 반대 결인 "빠르다"가 함께 실렸다');
 });
 
 test('사례 부족 시기 예측은 근거 문구 없이 신호만 제시한다', () => {

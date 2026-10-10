@@ -31,7 +31,7 @@ import { readChildren, childPalaceStars, childrenVerdict } from './semantic/stru
 import { childrenPack, marriagePack } from './hires/vedicExt.js';
 import { verifiedCareer } from './semantic/index.js';
 import { distinctReadings, ownSentences } from './semantic/distinct.js';
-import { dictEntries, dictField, daeunEntry, ziweiPalaceEntry } from './semantic/dict.js';
+import { dictEntries, dictField, coreField, daeunEntry, ziweiPalaceEntry } from './semantic/dict.js';
 import { lifeChapters, chapterTurns } from './semantic/compose/life.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
@@ -720,7 +720,7 @@ function whoAmI(r) {
   if (!es.length) return distinctCard(r);
   return WHO_FIELDS.map(([f, icon, title]) => {
     // 성격 칸 앞 문장들은 맨 위 "한눈에 보는 나"가 이미 썼다
-    const lines = f === 'p' ? dictField(es, f, 4, SUMMARY_N) : dictField(es, f, 4);
+    const lines = f === 'p' ? coreField(es, f, 4, SUMMARY_N) : coreField(es, f, 4);
     if (!lines.length) return '';
     return `<h4 class="rp-h4">${icon} ${esc(title)}</h4><ul class="rp-ul">${lines.map((x) => `<li>${esc(x.text)}</li>`).join('')}</ul>`;
   }).join('');
@@ -877,7 +877,7 @@ function lifeFlow(r) {
 function skillLines(r, v) {
   let es = [];
   try { es = dictEntries(r); } catch { /* */ }
-  const more = dictField(es, 'w', 4, 4).map((x) => x.text);
+  const more = coreField(es, 'w', 4, 4).map((x) => x.text);
   if (!more.length) {
     return [bullet('', '어떤 일을 할 때 빛나는가', firstOf(withSrc(v.life?.career), 2)),
       bullet('', '성공 방정식', firstOf(withSrc(v.work?.job), 3))];
@@ -892,19 +892,22 @@ function skillLines(r, v) {
 function dictPrinciples(r) {
   let es = [];
   try { es = dictEntries(r); } catch { /* */ }
-  const more = dictField(es, 'c', 4, 4).map((x) => x.text);
+  // 고르는 방식은 그대로 둔다(드문 순서의 5~8번째) — "의외로 맞는다"는 반응이 있었다.
+  // 다만 성격 칸 순서를 바꾸면서 "조심할 점"에 이미 나온 문장과 겹칠 수 있어 그것만 뺀다
+  const shown = new Set(coreField(es, 'c', 4).map((x) => x.text));
+  const more = dictField(es, 'c', 8, 4).map((x) => x.text).filter((t) => !shown.has(t)).slice(0, 4);
   return more.length ? more : personalPrinciples(r);
 }
 
 /**
- * 한눈에 보는 나 — 그 사람의 사전 항목 가운데 가장 드문 세 가지.
+ * 한눈에 보는 나 — 성격의 뼈대인 체계(사주·자미 명궁 → 상승·달)에서, 여러 체계가 같은 결을 말하는 세 문장.
  * 세 문장은 "나는 어떤 사람인가"의 성격 칸이 다시 쓰지 않는다(SUMMARY_N 만큼 건너뛴다).
  */
 const SUMMARY_N = 3;
 function atAGlance(r) {
   let es = [];
   try { es = dictEntries(r); } catch { /* */ }
-  const top = dictField(es, 'p', SUMMARY_N);
+  const top = coreField(es, 'p', SUMMARY_N);
   if (!top.length) return '';
   return `<ul class="rp-ul">${top.map((x) => `<li><b>${esc(x.text)}</b></li>`).join('')}</ul>`;
 }
@@ -912,18 +915,15 @@ function atAGlance(r) {
 function lifeReport(form, r, f, v) {
   const me = readingBy(r, '사주', /^일간/);
   const s = lifeSeasons(r);
-  // 핵심 구조는 결론만 — "흔들리는 조건" 문단은 사람마다 같은 틀 문장이라 뺐다
-  const signature = (v.signature ?? []).map((item) =>
-    `<article class="rp-signature"><h4 class="rp-h4">${esc(item.title)}</h4><p>${esc(item.conclusion)}</p></article>`
-  ).join('');
+  // '명반을 가르는 핵심 구조' 카드는 뺐다 — 구조마다 정해진 문단 하나를 통째로 붙여, 같은 구조를 가진
+  // 사람은 글자 하나 다르지 않은 글을 받았다(예: '어린 시절 집안 환경의 변화')
   let es = [];
   try { es = dictEntries(r); } catch { /* */ }
-  const moneyMore = dictField(es, 'm', 3, 4).map((x) => x.text).join(' ');
+  const moneyMore = coreField(es, 'm', 3, 4).map((x) => x.text).join(' ');
   const glance = atAGlance(r);
 
   return (glance ? card('✨', '한눈에 보는 나', glance) : '')
     + card('🔍', '나는 어떤 사람인가', whoAmI(r))
-    + (signature ? card('🧭', '명반을 가르는 핵심 구조', signature) : '')
     + card('🚀', '커리어 & 재물: 나의 시장 가치와 돈 버는 법',
       `<h4 class="rp-h4">🛠️ 내 대표 스킬 & 무기</h4>`
       + bullets(

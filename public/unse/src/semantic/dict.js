@@ -164,6 +164,61 @@ export function dictEntries(r) {
 }
 
 /**
+ * "그 사람이 어떤 사람인가"를 말할 때의 체계 순서 — 드문 것보다 **성격의 뼈대인 체계**가 먼저다.
+ *   0: 사주(일간·태어난 달, 일주) · 자미두수 명궁
+ *   1: 상승궁 · 달 · 태양 · 인도식 달·라그나
+ *   2: 나머지 타고난 자리(숙요·금성·화성·수성·카발라·주역·타로·요일 등)
+ * 육임·홍국기문은 그 순간의 사건과 결말을 점치는 판이라 성격 칸에 쓰지 않는다.
+ */
+const CORE_TIER = {
+  사주: 0, '사주 일주': 0, 자미두수: 0,
+  '서양 점성(상승)': 1, '서양 점성(달)': 1, '서양 점성(태양)': 1, '베딕(달)': 1, '베딕(라그나)': 1,
+};
+const EVENT_BOARD = /^(육임|홍국기문)/;
+
+/** 문장의 결 — 두 체계 이상이 같은 결을 말하면 앞으로, 이미 고른 문장과 반대 결이면 뺀다 */
+const THEMES = {
+  fast: /빠르|급하|추진|직진|실행력|행동이 앞/,
+  slow: /신중|차분|천천|느긋|느리|멈출 때|조심스럽/,
+  firm: /고집|물러서지|굽히지|끈기|버티|잘 바꾸지 않/,
+  soft: /유연|맞춰|흐름을 읽|양보/,
+  out: /사교|어울리|활발|드러내|표현력|주목/,
+  in: /혼자|조용|내성|속을 잘 안|드러내지 않/,
+  care: /배려|돌봄|보살|챙기|헌신/,
+  free: /자유|독립|얽매이|틀에 갇/,
+};
+const OPPOSITE = { fast: 'slow', slow: 'fast', firm: 'soft', soft: 'firm', out: 'in', in: 'out' };
+const themesOf = (t) => Object.keys(THEMES).filter((k) => THEMES[k].test(t));
+/** 두 체계가 거의 같은 문장을 가진 경우("겉으로는 자유로워 보이지만…"/"자유로워 보이지만…") — 글자 두 개 묶음이 절반 넘게 겹치면 같은 말로 본다 */
+const bigrams = (t) => { const s = t.replace(/\s|[.,]/g, ''); const out = new Set(); for (let i = 0; i < s.length - 1; i++) out.add(s.slice(i, i + 2)); return out; };
+const nearSame = (a, b) => { let n = 0; for (const x of a) if (b.has(x)) n++; return n / Math.min(a.size, b.size) > 0.5; };
+
+/**
+ * 성격·일·돈·관계·조심 한 칸을 뼈대 체계 순으로 고른다.
+ * 같은 단계 안에서는 다른 체계와 결이 겹치는 문장 → 드문 문장 순, 앞서 고른 문장과 반대 결이면 건너뛴다.
+ */
+export function coreField(entries, field, max = 4, skip = 0) {
+  const cand = [];
+  const seen = new Set();
+  for (const e of entries) {
+    if (EVENT_BOARD.test(e.label)) continue;
+    const t = e.entry[field];
+    if (!t || seen.has(t)) continue;
+    seen.add(t);
+    cand.push({ text: t, label: e.label, share: e.share, tier: CORE_TIER[e.label] ?? 2, themes: themesOf(t), grams: bigrams(t) });
+  }
+  for (const c of cand) c.agree = cand.filter((o) => o !== c && o.themes.some((k) => c.themes.includes(k))).length;
+  cand.sort((a, b) => a.tier - b.tier || b.agree - a.agree || a.share - b.share);
+  const out = [];
+  for (const c of cand) {
+    if (out.some((o) => o.themes.some((k) => c.themes.includes(OPPOSITE[k])) || nearSame(o.grams, c.grams))) continue;
+    out.push(c);
+    if (out.length >= max + skip) break;
+  }
+  return out.slice(skip);
+}
+
+/**
  * 한 칸(성격·일·돈·관계·조심)을 여러 체계에서 모은다 — 드문 것부터, 같은 문장은 한 번만.
  * @param {'p'|'w'|'m'|'r'|'c'} field
  */

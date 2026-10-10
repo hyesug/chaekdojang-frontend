@@ -718,7 +718,8 @@ function distinctCard(r) {
  * 해마다 같은 틀 문장을 붙이던 연표(고유 3%)를 걷고, 그 사람의 대운이 **원국의 어느 기둥과
  * 부딪치거나 맞물리는지**, 같은 십 년에 자미 대한이 **원국의 어느 궁**에 서는지로 쓴다.
  * 둘 다 생년월일시로 정해지는 계산이라 사람마다 갈린다. 여러 체계의 큰 주기가 한 해에 함께
- * 바뀌는 해는 "흐름이 꺾이는 해"로 따로 짚는다(사건을 단정하지 않는다).
+ * 바뀌는 해는 "삶의 중심이 옮겨 가는 해"로 따로 짚는다(사건을 단정하지 않는다).
+ * ('꺾이는 해'는 나빠진다는 뜻으로 읽혀 바꿨다 — 좋고 나쁨이 아니라 방향이 바뀌는 때다)
  */
 /** 인도 점성 행성 주기의 주제 — 다샤 주인의 전통적 소관 */
 const PLANET_TERM = {
@@ -811,7 +812,7 @@ function lifeFlow(r) {
   // 그 해에 **무엇이** 바뀌는지 — 주기마다 쉬운 이름과, 새로 시작되는 구간의 뜻
   // 그 해에 삶의 무엇이 바뀌는지만 말한다 — 어느 체계의 어떤 주기인지는 손님이 알 필요가 없다
   const startLine = (st) => {
-    // 사주의 새 10년은 위 시기 줄이 이미 말한다 — 꺾이는 해에서 되풀이하지 않는다
+    // 사주의 새 10년은 위 시기 줄이 이미 말한다 — 중심이 옮겨 가는 해에서 되풀이하지 않는다
     if (st.system === '사주') return '';
     if (st.system === '자미두수') {
       const pal = String(st.label ?? '').match(/원국의\s*(\S+궁)/)?.[1];
@@ -819,7 +820,7 @@ function lifeFlow(r) {
       const lim = limits.find((x) => x.fromYear === st.fromYear);
       let nat = null;
       try { nat = lim?.stars?.length ? natureOf(lim.stars, '이 시기의 나') : null; } catch { /* */ }
-      const area = pal && AREA[pal] ? `'${AREA[pal]}' 쪽이 삶의 앞자리로 나옵니다` : '';
+      const area = pal && AREA[pal] ? `이때부터 '${AREA[pal]}' 쪽이 삶의 중심 주제가 됩니다` : '';
       return [area, nat?.traits?.length ? `이때의 나는 ${nat.traits.slice(0, 2).join(', ')} 쪽이 두드러집니다` : ''].filter(Boolean).join('. ');
     }
     if (st.system === '베딕') {
@@ -837,7 +838,7 @@ function lifeFlow(r) {
   }).filter(Boolean).slice(0, 2);
 
   return (rows.length ? timeline(rows) : '')
-    + (turnRows.length ? `<h4 class="rp-h4">🔀 흐름이 크게 꺾이는 해</h4>${timeline(turnRows)}` : '');
+    + (turnRows.length ? `<h4 class="rp-h4">🔀 삶의 중심이 옮겨 가는 해</h4><p class="rp-t">좋고 나쁨이 아니라, 삶에서 힘을 쏟는 쪽이 바뀌는 때입니다.</p>${timeline(turnRows)}` : '');
 }
 
 /**

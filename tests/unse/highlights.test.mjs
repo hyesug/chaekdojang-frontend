@@ -230,3 +230,10 @@ test('겉 여덟 글자에 없는 오행도 지장간에 있으면 "없다"고 �
   assert.match(t, /수는 겉으로 드러나지 않고 지장간 속에만 조금 있습니다/);
   assert.doesNotMatch(t, /수는 지장간까지 보아도 명식에 없습니다|수가 명식에 없습니다/);
 });
+
+test('인생 흐름의 전환점은 나빠진다는 뜻으로 읽히는 "꺾이는 해"라고 쓰지 않는다', () => {
+  for (const { form, r, f } of ALL) {
+    const html = renderReport(form, r, f, buildView(form, r, f));
+    assert.doesNotMatch(html, /꺾이는 해/);
+  }
+});

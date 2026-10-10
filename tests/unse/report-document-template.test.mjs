@@ -65,7 +65,7 @@ test('개인 리포트는 한눈에 보는 나·나는 어떤 사람인가·커�
   }
   for (const tag of ['DO', 'KEY']) assert.match(html, rx(`>${tag}<`));
   // 자세한 장은 접어 두고, 겹치던 장(사업·로또, 질문별 색인)은 다시 넣지 않는다
-  for (const chapter of ['일과 돈', '사랑과 가족', '앞으로 마주할 중요한 일']) {
+  for (const chapter of ['일과 돈', '사랑과 가족', '건강', '앞으로 마주할 중요한 일', '어떤 일이 맞는가', '일하는 방식', '돈을 버는 방식', '쓰는 습관과 모으는 법', '타고난 몸의 결']) {
     assert.match(html, rx(chapter));
   }
   // 태어난 해 하나로 정해져 또래가 같은 글을 받던 칸과, 사전과 겹치던 칸은 다시 넣지 않는다
@@ -116,7 +116,10 @@ test('잘 맞는 일은 한 갈래로 모이고, 일을 키우려면도 같은 �
   // 머리말("여러 점술이 함께 가리키는 쪽은")은 뺐다 — 고른 갈래의 분야만 싣는다
   assert.doesNotMatch(html, /여러 점술이 함께 가리키는 쪽은/);
   if (focus.verified.length) assert.match(html, rx(`${focus.verified.join(', ')} 분야가 가능성이 높습니다`));
-  assert.equal(html.includes('일을 키우려면'), focus.workFits);
+  // 자미 관록궁 문장은 "어떤 일이 맞는가"에 — 위 갈래와 같은 갈래일 때만
+  const { ziweiPalaceEntry } = await import('../../public/unse/src/semantic/dict.js');
+  const work = ziweiPalaceEntry(r, 'career');
+  if (work) assert.equal(html.includes(work.g), focus.workFits);
 });
 
 test('개인 리포트 화면 글에는 전문용어·한자·강조 표시가 남지 않는다', () => {

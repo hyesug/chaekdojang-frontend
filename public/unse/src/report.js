@@ -246,33 +246,133 @@ function hgc(e, withCaution = true) {
   return withCaution ? HGC_FORMS[n % HGC_FORMS.length](e.h, e.g, e.c) : `${e.h} ${e.g}`;
 }
 
-function s13(r) {
-  let b = null;
-  try { b = buildBoard(r.input); } catch { /* */ }
-  const nat = natureOf(palaceStars(r.input, '관록궁'), '일할 때의 본인');
-  let nextLine = '';
-  try {
-    const lim = decadeLimits(r.input, b);
-    const cur = lim.find((d) => r.input.currentYear >= d.fromYear && r.input.currentYear <= d.toYear);
-    const nxt = cur ? lim.find((d) => d.fromYear > cur.toYear) : null;
-    const area = nxt ? AREA[nxt.palaceOfNatal] : null;
-    if (area) nextLine = `다음 ${nxt.fromAge}~${nxt.toAge}세(${nxt.fromYear}~${nxt.toYear}년)에는 '${area}' 쪽이 삶의 앞으로 나옵니다.`;
-  } catch { /* 생략 */ }
 
-  // 자미 관록궁·재백궁 사전(별 조합 39가지)이 있으면 그것으로, 없으면 예전 풀이로
-  const work = ziweiPalaceEntry(r, 'career'), money = ziweiPalaceEntry(r, 'money');
-  // 자미 관록궁 문장이 위 "잘 맞는 일"과 다른 갈래면 싣지 않는다 — 한 리포트 안에서 직업 말이 엇갈렸다(피드백)
-  const fits = careerFocus(r).workFits;
-  return (fits ? labeled('일을 키우려면', `${work.h} ${work.g}`) : '')
-    + labeled('돈을 키우려면', money ? `${money.h} ${money.g}` : readingText(r, '자미두수', '재백궁'))
-    + labeled('일과 돈에서 조심할 것', [fits ? work.c : (nat?.risk?.length ? `${nat.risk.join(', ')}.` : ''), money?.c].filter(Boolean).join(' '))
-    + para(nextLine);
-}
 
 
 // '사회에서 보이는 나'(점성술 태양·중천·상승 풀이)는 뺐다 — 같은 내용이 사전으로 위 카드에 들어가 있다
-// '가능성이 높은 직업 분야'는 맨 위 "앞으로 가야 할 방향"으로 옮겼다
-const careerLife = (v, r) => sub('', '일과 돈을 키워 가는 법', s13(r));
+/**
+ * 일과 돈 — 자세히(피드백: 사랑과 가족은 많은데 일과 돈은 간단하다).
+ * 맨 위 "앞으로 가야 할 방향"이 이미 쓴 문장은 건너뛰고(coreField skip) 그다음 문장을 쓴다.
+ *   어떤 일이 맞는가 · 일하는 방식(조직형/독립형) · 일에서 앞으로 올 변화
+ *   돈을 버는 방식 · 쓰는 습관과 모으는 법 · 돈이 크게 움직이는 때 · 일과 돈에서 조심할 것
+ */
+/** 맞는 일 갈래마다 어떤 일인지 한두 문장 — 갈래 이름만으로는 무슨 일인지 감이 오지 않는다 */
+const CAREER_DESC = {
+  '돈과 숫자를 다루는 일': '숫자와 돈의 흐름을 읽고 관리하는 일에서 실력이 드러납니다. 금융·회계·재무·투자처럼 결과가 숫자로 남는 일이 맞습니다.',
+  '깊이 파는 전문 분야': '한 분야를 오래 파고들어 전문가가 되는 길이 맞습니다. 연구·분석·기술·법률처럼 정확함이 실력이 되는 일에서 인정받습니다.',
+  '말과 가르침으로 하는 일': '사람 앞에서 말하고 설명하고 가르칠 때 힘이 납니다. 교육·상담·강의·컨설팅·글쓰기처럼 말과 글로 사람을 움직이는 일이 맞습니다.',
+  '감각과 표현을 쓰는 일': '보고 느낀 것을 결과물로 만들어 낼 때 빛납니다. 디자인·콘텐츠·미디어·예술처럼 감각이 곧 실력인 일이 맞습니다.',
+  '사람을 돕고 돌보는 일': '누군가에게 직접 도움이 될 때 보람과 힘을 얻습니다. 의료·돌봄·복지·서비스처럼 사람을 편하게 해 주는 일이 맞습니다.',
+  '조직을 이끌고 관리하는 일': '사람과 일을 정리하고 이끌 때 힘이 납니다. 관리·운영·행정처럼 판을 짜고 책임지는 자리가 맞습니다.',
+  '새 길을 여는 일': '정해진 길보다 새로운 판을 여는 일에서 힘이 납니다. 기획·IT·창업·해외 사업처럼 처음을 만드는 일이 맞습니다.',
+  '몸과 현장을 쓰는 일': '책상 앞보다 몸을 움직이고 현장에서 결과를 확인하는 일에서 힘이 납니다. 체육·제조·건설·현장 관리처럼 손에 잡히는 결과가 나오는 일이 맞습니다.',
+};
+
+function careerLife(v, r) {
+  let es = [];
+  try { es = dictEntries(r); } catch { /* */ }
+  const pick = (f, n, keep, skip = 0) => coreField(es, f, n, skip, keep).map((x) => x.text);
+  const focus = careerFocus(r);
+  const work = ziweiPalaceEntry(r, 'career'), money = ziweiPalaceEntry(r, 'money');
+  let events = [];
+  try { events = lifeEventItems(r); } catch { /* */ }
+  const evOf = (domain) => events.filter((e) => e.domain === domain);
+
+  // 어떤 일이 맞는가 — 고른 갈래, 그 갈래의 문장(위 카드가 쓴 첫 문장 다음), 자미 관록궁(같은 갈래일 때)
+  const fitMore = coreField(es, 'w', 30, 0, (t) => FIELD_FIT.test(t)).map((x) => x.text)
+    .filter((t) => !focus.lines.includes(t) && catsOf(t).some((i) => CAREER_CATS[i][0] === focus.name)).slice(0, 2);
+  const fit = [
+    focus.name ? `여러 갈래가 함께 가리키는 쪽은 ${focus.name}입니다. ${CAREER_DESC[focus.name] ?? ''}` : '',
+    ...fitMore,
+    focus.workFits ? `${work.h} ${work.g}` : '',
+  ].filter(Boolean).join(' ');
+
+  // 일하는 방식 — 내 힘·표현(비겁·식상)과 책임·배움(관성·인성)의 견줌으로 조직형인지 독립형인지
+  let style = '';
+  try {
+    const g = tenGodDistribution(r.chart.pillars, r.chart.dayStem).groups;
+    const own = (g.비겁 ?? 0) + (g.식상 ?? 0), org = (g.관성 ?? 0) + (g.인성 ?? 0);
+    // 맞는 일이 "조직을 이끌고 관리하는 일"이면 독립형이라도 프리랜서·창업이 아니라 판을 짜는 자리로 — 같은 장 안에서 말이 엇갈리지 않게
+    const leads = focus.name === '조직을 이끌고 관리하는 일';
+    style = own - org >= 2
+      ? (leads
+        ? '남이 짠 틀을 따르기보다 내가 판을 짤 때 힘이 나는 편입니다. 조직 안에서도 지시를 받는 자리보다 책임자·리더처럼 결정권이 있는 자리가 맞습니다.'
+        : '조직의 틀보다 내 방식대로 일할 때 힘이 나는 편입니다. 프리랜서·창업·전문직처럼 재량이 큰 자리가 맞고, 조직에 있다면 내 이름으로 맡는 일을 늘려 가세요.')
+      : org - own >= 2
+        ? '정해진 틀과 역할이 있는 조직에서 힘을 내는 편입니다. 혼자 판을 벌이기보다 조직 안에서 자리와 책임을 키워 가는 쪽이 맞습니다.'
+        : '조직 안에서 일하면서도 나만의 전문 영역을 하나 갖는 방식이 맞습니다. 회사 일과 내 이름으로 하는 일을 함께 키워 가세요.';
+  } catch { /* */ }
+  const manner = pick('w', 2, (t) => !FIELD_FIT.test(t), 3).join(' ');
+
+  // 일에서 앞으로 올 변화 — 사건(직업)과 다음 10년의 자미 대한
+  let nextArea = '';
+  try {
+    const lim = decadeLimits(r.input, buildBoard(r.input));
+    const cur = lim.find((d) => r.input.currentYear >= d.fromYear && r.input.currentYear <= d.toYear);
+    const nxt = cur ? lim.find((d) => d.fromYear > cur.toYear) : null;
+    if (nxt && AREA[nxt.palaceOfNatal]) nextArea = `${nxt.fromAge}~${nxt.toAge}세(${nxt.fromYear}~${nxt.toYear}년)에는 '${AREA[nxt.palaceOfNatal]}' 쪽이 삶의 앞으로 나옵니다.`;
+  } catch { /* */ }
+  const ahead = [...evOf('직업').map((e) => `${e.when} — ${e.title}. ${e.what}`), nextArea].filter(Boolean).join(' ');
+
+  // 돈 — 버는 방식(위 카드 다음 문장 + 자미 재백궁), 쓰는 습관과 모으는 법(모으는 쪽인지 불리는 쪽인지)
+  // 체계마다 돈 버는 결이 갈리면("안정적으로 번다" / "빠르게 벌고 빠르게 쓴다") 자미 재백궁 쪽을 따르고 반대 결 문장은 뺀다
+  const moneyBase = money ? `${money.h} ${money.g}` : '';
+  const steady = /안정|꾸준|무리하지|지키/.test(moneyBase), bold = /빠르게|크게|과감|투자로/.test(moneyBase);
+  const earnMore = pick('m', 3, (t) => EARN.test(t) && !IMPERATIVE.test(t), 2)
+    .filter((t) => !(steady && /빠르게|크게 쓰|과감/.test(t)) && !(bold && /안정적으로|무리하지/.test(t)))
+    .slice(0, 2).join(' ');
+  const earn = [moneyBase, earnMore].filter(Boolean).join(' ');
+  const moneyLines = [...pick('m', 6), ...(money ? [money.h, money.g] : [])];
+  const lean = moneyLines.filter((x) => SAVE.test(x)).length - moneyLines.filter((x) => GROW.test(x)).length;
+  const keep = lean > 0
+    ? '모으고 지키는 힘이 강합니다. 저축은 잘 되니, 집·연금처럼 오래 묵히는 자산으로 불리는 계획을 하나 정해 두면 재산이 커집니다.'
+    : lean < 0
+      ? '벌고 불리는 쪽에 강합니다. 수입이 들어오는 날 일정 몫을 자동으로 떼어 두는 장치를 만들어야 재산이 남습니다.'
+      : '돈 성향이 한쪽으로 치우치지 않습니다. 매달 같은 날 들어오고 나간 돈을 한 번 점검하는 습관이 재산을 쌓는 가장 확실한 방법입니다.';
+  const spend = pick('m', 2, (t) => !EARN.test(t) && !IMPERATIVE.test(t), 2).join(' ');
+  const bigMoney = evOf('재물').map((e) => `${e.when} — ${e.title}. ${e.what} ${e.prep}`).join(' ');
+  const careful = [focus.workFits ? work?.c : '', money?.c, ...pick('m', 1, (t) => IMPERATIVE.test(t))].filter(Boolean).join(' ');
+
+  return sub('', '어떤 일이 맞는가', para(fit))
+    + sub('', '일하는 방식', para([style, manner].filter(Boolean).join(' ')))
+    + sub('', '일에서 앞으로 올 변화', para(ahead))
+    + sub('', '돈을 버는 방식', para(earn))
+    + sub('', '쓰는 습관과 모으는 법', para([spend, keep].filter(Boolean).join(' ')))
+    + sub('', '돈이 크게 움직이는 때', para(bigMoney))
+    + sub('', '일과 돈에서 조심할 것', para(careful));
+}
+
+/**
+ * 건강 — 간단히. 가장 옅은 기운과 가장 넘치는 기운을 전통적으로 이어 보는 몸의 자리,
+ * 그 기운을 채우는 생활 습관, 몸을 챙겨야 할 때(사건). 진단이 아니라 생활 관리로만 쓴다.
+ */
+const ELEM_BODY = {
+  목: '간·눈·근육과 힘줄 쪽으로, 피로가 쌓이면 눈과 어깨·목이 먼저 뻣뻣해지기 쉽습니다.',
+  화: '심장·혈관과 잠 쪽으로, 열이 오르거나 잠이 얕아지기 쉽습니다.',
+  토: '위장과 소화 쪽으로, 끼니가 불규칙해지면 속이 먼저 탈이 나기 쉽습니다.',
+  금: '폐·호흡기와 피부 쪽으로, 환절기에 기침이나 피부 트러블이 먼저 오기 쉽습니다.',
+  수: '신장·방광과 허리·뼈 쪽으로, 몸이 차고 붓거나 허리가 뻐근해지기 쉽습니다.',
+};
+const ELEM_PART = { 목: '간·눈·근육', 화: '심장·혈관', 토: '위장·소화', 금: '폐·호흡기·피부', 수: '신장·허리' };
+function healthChapter(r) {
+  let weak = null, strong = null;
+  try {
+    const c = elementDistribution(r.chart.pillars).count;
+    weak = ELEM_KEYS[[0, 1, 2, 3, 4].reduce((x, i) => (c[i] < c[x] ? i : x), 0)];
+    strong = ELEM_KEYS[[0, 1, 2, 3, 4].reduce((x, i) => (c[i] > c[x] ? i : x), 0)];
+  } catch { return ''; }
+  let events = [];
+  try { events = lifeEventItems(r).filter((e) => e.domain === '건강'); } catch { /* */ }
+  const body = [
+    `타고난 구성에서 가장 옅은 것은 ${ELEM_FILL[weak].name} 기운이라, 전통적으로 ${ELEM_BODY[weak]}`,
+    strong !== weak ? `가장 넘치는 ${ELEM_FILL[strong].name} 기운 쪽(${ELEM_PART[strong]})은 많이 쓰는 만큼 무리가 가기 쉬우니, 몰아 쓰지 말고 쉬어 가며 쓰세요.` : '',
+  ].filter(Boolean).join(' ');
+  // 사건의 대비 문장에는 생활 습관이 붙어 있다 — 바로 위 칸과 겹치지 않게 그 앞까지만
+  return sub('', '타고난 몸의 결', para(body))
+    + sub('', '챙기면 좋은 생활 습관', para(ELEM_FILL[weak].how))
+    + sub('', '몸을 챙겨야 할 때', para(events.map((e) => `${e.when} — ${e.what} ${e.prep.split(' 이 명반에서')[0]}`).join(' ')))
+    + para('전통 해석을 생활 관리로 옮긴 것입니다. 몸에 이상이 느껴지면 진료를 먼저 받으세요.');
+}
 
 /* ── 2. 사랑과 가족 ─────────────────────────────────────── */
 
@@ -1220,9 +1320,10 @@ export function renderReport(form, r, f, v) {
     // '방향과 이동'은 뺐다 — 태어난 해 하나로 정해져 같은 해에 난 사람은 모두 같은 방향을 받았다
     sec(1, '일과 돈', careerLife(v, r), '앞으로 키워 갈 일과 돈'),
     sec(2, '사랑과 가족', relations(v, r), '배우자·자녀·형제'),
+    sec(3, '건강', healthChapter(r), '타고난 몸의 결과 챙길 것'),
     // '올해'와 '일이 풀리고 막히는 흐름' 장은 뺐다(사용자 요청) — 앞으로의 방향은 위 카드와 시기 장이 맡는다
     // '시기 한눈에 보기'는 뺐다(사용자 요청) — 언제보다 무슨 일이 어떤 모양으로 오는지를 쓴다
-    sec(3, '앞으로 마주할 중요한 일', lifeEvents(r), '무슨 일이, 어떤 모양으로 오고, 어떻게 대비할지'),
+    sec(4, '앞으로 마주할 중요한 일', lifeEvents(r), '무슨 일이, 어떤 모양으로 오고, 어떻게 대비할지'),
   ].filter(Boolean).join('');
 
   return `

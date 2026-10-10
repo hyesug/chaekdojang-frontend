@@ -147,8 +147,10 @@ test('궁합 리포트는 두 사람의 명반을 맞댄 해석과 각자의 사
   }
   // 개인 운세에 맞는 칸(각자의 지금 시기·지금 힘을 쓸 곳·기운 비교표)은 궁합에서 뺐다
   for (const gone of ['지금 두 사람은', '앞으로 함께 가야 할 방향', '지금 힘을 쓸 곳', '서로 채워주는 기운']) assert.doesNotMatch(html, rx(gone));
-  // 자녀를 낳는지·몇 명인지는 사례 검증을 통과하지 못해 쓰지 않는다
-  assert.doesNotMatch(html, /자녀는? \d명|명이 좋|낳는 편이/);
+  // 자녀는 "몇 명을 낳게 된다"는 예측이 아니라, 두 사람 궁합으로 본 권하는 말(낳으면 어떤지·몇 명 정도가 잘 맞는지)로만
+  assert.match(html, /아이를 낳으면/);
+  assert.match(html, /몇 명이 좋을까/);
+  assert.doesNotMatch(html, /\d명을 낳|낳게 됩니다|자녀는 \d명/);
   assert.match(html, /점술은 상징적 해석 도구/);
   // 여덟 축 × 상·중·하마다 정해진 문단은 다시 싣지 않는다 — 같은 구간의 쌍이 같은 글을 받았다
   for (const axis of view.eightAxes) assert.doesNotMatch(html, rx(axis.conclusion));

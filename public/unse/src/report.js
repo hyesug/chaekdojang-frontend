@@ -29,6 +29,7 @@ import { palaceStars, natureOf } from './semantic/structure/stars.js';
 import { readSpouse, spousePalaceStars, spouseVerdict } from './semantic/structure/spouse.js';
 import { readChildren, childPalaceStars, childrenVerdict } from './semantic/structure/children.js';
 import { childrenPack, marriagePack } from './hires/vedicExt.js';
+import { consensusOf } from './semantic/compose/consensus.js';
 import { verifiedCareer } from './semantic/index.js';
 import { distinctReadings, ownSentences } from './semantic/distinct.js';
 import { dictEntries, dictField, coreField, daeunEntry, ziweiPalaceEntry, pairReading, themeContrast, eventEntry, dictLoaded } from './semantic/dict.js';
@@ -1135,6 +1136,40 @@ export function renderReport(form, r, f, v) {
  * 두 사람 문장의 같은 결과 반대 결·관계 축 점수·두 사람이 마주할 사건 — 과 각자의 사전(자미 부처궁·자녀궁).
  * 자녀를 낳는지·몇 명인지는 사례 검증을 통과하지 못해(children.js COUNT_VERIFIED) 쓰지 않는다.
  */
+/**
+ * 두 사람 궁합으로 본 자녀 — "몇 명을 낳게 된다"는 예측이 아니라 **이 두 사람에게 아이가 어떤 의미이고
+ * 몇 명 정도가 잘 맞는지 권하는 말**이다(사용자 요청). 한 사람의 자녀 수 예측은 사례 검증을 통과하지
+ * 못해 개인 리포트에서는 계속 쓰지 않는다(children.js COUNT_VERIFIED).
+ *   · 각자의 자녀 인연 판정(여러 체계가 겹치면 ±2, 한 곳만이면 ±1, 갈리면 0)을 더하고
+ *   · 두 사람의 자녀 자리(시주)가 맞물리면 +1, 부딪치면 −1, 두 사람이 함께 키울 일이 사건에 있으면 +1
+ */
+const STANCE_SCORE = { '겹침/많음': 2, '하나/많음': 1, '하나/적음': -1, '겹침/적음': -2 };
+function kidsAdvice(rA, rB, sharedEvent) {
+  let score = 0, n = 0;
+  for (const r of [rA, rB]) {
+    try {
+      const reads = readChildren({ ...r.chart, gender: r.input.gender }, childPalaceStars(r.input), childrenPack(r.input), palaceStars(r.input, '자녀궁'));
+      const c = consensusOf(reads.filter((x) => x.topicKey === '열림'));
+      score += STANCE_SCORE[`${c.verdict}/${c.stance}`] ?? 0;
+      n += 1;
+    } catch { /* */ }
+  }
+  if (!n) return null;
+  try {
+    const ha = rA.chart.pillars.hour?.branch, hb = rB.chart.pillars.hour?.branch;
+    if (ha != null && hb != null) {
+      const rels = branchRelations(ha, hb).filter((x) => !x.minor);
+      if (rels.some((x) => x.kind === '충')) score -= 1;
+      else if (rels.some((x) => /합/.test(x.kind)) || ha === hb) score += 1;
+    }
+  } catch { /* */ }
+  if (sharedEvent) score += 1;
+  if (score >= 3) return { score, whether: '아이가 두 사람을 더 단단하게 묶어 주는 궁합입니다. 아이를 낳으면 관계에 힘이 되는 쪽입니다.', count: '둘 이상도 두 사람이 잘 감당하는 궁합입니다. 아이가 늘수록 집안에 활기가 돕니다.' };
+  if (score >= 1) return { score, whether: '아이가 관계에 힘이 되는 궁합입니다. 낳으면 두 사람이 한 팀으로 움직이게 됩니다.', count: '한두 명이 잘 맞습니다. 그 이상이면 두 사람의 시간과 여유가 먼저 줄어듭니다.' };
+  if (score === 0) return { score, whether: '아이가 있어도 없어도 관계의 무게가 크게 달라지지 않는 궁합입니다. 두 사람이 원하는 삶을 기준으로 정해도 됩니다.', count: '낳는다면 한 명에게 정성을 모으는 쪽이 두 사람에게 편합니다.' };
+  return { score, whether: '두 사람만의 시간이 먼저 단단해야 하는 궁합입니다. 아이는 서두르지 말고 둘의 생활이 자리 잡은 뒤에 생각하는 편이 좋습니다.', count: '낳는다면 한 명이 잘 맞습니다. 두 사람의 여유를 지키는 것이 아이에게도 좋습니다.' };
+}
+
 const SEAT_GOOD = new Set(['육합', '반합', '같음']);
 const SEAT_BAD = new Set(['충', '형', '해', '파', '원진']);
 const REL_CAUTION = /관계|상대|배우자|말|감정|고집|표현|마음|화|서운|통제|간섭|기대/;
@@ -1195,10 +1230,13 @@ export function pairLoveDigest(rA, rB, A, B, v) {
   const habit = (es, sp) => [sp?.c, lines(es, 'c', 1, (t) => REL_CAUTION.test(t))[0]].filter(Boolean).join(' ');
   const fix = [[`${A}님`, habit(esA, spA)], [`${B}님`, habit(esB, spB)]].filter(([, t]) => t);
 
-  // 자녀 — 각자의 자미 자녀궁(어떤 아이와 인연인지, 잘 되는 것, 조심할 것). 수와 낳는지 여부는 쓰지 않는다
+  // 자녀 — 각자의 자미 자녀궁(어떤 아이와 인연인지, 잘 되는 것, 조심할 것)
   const chA = ziweiPalaceEntry(rA, 'children'), chB = ziweiPalaceEntry(rB, 'children');
   const kidsEv = evOf(/낳고 키우는|자녀/);
+  const rec = kidsAdvice(rA, rB, kidsEv.length > 0);
   const kids = [
+    rec ? ['아이를 낳으면', rec.whether] : null,
+    rec ? ['몇 명이 좋을까', rec.count] : null,
     chA ? [`${A}님 쪽에서 보면`, `${chA.h} ${chA.g}`] : null,
     chB ? [`${B}님 쪽에서 보면`, `${chB.h} ${chB.g}`] : null,
     chA || chB ? ['아이를 키울 때 조심할 것', [chA?.c, chB?.c].filter(Boolean).join(' ')] : null,

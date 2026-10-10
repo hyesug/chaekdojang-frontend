@@ -774,7 +774,14 @@ const lineList = (xs) => (xs.length ? `<ul class="rp-ul">${xs.map((t) => `<li>${
 const h4 = (icon, t) => `<h4 class="rp-h4">${icon} ${esc(t)}</h4>`;
 
 /** 지금 내가 서 있는 10년의 반쪽(앞 다섯 해·뒤 다섯 해)과 바로 다음 반쪽 — 일간 × 10년 운 사전 */
-function seasonNow(r) {
+/** 두 사람의 다음 시기가 두 해 안쪽으로 함께 바뀌면, 생활의 틀을 같이 다시 짤 때다 (궁합 리포트·AI 공용) */
+export function togetherTurn(snA, snB) {
+  if (!snA?.next || !snB?.next || Math.abs(snA.next.from - snB.next.from) > 2) return '';
+  const a = Math.min(snA.next.from, snB.next.from), b = Math.max(snA.next.from, snB.next.from);
+  return `${a === b ? a : `${a}~${b}`}년 무렵 두 사람의 흐름이 함께 바뀝니다. 사는 곳·일·돈 계획처럼 생활의 큰 틀을 같이 다시 짜기 좋은 때입니다.`;
+}
+
+export function seasonNow(r) {
   try {
     const ds = computeDaeun(r.chart, r.input.isMale, r.input.jdUT);
     const now = Number(r.input.currentYear);
@@ -794,17 +801,48 @@ function seasonNow(r) {
   } catch { return null; }
 }
 
+/**
+ * 리포트 맨 위 네 카드의 내용 — 지금 시기 · 앞으로 가야 할 방향 · 알아 두면 좋은 나 · 조심해야 할 것.
+ * AI 상담 문맥(aiContext.js)도 이 함수를 그대로 써서, 리포트와 AI가 같은 말을 같은 순서로 한다.
+ */
+export function futureDigest(r) {
+  let es = [];
+  try { es = dictEntries(r); } catch { /* */ }
+  const pick = (f, n, keep, skip = 0) => coreField(es, f, n, skip, keep).map((x) => x.text);
+  let vc = null;
+  try { vc = verifiedCareer(r.input); } catch { /* */ }
+  const careful = pick('c', 3);
+  return {
+    hasDict: es.length > 0,
+    season: seasonNow(r),
+    direction: {
+      career: vc?.available ? `${vc.top.map((x) => x.label).join(', ')} 쪽입니다.` : '',
+      fields: pick('w', 3, (t) => FIELD_FIT.test(t)),
+      earn: pick('m', 2, (t) => EARN.test(t) && !IMPERATIVE.test(t)),
+      drawn: pick('r', 2, (t) => DRAWN_TO.test(t)),
+    },
+    know: {
+      p: pick('p', 3),
+      work: pick('w', 3, (t) => !FIELD_FIT.test(t)),
+      spend: pick('m', 2, (t) => !EARN.test(t) && !IMPERATIVE.test(t)),
+      rel: pick('r', 2, (t) => !DRAWN_TO.test(t)),
+    },
+    caution: {
+      careful: [...careful, ...pick('m', 1, (t) => IMPERATIVE.test(t))],
+      principles: dictPrinciples(r, careful),
+    },
+  };
+}
+
 function lifeReport(form, r, f, v) {
   const me = readingBy(r, '사주', /^일간/);
   const s = lifeSeasons(r);
   // '명반을 가르는 핵심 구조' 카드는 뺐다 — 구조마다 정해진 문단 하나를 통째로 붙여, 같은 구조를 가진
   // 사람은 글자 하나 다르지 않은 글을 받았다(예: '어린 시절 집안 환경의 변화')
-  let es = [];
-  try { es = dictEntries(r); } catch { /* */ }
-  const pick = (f, n, keep, skip = 0) => coreField(es, f, n, skip, keep).map((x) => x.text);
+  const d = futureDigest(r);
+  const sn = d.season;
 
   // 1. 지금 나는 어떤 시기에 있나
-  const sn = seasonNow(r);
   const now = sn
     ? bullets(
       bullet('📍', `지금 (${sn.cur.from}~${sn.cur.to}년)`, sn.cur.e.h),
@@ -814,33 +852,25 @@ function lifeReport(form, r, f, v) {
     : bullets(bullet('📍', '지금', s.season), bullet('⏭️', '다음 시기', s.next));
 
   // 2. 앞으로 가야 할 방향
-  let vc = null;
-  try { vc = verifiedCareer(r.input); } catch { /* */ }
-  const fields = pick('w', 3, (t) => FIELD_FIT.test(t));
-  const earn = pick('m', 2, (t) => EARN.test(t) && !IMPERATIVE.test(t));
-  const drawn = pick('r', 2, (t) => DRAWN_TO.test(t));
   const direction = bullets(
-    bullet('💼', '가능성이 높은 직업 분야', vc?.available ? `${vc.top.map((x) => x.label).join(', ')} 쪽입니다.` : ''),
-    bullet('🛠️', '잘 맞는 일', fields.join(' ')),
-    bullet('💰', '돈을 키우는 방향', earn.join(' ')),
-    bullet('💞', '곁에 두면 좋은 사람', drawn.join(' ')),
+    bullet('💼', '가능성이 높은 직업 분야', d.direction.career),
+    bullet('🛠️', '잘 맞는 일', d.direction.fields.join(' ')),
+    bullet('💰', '돈을 키우는 방향', d.direction.earn.join(' ')),
+    bullet('💞', '곁에 두면 좋은 사람', d.direction.drawn.join(' ')),
   );
 
   // 3. 알아 두면 좋은 나 — 결정할 때 기억할 내 모습
   const know = [
-    ['🙂', '나의 성격', pick('p', 3)],
-    ['💼', '일할 때의 나', pick('w', 3, (t) => !FIELD_FIT.test(t))],
-    ['💳', '돈을 쓰는 습관', pick('m', 2, (t) => !EARN.test(t) && !IMPERATIVE.test(t))],
-    ['💬', '관계 속의 나', pick('r', 2, (t) => !DRAWN_TO.test(t))],
+    ['🙂', '나의 성격', d.know.p],
+    ['💼', '일할 때의 나', d.know.work],
+    ['💳', '돈을 쓰는 습관', d.know.spend],
+    ['💬', '관계 속의 나', d.know.rel],
   ].map(([icon, t, xs]) => (xs.length ? h4(icon, t) + lineList(xs) : '')).join('');
 
   // 4. 조심해야 할 것 — 지금 시기 · 늘 조심할 것 · 지켜야 할 원칙
-  const careful = pick('c', 3);
-  const moneyDont = pick('m', 1, (t) => IMPERATIVE.test(t));
-  const principles = dictPrinciples(r, careful);
   const caution = (sn?.cur?.e?.c ? h4('⏳', '지금 시기에') + lineList([sn.cur.e.c]) : '')
-    + (careful.length || moneyDont.length ? h4('🚧', '늘 조심할 것') + lineList([...careful, ...moneyDont]) : '')
-    + (principles.length ? h4('📏', '지켜야 할 원칙') + lineList(principles) : '');
+    + (d.caution.careful.length ? h4('🚧', '늘 조심할 것') + lineList(d.caution.careful) : '')
+    + (d.caution.principles.length ? h4('📏', '지켜야 할 원칙') + lineList(d.caution.principles) : '');
 
   return card('🧭', '지금 나는 어떤 시기에 있나', now)
     + card('🚀', '앞으로 가야 할 방향', direction)
@@ -926,10 +956,7 @@ export function renderPairReport(formA, formB, c, v, elementDist, people = {}) {
   const snA = seasonNow(rA), snB = seasonNow(rB);
 
   // 1. 지금 두 사람은 — 어떤 관계이고, 각자 어떤 시기에 있나
-  // 두 사람의 다음 시기가 두 해 안쪽으로 함께 바뀌면, 생활의 틀을 같이 다시 짤 때다
-  const together = snA?.next && snB?.next && Math.abs(snA.next.from - snB.next.from) <= 2
-    ? `${Math.min(snA.next.from, snB.next.from)}~${Math.max(snA.next.from, snB.next.from)}년 무렵 두 사람의 흐름이 함께 바뀝니다. 사는 곳·일·돈 계획처럼 생활의 큰 틀을 같이 다시 짜기 좋은 때입니다.`
-    : '';
+  const together = togetherTurn(snA, snB);
   const nowCard = bullets(
     bullet('💞', '두 사람의 관계', pr?.stem?.h),
     bullet('🔗', '끌어당기는 힘', pr?.hap?.h),

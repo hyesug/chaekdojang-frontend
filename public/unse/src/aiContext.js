@@ -15,9 +15,10 @@
  * 토큰을 아끼려고 줄임말을 쓰되, 모델이 알아볼 수 없을 만큼 줄이지는 않는다.
  */
 
-import { ELEMENTS, computeDaeun, currentDaeun } from './core/ganzhi.js';
-import { dictEntries, dictField, coreField, daeunEntry, ziweiPalaceEntry, pairReading, themeContrast } from './semantic/dict.js';
+import { ELEMENTS, computeDaeun } from './core/ganzhi.js';
+import { dictEntries, coreField, ziweiPalaceEntry, pairReading, themeContrast } from './semantic/dict.js';
 import { readFortune } from './engine.js';
+import { futureDigest, seasonNow, togetherTurn } from './report.js';
 import { AREAS } from './forecast.js';
 import { candidatesToward, DIR8 } from './hires/location.js';
 import { yearDirections } from './systems/gujeong.js';
@@ -377,25 +378,36 @@ function formatDict(r) {
   let es = [];
   try { es = dictEntries(r); } catch { return ''; }
   if (!es.length) return '';
-  const L = ['## 이 사람의 해석 (리포트와 같은 사전 — 드문 특징 순)'];
-  for (const [f, name] of [['p', '성격'], ['w', '일할 때'], ['m', '돈'], ['r', '관계'], ['c', '조심할 점']]) {
-    const lines = dictField(es, f, 4);
-    if (lines.length) L.push(`${name}: ${lines.map((x) => x.text).join(' / ')}`);
+  // 손님이 받은 리포트 맨 위 네 카드와 같은 내용·같은 순서 (report.js futureDigest)
+  const d = futureDigest(r);
+  const sn = d.season;
+  const row = (name, xs) => { const t = (Array.isArray(xs) ? xs : [xs]).filter(Boolean); if (t.length) L.push(`${name}: ${t.join(' / ')}`); };
+  const L = ['## 이 사람의 해석 (손님이 받은 리포트와 같은 내용 — 지금 → 앞으로 갈 방향 → 알아 둘 것 → 조심할 것)'];
+  L.push('### 지금 어떤 시기인가');
+  if (sn) {
+    row(`지금(${sn.cur.from}~${sn.cur.to}년)`, sn.cur.e.h);
+    row('지금 힘을 쓸 곳', sn.cur.e.g);
+    if (sn.next) row(`${sn.next.from}년(${sn.next.age}세)부터`, sn.next.e.h);
   }
-  for (const [which, name] of [['career', '일하는 방식'], ['money', '돈의 흐름'], ['spouse', '배우자'], ['children', '자녀']]) {
+  L.push('### 앞으로 가야 할 방향');
+  row('가능성이 높은 직업 분야', d.direction.career);
+  row('잘 맞는 일', d.direction.fields);
+  row('돈을 키우는 방향', d.direction.earn);
+  row('곁에 두면 좋은 사람', d.direction.drawn);
+  for (const [which, name] of [['career', '일을 키우려면'], ['money', '돈을 키우려면'], ['spouse', '앞으로 함께할 사람'], ['children', '자녀와의 관계']]) {
     const e = ziweiPalaceEntry(r, which);
-    if (e) L.push(`${name}: ${e.h} 잘 되는 것 — ${e.g} 조심할 것 — ${e.c}`);
+    if (e) L.push(`${name}: ${e.h} ${e.g} (조심: ${e.c})`);
   }
-  try {
-    const ds = computeDaeun(r.chart, r.input.isMale, r.input.jdUT);
-    const cur = currentDaeun(ds, r.input.elapsedYears ?? r.input.age);
-    const de = cur ? daeunEntry(r.chart.dayStem, cur.stem, cur.branch) : null;
-    if (de?.front && de?.back) {
-      L.push(`지금의 10년(${cur.fromAge}~${cur.toAge}세) 앞 다섯 해: ${de.front.h} 잘 되는 것 — ${de.front.g} 조심할 것 — ${de.front.c}`);
-      L.push(`지금의 10년 뒤 다섯 해: ${de.back.h} 잘 되는 것 — ${de.back.g} 조심할 것 — ${de.back.c}`);
-    }
-  } catch { /* 10년 운만 빠진다 */ }
-  L.push('위 문장은 손님이 받은 리포트에 실린 해석이다. 성향·일·돈·관계를 물으면 이것을 먼저 근거로 쓰고, 리포트와 반대되는 말을 하지 말 것. 문장을 그대로 베끼지 말고 질문에 맞게 풀어서 말할 것.');
+  L.push('### 알아 두면 좋은 나');
+  row('성격', d.know.p);
+  row('일할 때', d.know.work);
+  row('돈을 쓰는 습관', d.know.spend);
+  row('관계 속에서', d.know.rel);
+  L.push('### 조심해야 할 것');
+  row('지금 시기에', sn?.cur?.e?.c);
+  row('늘 조심할 것', d.caution.careful);
+  row('지켜야 할 원칙', d.caution.principles);
+  L.push('위 내용은 손님이 받은 리포트에 실린 해석이다. 무엇을 물어도 이것을 먼저 근거로 쓰고, 리포트와 반대되는 말을 하지 말 것. 문장을 그대로 베끼지 말고 질문에 맞게 풀어서 말할 것.');
   return L.join('\n');
 }
 
@@ -666,6 +678,7 @@ export function buildContext(form, r, f = null) {
   out.push('');
 
   out.push('## 읽는 법');
+  out.push(FUTURE_RULE);
   out.push('위 값은 모두 천문 계산으로 구한 것이다. 간지·절기·음력·행성 위치를 다시 계산하지 말고 그대로 쓸 것.');
   out.push('체계마다 보는 대상이 다르므로 결론이 갈릴 수 있다. 갈리면 갈린다고 말할 것.');
   out.push('"평생 구간" 표의 시작·끝 연도는 확정 계산이다. **연도를 물으면 이 표에서 골라 답하고, 표에 없는 해를 지어내지 말 것.** 구간이 바뀌는 해를 물으면 "둘 이상이 함께 바뀌는 해"를 쓸 것.');
@@ -681,11 +694,17 @@ export function buildContext(form, r, f = null) {
   return out.join('\n');
 }
 
-/** 사람이 처음 열었을 때 자동으로 받는 전체 풀이 요청문 */
+/**
+ * 답의 방향 — 리포트와 같다. "어떤 사람인가"로 끝내지 말고 "그래서 앞으로 어떻게"까지.
+ * (피드백: 리포트가 전부 내가 어떤 사람인지만 말한다 → 가야 할 방향·알아 둘 것·조심할 것으로)
+ */
+const FUTURE_RULE = '**답은 앞을 향하게 할 것.** 성향이나 구조를 설명하는 데서 멈추지 말고, 그래서 앞으로 (1) 어느 쪽으로 가면 좋은지 (2) 알아 두면 결정에 도움이 되는 것 (3) 조심할 것 을 구체적인 행동으로 말할 것. 성격을 물어도 "이런 사람입니다"로 끝내지 말고 "그래서 이렇게 쓰면 좋습니다"까지 갈 것. 지난 일은 앞을 설명할 때만 짧게 쓸 것.';
+
+/** 사람이 처음 열었을 때 자동으로 받는 전체 풀이 요청문 — 리포트 맨 위 카드와 같은 순서 */
 export const READING_PROMPT =
   '위 명반을 바탕으로 이 사람의 전체 풀이를 써 주세요. ' +
-  '소제목을 넣어 (1) 타고난 기질 (2) 지금의 흐름 (3) 올해 눈여겨볼 시기 (4) 조심할 지점 순으로 정리해 주세요. ' +
-  '열일곱 체계가 어긋나는 지점이 있으면 그것도 짚어 주세요.';
+  '소제목을 넣어 (1) 지금 어떤 시기인가 (2) 앞으로 가야 할 방향 (3) 알아 두면 좋은 것 (4) 조심해야 할 것 순으로 정리해 주세요. ' +
+  '각 소제목은 앞으로 무엇을 하면 좋은지 구체적인 행동으로 끝내 주세요. 열일곱 체계가 어긋나는 지점이 있으면 그것도 짚어 주세요.';
 
 /**
  * 궁합용 명반 — 두 사람 것을 한 덩이로
@@ -710,19 +729,35 @@ function formatPairDict(formA, formB) {
   const esA = dictEntries(rA), esB = dictEntries(rB);
   if (!pr && !esA.length) return [];
   const lines = (es, f, n) => coreField(es, f, n).map((x) => x.text);
-  const out = ['## 두 사람의 해석 (리포트와 같은 사전 — 답은 이 내용을 바탕으로)'];
-  for (const e of [pr?.stem, pr?.hap, pr?.seatKind !== '없음' ? pr?.seat : null].filter(Boolean)) out.push(`- ${e.h} 잘 되려면: ${e.g} 조심할 점: ${e.c}`);
-  for (const [name, es, r] of [[nA, esA, rA], [nB, esB, rB]]) {
-    out.push(`### ${name}`);
-    out.push(`성격: ${lines(es, 'p', 3).join(' ')}`);
-    out.push(`사랑할 때: ${lines(es, 'r', 3).join(' ')}`);
-    out.push(`돈: ${lines(es, 'm', 2).join(' ')}`);
-    const want = ziweiPalaceEntry(r, 'spouse');
-    if (want) out.push(`끌리는 사람: ${want.h}`);
-  }
+  const pairs = [pr?.stem, pr?.hap, pr?.seatKind !== '없음' ? pr?.seat : null].filter(Boolean);
+  const snA = seasonNow(rA), snB = seasonNow(rB);
   const { same, clash } = themeContrast([...lines(esA, 'p', 6), ...lines(esA, 'r', 4)], [...lines(esB, 'p', 6), ...lines(esB, 'r', 4)]);
+  const money = themeContrast(lines(esA, 'm', 4), lines(esB, 'm', 4));
+  // 궁합 리포트와 같은 순서 — 지금 → 앞으로 함께 갈 방향 → 알아 둘 서로 → 조심할 것
+  const out = ['## 두 사람의 해석 (손님이 받은 궁합 리포트와 같은 내용 — 답은 이 내용을 바탕으로)'];
+  out.push('### 지금 두 사람은');
+  for (const e of pairs) out.push(`- ${e.h}`);
+  for (const [name, sn] of [[nA, snA], [nB, snB]]) if (sn) out.push(`- ${name}의 지금(${sn.cur.from}~${sn.cur.to}년): ${sn.cur.e.h}`);
+  const together = togetherTurn(snA, snB);
+  if (together) out.push(`- 함께 바뀌는 때: ${together}`);
+  out.push('### 앞으로 함께 가야 할 방향');
+  for (const e of pairs) out.push(`- ${e.g}`);
+  for (const [name, sn] of [[nA, snA], [nB, snB]]) if (sn) out.push(`- ${j(name, '이')} 지금 힘을 쓸 곳: ${sn.cur.e.g}`);
+  out.push('### 알아 두면 좋은 서로');
+  for (const [name, es, r] of [[nA, esA, rA], [nB, esB, rB]]) {
+    out.push(`${name} — 성격: ${lines(es, 'p', 2).join(' ')} / 사랑할 때: ${lines(es, 'r', 2).join(' ')}`);
+    const want = ziweiPalaceEntry(r, 'spouse');
+    if (want) out.push(`${name} — 끌리는 사람: ${want.h}`);
+  }
   for (const [a, b] of same.slice(0, 3)) out.push(`닮은 점 — ${nA}: ${a} / ${nB}: ${b}`);
-  for (const [a, b] of clash.slice(0, 3)) out.push(`부딪치는 점 — ${nA}: ${a} / ${nB}: ${b}`);
+  out.push('### 조심해야 할 것');
+  for (const [a, b] of clash.slice(0, 3)) out.push(`부딪치기 쉬운 점 — ${nA}: ${a} / ${nB}: ${b}`);
+  for (const [a, b] of money.clash.slice(0, 2)) out.push(`돈 앞에서 엇갈리는 점 — ${nA}: ${a} / ${nB}: ${b}`);
+  for (const e of pairs) out.push(`- ${e.c}`);
+  for (const [name, sn, es] of [[nA, snA, esA], [nB, snB, esB]]) {
+    const t = [sn?.cur?.e?.c, lines(es, 'c', 1)[0]].filter(Boolean).join(' ');
+    if (t) out.push(`- ${j(name, '이')} 지금 조심할 것: ${t}`);
+  }
   out.push('');
   return out;
 }
@@ -828,6 +863,7 @@ export function buildCompatContext(formA, formB, c, forecastA = null, forecastB 
   }
 
   out.push('## 읽는 법');
+  out.push(FUTURE_RULE.replace('성격을 물어도', '두 사람이 어떤지 물어도'));
   out.push('위 값은 모두 천문 계산으로 구한 것이다. 간지·절기·음력·행성 위치를 다시 계산하지 말고 그대로 쓸 것.');
   out.push('체계마다 잣대가 다르다. 베딕 아쉬타쿠타처럼 혼인을 전제로 만든 잣대는 박하고, 요일 하나로 보는 체계는 후하다. 점수를 가로로 견주지 말 것.');
   out.push('궁합은 두 사람 사이의 경향이지 판결이 아니다. 헤어지라거나 결혼하라고 말하지 말 것. 시기를 물으면 위의 자료를 근거로 답할 것 — 달을 물으면 결혼 시기 자료에서, 날짜를 물으면 두 사람에게 같이 맞는 날 표에서 실제 날짜와 요일을 적어 두세 개를 골라 주고 피할 날도 함께 적을 것. "시기 자료가 없다"거나 두 사람 개인 운세를 따로 보라고 말하지 말 것.');
@@ -838,5 +874,6 @@ export function buildCompatContext(formA, formB, c, forecastA = null, forecastB 
 /** 궁합 화면을 열었을 때 자동으로 받는 요청문 */
 export const COMPAT_PROMPT =
   '위 결과를 바탕으로 두 사람의 궁합을 풀어 주세요. ' +
-  '소제목을 넣어 (1) 서로 끌리는 지점 (2) 부딪치기 쉬운 지점 (3) 오래 가려면 무엇이 필요한지 순으로 정리하고, ' +
+  '소제목을 넣어 (1) 지금 두 사람은 (2) 앞으로 함께 가야 할 방향 (3) 알아 두면 좋은 서로 (4) 조심해야 할 것 순으로 정리하고, ' +
+  '각 소제목은 두 사람이 앞으로 무엇을 하면 좋은지 구체적인 행동으로 끝내 주세요. ' +
   '열일곱 체계가 어긋나는 지점이 있으면 그것도 짚어 주세요.';

@@ -436,21 +436,12 @@ function seal(ctx, cx, cy, size) {
   ctx.restore();
 }
 
-/** 자물쇠 아이콘 */
-function lock(ctx, x, y, s, color) {
-  ctx.save();
-  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = s * 0.14;
-  ctx.beginPath(); ctx.arc(x + s / 2, y + s * 0.42, s * 0.26, Math.PI, 0); ctx.stroke();
-  roundRect(ctx, x + s * 0.12, y + s * 0.42, s * 0.76, s * 0.58, s * 0.12); ctx.fill();
-  ctx.restore();
-}
-
 /**
  * 공유 카드 — 9:16(1080×1920, 스토리 비율).
  * 위: 타입 이름·해시태그 / 가운데: 나를 보여 주는 칸들(짧은 것은 두 칸씩) /
- * 아래: 가장 가까운 일 하나와 잠긴 항목들(사이트에서 이어서 볼 수 있는 것) / 맨 아래: "나는 어떤 타입일까?" 안내.
+ * 아래: 앞으로 찾아올 일 하나(언제·무슨 일·한 줄 풀이) / 맨 아래: "나는 어떤 타입일까?" 안내.
  * 카드를 본 사람이 궁금해서 자기 카드를 만들러 오게 하는 것이 목적이다.
- * @param {{kicker, type, tags, items: Array<{label, text}>, teaser?: {label, head, sub, locked}, cta?: {head, sub}}} card
+ * @param {{kicker, type, tags, items: Array<{label, text}>, teaser?: {label, head, sub}, cta?: {head, sub}}} card
  * @returns {Promise<HTMLCanvasElement>}
  */
 export async function buildShareCard({ kicker, type, tags = [], items = [], teaser = null, cta = null }) {
@@ -517,10 +508,9 @@ export async function buildShareCard({ kicker, type, tags = [], items = [], teas
   const teaserLines = teaser?.head ? wrapWords(ctx, teaser.head, IW - 80).slice(0, 2) : [];
   ctx.font = `500 28px ${SANS}`;
   const subLines = teaser?.head && teaser?.sub ? wrapWords(ctx, teaser.sub, IW - 80).slice(0, 2) : [];
-  const locked = teaser?.locked?.slice(0, 4) ?? [];
-  const teaserH = teaser
-    ? 40 + 26 + 18 + teaserLines.length * 48 + subLines.length * 42 + (teaserLines.length ? 24 : 0) + locked.length * 54 + 30 : 0;
-  const bottomTop = H - 60 - ctaH - (teaser ? teaserH + 28 : 0);
+  const hasTeaser = teaserLines.length > 0;
+  const teaserH = hasTeaser ? 40 + 26 + 18 + teaserLines.length * 48 + subLines.length * 42 + 34 : 0;
+  const bottomTop = H - 60 - ctaH - (hasTeaser ? teaserH + 28 : 0);
 
   // ── 나를 보여 주는 칸들 — 짧은 것은 두 칸씩, 남은 높이에 맞는 가장 큰 글자 ──
   const GAP = 18, PAD = 30, LABEL = 26, LH = 1.5;
@@ -563,31 +553,18 @@ export async function buildShareCard({ kicker, type, tags = [], items = [], teas
     y += rh + gapY;
   }
 
-  // ── 잠긴 칸 — 가장 가까운 일 하나만 보여 주고, 나머지는 사이트에 있다고 알린다 ──
+  // ── 앞으로 찾아올 일 하나 — 언제 · 무슨 일 · 한 줄 풀이 ──
   y = bottomTop;
-  if (teaser) {
+  if (hasTeaser) {
     ctx.fillStyle = SC.teal; roundRect(ctx, X, y, IW, teaserH, 26); ctx.fill();
     let ty = y + 40 + 22;
     ctx.fillStyle = '#F3D9A4'; ctx.font = `700 26px ${SANS}`;
-    ctx.fillText(teaserLines.length ? teaser.label : '이어서 볼 수 있는 것', X + 40, ty);
+    ctx.fillText(teaser.label, X + 40, ty);
     ty += 18;
     ctx.fillStyle = '#FFFFFF'; ctx.font = `700 34px ${SANS}`;
     for (const line of teaserLines) { ty += 42; ctx.fillText(line, X + 40, ty); ty += 6; }
     ctx.fillStyle = 'rgba(255,255,255,0.82)'; ctx.font = `500 28px ${SANS}`;
     for (const line of subLines) { ty += 38; ctx.fillText(line, X + 40, ty); ty += 4; }
-    if (teaserLines.length) ty += 24;
-    // 잠긴 항목 위 구분선
-    if (teaserLines.length) { ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(X + 40, ty - 10, IW - 80, 1.5); }
-    for (const t of locked) {
-      ty += 14;
-      lock(ctx, X + 40, ty, 28, 'rgba(255,255,255,0.85)');
-      ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.font = `600 29px ${SANS}`;
-      ctx.fillText(t, X + 84, ty + 25);
-      // 가려 둔 내용처럼 보이는 막대
-      const bx = X + 84 + ctx.measureText(t).width + 22, bw = X + IW - 40 - bx;
-      if (bw > 40) { ctx.fillStyle = 'rgba(255,255,255,0.16)'; roundRect(ctx, bx, ty + 6, bw, 22, 11); ctx.fill(); }
-      ty += 40;
-    }
     y += teaserH + 28;
   }
 

@@ -209,14 +209,8 @@ export function buildHighlights(r, f = null) {
       ['가까워져야 보이는 나', closeSide ?? summary.find((x) => x.key === 'rare')?.text],
       [sn?.cur ? `지금 · ${sn.cur.from}~${sn.cur.to}년` : '지금 나의 시기', sn?.cur?.e ? `${firstSentence(sn.cur.e.h)} ${sn.cur.e.g}` : ''],
     ]),
-    // 궁금하게 만드는 칸 — 가장 가까운 일 하나만 보여 주고, 나머지는 사이트에 있다고 알린다
-    teaser: {
-      ...teaserOf(near, now),
-      locked: [
-        events.length > 1 ? `앞으로 마주할 중요한 일 ${events.length}가지` : '앞으로 마주할 중요한 일',
-        '돈이 새기 쉬운 패턴', '지금의 10년과 다음 10년', '사랑과 가족 · 건강',
-      ],
-    },
+    // 앞으로 찾아올 일 하나 — 언제·무슨 일·한 줄 풀이
+    teaser: teaserOf(near, now),
     cta: { head: '나는 어떤 타입일까?', sub: '생년월일만 넣으면 무료 · 17가지 점술이 함께 보는 나' },
   };
 
@@ -296,13 +290,7 @@ export function buildPairHighlights({ A, B, d, rA }) {
       [`${B}님이 바라는 것`, d.wants?.b],
       [d.married ? '재산을 모으는 방법' : '함께 산다면 재산은', d.home?.find(([k]) => k.startsWith('재산'))?.[1]],
     ]),
-    teaser: {
-      ...teaserOf(near, now),
-      locked: [
-        d.events?.length > 1 ? `앞으로 두 사람이 마주할 일 ${d.events.length}가지` : '앞으로 두 사람이 마주할 일',
-        d.married ? '아이가 주는 의미' : '아이는 낳으면 좋을까, 몇 명이 좋을까', '육아는 누가 · 둘 다 일할까', '서로 고쳐야 할 점',
-      ],
-    },
+    teaser: teaserOf(near, now),
     cta: { head: '우리 둘은 어떤 궁합일까?', sub: '두 사람 생년월일만 넣으면 무료 · 연애·결혼·자녀까지' },
   };
   return {

@@ -183,13 +183,13 @@ test('궁합 요약이 낸 문장은 아래 리포트에서 다시 나오지 않
 /* ── 공유 카드 · 사건 문장 반복 ───────────────────────────── */
 import { eventWhat } from '../../public/unse/src/report.js';
 
-test('공유 카드는 타입 이름·해시태그·여러 칸·잠긴 칸·안내가 있고 출생 정보가 없다', () => {
+test('공유 카드는 타입 이름·해시태그·여러 칸·안내가 있고(잠긴 항목 없이) 출생 정보가 없다', () => {
   for (const { form, h } of ALL) {
     const c = h.shareCard;
     assert.ok(c.type && !/undefined/.test(c.type), c.type);
     assert.ok(c.tags.length >= 1 && c.tags.length <= 3 && c.tags.every((t) => t.startsWith('#')));
     assert.ok(c.items.length >= 5, `칸 ${c.items.length}개`);
-    assert.ok(c.teaser.locked.length >= 3 && c.cta.head);
+    assert.ok(c.cta.head && !('locked' in c.teaser));
     assert.equal(new Set(c.items.map((x) => x.text)).size, c.items.length);
     const all = JSON.stringify(c);
     assert.ok(!all.includes(String(form.year)) && !all.includes(form.birthPlace));

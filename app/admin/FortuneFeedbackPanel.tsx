@@ -56,26 +56,16 @@ export default function FortuneFeedbackPanel() {
         <p className="mt-1 text-sm text-brown-500">
           결과 칸마다 받은 👍/👎입니다. 👎 비율이 높은 칸이 위에 옵니다. 생년월일·이름은 저장하지 않습니다.
         </p>
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[420px] text-sm">
-            <thead>
-              <tr className="text-left text-xs text-brown-400">
-                <th className="py-2 pr-3">칸</th><th className="py-2 pr-3">👍</th><th className="py-2 pr-3">👎</th><th className="py-2">👎 비율</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sections.map((s) => (
-                <tr key={s.section} className="border-t border-cream-100">
-                  <td className="py-2 pr-3 font-medium text-brown-800">{s.section}</td>
-                  <td className="py-2 pr-3 text-brown-600">{s.up}</td>
-                  <td className="py-2 pr-3 text-brown-600">{s.down}</td>
-                  <td className="py-2 text-brown-600">{Math.round(s.rate * 100)}%</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {sections.length === 0 && <p className="py-6 text-center text-sm text-brown-400">아직 받은 피드백이 없어요</p>}
-        </div>
+        {/* 표 대신 줄 목록 — 휴대폰에서 칸 이름 열이 보이지 않았다 */}
+        <ul className="mt-4 divide-y divide-cream-100">
+          {sections.map((s) => (
+            <li key={s.section} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2.5 text-sm">
+              <span className="min-w-0 flex-1 font-medium text-brown-800">{s.section}</span>
+              <span className="shrink-0 text-brown-600">👍 {s.up} · 👎 {s.down} · <b className="text-brown-800">👎 {Math.round(s.rate * 100)}%</b></span>
+            </li>
+          ))}
+        </ul>
+        {sections.length === 0 && <p className="py-6 text-center text-sm text-brown-400">아직 받은 피드백이 없어요</p>}
       </div>
 
       <div className="rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">

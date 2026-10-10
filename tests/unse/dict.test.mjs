@@ -95,3 +95,13 @@ test('평생 성향 사전(자미 명궁·관록궁)은 "이직·업종 변경�
     }
   }
 });
+
+test('인성(받는 기운) 문장은 "배우는 것을 좋아한다"는 취향으로 단정하지 않는다', async () => {
+  // 피드백: 이 문장을 받은 사람이 "배우는 걸 싫어한다". 인성의 본뜻은 받음·도움·문서·자격이지 공부 취향이 아니다
+  const { readFile, readdir } = await import('node:fs/promises');
+  const dir = new URL('../../public/unse/dict/', import.meta.url);
+  for (const f of (await readdir(dir)).filter((x) => /^saju-/.test(x))) {
+    const t = await readFile(new URL(f, dir), 'utf8');
+    assert.doesNotMatch(t, /배우는 것을 좋아|배우기를 좋아|공부를 좋아/, f);
+  }
+});

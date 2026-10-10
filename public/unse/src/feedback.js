@@ -22,6 +22,8 @@ function sectionName(el) {
 export function snippetOf(el, names = []) {
   const clone = el.cloneNode(true);
   clone.querySelectorAll('.fb, summary, .rp-card-h').forEach((x) => x.remove());
+  // 칸 이름과 문장이 붙지 않게 덩어리마다 띄어 쓴다(예: '가장 강하게 나타나는 성향신중하고…')
+  clone.querySelectorAll('p, li, b, h4, dt, dd, small, article, div').forEach((x) => x.append(' '));
   let t = clone.textContent.replace(/\s+/g, ' ').trim();
   for (const n of names.filter((x) => x && x.length >= 1)) t = t.split(n).join('○○');
   return t.slice(0, 600);

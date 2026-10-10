@@ -110,3 +110,8 @@ test('피드백 한 줄 입력은 👎를 누르기 전에는 숨어 있다', as
   const css = await read('assets/style.css');
   assert.match(css, /\.fb-form\[hidden\] \{ display: none; \}/);
 });
+
+test('궁합 전용 칸(결혼 여부)은 숨김 속성이 display:grid 에 덮이지 않는다', async () => {
+  const css = await read('assets/style.css');
+  assert.match(css, /\.pair-only\[hidden\][^{]*\{ display: none; \}/);
+});

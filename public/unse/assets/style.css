@@ -1344,3 +1344,6 @@ input, select, textarea, button.go, .ask-btn, .mode, .lt, .ft, .planned span {
 .basis-note { margin: 12px 0 0; padding: 12px 14px; border: 1px solid var(--line); border-left: 3px solid var(--stamp); border-radius: var(--radius-sm); background: var(--bg-soft); font-size: 14px; line-height: 1.7; color: var(--ink-2); }
 .basis-note p { margin: 4px 0 0; }
 .basis-note .basis-sub { font-size: 13px; color: var(--ink-3); }
+
+/* hidden 속성이 display:grid·flex 에 덮이지 않게 — 개인 운세에서 '결혼 여부' 칸이 보이던 문제 */
+.pair-only[hidden], .form-row[hidden] { display: none; }

@@ -96,8 +96,10 @@ export function analyze(input) {
 
   // 3) 삼전 발용 — 규칙을 순서대로 적용한다
   const el = (b) => BRANCH_ELEMENT[b];
-  const jeok = courses.filter((c) => overcomes(el(c.upper), el(c.lower)));   // 상이 하를 극함
-  const geuk = courses.filter((c) => overcomes(el(c.lower), el(c.upper)));   // 하가 상을 극함
+  // 하적상(下賊上)이 '적(賊)', 상극하(上剋下)가 '극(剋)'이다. 적이 있으면 적을 먼저 쓴다(有賊先用賊).
+  // (예전에는 둘을 바꿔 적어 상극하를 먼저 써서, 둘이 함께 있는 과에서 초전이 달라졌다)
+  const jeok = courses.filter((c) => overcomes(el(c.lower), el(c.upper)));   // 하가 상을 극함 — 賊
+  const geuk = courses.filter((c) => overcomes(el(c.upper), el(c.lower)));   // 상이 하를 극함 — 剋
 
   let first = null;
   let style = '';

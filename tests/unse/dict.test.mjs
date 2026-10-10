@@ -163,3 +163,57 @@ test('자미두수: 명궁이 子·丑궁이어도 오호둔 궁간이 맞다 (�
   assert.match(f('자미성').value, /卯/);
   assert.match(`${f('명궁').value} ${f('명궁').note ?? ''}`, /태양/);
 });
+
+/* ── 전수조사에서 고친 계산 (2026-10) ─────────────────────────── */
+
+test('천덕귀인: 正丁 二申 三壬 四辛 五亥 六甲 七癸 八寅 九丙 十乙 子巳 丑庚', async () => {
+  const { sinsalOf } = await import('../../public/unse/src/core/sinsal.js');
+  const me = (monthBranch) => ({ dayStem: 0, dayBranch: 0, monthBranch, yearBranch: 0 });
+  const has = (mb, day) => sinsalOf(me(mb), day).includes('천덕');
+  // 천간으로 보는 달: 寅丁 辰壬 巳辛 未甲 申癸 戌丙 亥乙 丑庚
+  for (const [mb, stem] of [[2, 3], [4, 8], [5, 7], [7, 0], [8, 9], [10, 2], [11, 1], [1, 6]]) {
+    assert.ok(has(mb, { stem, branch: 99 }), `월지 ${mb} 천덕 천간 ${stem}`);
+  }
+  // 지지로 보는 달: 卯申 午亥 酉寅 子巳
+  for (const [mb, branch] of [[3, 8], [6, 11], [9, 2], [0, 5]]) {
+    assert.ok(has(mb, { stem: 99, branch }), `월지 ${mb} 천덕 지지 ${branch}`);
+  }
+  // 예전 틀린 값은 아니다: 寅월 辛, 巳월 乙, 申월 丁, 亥월 己
+  for (const [mb, stem] of [[2, 7], [5, 1], [8, 3], [11, 5]]) assert.ok(!has(mb, { stem, branch: 99 }));
+});
+
+test('육임 삼전: 하적상(賊)이 있으면 상극하(剋)보다 먼저 초전으로 쓴다', async () => {
+  const { readFortune } = await import('../../public/unse/src/engine.js');
+  // 1991-08-23 15:49 — 1과 寅/辰(상극하), 3과 亥/丑(하적상) → 초전 亥 · 중전 酉 · 말전 未
+  const r = readFortune({ name: 'x', year: 1991, month: 8, day: 23, hour: 15, minute: 49, birthPlace: '서울', homePlace: '서울', gender: 'female' });
+  const f = (k) => r.results.find((x) => x.id === 'yukim').facts.find((x) => x.label === k)?.value ?? '';
+  assert.match(f('과체'), /賊/);
+  assert.match(f('초전'), /^亥/);
+  assert.match(f('중전'), /^酉/);
+  assert.match(f('말전'), /^未/);
+});
+
+test('토정비결: 세는나이는 음력 해, 중괘 월대소·하괘 일진은 올해 달력으로', async () => {
+  const { readFortune } = await import('../../public/unse/src/engine.js');
+  const r = readFortune({ name: 'x', year: 1991, month: 8, day: 23, hour: 15, minute: 49, birthPlace: '서울', homePlace: '서울', gender: 'female' },
+    { now: new Date('2026-10-10T03:00:00Z') });
+  const note = (k) => r.results.find((x) => x.id === 'tojeong').facts.find((x) => x.label === k)?.note ?? '';
+  assert.match(note('상괘'), /세는나이 36 \+ 태세수 16/);
+  assert.match(note('중괘'), /월건 丙申 수 14 \+ 올해 월대소/);
+  assert.match(note('하괘'), /올해 생일 일진수/);
+  // 1월생(설날 전)은 음력 해로 센다 — 1992-01-20 은 음력 1991년 12월
+  const jan = readFortune({ name: 'x', year: 1992, month: 1, day: 20, hour: 9, minute: 0, birthPlace: '서울', homePlace: '서울', gender: 'male' },
+    { now: new Date('2026-10-10T03:00:00Z') });
+  const n2 = jan.results.find((x) => x.id === 'tojeong').facts.find((x) => x.label === '상괘')?.note ?? '';
+  assert.match(n2, /세는나이 36 /);
+});
+
+test('매화역수(주역): 연수는 사주 연지(입춘)가 아니라 음력 해(설날)의 지지로 센다', async () => {
+  const { hexOf } = await import('../../public/unse/src/systems/juyeok.js');
+  // 1985-02-15 생: 입춘(2/4) 뒤라 사주 연지는 丑, 설날(2/20) 전이라 음력 해는 1984 甲子
+  const x = { ziweiYear: 1984, yearBranch: 1, lunar: { year: 1984, month: 12, day: 26 }, timeKnown: false, hourBranch: 0 };
+  const byLunar = hexOf(x), byIpchun = hexOf({ ...x, ziweiYear: undefined, lunar: { month: 12, day: 26 } });
+  // 子=1 로 세면 1+12+26=39 → 상괘 7, 丑=2 로 세면 40 → 상괘 8
+  assert.equal(byLunar.upper, 6);
+  assert.equal(byIpchun.upper, 7);
+});

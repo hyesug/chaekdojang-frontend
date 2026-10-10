@@ -59,7 +59,8 @@ export function horaryCast(at = new Date()) {
   const y = kst.getFullYear(), m = kst.getMonth() + 1, d = kst.getDate();
   const lunar = solarToLunar(y, m, d);
 
-  const yearNum = ((y - 4) % 12 + 12) % 12 + 1;        // 子=1 … 亥=12
+  // 매화역수의 연수는 음력 해(설날 기준)의 지지 — 양력 해로 세면 설날 전 1·2월에 한 해 어긋난다
+  const yearNum = ((lunar.year - 4) % 12 + 12) % 12 + 1;        // 子=1 … 亥=12
   const hourNum = hourBranchOf(kst.getHours()) + 1;
   const base = yearNum + lunar.month + lunar.day;
 

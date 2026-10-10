@@ -15,8 +15,7 @@ import { SIGNS } from '../systems/astrology.js';
 import { chart as vedicChart } from '../hires/vedicExt.js';
 import { nakshatraOf } from '../systems/sukyo.js';
 import { starOfYear, getsumeiOf } from '../systems/gujeong.js';
-import { HEXAGRAM_TABLE } from '../systems/juyeok.js';
-import { modFrom1 } from '../systems/_base.js';
+import { hexOf } from '../systems/juyeok.js';
 import { DICT_SHARE } from './data/rarity.js';
 import { DICT_FILES } from './dictFiles.js';
 
@@ -102,10 +101,8 @@ export function dictKeys(r) {
     add('gujeong', `월명|${getsumeiOf(hon, chart.sector?.index ?? 0)}`, '구성학(달)');
   });
   safe(() => {
-    const base = input.yearBranch + 1 + input.lunar.month + input.lunar.day;
-    const up = modFrom1(base, 8) - 1;
-    const lo = modFrom1(base + (input.timeKnown ? input.hourBranch + 1 : 1), 8) - 1;
-    add('juyeok', HEXAGRAM_TABLE[up][lo], '주역');
+    // 주역 체계(systems/juyeok.js)와 같은 셈 — 매화역수, 음력 해 기준
+    add('juyeok', hexOf(input).num, '주역');
   });
   safe(() => {
     const lp = titleOf(r, '카발라', /라이프 패스/).match(/라이프 패스 (\d+)/)?.[1];

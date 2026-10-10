@@ -135,7 +135,10 @@ function trigramFromBits(bits) {
 export function analyze(input) {
   const { lunar, yearBranch, hourBranch, timeKnown } = input;
 
-  const yearNum = yearBranch + 1;               // 子=1 … 亥=12
+  // 매화역수의 연수는 음력 해(설날 기준)의 지지다. 사주 연지(입춘 기준)를 쓰면
+  // 입춘과 설날 사이에 태어난 사람이 한 해 어긋난다.
+  const lunarYear = input.ziweiYear ?? lunar?.year;
+  const yearNum = (lunarYear != null ? ((lunarYear - 4) % 12 + 12) % 12 : yearBranch) + 1;   // 子=1 … 亥=12
   const hourNum = timeKnown ? hourBranch + 1 : 1;
   const base = yearNum + lunar.month + lunar.day;
 
@@ -222,7 +225,8 @@ export function analyze(input) {
 // 관계는 위아래가 만나 이루는 하나의 형국이라고 보는 것이다.
 
 export function hexOf(x) {
-  const yearNum = x.yearBranch + 1;
+  const ly = x.ziweiYear ?? x.lunar?.year;     // 음력 해(설날 기준) — analyze 와 같은 잣대
+  const yearNum = (ly != null ? ((ly - 4) % 12 + 12) % 12 : x.yearBranch) + 1;
   const hourNum = x.timeKnown ? x.hourBranch + 1 : 1;
   const base = yearNum + x.lunar.month + x.lunar.day;
   const upper = modFrom1(base, 8) - 1;

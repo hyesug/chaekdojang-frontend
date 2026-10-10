@@ -5,8 +5,8 @@
  * 상·중·하 세 개의 수를 뽑아 144괘 중 하나를 고른다.
  *
  *   상괘 = (세는나이 + 태세수) ÷ 8 의 나머지   … 그 해의 큰 흐름
- *   중괘 = (생월 + 그 달의 대소) ÷ 6 의 나머지  … 달의 결
- *   하괘 = (생일 + 일진수) ÷ 3 의 나머지        … 마무리
+ *   중괘 = (올해 생월 월건수 + 올해 그 달의 대소) ÷ 6 의 나머지  … 달의 결
+ *   하괘 = (음력 생일 + 올해 생일날 일진수) ÷ 3 의 나머지        … 마무리
  *
  * 셋 다 간지에서 나온 수를 쓴다. 중괘만 음력 월 숫자를 쓰면 잣대가
  * 어긋난다.
@@ -22,6 +22,7 @@
 import { yearPillar, STEMS, BRANCHES } from '../core/ganzhi.js';
 import { j } from '../core/josa.js';
 import { toJDN } from '../core/astro.js';
+import { lunarToSolar } from '../core/lunar.js';
 import { result, modFrom1 } from './_base.js';
 
 export const meta = {
@@ -79,16 +80,34 @@ const MONTH_TONE = [
   '지출이 있습니다. 큰돈 쓸 일을 미리 잡아두세요.',
 ];
 
+/**
+ * 당년(운을 보는 해)의 음력 생월·생일 — 토정비결은 태어난 해가 아니라 **올해 달력**으로 괘를 뽑는다.
+ *   중괘의 월대소 = 올해 생월이 큰달(30)인지 작은달(29)인지
+ *   하괘의 일진   = 올해 음력 생일날의 일진
+ * 윤달생은 평달로, 올해 생월에 없는 30일생은 그달 그믐으로 본다.
+ * (예전에는 둘 다 태어난 해의 것을 써서 괘가 해마다 바뀌어야 할 자리가 고정돼 있었다)
+ */
+function thisYearBirth(lunarYear, lunar) {
+  let big = true;
+  try { lunarToSolar(lunarYear, lunar.month, 30, false); } catch { big = false; }
+  const s = lunarToSolar(lunarYear, lunar.month, Math.min(lunar.day, big ? 30 : 29), false);
+  return { big, jdn: toJDN(s.y, s.m, s.d) };
+}
+
 export function analyze(input) {
   const { year, month, day, lunar, currentYear, jdUT } = input;
 
   // 토정비결은 음력과 세는나이를 쓴다
-  const koreanAge = currentYear - year + 1;
+  // 세는나이도 음력 해로 — 설날 전에 태어난 1·2월생은 양력 해로 세면 한 살 많게 나온다
+  const koreanAge = currentYear - (lunar.year ?? year) + 1;
   const taeSe = yearPillar(currentYear);
   const taeSeNum = STEM_NUM[taeSe.stem] + BRANCH_NUM[taeSe.branch];
 
   // 일진 — 생일의 간지
-  const jdn = toJDN(year, month, day);
+  let tyb = null;
+  try { tyb = thisYearBirth(currentYear, lunar); } catch { /* 변환 실패 시 태어난 날로 */ }
+  const jdn = tyb?.jdn ?? toJDN(year, month, day);
+  const bigMonth = tyb?.big ?? lunar.isBigMonth;
   const dayStem = (jdn + 9) % 10;
   const dayBranch = (jdn + 1) % 12;
   const iljinNum = STEM_NUM[dayStem] + BRANCH_NUM[dayBranch];
@@ -102,7 +121,7 @@ export function analyze(input) {
   const wolGeonNum = STEM_NUM[wolGeonStem] + BRANCH_NUM[wolGeonBranch];
 
   const upper = modFrom1(koreanAge + taeSeNum, 8);
-  const middle = modFrom1(wolGeonNum + (lunar.isBigMonth ? 30 : 29), 6);
+  const middle = modFrom1(wolGeonNum + (bigMonth ? 30 : 29), 6);
   const lower = modFrom1(lunar.day + iljinNum, 3);
 
   const gwaeNo = upper * 100 + middle * 10 + lower;
@@ -122,9 +141,9 @@ export function analyze(input) {
       note: `제${gwaeNo}괘 · ${U.title} (문구는 원전을 옮긴 것이 아니라 이 사이트에서 새로 쓴 것)` },
     { label: '상괘', value: String(upper), note: `세는나이 ${koreanAge} + 태세수 ${taeSeNum} → ÷8` },
     { label: '중괘', value: String(middle),
-      note: `월건 ${STEMS[wolGeonStem]}${BRANCHES[wolGeonBranch]} 수 ${wolGeonNum} + 월대소 ${lunar.isBigMonth ? 30 : 29} → ÷6` },
+      note: `월건 ${STEMS[wolGeonStem]}${BRANCHES[wolGeonBranch]} 수 ${wolGeonNum} + 올해 월대소 ${bigMonth ? 30 : 29} → ÷6` },
     { label: '하괘', value: String(lower),
-      note: `음력 ${lunar.day}일 + 일진수 ${iljinNum} → ÷3 (일진수는 선천수 ${STEMS[dayStem]}+${BRANCHES[dayBranch]})` },
+      note: `음력 ${lunar.day}일 + 올해 생일 일진수 ${iljinNum} → ÷3 (일진 ${STEMS[dayStem]}${BRANCHES[dayBranch]}의 선천수)` },
     { label: '태세', value: taeSe.hanja, note: `${currentYear}년 · ${taeSe.kr}` },
     { label: '일진', value: STEMS[dayStem] + BRANCHES[dayBranch], note: '태어난 날의 간지' },
   ];

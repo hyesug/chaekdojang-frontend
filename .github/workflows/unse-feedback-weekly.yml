@@ -79,8 +79,10 @@ jobs:
 
       - name: 고친 범위 확인 · 테스트 · 커밋 · 운영 반영
         if: steps.report.outputs.candidates != '0'
+        env:
+          FORTUNE_FEEDBACK_EXPORT_TOKEN: ${{ secrets.FORTUNE_FEEDBACK_EXPORT_TOKEN }}
         run: |
-          rm -f feedback-report.json
+          mv feedback-report.json "$RUNNER_TEMP/feedback-report.json"
           changed=$(git status --porcelain | awk '{print $2}')
           if [ -z "$changed" ]; then echo "고친 문장 없음(모두 보류)" | tee -a "$GITHUB_STEP_SUMMARY"; exit 0; fi
           bad=$(echo "$changed" | grep -v -E '^(public/unse/dict/[a-z0-9-]+\.json|tests/unse/dict\.test\.mjs)$' || true)
@@ -95,5 +97,7 @@ jobs:
             -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
           git push origin HEAD:main
           git push origin HEAD:staging
+          # 고친 문장에 달린 피드백은 관리자 화면에서 숨긴다(지우지 않고 '처리 완료')
+          node scripts/fortune-feedback-report.mjs --resolve-fixed "$RUNNER_TEMP/feedback-report.json" | tee -a "$GITHUB_STEP_SUMMARY"
           echo "반영 커밋: $(git rev-parse --short HEAD)" >> "$GITHUB_STEP_SUMMARY"
           git show --stat HEAD >> "$GITHUB_STEP_SUMMARY"

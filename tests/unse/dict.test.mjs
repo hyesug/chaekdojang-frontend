@@ -135,3 +135,15 @@ test('주간 자동 수정: 같은 출처에 👎 3개·60% 이상일 때만 고
   assert.equal(ok.candidates.length, 1);
   assert.equal(ok.candidates[0].key, '파군');
 });
+
+test('주간 자동 수정: 고친(사전에서 사라진) 문장의 피드백만 처리 완료 대상으로 고른다', async () => {
+  const { fixedIds } = await import('../../scripts/fortune-feedback-report.mjs');
+  const { buildSentenceIndex } = await import('../../public/unse/src/semantic/sourceTrace.js');
+  const before = { candidates: [
+    { text: '예전에 단정하던 문장이 여기 들어 있습니다', ids: [1, 2] },
+    { text: '아직 사전에 남아 있는 문장이 여기 있습니다', ids: [3] },
+  ] };
+  const index = buildSentenceIndex({ x: { k: { p: '아직 사전에 남아 있는 문장이 여기 있습니다.' } } });
+  assert.deepEqual(fixedIds(before, index).sort(), [1, 2]);
+  assert.deepEqual(fixedIds({}, index), []);
+});

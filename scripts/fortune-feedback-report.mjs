@@ -3,6 +3,8 @@
  * 운세 피드백 → 고칠 사전 문장 후보.
  *
  *   node scripts/fortune-feedback-report.mjs [--json]
+ *   node scripts/fortune-feedback-report.mjs --resolve-fixed <고치기 전 --json 결과 파일>
+ *     — 사전 문장을 고친 뒤, 고치기 전 후보 가운데 그 문장이 사전에서 사라진 것의 피드백을 '처리 완료'로 바꾼다
  *
  * 운영 API 의 피드백 내보내기(GET /api/internal/fortune-feedback, 전용 토큰)를 읽어
  * 저장된 문장을 운세 사전과 맞대고(semantic/sourceTrace.js), 출처마다 👍/👎 를 센다.
@@ -44,8 +46,9 @@ export function summarize(items, index) {
   for (const x of items) {
     for (const s of traceSources(x.snippet ?? '', index)) {
       const k = `${s.file}|${s.key}|${s.field}`;
-      const v = by.get(k) ?? { file: s.file, key: s.key, field: s.field, label: s.label, text: s.text, up: 0, down: 0, comments: [] };
+      const v = by.get(k) ?? { file: s.file, key: s.key, field: s.field, label: s.label, text: s.text, up: 0, down: 0, comments: [], ids: [] };
       if (x.verdict === 'down') { v.down += 1; if (x.comment) v.comments.push(x.comment); } else v.up += 1;
+      if (x.id != null) v.ids.push(x.id);
       by.set(k, v);
     }
   }
@@ -59,7 +62,28 @@ export function summarize(items, index) {
   };
 }
 
+/** 고치기 전 후보 가운데, 그 문장이 지금 사전에 더는 없는(=고친) 것의 피드백 id */
+export function fixedIds(before, index) {
+  const now = new Set(index.map((x) => x.text));
+  return [...new Set((before?.candidates ?? []).filter((c) => !now.has(c.text)).flatMap((c) => c.ids ?? []))];
+}
+
+async function resolveFixed(file) {
+  const before = JSON.parse(readFileSync(file, 'utf8'));
+  const ids = fixedIds(before, loadIndex());
+  if (!ids.length) { console.log('처리 완료로 바꿀 피드백 없음'); return; }
+  const res = await fetch(`${API}/api/internal/fortune-feedback/resolve`, {
+    method: 'POST',
+    headers: { 'X-Fortune-Feedback-Token': token(), 'content-type': 'application/json' },
+    body: JSON.stringify({ ids }),
+  });
+  if (!res.ok) throw new Error(`처리 완료 표시 실패 (HTTP ${res.status})`);
+  console.log(`고친 문장의 피드백 ${(await res.json())?.data ?? ids.length}건을 처리 완료로 바꿨습니다`);
+}
+
 async function main() {
+  const i = process.argv.indexOf('--resolve-fixed');
+  if (i > 0) { await resolveFixed(process.argv[i + 1]); return; }
   const res = await fetch(`${API}/api/internal/fortune-feedback?limit=500`, { headers: { 'X-Fortune-Feedback-Token': token() } });
   if (!res.ok) throw new Error(`피드백을 읽지 못했습니다 (HTTP ${res.status})`);
   const items = (await res.json())?.data?.recent ?? [];

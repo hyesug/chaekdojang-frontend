@@ -1076,10 +1076,14 @@ function pairBookNeeds({ married, clash, money, rec }) {
   return out.slice(0, 3);
 }
 
+/** 사람마다 다른 책을 고르게 하는 값 — 출생 순간(분 단위)에서 만든다 */
+const bookSeed = (r) => Math.abs(Math.round((r?.input?.jdUT ?? 0) * 1440)) % 100003;
+
 /** 책 카드의 자리 — 주제와 이유만 담아 두고 책은 화면이 뜬 뒤 채운다 */
-function bookCard(icon, title, needs) {
+function bookCard(icon, title, needs, seed = 0) {
   if (!needs?.length) return '';
-  return `<section class="rp-card rp-books-card" hidden data-book-needs="${esc(JSON.stringify(needs))}">`
+  // seed — 같은 주제라도 사람마다 다른 책이 나오게(같은 사람은 늘 같은 책). 출생 순간(율리우스일)에서 만든다
+  return `<section class="rp-card rp-books-card" hidden data-book-seed="${Number(seed) || 0}" data-book-needs="${esc(JSON.stringify(needs))}">`
     + `<h3 class="rp-card-h"><span aria-hidden="true">${icon}</span> ${esc(title)}</h3><div class="rp-books"></div></section>`;
 }
 
@@ -1163,7 +1167,7 @@ function lifeReport(form, r, f, v) {
     + card('🚀', '앞으로 가야 할 방향', direction)
     + card('💡', '알아 두면 좋은 나', know || distinctCard(r))
     + card('⚠️', '조심해야 할 것', caution)
-    + bookCard('📚', '내 명반에 어울리는 책', bookNeeds(r, d))
+    + bookCard('📚', '내 명반에 어울리는 책', bookNeeds(r, d), bookSeed(r))
     + card('🌊', '인생의 큰 흐름 — 앞으로 십 년마다 무엇이 오는가', lifeFlow(r))
     + card('🎯', '당장 실행해볼 수 있는 Action Item 3가지',
       `<ol class="rp-act">`
@@ -1428,7 +1432,7 @@ export function renderPairReport(formA, formB, c, v, elementDist, people = {}) {
       ${card('🤝', '서로 배려할 점', pairs(d.care))}
       ${card('🔧', '각자 고쳐야 할 점', pairs(d.fix))}
       ${card('👶', '자녀와 함께라면', pairs(d.kids))}
-      ${bookCard('📚', '두 사람이 함께 읽으면 좋은 책', d.books)}
+      ${bookCard('📚', '두 사람이 함께 읽으면 좋은 책', d.books, bookSeed(rA) + bookSeed(rB))}
       <h3 class="rp-more">더 자세히 보기</h3>
       <div class="rp-chs">${chapters}</div>
       <p class="rp-note">점술은 상징적 해석 도구이며 실제 미래를 확정하지 않습니다. 결혼·이별·임신·투자·건강과 관련된 결정은

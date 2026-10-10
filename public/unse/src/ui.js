@@ -402,7 +402,8 @@ async function fillBooks(root) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 6000);
     try {
-      const res = await fetch(`/api/books/recommend?themes=${encodeURIComponent(needs.map((n) => n.theme).join(','))}&perTheme=2`,
+      const seed = Number(cardEl.dataset.bookSeed) || 0;
+      const res = await fetch(`/api/books/recommend?themes=${encodeURIComponent(needs.map((n) => n.theme).join(','))}&perTheme=2&seed=${seed}`,
         { signal: ctrl.signal });
       if (!res.ok) continue;
       const groups = (await res.json())?.data ?? [];

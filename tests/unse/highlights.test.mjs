@@ -1,0 +1,132 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+import { readFortune } from '../../public/unse/src/engine.js';
+import { readForecast } from '../../public/unse/src/forecast.js';
+import { buildView } from '../../public/unse/src/viewmodel.js';
+import { renderReport } from '../../public/unse/src/report.js';
+import { loadDicts } from '../../public/unse/src/semantic/dict.js';
+import { curate, meta, opposes, PageMemo } from '../../public/unse/src/semantic/curate.js';
+import { buildHighlights, renderHighlights } from '../../public/unse/src/highlights.js';
+
+await loadDicts();
+
+/* ── 문장 후처리기 ──────────────────────────────────────── */
+
+test('같은 뜻의 문장은 하나만 남긴다', () => {
+  const out = curate([
+    '회의에서 결정을 미루지 않고 먼저 말을 꺼내는 편입니다.',
+    '회의에서 결정을 미루지 않고 먼저 말을 꺼내는 편이에요.',
+  ], { max: 3 });
+  assert.equal(out.length, 1);
+});
+
+test('양면화 문장과 누구에게나 맞는 문장은 뺀다', () => {
+  const out = curate([
+    '조용하지만 활발하기도 합니다.',
+    '노력하면 좋은 결과가 있습니다.',
+    '마감이 다가오면 혼자 끝까지 붙잡고 정리하는 편입니다.',
+  ], { max: 3 });
+  assert.deepEqual(out.map((m) => m.text), ['마감이 다가오면 혼자 끝까지 붙잡고 정리하는 편입니다.']);
+  assert.ok(meta('조용하지만 활발하기도 합니다.').hedge);
+  assert.ok(meta('노력하면 좋은 결과가 있습니다.').generic);
+});
+
+test('구체적인 문장일수록 구체성 점수가 높다', () => {
+  const vague = meta('기운이 좋은 편입니다.');
+  const concrete = meta('약속을 잡을 때 일정을 먼저 정해 두면 대화가 쉬워집니다.');
+  assert.ok(concrete.specificity > vague.specificity);
+  assert.ok(concrete.priority > vague.priority);
+});
+
+test('PageMemo 는 한 화면에서 이미 낸 문장·반대 결 문장을 막는다', () => {
+  const memo = new PageMemo();
+  const first = curate(['마감이 다가오면 혼자 끝까지 붙잡고 정리하는 편입니다.'], { memo });
+  assert.equal(first.length, 1);
+  assert.ok(memo.has('마감이 다가오면 혼자 끝까지 붙잡고 정리하는 편입니다.'));
+  const again = curate(['마감이 다가오면 혼자 끝까지 붙잡고 정리하는 편입니다.'], { memo });
+  assert.equal(again.length, 0);
+});
+
+test('반대 결 판정은 dict.js 의 결 사전을 그대로 쓴다', () => {
+  const a = { themes: ['fast'] }, b = { themes: ['slow'] }, c = { themes: ['care'] };
+  assert.ok(opposes(a, b));
+  assert.ok(!opposes(a, c));
+});
+
+/* ── 핵심 요약 · 특이점 · 발견 ───────────────────────────── */
+
+const PEOPLE = [
+  { name: 'ㄱ', year: 1990, month: 6, day: 15, hour: 12, minute: 0, birthPlace: '서울', homePlace: '서울', gender: 'male' },
+  { name: 'ㄴ', year: 1985, month: 2, day: 3, hour: 7, minute: 30, birthPlace: '부산', homePlace: '서울', gender: 'female' },
+  { name: 'ㄷ', year: 1972, month: 11, day: 28, hour: 22, minute: 10, birthPlace: '대구', homePlace: '대구', gender: 'female' },
+];
+const build = (form) => {
+  const r = readFortune(form);
+  const f = readForecast(form);
+  return { form, r, f, h: buildHighlights(r, f) };
+};
+const ALL = PEOPLE.map(build);
+
+test('핵심 요약은 3~5장이고 화면 안에서 문장이 겹치지 않는다', () => {
+  for (const { h } of ALL) {
+    assert.ok(h.summary.length >= 3 && h.summary.length <= 5, `요약 ${h.summary.length}장`);
+    const texts = [
+      ...h.summary.map((x) => x.text),
+      ...h.traits.map((x) => x.text),
+      ...h.discover.flatMap((x) => (x.a ? [x.a[1], x.b[1]] : [x.text])),
+    ];
+    assert.equal(new Set(texts).size, texts.length, '같은 문장이 두 번 나온다');
+  }
+});
+
+test('특이점·요약에 상위 %·정확도 같은 숫자 주장을 쓰지 않는다', () => {
+  for (const { h } of ALL) {
+    const html = renderHighlights(h);
+    assert.doesNotMatch(html, /상위\s*\d|\d+\s*%|정확도/);
+  }
+});
+
+test('발견 항목은 근거가 있는 것만 — 빈 칸을 내지 않는다', () => {
+  for (const { h } of ALL) {
+    for (const x of h.discover) {
+      if (x.a) assert.ok(x.a[1] && x.b[1], x.title);
+      else assert.ok(x.text?.trim(), x.title);
+    }
+  }
+});
+
+test('사람마다 핵심 요약이 다르다', () => {
+  const keys = ALL.map(({ h }) => h.summary.map((x) => x.text).join('|'));
+  assert.equal(new Set(keys).size, keys.length);
+});
+
+test('공유 문장은 세 줄 이하이고 출생 정보가 없다', () => {
+  for (const { form, h } of ALL) {
+    assert.ok(h.shareLines.length <= 3);
+    const s = h.shareLines.join(' ');
+    assert.ok(!s.includes(String(form.year)) && !s.includes(form.birthPlace));
+  }
+});
+
+test('요약이 이미 낸 문장은 아래 상세 리포트에서 다시 나오지 않는다', () => {
+  for (const { form, r, f, h } of ALL) {
+    const shown = h.memo.items.map((x) => x.text);
+    const html = renderReport(form, r, f, buildView(form, r, f), { memo: h.memo });
+    // 상세 리포트의 '알아 두면 좋은 나'·'조심해야 할 것' 목록에는 요약에서 낸 문장이 없다
+    const lists = [...html.matchAll(/<li>([^<]+)<\/li>/g)].map((m) => m[1]);
+    for (const t of shown) assert.ok(!lists.includes(t), `겹침: ${t}`);
+    // 맨 위 '현재 흐름'이 있으면 '지금 나는 어떤 시기에 있나' 카드는 빠진다
+    assert.doesNotMatch(html, /지금 나는 어떤 시기에 있나/);
+  }
+});
+
+test('두드러지는 조합은 같은 힘을 강하다·옅다로 동시에 말하지 않고, 새는 곳은 실제로 새는 문장만 쓴다', () => {
+  for (const { h } of ALL) {
+    const combo = h.traits.find((x) => x.label === '명반 안에서 특히 두드러지는 조합')?.text ?? '';
+    const m = combo.match(/^(\S+)\S* .*유난히 강하고, (\S+)/);
+    if (m) assert.notEqual(m[1].slice(0, 2), m[2].slice(0, 2), combo);
+    const money = h.discover.find((x) => x.title.startsWith('돈을 벌 때'));
+    if (money) assert.doesNotMatch(money.b[1], /적습니다|없습니다|않습니다/);
+  }
+});

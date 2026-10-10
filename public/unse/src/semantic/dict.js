@@ -182,10 +182,10 @@ const CORE_TIER = {
   사주: 0, '사주 일주': 0, 자미두수: 0,
   '서양 점성(상승)': 1, '서양 점성(달)': 1, '서양 점성(태양)': 1, '베딕(달)': 1, '베딕(라그나)': 1,
 };
-const EVENT_BOARD = /^(육임|홍국기문)/;
+export const EVENT_BOARD = /^(육임|홍국기문)/;
 
 /** 문장의 결 — 두 체계 이상이 같은 결을 말하면 앞으로, 이미 고른 문장과 반대 결이면 뺀다 */
-const THEMES = {
+export const THEMES = {
   fast: /빠르|급하|추진|직진|실행력|행동이 앞/,
   slow: /신중|차분|천천|느긋|느리|멈출 때|조심스럽/,
   firm: /고집|물러서지|굽히지|끈기|버티|잘 바꾸지 않/,
@@ -195,11 +195,11 @@ const THEMES = {
   care: /배려|돌봄|보살|챙기|헌신/,
   free: /자유|독립|얽매이|틀에 갇/,
 };
-const OPPOSITE = { fast: 'slow', slow: 'fast', firm: 'soft', soft: 'firm', out: 'in', in: 'out' };
-const themesOf = (t) => Object.keys(THEMES).filter((k) => THEMES[k].test(t));
+export const OPPOSITE = { fast: 'slow', slow: 'fast', firm: 'soft', soft: 'firm', out: 'in', in: 'out' };
+export const themesOf = (t) => Object.keys(THEMES).filter((k) => THEMES[k].test(t));
 /** 두 체계가 거의 같은 문장을 가진 경우("겉으로는 자유로워 보이지만…"/"자유로워 보이지만…") — 글자 두 개 묶음이 절반 넘게 겹치면 같은 말로 본다 */
-const bigrams = (t) => { const s = t.replace(/\s|[.,]/g, ''); const out = new Set(); for (let i = 0; i < s.length - 1; i++) out.add(s.slice(i, i + 2)); return out; };
-const nearSame = (a, b) => { let n = 0; for (const x of a) if (b.has(x)) n++; return n / Math.min(a.size, b.size) > 0.5; };
+export const bigrams = (t) => { const s = t.replace(/\s|[.,]/g, ''); const out = new Set(); for (let i = 0; i < s.length - 1; i++) out.add(s.slice(i, i + 2)); return out; };
+export const nearSame = (a, b) => { let n = 0; for (const x of a) if (b.has(x)) n++; return n / Math.min(a.size, b.size) > 0.5; };
 
 /**
  * 성격·일·돈·관계·조심 한 칸을 뼈대 체계 순으로 고른다.

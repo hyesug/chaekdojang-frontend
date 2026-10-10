@@ -15,7 +15,8 @@ import { compareFortune } from './compat.js';
 import { lunarToSolar } from './core/lunar.js';
 import { elementDistribution } from './core/ganzhi.js';
 import { j } from './core/josa.js';
-import { encodeState, decodeState, shareLink } from './share.js';
+import { encodeState, decodeState, shareLink, buildSoloCard, saveCanvas } from './share.js';
+import { buildHighlights, renderHighlights } from './highlights.js';
 import { readForecast, areaText } from './forecast.js';
 import { renderReport, renderPairReport, periodFlow, pairEventsHtml } from './report.js';
 import { buildView, buildCompatView } from './viewmodel.js';
@@ -246,7 +247,7 @@ function chartPanel(r) {
     .map(([k, x]) => `${k} ${String(x).replace(/ [\d.]+°$/, '')}`).join(' · ');
 
   return `
-    <div class="section-label">계산값 · 명반 요약</div>
+    <div class="section-label">체계별 상세 · 계산값 · 명반 요약</div>
     <div class="card">
       <div class="pillars">${pillar}</div>
       ${brief ? `<p class="mb-brief">${esc(brief)}</p>` : ''}
@@ -272,8 +273,9 @@ function chartPanel(r) {
 /**
  * 개인 운세 화면.
  *
- * 명반 → 오늘의 운세 / 이달의 운세 두 탭 → 프로필 저장 → AI 에게 묻기.
- * 더 깊은 이야기는 AI 에게 물어 꺼내게 하고, 화면에는 그 둘만 둔다.
+ * 핵심 요약 → 개인 특이점·발견 → 현재 흐름(highlights.js) → 오늘/이달 → 상세 분석(report.js, 장은 접힘)
+ * → 공유 → AI 에게 묻기 → 체계별 상세(명반 계산값) → 프로필 저장.
+ * 모바일 첫 화면에 핵심 성향이 보이게 요약을 맨 위에 두고, 자세한 결과는 지우지 않고 아래로 내렸다.
  *
  * 화면에 쓰는 문장은 전부 엔진이 이미 쓴 것이다(viewmodel·forecast).
  * 여기서 새로 짓지 않는다.
@@ -282,6 +284,10 @@ function render(form, r, f) {
   last = { mode: 'solo', formA: form, formB: null, result: r, forecast: f };
   const v = buildView(form, r, f);
   lastView = v;
+  // 맨 위 핵심 요약·발견 — 한 번만 계산하고, 그 memo 로 아래 리포트가 같은 문장을 다시 내지 않게 한다
+  let h = null;
+  try { h = buildHighlights(r, f); } catch (err) { console.warn('highlights', err); }
+  last.shareLines = h?.shareLines ?? [];
 
   // 오늘·이달의 운세도 아래 결과지(report.js)와 같은 카드 모양 — 이모지 + 이름 + 한두 문장
   const item = (icon, label, text) => text
@@ -311,10 +317,10 @@ function render(form, r, f) {
     <div class="result-header">
       <p class="result-kicker">분석 기록 · 개인 명반</p>
       <h2 class="hero-title">${esc(v.who.name)} 님</h2>
-      <p class="result-meta">${esc(v.who.born)} · 계산 기준은 아래 명반 요약에서 확인할 수 있습니다.</p>
+      <p class="result-meta">${esc(v.who.born)} · 계산 기준은 맨 아래 체계별 상세에서 확인할 수 있습니다.</p>
     </div>
 
-    ${chartPanel(r)}
+    ${h ? renderHighlights(h) : ''}
 
     <div class="tabs">
       <button type="button" class="on" data-tab="today">오늘의 운세</button>
@@ -338,13 +344,15 @@ function render(form, r, f) {
       </section>`)}
 
 
-    <div class="section-label">인생 데이터 분석</div>
-    ${renderReport(form, r, f, v)}
+    <div class="section-label">상세 분석</div>
+    ${renderReport(form, r, f, v, { memo: h?.memo })}
 
-    ${shareBlock()}
+    ${shareBlock(last.shareLines.length > 0)}
 
     <div class="section-label">AI 명반 해석</div>
     ${aiSection('solo', v)}
+
+    ${chartPanel(r)}
 
     <div class="profile-card" id="profileCard">
       <p class="agree-note" style="margin:0">프로필 저장 여부를 확인하는 중…</p>
@@ -424,17 +432,26 @@ async function fillBooks(root) {
  * 결과 공유 — 링크 하나만(이미지·PDF 저장은 결과가 길어 뺐다). 링크를 열면 같은 결과가 다시 계산된다.
  * 링크에 출생 정보가 담긴다는 것을 버튼 옆에 밝힌다.
  */
-function shareBlock() {
+function shareBlock(withImage = false) {
   return `
     <div class="share-card">
       <div class="sharebar" style="margin:0">
         <button type="button" data-act="share">🔗 결과 링크 공유하기</button>
+        ${withImage ? '<button type="button" data-act="share-image">🖼️ 이미지로 공유</button>' : ''}
       </div>
+      ${withImage ? '<p class="agree-note" style="margin:8px 0 0">이미지에는 나를 설명하는 세 문장만 담기고 이름·생년월일·태어난 시각은 들어가지 않습니다.</p>' : ''}
       <p class="agree-note" style="margin:8px 0 0">링크를 받은 사람도 같은 결과를 볼 수 있습니다. 링크에 생년월일과 태어난 시각이 담기니 믿는 사람에게만 보내세요.</p>
     </div>`;
 }
 
 $('#result').addEventListener('click', async (e) => {
+  if (e.target.closest('[data-act="share-image"]') && last?.shareLines?.length) {
+    try {
+      const how = await saveCanvas(buildSoloCard(last.shareLines), 'chaekdojang-unse.png');
+      if (how === 'download') toast('이미지를 저장했습니다.');
+    } catch { toast('이미지를 만들지 못했습니다.', false); }
+    return;
+  }
   const btn = e.target.closest('[data-act="share"]');
   if (!btn || !last) return;
   const url = location.origin + location.pathname + encodeState(last.mode, last.formA, last.formB);

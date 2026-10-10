@@ -11,7 +11,7 @@
  * 직접 그리면 공유에 맞는 비율과 여백을 따로 잡을 수 있다.
  */
 
-import { lifeReading, structureReading, areaProse, compatReading } from './reading.js';
+import { compatReading } from './reading.js';
 
 // ─────────────────────────────────────────────────────────────
 // 공유 링크
@@ -372,45 +372,20 @@ export function downloadText(text, filename) {
 
 // ── 개인 운세 카드 ───────────────────────────────────────────
 
-export function buildSoloCard(form, r, f = null) {
-  const { cv, ctx } = makeCanvas(2600);
-  const s = r.synthesis;
-  const p = (n) => String(n).padStart(2, '0');
-
-  const when = `${form.year}.${p(form.month)}.${p(form.day)}` +
-    (form.hour == null ? ' · 시간 미상' : ` ${p(form.hour)}:${p(form.minute)}`) +
-    ` · ${form.birthPlace}`;
-
-  let y = header(ctx, form.name, when);
-
-  // 화면에서 점수와 막대를 걷어냈으니 카드도 같아야 한다. 남에게 보내는
-  // 그림이 숫자판이면 받은 사람은 무슨 뜻인지 알 길이 없다.
-  const life = lifeReading(r.input, r.chart, s);
-  const st = structureReading(r.input, r.chart);
-
-  // 화면과 같은 차례로 — 타고난 것이 먼저, 시기는 뒤에 한 줄
-  if (st.head || st.lines.length) {
-    y = sectionLabel(ctx, y, '타 고 난 구 성');
-    if (st.head) y = para(ctx, y + 6, st.head, { color: C.ink2 });
-    for (const t of st.lines.slice(0, 2)) y = para(ctx, y, t);
-    y += 12;
-  }
-
-  y = sectionLabel(ctx, y, '평 생');
-  y = para(ctx, y + 6, life.career);
-  if (s.summary.length) y = para(ctx, y, s.summary[0], { color: C.ink2 });
-  y += 12;
-
-  if (f) {
-    const today = areaProse(f.day, '총운', 0, r.chart);
-    if (today?.text) {
-      y = sectionLabel(ctx, y, `오 늘 — ${f.today.m}월 ${f.today.d}일`);
-      y = para(ctx, y + 6, today.text);
-    }
-  }
-
-  y = footer(ctx, y + 10,
-    `${s.systemCount}개 체계를 돌린 결과입니다. 재미로 보시고, 중요한 결정은 스스로 내리시기 바랍니다.`);
+/**
+ * 공유 이미지 — 핵심 요약(highlights.js shareLines)의 "나를 설명하는 세 문장"만 그린다.
+ * 이름·생년월일·태어난 시각·태어난 곳은 넣지 않는다(받은 사람이 출생 정보를 알 수 없게).
+ * AI 이미지 생성 없이 캔버스로만 그린다.
+ */
+export function buildSoloCard(lines) {
+  const { cv, ctx } = makeCanvas(1600);
+  let y = header(ctx, '나를 설명하는 세 문장', '열일곱 가지 점술이 함께 가리킨 나');
+  lines.slice(0, 3).forEach((t, i) => {
+    y = sectionLabel(ctx, y, `${i + 1}`);
+    y = para(ctx, y + 6, t, { size: 30, gap: 46 });
+    y += 18;
+  });
+  y = footer(ctx, y + 10, '책도장 운세 · 재미로 보시고, 중요한 결정은 스스로 내리시기 바랍니다.');
   return crop(cv, y);
 }
 

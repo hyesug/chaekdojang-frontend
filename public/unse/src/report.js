@@ -148,7 +148,7 @@ const para = (t) => { const x = plain(t); return x ? `<p class="rp-t">${esc(x)}<
 
 /** 장 — 제목과 한 줄 안내만 보이고 누르면 펼친다. 문서 전체가 한 덩어리로 이어지지 않게 한다 */
 const sec = (n, title, body, lead = '') => !body ? '' : `
-  <details class="rp-ch" open>
+  <details class="rp-ch">
     <summary><span class="rp-no" aria-hidden="true">${esc(n)}</span><span class="rp-ch-t">${esc(title)}${lead ? `<small>${esc(lead)}</small>` : ''}</span></summary>
     <div class="rp-ch-body">${body}</div>
   </details>`;
@@ -210,7 +210,7 @@ function timingOf(r, domain, span = 10) {
 
 
 /** 십성 무리가 그 해에 건드리는 것 — 고정표 */
-const GOD_FIELD = {
+export const GOD_FIELD = {
   관성: '자리와 역할', 재성: '돈과 조건', 식상: '드러냄과 표현',
   인성: '배움과 문서', 비겁: '경쟁과 동료',
 };
@@ -333,7 +333,7 @@ const ELEM_BODY = {
   금: '폐·호흡기와 피부 쪽으로, 환절기에 기침이나 피부 트러블이 먼저 오기 쉽습니다.',
   수: '신장·방광과 허리·뼈 쪽으로, 몸이 차고 붓거나 허리가 뻐근해지기 쉽습니다.',
 };
-const ELEM_PART = { 목: '간·눈·근육', 화: '심장·혈관', 토: '위장·소화', 금: '폐·호흡기·피부', 수: '신장·허리' };
+export const ELEM_PART = { 목: '간·눈·근육', 화: '심장·혈관', 토: '위장·소화', 금: '폐·호흡기·피부', 수: '신장·허리' };
 function healthChapter(r) {
   let weak = null, strong = null;
   try {
@@ -428,7 +428,7 @@ function relations(v, r) {
 /* ── 실행 원칙 — 사람마다 다르게 ───────────────────────────
    예전에는 모든 사람에게 같은 여섯 줄을 보였다(피드백: "다 똑같이 나온다").
    타고난 십신 구성에서 가장 강한 쪽·가장 빈 쪽, 지금 대운의 십신으로 고른다. */
-const STRONG_RULE = {
+export const STRONG_RULE = {
   비겁: '내 방식이 강한 만큼, 큰 결정 전에는 반대 의견을 한 사람에게 꼭 들어 봅니다.',
   식상: '아이디어를 늘리기보다 하나를 끝까지 완성해 밖에 내놓습니다.',
   재성: '일을 벌이는 속도보다 정리하는 속도를 먼저 맞춥니다. 새 일을 하나 받으면 기존 일 하나를 닫습니다.',
@@ -494,7 +494,7 @@ const bullets = (...items) => { const x = items.join(''); return x ? `<ul class=
  * 십성 무리의 뜻을 생활 언어로 옮긴 고정표다 — '경쟁과 동료' 같은 이름만으로는
  * 무슨 일이 생기는지 알 수 없다는 피드백을 받아 붙였다.
  */
-const SEASON = {
+export const SEASON = {
   비겁: {
     what: '주변에 비슷한 목표를 가진 사람이 많아지는 시기입니다. 동료·친구·경쟁자와 얽히는 일이 늘고, 내 힘으로 버티고 스스로 결정하는 힘이 커집니다.',
     good: '마음 맞는 사람과 힘을 합치면 혼자일 때보다 판이 커집니다.',
@@ -545,14 +545,14 @@ const HIT_TIP = {
 };
 
 /** 약한 기운을 생활에서 채우는 법 — 오행표를 행동으로 옮긴 고정표 */
-const ELEM_FILL = {
+export const ELEM_FILL = {
   목: { name: '나무', means: '시작하고 성장하는 힘', how: '새로운 것을 배우거나 작은 일을 먼저 시작해 보세요. 아침 운동·산책처럼 몸을 깨우는 습관과 장기 계획 세우기가 도움이 됩니다.' },
   화: { name: '불', means: '표현하고 드러내는 힘', how: '생각을 글이나 말로 밖에 꺼내는 연습을 해 보세요. 사람을 만나는 자리, 햇볕 아래 활동, 결과물을 공개하는 일이 도움이 됩니다.' },
   토: { name: '흙', means: '중심을 잡고 버티는 힘', how: '규칙적인 생활 리듬을 만들고, 저축처럼 꾸준히 쌓는 일을 하나 정해 두세요. 한 곳에 오래 머무르며 신뢰를 쌓는 것이 도움이 됩니다.' },
   금: { name: '쇠', means: '결단하고 정리하는 힘', how: '마감과 기준을 먼저 정하고 움직이세요. 주변 정리정돈, 버릴 것 버리기, 할 일 목록 줄이기가 도움이 됩니다.' },
   수: { name: '물', means: '쉬고 생각하고 유연하게 흘려보내는 힘', how: '잠과 휴식을 일정에 먼저 넣고, 혼자 생각하는 시간을 따로 확보하세요. 독서·기록·물가 산책처럼 속도를 늦추는 습관이 도움이 됩니다.' },
 };
-const ELEM_KEYS = ['목', '화', '토', '금', '수'];
+export const ELEM_KEYS = ['목', '화', '토', '금', '수'];
 
 function lifeSeasons(r) {
   let ds = null, dae = null;
@@ -1015,7 +1015,14 @@ function peakYear(from, to, branch, kind) {
   return null;
 }
 
+const eventMemo = new WeakMap();
 export function lifeEventItems(r) {
+  if (eventMemo.has(r)) return eventMemo.get(r).map((x) => ({ ...x }));
+  const items = lifeEventItemsRaw(r);
+  eventMemo.set(r, items);
+  return items.map((x) => ({ ...x }));
+}
+function lifeEventItemsRaw(r) {
   const items = [];
   const now = Number(r.input.currentYear);
   const ageOf = (y) => y - r.input.year;
@@ -1263,7 +1270,13 @@ function bookCard(icon, title, needs, seed = 0) {
  * 리포트 맨 위 네 카드의 내용 — 지금 시기 · 앞으로 가야 할 방향 · 알아 두면 좋은 나 · 조심해야 할 것.
  * AI 상담 문맥(aiContext.js)도 이 함수를 그대로 써서, 리포트와 AI가 같은 말을 같은 순서로 한다.
  */
+const digestMemo = new WeakMap();
+/** 같은 사람의 계산은 한 번만 — 핵심 요약과 상세 리포트가 함께 쓴다 */
 export function futureDigest(r) {
+  if (!digestMemo.has(r)) digestMemo.set(r, futureDigestRaw(r));
+  return digestMemo.get(r);
+}
+function futureDigestRaw(r) {
   let es = [];
   try { es = dictEntries(r); } catch { /* */ }
   const pick = (f, n, keep, skip = 0) => coreField(es, f, n, skip, keep).map((x) => x.text);
@@ -1297,8 +1310,10 @@ export function futureDigest(r) {
   };
 }
 
-function lifeReport(form, r, f) {
+function lifeReport(form, r, f, memo = null) {
   const s = lifeSeasons(r);
+  // 맨 위 핵심 요약·발견(highlights.js)이 이미 낸 문장은 아래 칸에서 다시 내지 않는다
+  const fresh = (xs) => (memo ? xs.filter((t) => !memo.has(t) && memo.add(t)) : xs);
   // '명반을 가르는 핵심 구조' 카드는 뺐다 — 구조마다 정해진 문단 하나를 통째로 붙여, 같은 구조를 가진
   // 사람은 글자 하나 다르지 않은 글을 받았다(예: '어린 시절 집안 환경의 변화')
   const d = futureDigest(r);
@@ -1327,14 +1342,19 @@ function lifeReport(form, r, f) {
     ['💼', '일할 때의 나', d.know.work],
     ['💳', '돈을 쓰는 습관', d.know.spend],
     ['💬', '관계 속의 나', d.know.rel],
-  ].map(([icon, t, xs]) => (xs.length ? h4(icon, t) + lineList(xs) : '')).join('');
+  ].map(([icon, t, xs]) => [icon, t, fresh(xs)])
+    .map(([icon, t, xs]) => (xs.length ? h4(icon, t) + lineList(xs) : '')).join('');
 
   // 4. 조심해야 할 것 — 지금 시기 · 늘 조심할 것 · 지켜야 할 원칙
-  const caution = (sn?.cur?.e?.c ? h4('⏳', '지금 시기에') + lineList([sn.cur.e.c]) : '')
-    + (d.caution.careful.length ? h4('🚧', '늘 조심할 것') + lineList(d.caution.careful) : '')
-    + (d.caution.principles.length ? h4('📏', '지켜야 할 원칙') + lineList(d.caution.principles) : '');
+  const nowC = sn?.cur?.e?.c ? fresh([sn.cur.e.c]) : [];
+  const careful = fresh(d.caution.careful);
+  const principles = fresh(d.caution.principles);
+  const caution = (nowC.length ? h4('⏳', '지금 시기에') + lineList(nowC) : '')
+    + (careful.length ? h4('🚧', '늘 조심할 것') + lineList(careful) : '')
+    + (principles.length ? h4('📏', '지켜야 할 원칙') + lineList(principles) : '');
 
-  return card('🧭', '지금 나는 어떤 시기에 있나', now)
+  // 맨 위 '현재 흐름'이 지금 시기를 이미 보여 주면 이 카드는 뺀다
+  return (memo ? '' : card('🧭', '지금 나는 어떤 시기에 있나', now))
     + card('🚀', '앞으로 가야 할 방향', direction)
     + card('💡', '알아 두면 좋은 나', know || distinctCard(r))
     + card('⚠️', '조심해야 할 것', caution)
@@ -1347,7 +1367,7 @@ function lifeReport(form, r, f) {
       + `</ol>`);
 }
 
-export function renderReport(form, r, f, v) {
+export function renderReport(form, r, f, v, { memo = null } = {}) {
   const today = `${f.today.y}.${String(f.today.m).padStart(2, '0')}.${String(f.today.d).padStart(2, '0')}`;
   const name = v.who?.name ?? form.name ?? '';
   // 예전 문서에서 뺀 것: '프로젝트·사업·수익화'(모든 사람에게 같은 면책 문구), '전반 신수'(올해 장과 같은 표),
@@ -1369,7 +1389,7 @@ export function renderReport(form, r, f, v) {
         <h2 class="rp-title" id="rp-title"><span aria-hidden="true">🔮</span> ${esc(name ? `${name}님의` : '나의')} 인생 데이터 분석 리포트</h2>
         <p class="rp-lead">열일곱 가지 동양·서양 점술이 함께 가리키는 것을 나만을 위한 결과지로 정리했습니다.</p>
       </header>
-      ${lifeReport(form, r, f, v)}
+      ${lifeReport(form, r, f, memo)}
       <h3 class="rp-more">더 자세히 보기</h3>
       <div class="rp-chs">${chapters}</div>
       <p class="rp-note">여러 점술의 해석을 모은 기록이며 과학적으로 검증된 예측이 아닙니다.

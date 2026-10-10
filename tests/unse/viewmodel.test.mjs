@@ -94,7 +94,8 @@ test('개인 화면은 명반 · 오늘/이달 · AI 질문 · 프로필 저장 
   assert.match(ui, /이달의 운세/);
   assert.match(ui, /id="profileCard"/);
   // 통합 해석 문서는 계산 근거를, AI는 사용자의 후속 질문을 맡는다.
-  assert.match(ui, /renderReport\(form, r, f, v\)/);
+  assert.match(ui, /renderReport\(form, r, f, v, \{ memo: h\?\.memo \}\)/);
+  assert.match(ui, /renderHighlights\(h\)/);
   assert.match(ui, /aiSection\('solo', v\)/);
   assert.match(ui, /initAI\(form, r, f\)/);
 

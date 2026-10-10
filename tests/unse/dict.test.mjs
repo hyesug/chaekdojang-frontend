@@ -11,7 +11,7 @@ const dict = await loadDicts();
 
 test('모든 항목이 칸을 채운다 — 성향 사전은 다섯 칸, 10년 운 사전은 세 칸', () => {
   for (const [group, entries] of Object.entries(dict)) {
-    const fields = group.startsWith('daeun') || group.startsWith('pair-') || (group.startsWith('ziwei-') && group !== 'ziwei-ming') ? ['h', 'g', 'c'] : ['p', 'w', 'm', 'r', 'c'];
+    const fields = group === 'event' ? ['t', 'w', 'p'] : group.startsWith('daeun') || group.startsWith('pair-') || (group.startsWith('ziwei-') && group !== 'ziwei-ming') ? ['h', 'g', 'c'] : ['p', 'w', 'm', 'r', 'c'];
     for (const [key, e] of Object.entries(entries)) {
       for (const f of fields) assert.ok(e[f]?.length > 5, `${group}|${key} 의 ${f} 칸이 비었다`);
     }

@@ -27,6 +27,7 @@ export const DICT_FILES = [
   'ziwei-career', 'ziwei-money', 'ziwei-spouse', 'ziwei-children',
   'western-planets-1', 'western-planets-2', 'boards-2',
   'pair-stem', 'pair-bond',
+  'event-1', 'event-2',
 ];
 /** 파일 → 사전 묶음 이름 */
 const GROUP = (file) => file.replace(/-\d+$/, '');
@@ -56,6 +57,12 @@ export async function loadDicts() {
 
 /** 이미 불러온 사전 (없으면 null — 리포트는 사전 없이도 그려진다) */
 export const dictLoaded = () => DICT;
+
+/**
+ * 앞으로 마주할 중요한 일의 사전 — {t 제목, w 어떤 모양으로 오는가, p 대비}
+ *   seat|기둥|충·형·합|그 10년의 십신 무리 · domain|직업·재물·이사|그 10년의 십신 무리 · health|가장 옅은 오행
+ */
+export const eventEntry = (key) => DICT?.event?.[key] ?? null;
 
 const MAIN = ['자미', '천기', '태양', '무곡', '천동', '염정', '천부', '태음', '탐랑', '거문', '천상', '천량', '칠살', '파군'];
 const PALACE_KR = { 乾: '건', 離: '리', 艮: '간', 震: '진', 巽: '손', 坤: '곤', 兌: '태', 坎: '감' };

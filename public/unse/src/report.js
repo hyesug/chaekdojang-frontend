@@ -30,7 +30,7 @@ import { readChildren, childPalaceStars, childrenVerdict } from './semantic/stru
 import { childrenPack, marriagePack } from './hires/vedicExt.js';
 import { verifiedCareer } from './semantic/index.js';
 import { distinctReadings, ownSentences } from './semantic/distinct.js';
-import { dictEntries, dictField, coreField, daeunEntry, ziweiPalaceEntry, pairReading, themeContrast } from './semantic/dict.js';
+import { dictEntries, dictField, coreField, daeunEntry, ziweiPalaceEntry, pairReading, themeContrast, eventEntry } from './semantic/dict.js';
 import { lifeChapters, chapterTurns } from './semantic/compose/life.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
@@ -859,12 +859,18 @@ export function lifeEventItems(r) {
   const items = [];
   const now = Number(r.input.currentYear);
   const ageOf = (y) => y - r.input.year;
+  // 사건 사전(dict/event-*.json)이 있으면 그 사람의 10년 운 갈래(십신 무리)·가장 옅은 기운에 맞춘 글을, 없으면 기본 글을
+  const pickEvent = (key, fallback) => { const e = eventEntry(key); return e ? [e.t, e.w, e.p] : fallback; };
+  let decades = [];
+  const yearAt = (exact) => new Date((r.input.jdUT - 2440587.5 + exact * 365.2425) * 864e5).getUTCFullYear();
   try {
-    const ds = computeDaeun(r.chart, r.input.isMale, r.input.jdUT);
-    const yearAt = (exact) => new Date((r.input.jdUT - 2440587.5 + exact * 365.2425) * 864e5).getUTCFullYear();
+    decades = (computeDaeun(r.chart, r.input.isMale, r.input.jdUT)?.list ?? [])
+      .map((d) => ({ d, from: yearAt(d.fromExact), to: yearAt(d.toExact) - 1, group: TEN_GOD_GROUP[d.god] }));
+  } catch { /* */ }
+  const groupAt = (y) => decades.find((x) => x.from <= y && y <= x.to)?.group;
+  try {
     const seen = new Set();
-    for (const d of ds?.list ?? []) {
-      const from = yearAt(d.fromExact), to = yearAt(d.toExact) - 1;
+    for (const { d, from, to, group } of decades) {
       if (to < now || from > now + 30) continue;
       for (const key of ['day', 'year', 'hour']) {
         const p = r.chart.pillars[key];
@@ -875,34 +881,36 @@ export function lifeEventItems(r) {
         const kind = rel.kind === '충' ? '충' : /형/.test(rel.kind) ? '형' : '합';
         if (seen.has(key + kind)) continue;
         seen.add(key + kind);
-        const [title, what, prep] = SEAT_EVENT[key][kind];
+        const [title, what, prep] = pickEvent(`seat|${key}|${kind}|${group}`, SEAT_EVENT[key][kind]);
         const y = Math.max(from, now);
         items.push({ y, when: `${ageOf(y)}~${d.toAge}세 무렵`, title, what, prep });
       }
     }
+  } catch { /* */ }
+  let weakKey = null;
+  try {
+    const c = elementDistribution(r.chart.pillars).count;
+    weakKey = ELEM_KEYS[[0, 1, 2, 3, 4].reduce((x, i) => (c[i] < c[x] ? i : x), 0)];
   } catch { /* */ }
   for (const domain of ['직업', '재물', '이사', '건강']) {
     const w = selectedWindows(r, domain, 20, 1)[0];
     if (!w) continue;
     const y = Number(String(w.peakAt ?? w.from).slice(0, 4));
     if (y < now) continue;
-    const [title, what, prep] = DOMAIN_EVENT[domain];
-    items.push({ y, when: `${ageOf(y)}세 무렵`, title, what, prep });
+    const key = domain === '건강' ? `health|${weakKey}` : `domain|${domain}|${groupAt(y)}`;
+    const [title, what, prep] = pickEvent(key, DOMAIN_EVENT[domain]);
+    items.push({ y, domain, when: `${ageOf(y)}세 무렵`, title, what, prep });
   }
-  // 사건마다 그 사람 몫의 말을 붙인다 — 일은 맞는 갈래, 돈은 돈을 키우는 방향, 건강은 가장 옅은 기운
+  // 사건마다 그 사람 몫의 말을 붙인다 — 일은 맞는 갈래, 돈은 돈을 키우는 방향, 건강은 가장 옅은 기운을 채우는 법
   const focus = careerFocus(r);
   let es = [];
   try { es = dictEntries(r); } catch { /* */ }
   const earn = coreField(es, 'm', 1, 0, (t) => EARN.test(t) && !IMPERATIVE.test(t))[0]?.text;
-  let weak = null;
-  try {
-    const c = elementDistribution(r.chart.pillars).count;
-    weak = ELEM_FILL[ELEM_KEYS[[0, 1, 2, 3, 4].reduce((x, i) => (c[i] < c[x] ? i : x), 0)]];
-  } catch { /* */ }
+  const weak = weakKey ? ELEM_FILL[weakKey] : null;
   for (const it of items) {
-    if (it.title === '일의 큰 변화' && focus.name) it.prep += ` 옮긴다면 ${focus.name} 쪽이 이 명반에 맞습니다.`;
-    if (it.title === '목돈이 움직이는 일' && earn) it.what += ` 이 명반은 ${earn}`;
-    if (it.title === '몸을 챙겨야 하는 일' && weak) it.prep += ` 이 명반에서 가장 옅은 것은 ${weak.name} 기운(${weak.means})이라, ${weak.how}`;
+    if (it.domain === '직업' && focus.name) it.prep += ` 옮긴다면 ${focus.name} 쪽이 이 명반에 맞습니다.`;
+    if (it.domain === '재물' && earn) it.what += ` 이 명반은 ${earn}`;
+    if (it.domain === '건강' && weak) it.prep += ` 이 명반에서 가장 옅은 것은 ${weak.name} 기운(${weak.means})이라, ${weak.how}`;
   }
   items.sort((a, b) => a.y - b.y);
   return items.slice(0, 8);

@@ -16,9 +16,10 @@
  */
 
 import { ELEMENTS, computeDaeun } from './core/ganzhi.js';
-import { dictEntries, coreField, ziweiPalaceEntry, pairReading, themeContrast } from './semantic/dict.js';
+import { dictEntries, ziweiPalaceEntry } from './semantic/dict.js';
 import { readFortune } from './engine.js';
-import { futureDigest, seasonNow, togetherTurn, careerFocus, lifeEventItems, pairEventItems, periodFlow } from './report.js';
+import { futureDigest, careerFocus, lifeEventItems, periodFlow, pairLoveDigest } from './report.js';
+import { buildCompatView } from './viewmodel.js';
 import { AREAS } from './forecast.js';
 import { candidatesToward, DIR8 } from './hires/location.js';
 import { yearDirections } from './systems/gujeong.js';
@@ -734,45 +735,25 @@ export const READING_PROMPT =
  * 궁합 리포트와 같은 해석 — 두 사람의 기운 짝·배우자 자리, 각자의 사전 문장, 닮은 점·부딪치는 점.
  * 체계별 결과가 이미 이름으로 부르므로 같은 이름을 쓴다(이름이 없으면 첫째·둘째).
  */
-function formatPairDict(formA, formB) {
+function formatPairDict(formA, formB, c) {
   let rA, rB;
   try { rA = readFortune(formA); rB = readFortune(formB); } catch { return []; }
   const nA = formA.name || '첫째', nB = formB.name || '둘째';
-  const pr = pairReading(rA, rB, nA, nB);
-  const esA = dictEntries(rA), esB = dictEntries(rB);
-  if (!pr && !esA.length) return [];
-  const lines = (es, f, n) => coreField(es, f, n).map((x) => x.text);
-  const pairs = [pr?.stem, pr?.hap, pr?.seatKind !== '없음' ? pr?.seat : null].filter(Boolean);
-  const snA = seasonNow(rA), snB = seasonNow(rB);
-  const { same, clash } = themeContrast([...lines(esA, 'p', 6), ...lines(esA, 'r', 4)], [...lines(esB, 'p', 6), ...lines(esB, 'r', 4)]);
-  const money = themeContrast(lines(esA, 'm', 4), lines(esB, 'm', 4));
-  // 궁합 리포트와 같은 순서 — 지금 → 앞으로 함께 갈 방향 → 알아 둘 서로 → 조심할 것
+  let v = null;
+  try { v = buildCompatView(formA, formB, c); } catch { /* 축 점수만 빠진다 */ }
+  const d = pairLoveDigest(rA, rB, nA, nB, v);
+  // 궁합 리포트와 같은 순서 — 연애 궁합인가 결혼 궁합인가 → 연애할 때 → 결혼하면 → 배려 → 고칠 점 → 자녀 → 마주할 일
   const out = ['## 두 사람의 해석 (손님이 받은 궁합 리포트와 같은 내용 — 답은 이 내용을 바탕으로)'];
-  out.push('### 지금 두 사람은');
-  for (const e of pairs) out.push(`- ${e.h}`);
-  for (const [name, sn] of [[nA, snA], [nB, snB]]) if (sn) out.push(`- ${name}의 지금(${sn.cur.from}~${sn.cur.to}년): ${sn.cur.e.h}`);
-  const together = togetherTurn(snA, snB);
-  if (together) out.push(`- 함께 바뀌는 때: ${together}`);
-  out.push('### 앞으로 함께 가야 할 방향');
-  for (const e of pairs) out.push(`- ${e.g}`);
-  for (const [name, sn] of [[nA, snA], [nB, snB]]) if (sn) out.push(`- ${j(name, '이')} 지금 힘을 쓸 곳: ${sn.cur.e.g}`);
-  out.push('### 알아 두면 좋은 서로');
-  for (const [name, es, r] of [[nA, esA, rA], [nB, esB, rB]]) {
-    out.push(`${name} — 성격: ${lines(es, 'p', 2).join(' ')} / 사랑할 때: ${lines(es, 'r', 2).join(' ')}`);
-    const want = ziweiPalaceEntry(r, 'spouse');
-    if (want) out.push(`${name} — 끌리는 사람: ${want.h}`);
-  }
-  for (const [a, b] of same.slice(0, 3)) out.push(`닮은 점 — ${nA}: ${a} / ${nB}: ${b}`);
-  out.push('### 조심해야 할 것');
-  for (const [a, b] of clash.slice(0, 3)) out.push(`부딪치기 쉬운 점 — ${nA}: ${a} / ${nB}: ${b}`);
-  for (const [a, b] of money.clash.slice(0, 2)) out.push(`돈 앞에서 엇갈리는 점 — ${nA}: ${a} / ${nB}: ${b}`);
-  for (const e of pairs) out.push(`- ${e.c}`);
-  for (const [name, sn, es] of [[nA, snA, esA], [nB, snB, esB]]) {
-    const t = [sn?.cur?.e?.c, lines(es, 'c', 1)[0]].filter(Boolean).join(' ');
-    if (t) out.push(`- ${j(name, '이')} 지금 조심할 것: ${t}`);
-  }
-  out.push('### 앞으로 두 사람이 마주할 중요한 일 (무슨 일이, 어떤 모양으로, 어떻게 대비할지)');
-  for (const it of pairEventItems(rA, rB, nA, nB)) out.push(`- ${it.when} · ${it.title}: ${it.what} 대비: ${it.prep}`);
+  const sec = (title, rows) => { if (rows.length) out.push(`### ${title}`, ...rows.map((t) => `- ${t}`)); };
+  sec('연애 궁합인가, 결혼 궁합인가', [d.verdict.text, d.relation].filter(Boolean));
+  sec('연애할 때 — 좋은 점', d.dating.good);
+  sec('연애할 때 — 아쉬운 점', d.dating.bad);
+  sec('결혼하면 — 좋은 점', d.marriage.good);
+  sec('결혼하면 — 아쉬운 점', d.marriage.bad);
+  sec('서로 배려할 점', d.care.map(([k, t]) => `${k}: ${t}`));
+  sec('각자 고쳐야 할 점', d.fix.map(([k, t]) => `${k}: ${t}`));
+  sec('자녀와 함께라면 (아이를 낳는지·몇 명인지는 사례 검증을 통과하지 못해 말하지 않는다)', d.kids.map(([k, t]) => `${k}: ${t}`));
+  sec('앞으로 두 사람이 마주할 중요한 일 (무슨 일이, 어떤 모양으로, 어떻게 대비할지)', d.events.map((it) => `${it.when} · ${it.title}: ${it.what} 대비: ${it.prep}`));
   out.push('');
   return out;
 }
@@ -787,7 +768,7 @@ export function buildCompatContext(formA, formB, c, forecastA = null, forecastB 
   out.push(who(formA));
   out.push(who(formB));
   out.push('');
-  out.push(...formatPairDict(formA, formB));
+  out.push(...formatPairDict(formA, formB, c));
 
   out.push('## 체계별로 견준 결과');
   out.push('');
@@ -892,7 +873,9 @@ export function buildCompatContext(formA, formB, c, forecastA = null, forecastB 
 /** 궁합 화면을 열었을 때 자동으로 받는 요청문 */
 export const COMPAT_PROMPT =
   '위 결과를 바탕으로 두 사람의 궁합을 풀어 주세요. ' +
-  '소제목을 넣어 (1) 지금 두 사람은 (2) 앞으로 함께 가야 할 방향 (3) 알아 두면 좋은 서로 (4) 조심해야 할 것 (5) 앞으로 두 사람이 마주할 중요한 일 순으로 정리하고, ' +
-  '(5)는 궁합 리포트의 "앞으로 두 사람이 마주할 중요한 일" 목록에서 가장 큰 두세 가지를 골라 무슨 일이, 어떤 모양으로 오고, 어떻게 대비할지로 풀어 주세요. ' +
+  '궁합 리포트와 같은 순서로 소제목을 넣어 (1) 연애 궁합인가, 결혼 궁합인가 (2) 연애할 때 좋은 점과 아쉬운 점 (3) 결혼하면 좋은 점과 아쉬운 점 ' +
+  '(4) 서로 배려할 점 (5) 각자 고쳐야 할 점 (6) 자녀와 함께라면 (7) 앞으로 두 사람이 마주할 중요한 일 순으로 정리해 주세요. ' +
+  '(6)에서 아이를 낳는지·몇 명인지는 말하지 말고, 아이를 키울 때의 두 사람 모습과 조심할 점만 말해 주세요. ' +
+  '(7)은 목록에서 가장 큰 두세 가지를 골라 무슨 일이, 어떤 모양으로 오고, 어떻게 대비할지로 풀어 주세요. ' +
   '각 소제목은 두 사람이 앞으로 무엇을 하면 좋은지 구체적인 행동으로 끝내 주세요. ' +
   '열일곱 체계가 어긋나는 지점이 있으면 그것도 짚어 주세요.';

@@ -499,7 +499,7 @@ export function compatAxes(scores, evi) {
     const band = bandOf(row);
     const lens = AXIS_LENS[row.key][band];
     return {
-      key: row.key, label: row.map.label, note: row.map.note, band,
+      key: row.key, label: row.map.label, note: row.map.note, band, value: row.v,
       conclusion: lens.c, reality: lens.r, good: lens.g, bad: lens.b,
       from: row.map.from,
       evidence: evi(row.map.from[0]),

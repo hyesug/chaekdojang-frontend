@@ -137,17 +137,6 @@ function withSrc(x) {
   return x.sources?.length ? `${x.text} (${x.sources.join('·')})` : x.text;
 }
 
-/**
- * '이름 — 풀이' 짝. 예전에는 2열 표였는데 휴대폰 폭에서 첫 칸이 세 글자씩 끊겨
- * 읽기 어려웠다. 넓은 화면에서는 나란히, 좁은 화면에서는 위아래로 쌓는다.
- * (머리글은 화면에 보이지 않지만 호출부가 무엇을 짝짓는지 알 수 있게 남겨 둔다)
- */
-const table2 = (_head, rows) => {
-  const kept = rows.map(([a, b]) => [a, plain(b)]).filter(([, b]) => b);
-  return !kept.length ? '' : `<dl class="rp-kv">${kept.map(([a, b]) =>
-    `<div><dt>${esc(a)}</dt><dd>${esc(b)}</dd></div>`).join('')}</dl>`;
-};
-
 /** 시기 목록 — 연도 표 대신 세로 타임라인 */
 const timeline = (rows) => {
   const kept = rows.map(([when, what]) => [when, plain(what)]).filter(([, what]) => what);
@@ -1140,13 +1129,89 @@ export function renderReport(form, r, f, v) {
    ═══════════════════════════════════════════════════════════ */
 
 /**
- * 궁합 리포트 — 개인 리포트와 같은 원칙이다.
- * 여덟 관계 축마다 점수 구간(상·중·하)별로 정해진 문단을 붙이던 방식은 뺐다. 같은 구간의 쌍은
- * 글자 하나 다르지 않은 글을 받았다. 대신
- *   · 두 사람의 명반을 맞대야만 정해지는 것(일간의 기운 짝, 배우자 자리끼리의 관계, 서로 채우는 기운)
- *   · 두 사람 각자의 해석 사전(성격의 뼈대 체계 순 — 개인 리포트의 "나는 어떤 사람인가"와 같다)
- *   · 두 사람의 문장을 맞대어 찾은 닮은 점·부딪치는 점
- * 으로 쓴다. 띠처럼 태어난 해로만 정해지는 것은 쓰지 않는다.
+ * 궁합의 내용 (리포트·AI 공용) — 연애할 때 / 결혼하면 / 배려할 점 / 고쳐야 할 점 / 연애 궁합인지 결혼 궁합인지 / 자녀.
+ * 개인 운세에 있어야 할 것(각자의 지금 시기, 지금 힘을 쓸 곳, 기운 비교표)은 궁합에서 뺐다(피드백).
+ * 재료는 두 사람의 명반을 맞대야만 정해지는 것 — 일간의 기운 짝·일간 합·배우자 자리끼리의 관계·
+ * 두 사람 문장의 같은 결과 반대 결·관계 축 점수·두 사람이 마주할 사건 — 과 각자의 사전(자미 부처궁·자녀궁).
+ * 자녀를 낳는지·몇 명인지는 사례 검증을 통과하지 못해(children.js COUNT_VERIFIED) 쓰지 않는다.
+ */
+const SEAT_GOOD = new Set(['육합', '반합', '같음']);
+const SEAT_BAD = new Set(['충', '형', '해', '파', '원진']);
+const REL_CAUTION = /관계|상대|배우자|말|감정|고집|표현|마음|화|서운|통제|간섭|기대/;
+export function pairLoveDigest(rA, rB, A, B, v) {
+  let pr = null, esA = [], esB = [];
+  try { pr = pairReading(rA, rB, A, B); } catch { /* */ }
+  try { esA = dictEntries(rA); esB = dictEntries(rB); } catch { /* */ }
+  const lines = (es, f, n, keep) => coreField(es, f, n, 0, keep).map((x) => x.text);
+  const { same, clash } = themeContrast([...lines(esA, 'p', 6), ...lines(esA, 'r', 4)], [...lines(esB, 'p', 6), ...lines(esB, 'r', 4)]);
+  const money = themeContrast(lines(esA, 'm', 4), lines(esB, 'm', 4));
+  let events = [];
+  try { events = pairEventItems(rA, rB, A, B); } catch { /* */ }
+  const seatGood = SEAT_GOOD.has(pr?.seatKind), seatBad = SEAT_BAD.has(pr?.seatKind);
+
+  // 연애 궁합인가 결혼 궁합인가 — 끌림·감정·대화 축과 생활·돈·역할·장기 유지 축의 점수를 견주고,
+  // 일간끼리 끌어당기면 연애 쪽에, 배우자 자리끼리 맞물리면(부딪치면) 결혼 쪽에 더한다(뺀다)
+  const av = (keys) => { const xs = keys.map((k) => v?.eightAxes?.find((x) => x.key === k)?.value).filter((x) => x != null); return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 50; };
+  const love = av(['끌림', '감정', '대화']) + (pr?.hap ? 2 : 0);
+  const wed = av(['생활', '돈', '역할분담', '장기유지']) + (seatGood ? 2 : seatBad ? -2 : 0);
+  const verdict = love - wed >= 2
+    ? { kind: '연애', text: '연애할 때 더 잘 맞는 궁합입니다. 끌림과 대화는 잘 통하지만, 같이 사는 일(생활·돈·역할)은 미리 맞춰 가야 합니다.' }
+    : wed - love >= 2
+      ? { kind: '결혼', text: '결혼해서 더 잘 맞는 궁합입니다. 처음의 설렘보다 같이 살수록 손발이 맞는 관계입니다.' }
+      : { kind: '둘 다', text: '연애와 결혼 어느 한쪽에 기울지 않는 궁합입니다. 설렘과 생활이 비슷한 무게로 갑니다.' };
+
+  const both = ([a, b]) => `${A}님은 '${a.replace(/[.]$/, '')}', ${B}님은 '${b.replace(/[.]$/, '')}'`;
+  const evOf = (re) => events.filter((e) => re.test(e.title)).slice(0, 2).map((e) => `${e.title}(${e.when})`);
+
+  const dating = {
+    // 두 사람의 관계(일간 짝) 문장은 맨 위 판정 카드가 쓴다 — 여기서는 끌림과 닮은 점만
+    good: [pr?.hap?.h, ...same.slice(0, 2).map((p) => `${both(p)} — 이 점이 닮아 말하지 않아도 통합니다.`)].filter(Boolean),
+    bad: [...clash.slice(0, 2).map((p) => `${both(p)} — 이 차이로 부딪치기 쉽습니다.`), pr?.stem?.c, pr?.hap?.c].filter(Boolean),
+  };
+  const goodEv = evOf(/묶는|함께 무언가|커지는|기대고|한 팀/);
+  const badEv = evOf(/흔들리는|되풀이|끼어드는|쌓이는|부딪치는/);
+  const marriage = {
+    good: [seatGood ? `${pr.seat.h} ${pr.seat.g}` : '', pr?.stem?.g ? `같이 살 때는 역할이 이렇게 나뉘면 좋습니다. ${pr.stem.g}` : '', money.same[0] ? `${both(money.same[0])} — 돈을 대하는 생각이 닮아 살림을 꾸리기 수월합니다.` : '',
+      goodEv.length ? `같이 살며 이런 일이 함께 옵니다: ${goodEv.join(', ')}.` : ''].filter(Boolean),
+    bad: [seatBad ? `${pr.seat.h} ${pr.seat.c}` : '', money.clash[0] ? `${both(money.clash[0])} — 돈 앞에서 엇갈리니 공동으로 쓰는 몫과 각자 쓰는 몫을 처음부터 나눠 두세요.` : '',
+      badEv.length ? `같이 살며 조심할 일: ${badEv.join(', ')}.` : ''].filter(Boolean),
+  };
+  if (!marriage.good.length && !seatBad && pr?.seat) marriage.good.push(`${pr.seat.h} ${pr.seat.g}`);
+  // 빈 칸이 생기지 않게 — 40쌍 중 14쌍이 "연애할 때 좋은 점", 10쌍이 "결혼하면 아쉬운 점"이 비었다
+  if (!dating.good.length) {
+    // 끌어당기는 짝도 닮은 점도 없으면, 서로가 연애에서 바라는 것을 채워 줄 수 있는지로
+    const drawnA = lines(esA, 'r', 1, (t) => DRAWN_TO.test(t))[0], drawnB = lines(esB, 'r', 1, (t) => DRAWN_TO.test(t))[0];
+    if (pr?.stem?.g) dating.good.push(`만날수록 역할이 자연스럽게 나뉩니다. ${pr.stem.g}`);
+    if (drawnA && drawnB) dating.good.push(`${A}님은 '${drawnA.replace(/[.]$/, '')}', ${B}님은 '${drawnB.replace(/[.]$/, '')}' — 서로 바라는 것을 알면 설렘이 오래갑니다.`);
+  }
+  if (!marriage.bad.length && pr?.seat?.c) marriage.bad.push(pr.seat.c);
+
+  // 배려할 점 — 상대가 바라는 것(상대의 끌리는 사람·관계 문장, 상대의 자미 부처궁 '잘 되는 것')
+  const spA = ziweiPalaceEntry(rA, 'spouse'), spB = ziweiPalaceEntry(rB, 'spouse');
+  const wants = (es, sp) => [lines(es, 'r', 1, (t) => DRAWN_TO.test(t))[0], sp?.g].filter(Boolean).join(' ');
+  const careOf = (who, t) => (t ? `${who}님은 이런 사람입니다. ${t} 이 마음을 알아 주고 맞춰 주세요.` : '');
+  const care = [[`${A}님이 알아 둘 ${B}님의 마음`, careOf(B, wants(esB, spB))], [`${B}님이 알아 둘 ${A}님의 마음`, careOf(A, wants(esA, spA))]].filter(([, t]) => t);
+  // 고쳐야 할 점 — 각자의 관계 속 버릇(자미 부처궁 '조심할 것' + 관계에 걸린 조심 문장)
+  const habit = (es, sp) => [sp?.c, lines(es, 'c', 1, (t) => REL_CAUTION.test(t))[0]].filter(Boolean).join(' ');
+  const fix = [[`${A}님`, habit(esA, spA)], [`${B}님`, habit(esB, spB)]].filter(([, t]) => t);
+
+  // 자녀 — 각자의 자미 자녀궁(어떤 아이와 인연인지, 잘 되는 것, 조심할 것). 수와 낳는지 여부는 쓰지 않는다
+  const chA = ziweiPalaceEntry(rA, 'children'), chB = ziweiPalaceEntry(rB, 'children');
+  const kidsEv = evOf(/낳고 키우는|자녀/);
+  const kids = [
+    chA ? [`${A}님 쪽에서 보면`, `${chA.h} ${chA.g}`] : null,
+    chB ? [`${B}님 쪽에서 보면`, `${chB.h} ${chB.g}`] : null,
+    chA || chB ? ['아이를 키울 때 조심할 것', [chA?.c, chB?.c].filter(Boolean).join(' ')] : null,
+    kidsEv.length ? ['함께 키울 것이 생기는 때', `${kidsEv.join(', ')}.`] : null,
+  ].filter(Boolean);
+
+  return { verdict, relation: pr?.stem?.h ?? '', dating, marriage, care, fix, kids, events };
+}
+
+/**
+ * 궁합 리포트 — 연애할 때 · 결혼하면 · 배려할 점 · 고쳐야 할 점 · 자녀, 그리고 두 사람이 마주할 일.
+ * (예전: 지금 두 사람은 / 앞으로 함께 가야 할 방향 / 알아 두면 좋은 서로 / 조심해야 할 것 / 기운 비교표 —
+ *  개인 운세에 맞는 내용이 섞여 있었다)
  */
 export function renderPairReport(formA, formB, c, v, elementDist, people = {}) {
   const A = c.A?.input?.name ?? formA.name;
@@ -1154,87 +1219,15 @@ export function renderPairReport(formA, formB, c, v, elementDist, people = {}) {
   const today = new Date();
   const stamp = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
   const rA = people.a ?? c.A, rB = people.b ?? c.B;
+  const d = pairLoveDigest(rA, rB, A, B, v);
+  const list = (xs) => lineList(xs);
+  const goodBad = (g, b) => (g.length ? h4('🟢', '좋은 점') + list(g) : '') + (b.length ? h4('⚠️', '아쉬운 점') + list(b) : '');
+  const pairs = (rows) => bullets(...rows.map(([k, t]) => bullet('', k, t)));
 
-  // 서로 채워 주는 기운 — 한쪽이 옅은 기운을 다른 쪽이 넉넉히 가졌는가
-  const ea = elementDist?.a, eb = elementDist?.b;
-  const fills = [];
-  const elemRows = (ea && eb) ? ELEM_KEYS.map((e, i) => {
-    const x = Math.round(ea[i] * 10) / 10, y = Math.round(eb[i] * 10) / 10;
-    if (x < 1 && y >= 2) fills.push(`${B}님이 ${A}님에게 옅은 ${ELEM_FILL[e].name} 기운(${ELEM_FILL[e].means})을 채워 줍니다.`);
-    if (y < 1 && x >= 2) fills.push(`${A}님이 ${B}님에게 옅은 ${ELEM_FILL[e].name} 기운(${ELEM_FILL[e].means})을 채워 줍니다.`);
-    const note = (x < 1 && y < 1) ? '두 사람 모두 약합니다. 서로 채워주지 못하는 기운입니다.'
-      : x - y >= 0.8 ? `${A}님 쪽이 강합니다.` : y - x >= 0.8 ? `${B}님 쪽이 강합니다.` : '두 사람이 비슷합니다.';
-    return [`${ELEM[e]} 기운`, note];
-  }) : [];
-
-  let pr = null, esA = [], esB = [];
-  try { pr = pairReading(rA, rB, A, B); } catch { /* */ }
-  try { esA = dictEntries(rA); esB = dictEntries(rB); } catch { /* */ }
-  const lines = (es, f, n, skip = 0) => coreField(es, f, n, skip).map((x) => x.text);
-
-  // 개인 리포트와 같은 순서 — 지금 → 앞으로 갈 방향 → 알아 둘 것 → 조심할 것
-  const seat = pr?.seatKind !== '없음'; // 배우자 자리끼리 아무 관계가 없으면 누구에게나 같은 말이라 싣지 않는다
-  const snA = seasonNow(rA), snB = seasonNow(rB);
-  let events = [];
-  try { events = pairEventItems(rA, rB, A, B); } catch { /* */ }
-
-  // 1. 지금 두 사람은 — 어떤 관계이고, 각자 어떤 시기에 있나
-  const together = togetherTurn(snA, snB);
-  const nowCard = bullets(
-    bullet('💞', '두 사람의 관계', pr?.stem?.h),
-    bullet('🔗', '끌어당기는 힘', pr?.hap?.h),
-    bullet('🏠', '함께 살 때', seat ? pr?.seat?.h : ''),
-    bullet('📍', `${A}님의 지금 (${snA?.cur?.from ?? ''}~${snA?.cur?.to ?? ''}년)`, snA?.cur?.e?.h),
-    bullet('📍', `${B}님의 지금 (${snB?.cur?.from ?? ''}~${snB?.cur?.to ?? ''}년)`, snB?.cur?.e?.h),
-    // 함께 바뀌는 때는 아래 "앞으로 두 사람이 마주할 중요한 일"이 자세히 쓴다
-    together && !events.length ? bullet('⏭️', '함께 바뀌는 때', together) : '',
-  );
-
-  // 2. 앞으로 함께 가야 할 방향
-  const mA = lines(esA, 'm', 4), mB = lines(esB, 'm', 4);
-  const money = themeContrast(mA, mB);
-  const direction = bullets(
-    bullet('🧭', '두 사람이 잘 되려면', [pr?.stem?.g, pr?.hap?.g, seat ? pr?.seat?.g : ''].filter(Boolean).join(' ')),
-    bullet('🌱', '서로 채워 주는 것', fills.slice(0, 2).join(' ')),
-    bullet('💰', '돈은 이렇게', money.clash.length
-      ? '돈 앞에서 두 사람의 결이 엇갈립니다. 공동으로 쓰는 몫과 각자 쓰는 몫을 처음부터 나눠 두세요.'
-      : ''),
-    bullet('👍', `${A}님이 지금 힘을 쓸 곳`, snA?.cur?.e?.g),
-    bullet('👍', `${B}님이 지금 힘을 쓸 곳`, snB?.cur?.e?.g),
-  );
-
-  // 3. 알아 두면 좋은 서로 — 상대를 이해할 때 기억할 모습, 닮은 점
-  const tA = [...lines(esA, 'p', 6), ...lines(esA, 'r', 4)];
-  const tB = [...lines(esB, 'p', 6), ...lines(esB, 'r', 4)];
-  const { same, clash } = themeContrast(tA, tB);
-  const pairRow = ([a, b]) => `<li><b>${esc(A)}님</b> — ${esc(a)}<br><b>${esc(B)}님</b> — ${esc(b)}</li>`;
-  const pairList = (rows) => (rows.length ? `<ul class="rp-ul">${rows.slice(0, 3).map(pairRow).join('')}</ul>` : '');
-  const person = (name, es, r) => {
-    const want = ziweiPalaceEntry(r, 'spouse');
-    return h4('🙂', `${name}님`) + bullets(
-      bullet('', '성격', lines(es, 'p', 2).join(' ')),
-      bullet('', '사랑할 때', lines(es, 'r', 2).join(' ')),
-      bullet('', '끌리는 사람', want?.h),
-    );
-  };
-  const know = person(A, esA, rA) + person(B, esB, rB)
-    + (same.length ? h4('🤝', '닮은 점') + pairList(same) : '');
-
-  // 4. 조심해야 할 것 — 부딪치기 쉬운 점, 두 사람 짝에서 조심할 것, 각자 지금 시기에 조심할 것
-  const caution = (clash.length ? h4('⚡', '부딪치기 쉬운 점') + pairList(clash) : '')
-    + (money.clash.length ? h4('💳', '돈 앞에서 엇갈리는 점') + pairList(money.clash) : '')
-    + h4('🚧', '두 사람이 조심할 것') + lineList([pr?.stem?.c, pr?.hap?.c, seat ? pr?.seat?.c : ''].filter(Boolean))
-    + h4('⏳', '각자 지금 시기에') + bullets(
-      bullet('', `${A}님`, [snA?.cur?.e?.c, lines(esA, 'c', 1)[0]].filter(Boolean).join(' ')),
-      bullet('', `${B}님`, [snB?.cur?.e?.c, lines(esB, 'c', 1)[0]].filter(Boolean).join(' ')),
-    );
-
-  // 앞으로 두 사람이 마주할 중요한 일 — 개인 리포트처럼 시기표가 아니라 사건·모양·대비로
-  const eventHtml = events.map((it) =>
+  const eventHtml = d.events.map((it) =>
     `<article class="rp-event"><h4 class="rp-h4">${esc(it.title)} <small>· ${esc(it.when)}</small></h4>`
     + `<p>${esc(it.what)}</p><p class="rp-prep"><b>대비</b> — ${esc(it.prep)}</p></article>`).join('');
-  const chapters = sec(1, '앞으로 두 사람이 마주할 중요한 일', eventHtml, '무슨 일이, 어떤 모양으로 오고, 어떻게 대비할지')
-    + sec(2, '서로 채워주는 기운', table2(['기운', '두 사람'], elemRows), '두 사람의 기운 비교');
+  const chapters = sec(1, '앞으로 두 사람이 마주할 중요한 일', eventHtml, '무슨 일이, 어떤 모양으로 오고, 어떻게 대비할지');
 
   return `
     <section class="rp" aria-labelledby="rp-title">
@@ -1243,13 +1236,16 @@ export function renderPairReport(formA, formB, c, v, elementDist, people = {}) {
         <h2 class="rp-title" id="rp-title"><span aria-hidden="true">💞</span> ${esc(A)} · ${esc(B)} 관계 분석 리포트</h2>
         <p class="rp-lead">두 사람의 출생 정보를 맞대어 본 결과를 한 장으로 정리했습니다.</p>
       </header>
-      ${card('🧭', '지금 두 사람은', nowCard)}
-      ${card('🚀', '앞으로 함께 가야 할 방향', direction)}
-      ${card('💡', '알아 두면 좋은 서로', know)}
-      ${card('⚠️', '조심해야 할 것', caution)}
+      ${card('💞', '연애 궁합인가, 결혼 궁합인가', `<blockquote class="rp-quote">${esc(d.verdict.text)}</blockquote>${d.relation ? para(d.relation) : ''}`)}
+      ${card('💗', '연애할 때', goodBad(d.dating.good, d.dating.bad))}
+      ${card('💍', '결혼하면', goodBad(d.marriage.good, d.marriage.bad))}
+      ${card('🤝', '서로 배려할 점', pairs(d.care))}
+      ${card('🔧', '각자 고쳐야 할 점', pairs(d.fix))}
+      ${card('👶', '자녀와 함께라면', pairs(d.kids))}
       <h3 class="rp-more">더 자세히 보기</h3>
       <div class="rp-chs">${chapters}</div>
       <p class="rp-note">점술은 상징적 해석 도구이며 실제 미래를 확정하지 않습니다. 결혼·이별·임신·투자·건강과 관련된 결정은
         두 사람의 대화와 전문가의 객관적 조언을 우선해 주세요.</p>
     </section>`;
 }
+

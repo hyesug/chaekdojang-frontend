@@ -66,6 +66,7 @@ test('AI 문맥은 리포트와 같은 "앞으로 마주할 중요한 일" 목�
   for (const it of lifeEventItems(ra)) assert.ok(ctx.includes(it.title), `개인 AI 문맥에 사건이 없다: ${it.title}`);
   const pctx = buildCompatContext(a, b, compareFortune(a, b));
   for (const it of pairEventItems(ra, rb, '가', '나')) assert.ok(pctx.includes(it.title), `궁합 AI 문맥에 사건이 없다: ${it.title}`);
+  assert.match(pctx, /연애 궁합인가, 결혼 궁합인가/);
   assert.doesNotMatch(pctx, /결혼 시기를 물을 때 반드시/);
 });
 

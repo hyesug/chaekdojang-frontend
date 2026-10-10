@@ -136,12 +136,19 @@ test('궁합 리포트는 두 사람의 명반을 맞댄 해석과 각자의 사
   const c = compareFortune(A, B);
   const view = buildCompatView(A, B, c);
   const html = pair(A, B);
+  // 궁합에 맞는 순서 — 연애 궁합인가 결혼 궁합인가 → 연애할 때 → 결혼하면 → 배려 → 고칠 점 → 자녀 → 마주할 일
+  let at = -1;
   for (const heading of ['보고서 개인 · 보고서 상대 관계 분석 리포트',
-    // 개인 리포트와 같은 순서 — 지금 → 앞으로 갈 방향 → 알아 둘 것 → 조심할 것
-    '지금 두 사람은', '앞으로 함께 가야 할 방향', '알아 두면 좋은 서로', '조심해야 할 것', '더 자세히 보기',
-    '앞으로 두 사람이 마주할 중요한 일']) {
-    assert.match(html, rx(heading));
+    '연애 궁합인가, 결혼 궁합인가', '연애할 때', '결혼하면', '서로 배려할 점', '각자 고쳐야 할 점', '자녀와 함께라면',
+    '더 자세히 보기', '앞으로 두 사람이 마주할 중요한 일']) {
+    const i = html.indexOf(heading);
+    assert.ok(i > at, `순서가 어긋났거나 없음: ${heading}`);
+    at = i;
   }
+  // 개인 운세에 맞는 칸(각자의 지금 시기·지금 힘을 쓸 곳·기운 비교표)은 궁합에서 뺐다
+  for (const gone of ['지금 두 사람은', '앞으로 함께 가야 할 방향', '지금 힘을 쓸 곳', '서로 채워주는 기운']) assert.doesNotMatch(html, rx(gone));
+  // 자녀를 낳는지·몇 명인지는 사례 검증을 통과하지 못해 쓰지 않는다
+  assert.doesNotMatch(html, /자녀는? \d명|명이 좋|낳는 편이/);
   assert.match(html, /점술은 상징적 해석 도구/);
   // 여덟 축 × 상·중·하마다 정해진 문단은 다시 싣지 않는다 — 같은 구간의 쌍이 같은 글을 받았다
   for (const axis of view.eightAxes) assert.doesNotMatch(html, rx(axis.conclusion));

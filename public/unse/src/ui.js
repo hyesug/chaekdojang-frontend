@@ -165,7 +165,7 @@ function renderCompat(formA, formB, r) {
   // 맨 위 핵심 요약·발견 — 궁합 재료를 한 번만 계산해 요약과 아래 리포트가 함께 쓴다
   let pd = null, h = null;
   try { pd = pairDigestFor(formA, formB, r, v, people); h = buildPairHighlights(pd); } catch (err) { console.warn('pair highlights', err); }
-  last.shareCard = h?.shareCard?.blocks?.length
+  last.shareCard = h?.shareCard?.items?.length
     ? { ...h.shareCard, kicker: `${formA.name || '나'} × ${formB.name || '상대'} 궁합 카드` } : null;
 
   return `
@@ -292,7 +292,7 @@ function render(form, r, f) {
   // 맨 위 핵심 요약·발견 — 한 번만 계산하고, 그 memo 로 아래 리포트가 같은 문장을 다시 내지 않게 한다
   let h = null;
   try { h = buildHighlights(r, f); } catch (err) { console.warn('highlights', err); }
-  last.shareCard = h?.shareCard?.blocks?.length
+  last.shareCard = h?.shareCard?.items?.length
     ? { ...h.shareCard, kicker: `${form.name ? `${form.name}님의` : '나의'} 명반 카드` } : null;
 
   // 오늘·이달의 운세도 아래 결과지(report.js)와 같은 카드 모양 — 이모지 + 이름 + 한두 문장

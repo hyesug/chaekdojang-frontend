@@ -45,6 +45,9 @@ const LEAK_NOT = /적습니다|적고|적은|드뭅|없습니다|않습니다/;
 /** 두 말이 같은 힘을 가리키는가(어절 앞 두 글자, 흔한 말 제외) — '표현 기운이 강한데 표현 힘이 옅다' 같은 모순을 막는다 */
 const sameForce = (a, b) => a.split(' ').filter((w) => w.length >= 3).some((w) => b.includes(w.slice(0, 2)));
 
+/** 공유 카드 칸 — 빈 칸·같은 문장 빼기 */
+const uniqItems = (rows) => rows.filter(([, t], i) => t && rows.findIndex(([, u]) => u === t) === i)
+  .map(([label, text]) => ({ label, text }));
 const firstSentence = (t) => String(t ?? '').split(/(?<=[.!?])\s/)[0];
 /** 사건 한 줄 — 제목 + 설명 가운데 제목을 되풀이하지 않는 첫 문장(다 되풀이면 제목만).
  *  예) '아이가 찾아오거나 함께 아이를 키우는 일. 두 사람 사이에 아이가 생기거나 아이를 키우는 일이…' 같은 반복을 막는다 */
@@ -186,11 +189,25 @@ export function buildHighlights(r, f = null) {
   const shareCard = {
     type: `${TYPE_ADJ[lead] ?? '타고난 결이 분명한'} ${TYPE_NOUN[top] ?? '사람'}`,
     tags: [...new Set([TYPE_TAG[lead], GROUP_TAG[top], TYPE_TAG[themeRank[1]] ?? TYPE_TAG[strongThemes[1]]].filter(Boolean))].slice(0, 3),
-    blocks: [
-      ['나의 가장 큰 강점', summary.find((x) => x.key === 'strong')?.text],
+    // 짧은 것은 두 칸씩, 긴 것은 한 줄 전체(share.js 가 길이로 나눈다)
+    items: uniqItems([
+      ['나의 강점', summary.find((x) => x.key === 'strong')?.text],
+      ['조심할 점', summary.find((x) => x.key === 'pattern')?.text],
+      ['잘 맞는 일', d.direction.fields[0]],
+      ['돈 버는 방식', d.direction.earn[0]],
+      ['끌리는 사람', d.direction.drawn[0]],
       ['가까워져야 보이는 나', closeSide ?? summary.find((x) => x.key === 'rare')?.text],
-      ['지금 나의 시기', sn?.cur?.e ? `${firstSentence(sn.cur.e.h)} ${sn.cur.e.g}` : summary.find((x) => x.key === 'pattern')?.text],
-    ].filter(([, t]) => t),
+      [sn?.cur ? `지금 · ${sn.cur.from}~${sn.cur.to}년` : '지금 나의 시기', sn?.cur?.e ? `${firstSentence(sn.cur.e.h)} ${sn.cur.e.g}` : ''],
+    ]),
+    // 궁금하게 만드는 칸 — 가장 가까운 일 하나만 보여 주고, 나머지는 사이트에 있다고 알린다
+    teaser: {
+      head: near ? `${near.when}, ${near.title}` : '',
+      locked: [
+        events.length > 1 ? `앞으로 마주할 중요한 일 ${events.length}가지` : '앞으로 마주할 중요한 일',
+        '돈이 새기 쉬운 패턴', '지금의 10년과 다음 10년', '사랑과 가족 · 건강',
+      ],
+    },
+    cta: { head: '나는 어떤 타입일까?', sub: '생년월일만 넣으면 무료 · 17가지 점술이 함께 보는 나' },
   };
 
   return { summary: summary.slice(0, 5), traits, discover, flow, shareLines, shareCard, memo };
@@ -260,11 +277,23 @@ export function buildPairHighlights({ A, B, d, rA }) {
       d.dating.good.some((t) => /닮아/.test(t)) ? '#닮은꼴' : '#서로를채움',
       d.dating.bad.some((t) => /차이로/.test(t)) ? '#다른결' : '#편안함',
     ],
-    blocks: [
+    items: uniqItems([
       ['이 궁합을 한 줄로', d.verdict.text],
-      ['두 사람의 관계', sum('relation') ?? sum('pull')],
-      [sum('clash') ? '서로 조심할 지점' : '서로 끌리는 지점', sum('clash') ?? sum('pull')],
-    ].filter(([, t], i, xs) => t && xs.findIndex(([, u]) => u === t) === i),
+      ['두 사람의 관계', sum('relation')],
+      ['서로 끌리는 지점', sum('pull')],
+      ['부딪치기 쉬운 지점', sum('clash')],
+      [`${A}님이 바라는 것`, d.wants?.a],
+      [`${B}님이 바라는 것`, d.wants?.b],
+      [d.married ? '재산을 모으는 방법' : '함께 산다면 재산은', d.home?.find(([k]) => k.startsWith('재산'))?.[1]],
+    ]),
+    teaser: {
+      head: near ? `${near.when}, ${near.title}` : '',
+      locked: [
+        d.events?.length > 1 ? `앞으로 두 사람이 마주할 일 ${d.events.length}가지` : '앞으로 두 사람이 마주할 일',
+        d.married ? '아이가 주는 의미' : '아이는 낳으면 좋을까, 몇 명이 좋을까', '육아는 누가 · 둘 다 일할까', '서로 고쳐야 할 점',
+      ],
+    },
+    cta: { head: '우리 둘은 어떤 궁합일까?', sub: '두 사람 생년월일만 넣으면 무료 · 연애·결혼·자녀까지' },
   };
   return {
     summary: summary.slice(0, 5), traits, discover, flow, shareLines, shareCard, memo,

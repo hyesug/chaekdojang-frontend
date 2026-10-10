@@ -183,17 +183,19 @@ test('궁합 요약이 낸 문장은 아래 리포트에서 다시 나오지 않
 /* ── 공유 카드 · 사건 문장 반복 ───────────────────────────── */
 import { eventWhat } from '../../public/unse/src/report.js';
 
-test('공유 카드는 타입 이름·해시태그 셋 이하·세 칸 이하이고 출생 정보가 없다', () => {
+test('공유 카드는 타입 이름·해시태그·여러 칸·잠긴 칸·안내가 있고 출생 정보가 없다', () => {
   for (const { form, h } of ALL) {
     const c = h.shareCard;
     assert.ok(c.type && !/undefined/.test(c.type), c.type);
     assert.ok(c.tags.length >= 1 && c.tags.length <= 3 && c.tags.every((t) => t.startsWith('#')));
-    assert.ok(c.blocks.length >= 2 && c.blocks.length <= 3);
+    assert.ok(c.items.length >= 5, `칸 ${c.items.length}개`);
+    assert.ok(c.teaser.locked.length >= 3 && c.cta.head);
+    assert.equal(new Set(c.items.map((x) => x.text)).size, c.items.length);
     const all = JSON.stringify(c);
     assert.ok(!all.includes(String(form.year)) && !all.includes(form.birthPlace));
   }
   for (const { h } of PAIRS) {
-    assert.ok(h.shareCard.type && h.shareCard.tags.length === 3 && h.shareCard.blocks.length >= 2);
+    assert.ok(h.shareCard.type && h.shareCard.tags.length === 3 && h.shareCard.items.length >= 4 && h.shareCard.cta.head);
   }
 });
 

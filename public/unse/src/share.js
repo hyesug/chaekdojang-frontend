@@ -436,11 +436,24 @@ function seal(ctx, cx, cy, size) {
   ctx.restore();
 }
 
+/** 자물쇠 아이콘 */
+function lock(ctx, x, y, s, color) {
+  ctx.save();
+  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = s * 0.14;
+  ctx.beginPath(); ctx.arc(x + s / 2, y + s * 0.42, s * 0.26, Math.PI, 0); ctx.stroke();
+  roundRect(ctx, x + s * 0.12, y + s * 0.42, s * 0.76, s * 0.58, s * 0.12); ctx.fill();
+  ctx.restore();
+}
+
 /**
- * @param {{kicker, type, tags, blocks: Array<[label, text]>}} card
+ * 공유 카드 — 9:16(1080×1920, 스토리 비율).
+ * 위: 타입 이름·해시태그 / 가운데: 나를 보여 주는 칸들(짧은 것은 두 칸씩) /
+ * 아래: 가장 가까운 일 하나와 잠긴 항목들(사이트에서 이어서 볼 수 있는 것) / 맨 아래: "나는 어떤 타입일까?" 안내.
+ * 카드를 본 사람이 궁금해서 자기 카드를 만들러 오게 하는 것이 목적이다.
+ * @param {{kicker, type, tags, items: Array<{label, text}>, teaser?: {head, locked}, cta?: {head, sub}}} card
  * @returns {Promise<HTMLCanvasElement>}
  */
-export async function buildShareCard({ kicker, type, tags = [], blocks = [] }) {
+export async function buildShareCard({ kicker, type, tags = [], items = [], teaser = null, cta = null }) {
   try {
     await Promise.all([
       document.fonts.load(`700 72px ${SERIF}`),
@@ -448,91 +461,146 @@ export async function buildShareCard({ kicker, type, tags = [], blocks = [] }) {
     ]);
   } catch { /* 글꼴을 못 불러도 시스템 글꼴로 그린다 */ }
 
-  const { W, H } = SC;
+  const W = 1080, H = 1920;
   const cv = document.createElement('canvas');
   cv.width = W; cv.height = H;
   const ctx = cv.getContext('2d');
-  ctx.textBaseline = 'alphabetic';
 
-  // 종이 바탕 + 가운데가 조금 밝은 빛 + 이중 테두리
+  // 종이 바탕 + 은은한 빛 + 이중 테두리
   ctx.fillStyle = SC.paper; ctx.fillRect(0, 0, W, H);
-  const glow = ctx.createRadialGradient(W / 2, H * 0.35, 80, W / 2, H * 0.35, W * 0.9);
-  glow.addColorStop(0, 'rgba(255,255,255,0.7)'); glow.addColorStop(1, 'rgba(255,255,255,0)');
+  const glow = ctx.createRadialGradient(W / 2, 420, 60, W / 2, 420, W);
+  glow.addColorStop(0, 'rgba(255,255,255,0.75)'); glow.addColorStop(1, 'rgba(255,255,255,0)');
   ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = SC.teal; ctx.lineWidth = 3; ctx.strokeRect(36, 36, W - 72, H - 72);
-  ctx.strokeStyle = SC.line; ctx.lineWidth = 1.5; ctx.strokeRect(50, 50, W - 100, H - 100);
+  ctx.strokeStyle = SC.teal; ctx.lineWidth = 3; ctx.strokeRect(32, 32, W - 64, H - 64);
+  ctx.strokeStyle = SC.line; ctx.lineWidth = 1.5; ctx.strokeRect(46, 46, W - 92, H - 92);
 
-  // 머리말
-  let y = 132;
+  const X = 84, IW = W - 168;
+  let y = 112;
+
+  // ── 머리말 ──
   ctx.textAlign = 'center';
-  ctx.fillStyle = SC.stamp;
-  ctx.font = `700 26px ${SANS}`;
-  if ('letterSpacing' in ctx) ctx.letterSpacing = '4px';
+  ctx.fillStyle = SC.stamp; ctx.font = `700 30px ${SANS}`;
+  if ('letterSpacing' in ctx) ctx.letterSpacing = '5px';
   ctx.fillText(kicker, W / 2, y);
   if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
-  // 가는 선과 마름모 장식
   y += 34;
   ctx.fillStyle = SC.teal;
-  ctx.fillRect(W / 2 - 120, y, 100, 1.5); ctx.fillRect(W / 2 + 20, y, 100, 1.5);
-  ctx.save(); ctx.translate(W / 2, y + 1); ctx.rotate(Math.PI / 4); ctx.fillRect(-6, -6, 12, 12); ctx.restore();
+  ctx.fillRect(W / 2 - 130, y, 108, 1.5); ctx.fillRect(W / 2 + 22, y, 108, 1.5);
+  ctx.save(); ctx.translate(W / 2, y + 1); ctx.rotate(Math.PI / 4); ctx.fillRect(-7, -7, 14, 14); ctx.restore();
 
-  // 타입 이름 — 두 줄 안에 들어갈 때까지 글자를 줄인다
-  y += 96;
-  let size = 76, typeLines;
-  for (; size >= 52; size -= 4) {
+  // ── 타입 이름 — 두 줄 안에 들어가는 가장 큰 글자 ──
+  let size = 96, typeLines;
+  for (; size >= 60; size -= 4) {
     ctx.font = `700 ${size}px ${SERIF}`;
-    typeLines = wrapWords(ctx, type, W - 220);
+    typeLines = wrapWords(ctx, type, IW - 20);
     if (typeLines.length <= 2) break;
   }
+  y += 40;
   ctx.fillStyle = SC.ink;
-  for (const line of typeLines) { ctx.fillText(line, W / 2, y); y += size * 1.3; }
+  for (const line of typeLines) { y += size; ctx.fillText(line, W / 2, y); y += size * 0.25; }
+  y += 22;
 
-  // 해시태그 알약
-  y += 6;
-  ctx.font = `600 28px ${SANS}`;
-  const pills = tags.map((t) => ({ t, w: ctx.measureText(t).width + 44 }));
-  const total = pills.reduce((s, p) => s + p.w, 0) + Math.max(0, pills.length - 1) * 14;
-  let x = (W - total) / 2;
+  // ── 해시태그 ──
+  ctx.font = `600 32px ${SANS}`;
+  const pills = tags.map((t) => ({ t, w: ctx.measureText(t).width + 52 }));
+  let px = (W - (pills.reduce((s, p) => s + p.w, 0) + Math.max(0, pills.length - 1) * 16)) / 2;
   for (const p of pills) {
-    ctx.fillStyle = SC.tealSoft; roundRect(ctx, x, y - 38, p.w, 56, 28); ctx.fill();
-    ctx.fillStyle = SC.teal; ctx.textAlign = 'left'; ctx.fillText(p.t, x + 22, y);
-    x += p.w + 14;
+    ctx.fillStyle = SC.tealSoft; roundRect(ctx, px, y, p.w, 62, 31); ctx.fill();
+    ctx.fillStyle = SC.teal; ctx.fillText(p.t, px + p.w / 2, y + 42);
+    px += p.w + 16;
   }
-  y += pills.length ? 62 : 10;
+  y += pills.length ? 62 + 40 : 10;
 
-  // 세 칸 — 남은 높이에 맞을 때까지 본문 글자를 줄인다
-  const footTop = H - 190;
-  const boxX = 96, boxW = W - 192, pad = 34;
-  const texts = blocks.slice(0, 3).map(([label, t]) => [label, shorten(t)]);
-  let body = 32, laid;
+  // ── 아래 칸(잠긴 칸 + 안내)의 높이를 먼저 잰다 ──
+  const ctaH = cta ? 230 : 120;
+  ctx.font = `700 34px ${SANS}`;
+  const teaserLines = teaser?.head ? wrapWords(ctx, teaser.head, IW - 80).slice(0, 2) : [];
+  const locked = teaser?.locked?.slice(0, 4) ?? [];
+  const teaserH = teaser
+    ? 40 + 26 + 18 + teaserLines.length * 48 + (teaserLines.length ? 18 : 0) + locked.length * 54 + 30 : 0;
+  const bottomTop = H - 60 - ctaH - (teaser ? teaserH + 28 : 0);
+
+  // ── 나를 보여 주는 칸들 — 짧은 것은 두 칸씩, 남은 높이에 맞는 가장 큰 글자 ──
+  const GAP = 18, PAD = 30, LABEL = 26, LH = 1.5;
+  const halfW = (IW - GAP) / 2;
+  const cells = items.map((it) => {
+    const short = shorten(it.text, 48);
+    const half = short.length <= 48 && !short.endsWith('…');
+    return { label: it.label, text: half ? short : shorten(it.text, 84), half };
+  });
+  const rows = [];
+  for (let i = 0; i < cells.length; i++) {
+    if (cells[i].half && cells[i + 1]?.half) { rows.push([cells[i], cells[i + 1]]); i++; } else rows.push([cells[i]]);
+  }
+  const cellH = (n, b) => PAD * 2 + LABEL + 12 + n * b * LH - b * (LH - 1);
+  const rowH = (row, b) => Math.max(...row.map((c) => cellH(c.lines.length, b)));
+  let body = 34, laid;
   for (; body >= 24; body -= 2) {
     ctx.font = `500 ${body}px ${SANS}`;
-    laid = texts.map(([label, t]) => ({ label, lines: wrapWords(ctx, t, boxW - pad * 2) }));
-    const need = laid.reduce((s, b) => s + pad * 2 + 30 + 14 + b.lines.length * body * 1.5, 0) + (laid.length - 1) * 22;
-    if (y + need <= footTop) break;
+    laid = rows.map((row) => row.map((c) => ({ ...c, lines: wrapWords(ctx, c.text, (row.length === 2 ? halfW : IW) - PAD * 2) })));
+    if (y + laid.reduce((s, row) => s + rowH(row, body) + GAP, 0) <= bottomTop) break;
   }
-  const gap = 22;
-  for (const b of laid) {
-    const h = pad * 2 + 30 + 14 + b.lines.length * body * 1.5;
-    ctx.fillStyle = SC.paper2; roundRect(ctx, boxX, y, boxW, h, 22); ctx.fill();
-    ctx.strokeStyle = SC.line; ctx.lineWidth = 1.5; ctx.stroke();
-    ctx.fillStyle = SC.stamp; ctx.beginPath(); ctx.arc(boxX + pad + 6, y + pad + 20, 6, 0, Math.PI * 2); ctx.fill();
-    ctx.textAlign = 'left';
-    ctx.font = `700 25px ${SANS}`; ctx.fillStyle = SC.stamp;
-    ctx.fillText(b.label, boxX + pad + 22, y + pad + 29);
-    ctx.font = `500 ${body}px ${SANS}`; ctx.fillStyle = SC.ink;
-    let ty = y + pad + 30 + 14 + body * 1.1;
-    for (const line of b.lines) { ctx.fillText(line, boxX + pad, ty); ty += body * 1.5; }
-    y += h + gap;
+  // 칸이 모자라면 아래 행부터 뺀다(글자를 더 줄이기보다)
+  while (laid.length > 1 && y + laid.reduce((s, row) => s + rowH(row, body) + GAP, 0) > bottomTop) laid.pop();
+  // 남는 높이는 행 사이에 고르게
+  const used = laid.reduce((s, row) => s + rowH(row, body), 0);
+  const gapY = Math.min(36, Math.max(GAP, (bottomTop - y - used) / Math.max(1, laid.length)));
+  ctx.textAlign = 'left';
+  for (const row of laid) {
+    const rh = rowH(row, body);
+    row.forEach((c, i) => {
+      const cw = row.length === 2 ? halfW : IW, cx = X + i * (halfW + GAP);
+      ctx.fillStyle = SC.paper2; roundRect(ctx, cx, y, cw, rh, 22); ctx.fill();
+      ctx.strokeStyle = SC.line; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.fillStyle = SC.stamp; ctx.font = `700 ${LABEL}px ${SANS}`;
+      ctx.fillText(c.label, cx + PAD, y + PAD + LABEL - 4);
+      ctx.fillStyle = SC.ink; ctx.font = `500 ${body}px ${SANS}`;
+      let ty = y + PAD + LABEL + 12 + body * 0.92;
+      for (const line of c.lines) { ctx.fillText(line, cx + PAD, ty); ty += body * LH; }
+    });
+    y += rh + gapY;
   }
 
-  // 바닥 — 주소와 도장
-  ctx.textAlign = 'left';
-  ctx.fillStyle = SC.teal; ctx.font = `700 28px ${SERIF}`;
-  ctx.fillText('책도장 운세', 96, H - 118);
-  ctx.fillStyle = SC.ink3; ctx.font = `500 22px ${SANS}`;
-  ctx.fillText('chaekdojang.com/unse · 열일곱 가지 점술로 본 해석', 96, H - 82);
-  seal(ctx, W - 160, H - 128, 104);
+  // ── 잠긴 칸 — 가장 가까운 일 하나만 보여 주고, 나머지는 사이트에 있다고 알린다 ──
+  y = bottomTop;
+  if (teaser) {
+    ctx.fillStyle = SC.teal; roundRect(ctx, X, y, IW, teaserH, 26); ctx.fill();
+    let ty = y + 40 + 22;
+    ctx.fillStyle = '#F3D9A4'; ctx.font = `700 26px ${SANS}`;
+    ctx.fillText(teaserLines.length ? '곧 다가오는 일' : '이어서 볼 수 있는 것', X + 40, ty);
+    ty += 18;
+    ctx.fillStyle = '#FFFFFF'; ctx.font = `700 34px ${SANS}`;
+    for (const line of teaserLines) { ty += 42; ctx.fillText(line, X + 40, ty); ty += 6; }
+    if (teaserLines.length) ty += 18;
+    for (const t of locked) {
+      ty += 14;
+      lock(ctx, X + 40, ty, 28, 'rgba(255,255,255,0.85)');
+      ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.font = `600 29px ${SANS}`;
+      ctx.fillText(t, X + 84, ty + 25);
+      // 가려 둔 내용처럼 보이는 막대
+      const bx = X + 84 + ctx.measureText(t).width + 22, bw = X + IW - 40 - bx;
+      if (bw > 40) { ctx.fillStyle = 'rgba(255,255,255,0.16)'; roundRect(ctx, bx, ty + 6, bw, 22, 11); ctx.fill(); }
+      ty += 40;
+    }
+    y += teaserH + 28;
+  }
+
+  // ── 안내 — 이 카드를 본 사람이 자기 카드를 만들어 보게 ──
+  if (cta) {
+    ctx.fillStyle = SC.ink; ctx.font = `700 48px ${SERIF}`;
+    ctx.fillText(cta.head, X + 4, y + 58);
+    ctx.fillStyle = SC.ink3; ctx.font = `500 27px ${SANS}`;
+    ctx.fillText(cta.sub, X + 4, y + 106);
+    ctx.font = `700 34px ${SANS}`;
+    const url = 'chaekdojang.com/unse';
+    const uw = ctx.measureText(url).width + 56;
+    ctx.fillStyle = SC.stamp; roundRect(ctx, X, y + 136, uw, 68, 34); ctx.fill();
+    ctx.fillStyle = '#FFFFFF'; ctx.fillText(url, X + 28, y + 182);
+  } else {
+    ctx.fillStyle = SC.teal; ctx.font = `700 32px ${SERIF}`;
+    ctx.fillText('책도장 운세 · chaekdojang.com/unse', X, y + 60);
+  }
+  seal(ctx, W - 84 - 62, y + (cta ? 118 : 50), 116);
   return cv;
 }
 

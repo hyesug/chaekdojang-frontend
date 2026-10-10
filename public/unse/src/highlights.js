@@ -51,6 +51,16 @@ const uniqItems = (rows) => rows.filter(([, t], i) => t && rows.findIndex(([, u]
 const firstSentence = (t) => String(t ?? '').split(/(?<=[.!?])\s/)[0];
 /** 사건 한 줄 — 제목 + 설명 가운데 제목을 되풀이하지 않는 첫 문장(다 되풀이면 제목만).
  *  예) '아이가 찾아오거나 함께 아이를 키우는 일. 두 사람 사이에 아이가 생기거나 아이를 키우는 일이…' 같은 반복을 막는다 */
+/**
+ * 공유 카드의 '앞으로 찾아올 일' — 몇 년 뒤인지, 무슨 일인지, 한 문장 풀이.
+ * ('33세 무렵, 내 재주로 목돈을 버는 일'만으로는 언제인지·무슨 뜻인지 알기 어려웠다)
+ */
+function teaserOf(e, now) {
+  if (!e) return { label: '', head: '', sub: '' };
+  const left = e.y != null ? e.y - now : null;
+  const when = left == null ? e.when : left <= 0 ? `올해 · ${e.y}년` : `${left}년 뒤 · ${e.y}년 무렵`;
+  return { label: `${when} 찾아올 일`, head: e.title, sub: firstSentence(eventWhat(e.title, e.what, { keepAll: false })) };
+}
 function eventLine(e) {
   const add = eventWhat(e.title, e.what, { keepAll: false });
   return add ? `${e.title}. ${firstSentence(add)}` : `${e.title}.`;
@@ -201,7 +211,7 @@ export function buildHighlights(r, f = null) {
     ]),
     // 궁금하게 만드는 칸 — 가장 가까운 일 하나만 보여 주고, 나머지는 사이트에 있다고 알린다
     teaser: {
-      head: near ? `${near.when}, ${near.title}` : '',
+      ...teaserOf(near, now),
       locked: [
         events.length > 1 ? `앞으로 마주할 중요한 일 ${events.length}가지` : '앞으로 마주할 중요한 일',
         '돈이 새기 쉬운 패턴', '지금의 10년과 다음 10년', '사랑과 가족 · 건강',
@@ -287,7 +297,7 @@ export function buildPairHighlights({ A, B, d, rA }) {
       [d.married ? '재산을 모으는 방법' : '함께 산다면 재산은', d.home?.find(([k]) => k.startsWith('재산'))?.[1]],
     ]),
     teaser: {
-      head: near ? `${near.when}, ${near.title}` : '',
+      ...teaserOf(near, now),
       locked: [
         d.events?.length > 1 ? `앞으로 두 사람이 마주할 일 ${d.events.length}가지` : '앞으로 두 사람이 마주할 일',
         d.married ? '아이가 주는 의미' : '아이는 낳으면 좋을까, 몇 명이 좋을까', '육아는 누가 · 둘 다 일할까', '서로 고쳐야 할 점',

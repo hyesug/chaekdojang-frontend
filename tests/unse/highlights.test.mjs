@@ -206,3 +206,12 @@ test('사건 설명이 제목을 되풀이하면 그 문장은 뺀다', () => {
   assert.equal(eventWhat(title, what), what);   // 본문 칸은 비우지 않는다
   assert.equal(eventWhat(title, `${what} 양가의 도움을 미리 정해 두면 편합니다.`), '양가의 도움을 미리 정해 두면 편합니다.');
 });
+
+test('공유 카드의 앞으로 찾아올 일은 몇 년 뒤인지와 한 문장 풀이를 함께 쓴다', () => {
+  for (const { h } of [...ALL, ...PAIRS]) {
+    const t = h.shareCard.teaser;
+    if (!t.head) continue;
+    assert.match(t.label, /(\d+년 뒤|올해) · \d{4}년.* 찾아올 일$/);
+    assert.ok(!t.sub || !t.sub.includes(t.head));
+  }
+});

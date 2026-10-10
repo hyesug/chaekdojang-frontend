@@ -450,7 +450,7 @@ function lock(ctx, x, y, s, color) {
  * 위: 타입 이름·해시태그 / 가운데: 나를 보여 주는 칸들(짧은 것은 두 칸씩) /
  * 아래: 가장 가까운 일 하나와 잠긴 항목들(사이트에서 이어서 볼 수 있는 것) / 맨 아래: "나는 어떤 타입일까?" 안내.
  * 카드를 본 사람이 궁금해서 자기 카드를 만들러 오게 하는 것이 목적이다.
- * @param {{kicker, type, tags, items: Array<{label, text}>, teaser?: {head, locked}, cta?: {head, sub}}} card
+ * @param {{kicker, type, tags, items: Array<{label, text}>, teaser?: {label, head, sub, locked}, cta?: {head, sub}}} card
  * @returns {Promise<HTMLCanvasElement>}
  */
 export async function buildShareCard({ kicker, type, tags = [], items = [], teaser = null, cta = null }) {
@@ -515,9 +515,11 @@ export async function buildShareCard({ kicker, type, tags = [], items = [], teas
   const ctaH = cta ? 230 : 120;
   ctx.font = `700 34px ${SANS}`;
   const teaserLines = teaser?.head ? wrapWords(ctx, teaser.head, IW - 80).slice(0, 2) : [];
+  ctx.font = `500 28px ${SANS}`;
+  const subLines = teaser?.head && teaser?.sub ? wrapWords(ctx, teaser.sub, IW - 80).slice(0, 2) : [];
   const locked = teaser?.locked?.slice(0, 4) ?? [];
   const teaserH = teaser
-    ? 40 + 26 + 18 + teaserLines.length * 48 + (teaserLines.length ? 18 : 0) + locked.length * 54 + 30 : 0;
+    ? 40 + 26 + 18 + teaserLines.length * 48 + subLines.length * 42 + (teaserLines.length ? 24 : 0) + locked.length * 54 + 30 : 0;
   const bottomTop = H - 60 - ctaH - (teaser ? teaserH + 28 : 0);
 
   // ── 나를 보여 주는 칸들 — 짧은 것은 두 칸씩, 남은 높이에 맞는 가장 큰 글자 ──
@@ -567,11 +569,15 @@ export async function buildShareCard({ kicker, type, tags = [], items = [], teas
     ctx.fillStyle = SC.teal; roundRect(ctx, X, y, IW, teaserH, 26); ctx.fill();
     let ty = y + 40 + 22;
     ctx.fillStyle = '#F3D9A4'; ctx.font = `700 26px ${SANS}`;
-    ctx.fillText(teaserLines.length ? '곧 다가오는 일' : '이어서 볼 수 있는 것', X + 40, ty);
+    ctx.fillText(teaserLines.length ? teaser.label : '이어서 볼 수 있는 것', X + 40, ty);
     ty += 18;
     ctx.fillStyle = '#FFFFFF'; ctx.font = `700 34px ${SANS}`;
     for (const line of teaserLines) { ty += 42; ctx.fillText(line, X + 40, ty); ty += 6; }
-    if (teaserLines.length) ty += 18;
+    ctx.fillStyle = 'rgba(255,255,255,0.82)'; ctx.font = `500 28px ${SANS}`;
+    for (const line of subLines) { ty += 38; ctx.fillText(line, X + 40, ty); ty += 4; }
+    if (teaserLines.length) ty += 24;
+    // 잠긴 항목 위 구분선
+    if (teaserLines.length) { ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(X + 40, ty - 10, IW - 80, 1.5); }
     for (const t of locked) {
       ty += 14;
       lock(ctx, X + 40, ty, 28, 'rgba(255,255,255,0.85)');

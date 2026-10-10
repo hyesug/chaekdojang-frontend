@@ -123,8 +123,9 @@ test('궁합 리포트는 두 사람의 명반을 맞댄 해석과 각자의 사
   const c = compareFortune(A, B);
   const view = buildCompatView(A, B, c);
   const html = pair(A, B);
-  for (const heading of ['보고서 개인 · 보고서 상대 관계 분석 리포트', '한눈에 보는 두 사람',
-    '두 사람은 각자 어떤 사람인가', '닮은 점과 부딪치는 점', '돈과 생활', '오래 가려면', '더 자세히 보기']) {
+  for (const heading of ['보고서 개인 · 보고서 상대 관계 분석 리포트',
+    // 개인 리포트와 같은 순서 — 지금 → 앞으로 갈 방향 → 알아 둘 것 → 조심할 것
+    '지금 두 사람은', '앞으로 함께 가야 할 방향', '알아 두면 좋은 서로', '조심해야 할 것', '더 자세히 보기']) {
     assert.match(html, rx(heading));
   }
   assert.match(html, /점술은 상징적 해석 도구/);

@@ -753,7 +753,8 @@ const h4 = (icon, t) => `<h4 class="rp-h4">${icon} ${esc(t)}</h4>`;
 /** 지금 내가 서 있는 10년의 반쪽(앞 다섯 해·뒤 다섯 해)과 바로 다음 반쪽 — 일간 × 10년 운 사전 */
 /** 두 사람의 다음 시기가 두 해 안쪽으로 함께 바뀌면, 생활의 틀을 같이 다시 짤 때다 (궁합 리포트·AI 공용) */
 export function togetherTurn(snA, snB) {
-  if (!snA?.next || !snB?.next || Math.abs(snA.next.from - snB.next.from) > 2) return '';
+  // 두 해까지 넓히면 40쌍 중 33쌍, 한 해까지도 24쌍에 붙어 누구에게나 하는 말이 됐다 — 같은 해에 바뀔 때만
+  if (!snA?.next || !snB?.next || snA.next.from !== snB.next.from) return '';
   const a = Math.min(snA.next.from, snB.next.from), b = Math.max(snA.next.from, snB.next.from);
   return `${a === b ? a : `${a}~${b}`}년 무렵 두 사람의 흐름이 함께 바뀝니다. 사는 곳·일·돈 계획처럼 생활의 큰 틀을 같이 다시 짜기 좋은 때입니다.`;
 }
@@ -957,11 +958,14 @@ export function pairEventItems(rA, rB, A, B) {
       items.push({ y: it.y, when: `${it.y}년 무렵`, title, what, prep });
     }
   }
-  const together = togetherTurn(seasonNow(rA), seasonNow(rB));
+  const snA = seasonNow(rA), snB = seasonNow(rB);
+  const together = togetherTurn(snA, snB);
   if (together) {
     const y = Number(together.match(/^(\d{4})/)?.[1]);
+    // 두 사람이 각각 어느 쪽으로 넘어가는지 — 이것이 쌍마다 갈린다
+    const headOf = (sn) => String(sn.next.e.h).split(/(?<=[.])\s/)[0].replace(/[.]$/, '');
     items.push({ y, when: together.match(/^[\d~]+년/)?.[0] ?? '', title: '두 사람의 흐름이 함께 바뀌는 때',
-      what: '두 사람이 비슷한 무렵에 새로운 10년의 흐름으로 넘어갑니다. 둘 다 생활의 틀이 바뀌는 때라 같이 움직이기 좋은 만큼 서로의 변화에 흔들리기도 쉽습니다.',
+      what: `${A}님은 '${headOf(snA)}'로, ${B}님은 '${headOf(snB)}'로 비슷한 무렵에 넘어갑니다. 둘 다 생활의 틀이 바뀌는 때라 같이 움직이기 좋은 만큼 서로의 변화에 흔들리기도 쉽습니다.`,
       prep: '사는 곳·일·돈 계획처럼 큰 틀을 이때 함께 다시 짜고, 각자 바라는 다음 10년을 미리 이야기해 두세요.' });
   }
   items.sort((a, b) => a.y - b.y);

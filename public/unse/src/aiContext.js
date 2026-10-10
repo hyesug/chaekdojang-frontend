@@ -18,7 +18,7 @@
 import { ELEMENTS, computeDaeun } from './core/ganzhi.js';
 import { dictEntries, coreField, ziweiPalaceEntry, pairReading, themeContrast } from './semantic/dict.js';
 import { readFortune } from './engine.js';
-import { futureDigest, seasonNow, togetherTurn, careerFocus, lifeEventItems } from './report.js';
+import { futureDigest, seasonNow, togetherTurn, careerFocus, lifeEventItems, pairEventItems } from './report.js';
 import { AREAS } from './forecast.js';
 import { candidatesToward, DIR8 } from './hires/location.js';
 import { yearDirections } from './systems/gujeong.js';
@@ -763,6 +763,8 @@ function formatPairDict(formA, formB) {
     const t = [sn?.cur?.e?.c, lines(es, 'c', 1)[0]].filter(Boolean).join(' ');
     if (t) out.push(`- ${j(name, '이')} 지금 조심할 것: ${t}`);
   }
+  out.push('### 앞으로 두 사람이 마주할 중요한 일 (무슨 일이, 어떤 모양으로, 어떻게 대비할지)');
+  for (const it of pairEventItems(rA, rB, nA, nB)) out.push(`- ${it.when} · ${it.title}: ${it.what} 대비: ${it.prep}`);
   out.push('');
   return out;
 }

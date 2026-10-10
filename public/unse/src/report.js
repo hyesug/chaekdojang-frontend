@@ -899,7 +899,7 @@ export function lifeEventItems(r) {
     if (y < now) continue;
     const key = domain === '건강' ? `health|${weakKey}` : `domain|${domain}|${groupAt(y)}`;
     const [title, what, prep] = pickEvent(key, DOMAIN_EVENT[domain]);
-    items.push({ y, domain, when: `${ageOf(y)}세 무렵`, title, what, prep });
+    items.push({ y, domain, group: groupAt(y), when: `${ageOf(y)}세 무렵`, title, what, prep });
   }
   // 사건마다 그 사람 몫의 말을 붙인다 — 일은 맞는 갈래, 돈은 돈을 키우는 방향, 건강은 가장 옅은 기운을 채우는 법
   const focus = careerFocus(r);
@@ -911,6 +911,58 @@ export function lifeEventItems(r) {
     if (it.domain === '직업' && focus.name) it.prep += ` 옮긴다면 ${focus.name} 쪽이 이 명반에 맞습니다.`;
     if (it.domain === '재물' && earn) it.what += ` 이 명반은 ${earn}`;
     if (it.domain === '건강' && weak) it.prep += ` 이 명반에서 가장 옅은 것은 ${weak.name} 기운(${weak.means})이라, ${weak.how}`;
+  }
+  items.sort((a, b) => a.y - b.y);
+  return items.slice(0, 8);
+}
+
+/**
+ * 두 사람이 앞으로 마주할 중요한 일 (궁합 리포트·AI 공용) — {y, when, title, what, prep}
+ *   · 한 사람의 앞으로의 10년 운이 **상대의 배우자 자리(일지)**와 부딪치거나·되풀이되거나·맞물리는 일
+ *     (그 10년의 갈래별 사전 pair|충·형·합|십신 무리)
+ *   · 한 사람의 일 변화·목돈·이사가 두 사람 생활에 미치는 일 (pairlife|분야|십신 무리)
+ *   · 두 사람의 흐름이 함께 바뀌는 때
+ * 사전 문장의 {X}는 그 일을 겪는 사람, {Y}는 상대다. 결혼·출산 시기는 쓰지 않는다.
+ */
+export function pairEventItems(rA, rB, A, B) {
+  const now = Number(rA.input.currentYear);
+  const items = [];
+  const fill = (e, X, Y) => [e.t, e.w, e.p].map((s) => s.replaceAll('{X}', X).replaceAll('{Y}', Y));
+  for (const [rX, rY, X, Y] of [[rA, rB, A, B], [rB, rA, B, A]]) {
+    try {
+      const yearAt = (exact) => new Date((rX.input.jdUT - 2440587.5 + exact * 365.2425) * 864e5).getUTCFullYear();
+      const seat = rY.chart.pillars.day.branch;
+      const seen = new Set();
+      for (const d of computeDaeun(rX.chart, rX.input.isMale, rX.input.jdUT)?.list ?? []) {
+        const from = yearAt(d.fromExact), to = yearAt(d.toExact) - 1;
+        if (to < now || from > now + 30) continue;
+        const rels = branchRelations(d.branch, seat).filter((x) => !x.minor);
+        const rel = rels.find((x) => x.kind === '충') ?? rels.find((x) => /형/.test(x.kind)) ?? rels.find((x) => /합/.test(x.kind));
+        if (!rel) continue;
+        const kind = rel.kind === '충' ? '충' : /형/.test(rel.kind) ? '형' : '합';
+        if (seen.has(kind)) continue;
+        seen.add(kind);
+        const e = eventEntry(`pair|${kind}|${TEN_GOD_GROUP[d.god]}`);
+        if (!e) continue;
+        const [title, what, prep] = fill(e, X, Y);
+        const y = Math.max(from, now);
+        items.push({ y, when: `${y}~${to}년 무렵`, title, what, prep });
+      }
+    } catch { /* */ }
+    for (const it of lifeEventItems(rX)) {
+      if (!['직업', '재물', '이사'].includes(it.domain)) continue;
+      const e = eventEntry(`pairlife|${it.domain}|${it.group}`);
+      if (!e) continue;
+      const [title, what, prep] = fill(e, X, Y);
+      items.push({ y: it.y, when: `${it.y}년 무렵`, title, what, prep });
+    }
+  }
+  const together = togetherTurn(seasonNow(rA), seasonNow(rB));
+  if (together) {
+    const y = Number(together.match(/^(\d{4})/)?.[1]);
+    items.push({ y, when: together.match(/^[\d~]+년/)?.[0] ?? '', title: '두 사람의 흐름이 함께 바뀌는 때',
+      what: '두 사람이 비슷한 무렵에 새로운 10년의 흐름으로 넘어갑니다. 둘 다 생활의 틀이 바뀌는 때라 같이 움직이기 좋은 만큼 서로의 변화에 흔들리기도 쉽습니다.',
+      prep: '사는 곳·일·돈 계획처럼 큰 틀을 이때 함께 다시 짜고, 각자 바라는 다음 10년을 미리 이야기해 두세요.' });
   }
   items.sort((a, b) => a.y - b.y);
   return items.slice(0, 8);
@@ -1074,6 +1126,8 @@ export function renderPairReport(formA, formB, c, v, elementDist, people = {}) {
   // 개인 리포트와 같은 순서 — 지금 → 앞으로 갈 방향 → 알아 둘 것 → 조심할 것
   const seat = pr?.seatKind !== '없음'; // 배우자 자리끼리 아무 관계가 없으면 누구에게나 같은 말이라 싣지 않는다
   const snA = seasonNow(rA), snB = seasonNow(rB);
+  let events = [];
+  try { events = pairEventItems(rA, rB, A, B); } catch { /* */ }
 
   // 1. 지금 두 사람은 — 어떤 관계이고, 각자 어떤 시기에 있나
   const together = togetherTurn(snA, snB);
@@ -1083,7 +1137,8 @@ export function renderPairReport(formA, formB, c, v, elementDist, people = {}) {
     bullet('🏠', '함께 살 때', seat ? pr?.seat?.h : ''),
     bullet('📍', `${A}님의 지금 (${snA?.cur?.from ?? ''}~${snA?.cur?.to ?? ''}년)`, snA?.cur?.e?.h),
     bullet('📍', `${B}님의 지금 (${snB?.cur?.from ?? ''}~${snB?.cur?.to ?? ''}년)`, snB?.cur?.e?.h),
-    bullet('⏭️', '함께 바뀌는 때', together),
+    // 함께 바뀌는 때는 아래 "앞으로 두 사람이 마주할 중요한 일"이 자세히 쓴다
+    together && !events.length ? bullet('⏭️', '함께 바뀌는 때', together) : '',
   );
 
   // 2. 앞으로 함께 가야 할 방향
@@ -1125,7 +1180,12 @@ export function renderPairReport(formA, formB, c, v, elementDist, people = {}) {
       bullet('', `${B}님`, [snB?.cur?.e?.c, lines(esB, 'c', 1)[0]].filter(Boolean).join(' ')),
     );
 
-  const chapters = sec(1, '서로 채워주는 기운', table2(['기운', '두 사람'], elemRows), '두 사람의 기운 비교');
+  // 앞으로 두 사람이 마주할 중요한 일 — 개인 리포트처럼 시기표가 아니라 사건·모양·대비로
+  const eventHtml = events.map((it) =>
+    `<article class="rp-signature"><h4 class="rp-h4">${esc(it.title)} <small>· ${esc(it.when)}</small></h4>`
+    + `<p>${esc(it.what)}</p><p class="rp-fine"><b>대비</b> — ${esc(it.prep)}</p></article>`).join('');
+  const chapters = sec(1, '앞으로 두 사람이 마주할 중요한 일', eventHtml, '무슨 일이, 어떤 모양으로 오고, 어떻게 대비할지')
+    + sec(2, '서로 채워주는 기운', table2(['기운', '두 사람'], elemRows), '두 사람의 기운 비교');
 
   return `
     <section class="rp" aria-labelledby="rp-title">

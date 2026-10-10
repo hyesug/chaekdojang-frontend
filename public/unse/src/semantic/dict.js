@@ -27,7 +27,7 @@ export const DICT_FILES = [
   'ziwei-career', 'ziwei-money', 'ziwei-spouse', 'ziwei-children',
   'western-planets-1', 'western-planets-2', 'boards-2',
   'pair-stem', 'pair-bond',
-  'event-1', 'event-2',
+  'event-1', 'event-2', 'event-3',
 ];
 /** 파일 → 사전 묶음 이름 */
 const GROUP = (file) => file.replace(/-\d+$/, '');

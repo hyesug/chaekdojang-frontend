@@ -52,9 +52,9 @@ test('개인 리포트는 한눈에 보는 나·나는 어떤 사람인가·커�
     '앞으로 가야 할 방향', '잘 맞는 일',
     '알아 두면 좋은 나', '나의 성격', '일할 때의 나',
     '조심해야 할 것', '늘 조심할 것', '지켜야 할 원칙',
-    '인생의 큰 흐름 — 앞으로 십 년마다 무엇이 오는가',
+    '인생의 큰 흐름 — 지금의 10년과 다음 10년',
     ' · 지금',
-    '당장 실행해볼 수 있는 Action Item 3가지',
+    '지금 바로 해 볼 것 — 분야별 하나씩',
     '더 자세히 보기',
   ];
   let at = -1;
@@ -63,7 +63,13 @@ test('개인 리포트는 한눈에 보는 나·나는 어떤 사람인가·커�
     assert.ok(i > at, `순서가 어긋났거나 없음: ${heading}`);
     at = i;
   }
-  for (const tag of ['DO', 'KEY']) assert.match(html, rx(`>${tag}<`));
+  // 분야별 하나씩 — 일·돈·사랑·건강
+  for (const tag of ['💼 일', '💰 돈', '🌿 건강']) assert.match(html, rx(`>${tag}<`));
+  // 인생의 큰 흐름은 지금의 10년과 다음 10년만 — 지나간 다섯 해는 싣지 않는다
+  const flow = html.slice(html.indexOf('인생의 큰 흐름'), html.indexOf('지금 바로 해 볼 것'));
+  const now = new Date().getFullYear();
+  for (const m of flow.matchAll(/\((\d{4})~(\d{4})년\)/g)) assert.ok(Number(m[2]) >= now, `지난 시기가 남았다: ${m[0]}`);
+  assert.ok([...flow.matchAll(/\((\d{4})~(\d{4})년\)/g)].length <= 4);
   // 자세한 장은 접어 두고, 겹치던 장(사업·로또, 질문별 색인)은 다시 넣지 않는다
   for (const chapter of ['일과 돈', '사랑과 가족', '건강', '앞으로 마주할 중요한 일', '어떤 일이 맞는가', '일하는 방식', '돈을 버는 방식', '쓰는 습관과 모으는 법', '타고난 몸의 결']) {
     assert.match(html, rx(chapter));

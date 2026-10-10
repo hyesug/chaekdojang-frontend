@@ -121,7 +121,6 @@ function plainTitle(title) {
   return tail && !JARGON.test(tail) ? tail : '';
 }
 
-const sysOf = (r, name) =>Object.values(r.results ?? {}).find((v) => v?.name === name) ?? null;
 
 /** 풀이 목록 — 제목을 한 줄 위에 두고 본문을 아래에. 긴 문단이 이어 붙지 않게 항목마다 끊는다 */
 const readItems = (items) => {
@@ -209,11 +208,6 @@ function timingOf(r, domain, span = 10) {
    그럴듯한 답으로 채우지 않고 계산 범위를 적는다.
    ═══════════════════════════════════════════════════════════ */
 
-function readingText(r, sysName, contains) {
-  const s = sysOf(r, sysName);
-  return s?.readings?.find((x) => String(x.title).includes(contains))?.text ?? '';
-}
-const labeled = (k, t) => t ? readItems([[k, t]]) : '';
 
 /** 십성 무리가 그 해에 건드리는 것 — 고정표 */
 const GOD_FIELD = {
@@ -280,9 +274,11 @@ function careerLife(v, r) {
 
   // 어떤 일이 맞는가 — 고른 갈래, 그 갈래의 문장(위 카드가 쓴 첫 문장 다음), 자미 관록궁(같은 갈래일 때)
   const fitMore = coreField(es, 'w', 30, 0, (t) => FIELD_FIT.test(t)).map((x) => x.text)
-    .filter((t) => !focus.lines.includes(t) && catsOf(t).some((i) => CAREER_CATS[i][0] === focus.name)).slice(0, 2);
+    // 고른 갈래에만 드는 문장 하나만(다른 갈래가 섞인 문장은 말이 엇갈려 보인다)
+    .filter((t) => !focus.lines.includes(t) && catsOf(t).length === 1 && CAREER_CATS[catsOf(t)[0]][0] === focus.name).slice(0, 1);
   const fit = [
-    focus.name ? `여러 갈래가 함께 가리키는 쪽은 ${focus.name}입니다. ${CAREER_DESC[focus.name] ?? ''}` : '',
+    focus.name ? `${focus.name}이 맞습니다. ${CAREER_DESC[focus.name] ?? ''}` : '',
+    focus.verified.length ? `그중에서도 ${focus.verified.join(', ')} 분야가 가능성이 높습니다.` : '',
     ...fitMore,
     focus.workFits ? `${work.h} ${work.g}` : '',
   ].filter(Boolean).join(' ');
@@ -502,10 +498,6 @@ function personalPrinciples(r) {
 
 const sentencesOf = (text) => plain(text).split(/(?<=[.!?])\s+/).filter(Boolean);
 const firstOf = (text, n = 1) => sentencesOf(text).slice(0, n).join(' ');
-/** 문장 가운데 조건(다만·주의…)에 맞는 첫 문장, 없으면 빈 값 */
-const pickOf = (text, re) => sentencesOf(text).find((x) => re.test(x)) ?? '';
-const readingBy = (r, sys, re) => sysOf(r, sys)?.readings?.find((x) => re.test(String(x.title))) ?? null;
-const CAUTION = /다만|주의|조심|쉽습니다|놓치|무너|지치|마찰|부딪/;
 
 const bullet = (icon, label, text) => !text ? '' :
   `<li><span class="rp-ic" aria-hidden="true">${icon}</span><div><b>${esc(label)}</b><p>${esc(text)}</p></div></li>`;
@@ -620,49 +612,82 @@ function lifeSeasons(r) {
  * 실행 3가지 — 한 줄 제목 + 왜 그런지 두세 문장.
  * 세 칸이 같은 문장을 되풀이하지 않게 이미 쓴 문장은 건너뛴다.
  */
-function actionItems(r, v, me, s) {
-  const used = new Set();
-  const take = (...cands) => {
-    const t = cands.find((x) => x && !used.has(x));
-    if (t) used.add(t);
-    return t ?? '';
-  };
-  const strip = (t) => String(t ?? '').replace(/^다만\s+/, '');
-  const natOf = (palace, who) => { try { return natureOf(palaceStars(r.input, palace), who); } catch { return null; } };
+/**
+ * 지금 바로 해 볼 것 — 일·돈·사랑·건강마다 하나씩(피드백: "일: 이직하세요 / 건강: 위염 조심하세요"처럼).
+ * 행동 한 줄 + 왜 그런지 한 줄. 모두 이 사람의 계산에서 고른다.
+ *   일   — 지금의 10년이 무엇의 시기인지(SEASON.act) · 3년 안에 일의 변화 사건이 있으면 그 무렵
+ *   돈   — 모으는 쪽인지 불리는 쪽인지 · 목돈이 움직이는 사건
+ *   사랑 — 지금의 10년이 배우자 자리(일지)와 맞물리는지·부딪치는지 · 자미 부처궁
+ *   건강 — 가장 옅은 기운의 몸 자리 · 몸을 챙겨야 할 사건
+ */
+const HEALTH_ACT = {
+  목: '스트레칭과 눈 쉬는 시간을 매일 챙기세요.',
+  화: '잠자는 시간을 지키고 카페인과 야근을 줄이세요.',
+  토: '끼니를 거르지 말고 야식을 줄이세요 — 위장이 먼저 탈이 나기 쉽습니다.',
+  금: '환절기 호흡기와 피부를 챙기세요 — 물을 자주 마시고 공기를 자주 바꾸세요.',
+  수: '몸을 따뜻하게 하고 허리를 챙기세요 — 오래 앉아 있지 마세요.',
+};
+const LOVE_ACT = {
+  합: ['새 인연에게 마음을 열어 두세요.', '지금의 10년은 내 자리와 잘 맞물려, 오래 갈 동반자나 협력자가 들어오기 쉬운 때입니다.'],
+  충: ['큰 결정은 서두르지 말고 가까운 사람과 계획부터 맞추세요.', '지금의 10년은 생활의 중심이 흔들리기 쉬워, 함께 정하는 습관이 관계를 지킵니다.'],
+  형: ['되풀이되는 다툼 주제 하나를 둘만의 규칙으로 바꾸세요.', '지금의 10년은 가까운 사이에서 같은 갈등이 되풀이되기 쉬운 때입니다.'],
+};
+function domainActions(r) {
+  const out = [];
+  const now = Number(r.input.currentYear);
+  let dae = null;
+  try { dae = currentDaeun(computeDaeun(r.chart, r.input.isMale, r.input.jdUT), r.input.elapsedYears ?? r.input.age); } catch { /* */ }
+  let events = [];
+  try { events = lifeEventItems(r); } catch { /* */ }
+  const soon = (domain) => events.find((e) => e.domain === domain && e.y - now <= 3);
 
-  // DO — 일할 때의 나(관록궁 별)가 자라는 방향. 별 조합이라 사람마다 갈린다. 시각이 없으면 지금 시즌
-  const work = natOf('관록궁', '일할 때의 나');
-  const grow = String(work?.text ?? '').replace(/\*\*/g, '').match(/자라는 방향은 ([^.]+?)입니다/)?.[1];
-  const doHead = grow ? `${grow.replace(/\s*쪽$/, '')} 쪽으로 움직이세요.` : (s.act ? `${s.act}.` : '');
-  const doWhy = grow && work?.traits?.length
-    ? `일할 때의 나는 ${work.traits.slice(0, 3).join(', ')} 쪽이라, 이 힘이 그대로 쓰이는 자리에서 성과가 납니다.`
-    : [take(pickOf(withSrc(v.work?.job), /편이 낫|잘 됩니다|좋습니다/)), s.seasonTips?.[0]?.[2] ? take(s.seasonTips[0][2]) : ''].filter(Boolean).join(' ');
+  // 일
+  const season = dae ? SEASON[TEN_GOD_GROUP[dae.god]] : null;
+  const job = soon('직업');
+  if (season || job) {
+    out.push(['일', '💼', job ? `${job.when}의 변화에 대비해 지금부터 다음 자리를 알아 두세요.` : `${season.act}.`,
+      job ? `${job.title} 신호가 있습니다. ${job.prep.split(' 옮긴다면')[0]}` : season.good]);
+  }
 
-  // DON'T — 타고난 나(명궁 별)의 걸림돌. 없으면 돈 습관
-  const me2 = natOf('명궁', '나');
-  const dontHead = me2?.risk?.[0]
-    ? '타고난 버릇 하나를 경계하세요.'
-    : strip(take(pickOf(withSrc(v.work?.money), /마세요|말고/), pickOf(withSrc(v.work?.money), CAUTION)));
-  const dontWhy = me2?.risk?.[0]
-    ? `${me2.risk.slice(0, 2).map((x) => `${x.replace(/[.]?$/, '')}.`).join(' ')}`
-    : (dontHead ? '돈이 들어오면 쓰기 전에 일정 몫을 먼저 따로 떼어 두세요.' : '');
+  // 돈
+  let es = [];
+  try { es = dictEntries(r); } catch { /* */ }
+  const money = ziweiPalaceEntry(r, 'money');
+  const moneyLines = [...coreField(es, 'm', 6).map((x) => x.text), ...(money ? [money.h, money.g] : [])];
+  const lean = moneyLines.filter((x) => SAVE.test(x)).length - moneyLines.filter((x) => GROW.test(x)).length;
+  const big = soon('재물');
+  out.push(['돈', '💰',
+    lean > 0 ? '저축만 하지 말고 오래 묵힐 자산(연금·적립식 투자)을 하나 시작하세요.'
+      : lean < 0 ? '월급날 자동이체로 수입의 일정 몫을 먼저 떼어 두세요.'
+        : '매달 같은 날 들어오고 나간 돈을 한 번 점검하세요.',
+    big ? `${big.when}에 ${big.title} 신호가 있습니다. ${big.prep}`
+      : lean > 0 ? '모으고 지키는 힘이 강해, 불리는 장치 하나만 더하면 재산이 커집니다.'
+        : lean < 0 ? '벌고 불리는 힘이 강한 만큼 나가는 것도 커서, 먼저 떼어 두는 장치가 있어야 남습니다.'
+          : '돈 성향이 한쪽으로 치우치지 않아, 꾸준한 점검이 가장 확실한 방법입니다.']);
 
-  // KEY — 가장 넘치는 기운과 가장 옅은 기운의 짝 (스무 가지로 갈린다)
-  let weak = null, strong = null;
+  // 사랑
+  let kind = null;
+  try {
+    const rels = dae ? branchRelations(r.chart.pillars.day.branch, dae.branch).filter((x) => !x.minor) : [];
+    kind = rels.some((x) => x.kind === '충') ? '충' : rels.some((x) => /형/.test(x.kind)) ? '형' : rels.some((x) => /합/.test(x.kind)) ? '합' : null;
+  } catch { /* */ }
+  const sp = ziweiPalaceEntry(r, 'spouse');
+  if (kind) out.push(['사랑', '💞', LOVE_ACT[kind][0], LOVE_ACT[kind][1]]);
+  else if (sp) out.push(['사랑', '💞', sp.g.replace(/[.]$/, '') + ' — 지금처럼 이 결을 지켜 가세요.', sp.c]);
+
+  // 건강
   try {
     const c = elementDistribution(r.chart.pillars).count;
-    weak = ELEM_KEYS[[0, 1, 2, 3, 4].reduce((x, i) => (c[i] < c[x] ? i : x), 0)];
-    strong = ELEM_KEYS[[0, 1, 2, 3, 4].reduce((x, i) => (c[i] > c[x] ? i : x), 0)];
+    const weak = ELEM_KEYS[[0, 1, 2, 3, 4].reduce((x, i) => (c[i] < c[x] ? i : x), 0)];
+    const hEv = soon('건강');
+    out.push(['건강', '🌿', HEALTH_ACT[weak],
+      hEv ? `${hEv.when}에 몸을 챙겨야 할 신호가 있습니다. 그 전부터 습관으로 만들어 두세요.`
+        : `가장 옅은 ${ELEM_FILL[weak].name} 기운 쪽(${ELEM_PART[weak]})이 먼저 지치기 쉽습니다.`]);
   } catch { /* */ }
-  const fill = weak ? ELEM_FILL[weak] : null;
-  const over = strong && strong !== weak ? ELEM_FILL[strong] : null;
-  return [
-    ['DO', doHead, doWhy],
-    ["DON'T", dontHead, dontWhy],
-    ['KEY', fill ? `넘치는 '${over?.name ?? ''}' 대신 옅은 '${fill.name}' 기운을 채우세요.`.replace(/넘치는 '' 대신 /, '') : '',
-      fill ? `${over ? `${over.means}은 이미 넘쳐 한쪽으로 쏠리기 쉽고, ` : ''}${fill.means}이 가장 옅습니다. ${fill.how}` : ''],
-  ].filter(([, head, why]) => head || why);
+  return out;
 }
+
+
 
 /**
  * 나만의 특징 — 열일곱 체계의 풀이 가운데 **사람들 사이에서 드물게 나오는 것**부터.
@@ -720,9 +745,11 @@ function lifeFlow(r) {
     const idx = [0, 1, 2, 3, 4];
     elem = { weak: idx.reduce((a, i) => (c[i] < c[a] ? i : a), 0), strong: idx.reduce((a, i) => (c[i] > c[a] ? i : a), 0) };
   } catch { /* */ }
-  for (const d of ds?.list ?? []) {
+  // 지금의 10년과 그다음 10년만(피드백) — 30년을 다 늘어놓으면 지금과 상관없는 먼 이야기가 길어진다
+  const shown = (ds?.list ?? []).filter((d) => yearAt(d.toExact) - 1 >= now).slice(0, 2);
+  const horizon = shown.length ? yearAt(shown.at(-1).toExact) - 1 : now + 20;
+  for (const d of shown) {
     const from = yearAt(d.fromExact), to = yearAt(d.toExact) - 1;
-    if (to < now || from > now + 30) continue;
     const group = TEN_GOD_GROUP[d.god];
     const info = SEASON[group];
     const parts = [];
@@ -764,8 +791,9 @@ function lifeFlow(r) {
       const mid = from + 5;
       const half = (e) => hgc(e);
       const extra = parts.filter((p) => !p.startsWith('\x27') || !p.includes('의 시기입니다'));
-      rows.push([`${d.fromAge}~${d.fromAge + 4}세 (${from}~${mid - 1}년)${nowMark(from, mid - 1)}`, [half(de.front), ...extra.slice(0, 2)].join(' ')]);
-      rows.push([`${d.fromAge + 5}~${d.toAge}세 (${mid}~${to}년)${nowMark(mid, to)}`, [half(de.back), ...extra.slice(2)].join(' ')]);
+      // 이미 지나간 다섯 해는 싣지 않는다 — 지금과 앞으로만
+      if (mid - 1 >= now) rows.push([`${d.fromAge}~${d.fromAge + 4}세 (${from}~${mid - 1}년)${nowMark(from, mid - 1)}`, [half(de.front), ...extra.slice(0, 2)].join(' ')]);
+      rows.push([`${d.fromAge + 5}~${d.toAge}세 (${mid}~${to}년)${nowMark(mid, to)}`, [half(de.back), ...extra.slice(mid - 1 >= now ? 2 : 0)].join(' ')]);
       continue;
     }
     if (info && !seenGroup.has(group)) {
@@ -778,7 +806,7 @@ function lifeFlow(r) {
   let turns = [];
   try {
     turns = chapterTurns(lifeChapters(r.input, r.chart, r.input.isMale),
-      { from: now, to: now + 30, minSystems: 2, birthYear: r.input.year }).slice(0, 4);
+      { from: now, to: horizon, minSystems: 2, birthYear: r.input.year }).slice(0, 4);
   } catch { /* */ }
   // 그 해에 **무엇이** 바뀌는지 — 주기마다 쉬운 이름과, 새로 시작되는 구간의 뜻
   // 그 해에 삶의 무엇이 바뀌는지만 말한다 — 어느 체계의 어떤 주기인지는 손님이 알 필요가 없다
@@ -944,13 +972,15 @@ export function careerFocus(r) {
   if (!votes[best]) return { name: '', verified: verifiedAll.slice(0, 1), lines: lines.slice(0, 1), workFits: !!work };
   const verified = verifiedAll.filter((l) => catsOf(l).includes(best));
   // 문장도 하나만 — 그 갈래에만 드는(다른 갈래와 덜 섞인) 문장을 고른다
-  const own = lines.filter((t) => catsOf(t).includes(best)).sort((a, b) => catsOf(a).length - catsOf(b).length);
+  // 그 갈래에만 드는 문장만 — "연구·법률·강의"처럼 두 갈래에 걸친 문장을 섞으면 말이 엇갈려 보였다(피드백)
+  const own = lines.filter((t) => catsOf(t).length === 1 && catsOf(t)[0] === best);
   return {
     name: CAREER_CATS[best][0],
     verified,
     lines: own.slice(0, 1),
     // 자미 관록궁 문장이 같은 갈래일 때만 "일을 키우려면"에 싣는다 — 다르면 리포트 안에서 직업 말이 엇갈린다
-    workFits: !!work && catsOf(`${work.h} ${work.g}`).includes(best),
+    // 자미 관록궁 문장도 다른 갈래가 섞여 있으면(서비스·복지·관리·교육…) 싣지 않는다
+    workFits: !!work && catsOf(`${work.h} ${work.g}`).length === 1 && catsOf(`${work.h} ${work.g}`)[0] === best,
   };
 }
 
@@ -1260,8 +1290,7 @@ export function futureDigest(r) {
   };
 }
 
-function lifeReport(form, r, f, v) {
-  const me = readingBy(r, '사주', /^일간/);
+function lifeReport(form, r, f) {
   const s = lifeSeasons(r);
   // '명반을 가르는 핵심 구조' 카드는 뺐다 — 구조마다 정해진 문단 하나를 통째로 붙여, 같은 구조를 가진
   // 사람은 글자 하나 다르지 않은 글을 받았다(예: '어린 시절 집안 환경의 변화')
@@ -1303,11 +1332,11 @@ function lifeReport(form, r, f, v) {
     + card('💡', '알아 두면 좋은 나', know || distinctCard(r))
     + card('⚠️', '조심해야 할 것', caution)
     + bookCard('📚', '내 명반에 어울리는 책', bookNeeds(r, d, f), bookSeed(r) + monthIndex())
-    + card('🌊', '인생의 큰 흐름 — 앞으로 십 년마다 무엇이 오는가', lifeFlow(r))
-    + card('🎯', '당장 실행해볼 수 있는 Action Item 3가지',
+    + card('🌊', '인생의 큰 흐름 — 지금의 10년과 다음 10년', lifeFlow(r))
+    + card('🎯', '지금 바로 해 볼 것 — 분야별 하나씩',
       `<ol class="rp-act">`
-      + actionItems(r, v, me, s)
-        .map(([k, head, why]) => `<li><span class="rp-tag rp-tag-${k === 'DO' ? 'do' : k === 'KEY' ? 'key' : 'dont'}">${esc(k)}</span><div>${head ? `<b>${esc(head)}</b>` : ''}${why ? `<p>${esc(why)}</p>` : ''}</div></li>`).join('')
+      + domainActions(r)
+        .map(([k, icon, head, why]) => `<li><span class="rp-tag rp-tag-${{ 일: 'do', 돈: 'key', 사랑: 'dont', 건강: 'key' }[k]}">${icon} ${esc(k)}</span><div>${head ? `<b>${esc(head)}</b>` : ''}${why ? `<p>${esc(why)}</p>` : ''}</div></li>`).join('')
       + `</ol>`);
 }
 

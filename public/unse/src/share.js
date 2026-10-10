@@ -420,19 +420,30 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-/** 붉은 기록 도장 — '책도' / '장印' */
-function seal(ctx, cx, cy, size) {
+/** 책도장 로고(사이트 헤더와 같은 冊 원형 마크) — 사이트 안의 파일이라 외부 요청이 아니다 */
+const LOGO_SRC = '/chaekdojang-logo-512.png';
+function loadLogo() {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = LOGO_SRC;
+  });
+}
+
+/** 로고 도장 — 로고 파일의 바탕이 보이지 않게 원으로 잘라 찍는다. 못 불러오면 같은 모양을 직접 그린다 */
+function seal(ctx, cx, cy, size, logo) {
   ctx.save();
-  ctx.translate(cx, cy); ctx.rotate(-0.08);
-  ctx.globalAlpha = 0.9;
-  ctx.strokeStyle = SC.stamp; ctx.lineWidth = 6;
-  roundRect(ctx, -size / 2, -size / 2, size, size, 14); ctx.stroke();
-  ctx.lineWidth = 2;
-  roundRect(ctx, -size / 2 + 9, -size / 2 + 9, size - 18, size - 18, 8); ctx.stroke();
-  ctx.fillStyle = SC.stamp; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.font = `700 ${Math.round(size * 0.3)}px ${SERIF}`;
-  const q = size * 0.2;
-  [['책', -q, -q], ['도', q, -q], ['장', -q, q], ['印', q, q]].forEach(([ch, x, y]) => ctx.fillText(ch, x, y));
+  if (logo) {
+    ctx.beginPath(); ctx.arc(cx, cy, size * 0.47, 0, Math.PI * 2); ctx.clip();
+    ctx.drawImage(logo, cx - size / 2, cy - size / 2, size, size);
+  } else {
+    ctx.strokeStyle = SC.stamp; ctx.lineWidth = size * 0.06;
+    ctx.beginPath(); ctx.arc(cx, cy, size * 0.42, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = SC.stamp; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = `700 ${Math.round(size * 0.42)}px ${SERIF}`;
+    ctx.fillText('冊', cx, cy + size * 0.02);
+  }
   ctx.restore();
 }
 
@@ -451,6 +462,7 @@ export async function buildShareCard({ kicker, type, tags = [], items = [], teas
       document.fonts.load(`600 30px ${SANS}`),
     ]);
   } catch { /* 글꼴을 못 불러도 시스템 글꼴로 그린다 */ }
+  const logo = await loadLogo();
 
   const W = 1080, H = 1920;
   const cv = document.createElement('canvas');
@@ -583,7 +595,7 @@ export async function buildShareCard({ kicker, type, tags = [], items = [], teas
     ctx.fillStyle = SC.teal; ctx.font = `700 32px ${SERIF}`;
     ctx.fillText('책도장 운세 · chaekdojang.com/unse', X, y + 60);
   }
-  seal(ctx, W - 84 - 62, y + (cta ? 118 : 50), 116);
+  seal(ctx, W - 84 - 62, y + (cta ? 118 : 50), 124, logo);
   return cv;
 }
 

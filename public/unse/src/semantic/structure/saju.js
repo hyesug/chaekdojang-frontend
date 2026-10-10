@@ -146,10 +146,15 @@ function factsOf(chart) {
   // 오행이 하나도 없는 자리 — 천간·지지 본기로만 센다
   const elems = new Set();
   for (const p of ps) { elems.add(STEM_ELEMENT[p.stem]); elems.add(BRANCH_ELEMENT[p.branch]); }
-  const missing = ELEMENTS.map((n, i) => (elems.has(i) ? null : n)).filter(Boolean);
+  // 겉(천간·지지 본기)에는 없어도 지장간에 숨어 있으면 "없다"가 아니라 "겉으로 드러나지 않고 약하다"
+  // (예: 辛未 辛丑 乙巳 甲申 — 겉의 수는 0이지만 丑 속 癸, 申 속 壬이 있다)
+  const inner = new Set();
+  for (const p of ps) for (const s of HIDDEN_STEMS[p.branch] ?? []) inner.add(STEM_ELEMENT[s]);
+  const missing = ELEMENTS.map((n, i) => (elems.has(i) || inner.has(i) ? null : n)).filter(Boolean);
+  const hiddenOnly = ELEMENTS.map((n, i) => (!elems.has(i) && inner.has(i) ? n : null)).filter(Boolean);
 
   return {
-    ps, gods, has, group, ties, day, missing,
+    ps, gods, has, group, ties, day, missing, hiddenOnly,
     strength: bodyStrength(chart),
     dayElement: ELEMENTS[STEM_ELEMENT[chart.dayStem]],
     /** 재성이 앉은 지지끼리 충하는가 — 재고가 열리는 자리 */
@@ -431,11 +436,16 @@ const STRUCTURES = [
   {
     id: 'element_missing', name: '오행결', hanja: '五行缺', domain: 'health',
     source: '황제내경 오행-장부 배당 (목=간담 화=심소장 토=비위 금=폐대장 수=신방광)',
-    test: (f) => f.missing.length > 0,
+    test: (f) => f.missing.length > 0 || f.hiddenOnly.length > 0,
     says: (f) => {
       const ORGAN = { 목: '간·담', 화: '심장·소장', 토: '비위(소화)', 금: '폐·대장', 수: '신장·방광' };
-      return `${f.missing.join('·')}가 명식에 없습니다(${f.missing.map((e) => ORGAN[e]).join(' / ')}). `
-        + '없는 오행은 그 계통이 약하다기보다 **스스로 채워야 하는 자리**로 봅니다. '
+      const organ = (xs) => xs.map((e) => ORGAN[e]).join(' / ');
+      const none = f.missing.length
+        ? `${f.missing.join('·')}는 지장간까지 보아도 명식에 없습니다(${organ(f.missing)}). ` : '';
+      const hidden = f.hiddenOnly.length
+        ? `${f.hiddenOnly.join('·')}는 겉으로 드러나지 않고 지장간 속에만 조금 있습니다(${organ(f.hiddenOnly)}). 없는 것이 아니라 약한 것입니다. ` : '';
+      return none + hidden
+        + '약하거나 없는 오행은 그 계통이 탈 난다기보다 **스스로 채워야 하는 자리**로 봅니다. '
         + '진단이 아니라 어디를 살펴 두면 좋은지의 이야기입니다.';
     },
   },

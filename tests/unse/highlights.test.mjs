@@ -215,3 +215,18 @@ test('공유 카드의 앞으로 찾아올 일은 몇 년 뒤인지와 한 문�
     assert.ok(!t.sub || !t.sub.includes(t.head));
   }
 });
+
+/* ── 오행결: 겉에는 없지만 지장간에 있는 오행 ───────────────── */
+import { readStructures } from '../../public/unse/src/semantic/structure/saju.js';
+
+test('겉 여덟 글자에 없는 오행도 지장간에 있으면 "없다"고 하지 않는다 (辛未 辛丑 乙巳 甲申의 수)', () => {
+  // 甲0 乙1 … 辛7 / 子0 丑1 … 巳5 … 未7 申8
+  const chart = { dayStem: 1, pillars: {
+    year: { stem: 7, branch: 7 }, month: { stem: 7, branch: 1 }, day: { stem: 1, branch: 5 }, hour: { stem: 0, branch: 8 } } };
+  const { structures, facts } = readStructures(chart, { domain: 'health' });
+  assert.deepEqual(facts.missing, []);
+  assert.deepEqual(facts.hiddenOnly, ['수']);
+  const t = structures.find((s) => s.id === 'element_missing')?.text ?? '';
+  assert.match(t, /수는 겉으로 드러나지 않고 지장간 속에만 조금 있습니다/);
+  assert.doesNotMatch(t, /수는 지장간까지 보아도 명식에 없습니다|수가 명식에 없습니다/);
+});

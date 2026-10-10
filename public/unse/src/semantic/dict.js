@@ -198,13 +198,14 @@ const nearSame = (a, b) => { let n = 0; for (const x of a) if (b.has(x)) n++; re
  * 성격·일·돈·관계·조심 한 칸을 뼈대 체계 순으로 고른다.
  * 같은 단계 안에서는 다른 체계와 결이 겹치는 문장 → 드문 문장 순, 앞서 고른 문장과 반대 결이면 건너뛴다.
  */
-export function coreField(entries, field, max = 4, skip = 0) {
+export function coreField(entries, field, max = 4, skip = 0, keep = null) {
+  // keep — 그 칸 안에서도 한 갈래만 고를 때(예: 일할 때 칸에서 "맞는 분야" 문장만)
   const cand = [];
   const seen = new Set();
   for (const e of entries) {
     if (EVENT_BOARD.test(e.label)) continue;
     const t = e.entry[field];
-    if (!t || seen.has(t)) continue;
+    if (!t || seen.has(t) || (keep && !keep(t))) continue;
     seen.add(t);
     cand.push({ text: t, label: e.label, share: e.share, tier: CORE_TIER[e.label] ?? 2, themes: themesOf(t), grams: bigrams(t) });
   }

@@ -151,7 +151,7 @@ test('홍국기문 수리가 문맥에 실린다', () => {
 
 test('카발라가 실리고 개인년이 나온다', () => {
   const c = context();
-  assert.match(c, /### 카발라 \(Kabbalah\)/);
+  assert.match(c, /### 수비학 \(세피로트 대응\)/);
   assert.match(c, /개인년/);
 });
 

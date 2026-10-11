@@ -115,7 +115,7 @@ function symbols(r) {
   s.태국 = (head('태국 점성술').match(/[일월화수목금토]요일/) ?? [])[0] ?? null;
   const yo = (head('숙요').match(/·\s*([일월화수목금토])요/) ?? [])[1];
   s.숙요 = yo ? yo + '요' : null;
-  s.카발라 = Number((head('카발라').match(/라이프 패스\s*(\d+)/) ?? [])[1]) || null;
+  s.카발라 = Number((head('수비학').match(/라이프 패스\s*(\d+)/) ?? [])[1]) || null;
   s.타로 = (head('타로').match(/생일 카드\s*([^\s·]+)/) ?? [])[1] ?? null;
   return s;
 }

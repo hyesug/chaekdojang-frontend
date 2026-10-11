@@ -153,7 +153,7 @@ export function analyze(input) {
     // 괘 번호는 산법대로 나온 값이고, 그 옆의 문구는 이 사이트에서 쓴 것이다.
     // 원전의 표제처럼 보이면 곤란해서 밝혀 둔다.
     { label: '괘', value: `${upper}·${middle}·${lower}`,
-      note: `제${gwaeNo}괘 · ${U.title} (문구는 원전을 옮긴 것이 아니라 이 사이트에서 새로 쓴 것)` },
+      note: `제${gwaeNo}괘 · 상괘 ${upper}「${U.title}」 — 제목은 첫 자리(상괘)의 것이라 상괘가 같으면 같다. 문구는 원전을 옮긴 것이 아니라 이 사이트에서 새로 쓴 것` },
     { label: '상괘', value: String(upper), note: `세는나이 ${koreanAge} + 태세수 ${taeSeNum} → ÷8` },
     { label: '중괘', value: String(middle),
       note: `월건 ${STEMS[wolGeonStem]}${BRANCHES[wolGeonBranch]} 수 ${wolGeonNum} + 올해 월대소 ${bigMonth ? 30 : 29} → ÷6` },
@@ -164,7 +164,7 @@ export function analyze(input) {
   ];
 
   const readings = [
-    { title: `${currentYear}년 — ${U.title}`, text: U.text },
+    { title: `${currentYear}년 상괘 — ${U.title}`, text: U.text },
     { title: '올해의 결', text: MIDDLE[middle] },
     { title: '마무리', text: LOWER[lower] },
     {
@@ -184,7 +184,7 @@ export function analyze(input) {
     id: meta.id,
     name: meta.name,
     hanja: meta.hanja,
-    headline: `제${gwaeNo}괘 · ${U.title}`,
+    headline: `제${gwaeNo}괘 · 상괘 「${U.title}」`,
     facts,
     readings,
     signals: {

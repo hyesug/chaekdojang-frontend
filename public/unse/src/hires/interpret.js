@@ -805,14 +805,14 @@ export function auxSymbols(results = []) {
   }
 
   // 카발라 — 라이프 패스는 숫자라 따로 집는다
-  const kb = by['kabbalah'] ?? by['카발라'];
+  const kb = by['kabbalah'] ?? by['수비학'];
   if (kb) {
     const m = String(kb.headline ?? '').match(/라이프 패스\s*(\d+)/);
     const n = m ? Number(m[1]) : null;
     out.push(n && KABBALAH_TRADE[n]
-      ? { system: '카발라', id: 'kabbalah', symbol: n, where: '라이프 패스',
+      ? { system: '수비학', id: 'kabbalah', symbol: n, where: '라이프 패스',
           basis: `라이프 패스 ${n}`, table: KABBALAH_TRADE }
-      : { system: '카발라', id: 'kabbalah', unavailable: '라이프 패스를 집어내지 못했다' });
+      : { system: '수비학', id: 'kabbalah', unavailable: '라이프 패스를 집어내지 못했다' });
   }
   // 숙요 — 28수를 칠요로 옮긴다
   const sk = by['sukyo'] ?? by['숙요'];

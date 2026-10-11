@@ -139,7 +139,7 @@ function cycleChapters(input) {
     for (let k = 0; k < 10; k++) {
       const from = first + k * 9;
       out.push({
-        system: '카발라', what: '개인년 9년 주기',
+        system: '수비학', what: '개인년 9년 주기',
         fromAge: from - by, toAge: from - by + 8,
         fromYear: from, toYear: from + 8,
         label: `개인년 1 에서 다시 시작`,

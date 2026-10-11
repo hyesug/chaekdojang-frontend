@@ -44,7 +44,7 @@ const P = JSON.parse(readFileSync('validation/attribution.json', 'utf8'))
   .map((r) => (r.lunar ? { ...r, ...lunarToSolar(r.lunar[0], r.lunar[1], r.lunar[2]) } : r));
 
 const SYSTEMS = ['사주', '자미두수', '점성술', '베딕', '주역', '태을신수', '토정비결',
-  '구성학', '홍국기문', '육임', '마하보테', '태국 점성술', '숙요', '카발라', '타로'];
+  '구성학', '홍국기문', '육임', '마하보테', '태국 점성술', '숙요', '수비학', '타로'];
 
 const hits = {};     // 체계 → 맞힌 사람 목록
 for (const s of SYSTEMS) hits[s] = [];

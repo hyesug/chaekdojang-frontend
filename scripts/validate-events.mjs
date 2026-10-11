@@ -21,7 +21,7 @@ const NOW_YEAR = 2026;
 const people = JSON.parse(readFileSync('validation/people.json', 'utf8'));
 const cases = JSON.parse(readFileSync('validation/cases.json', 'utf8'));
 const NAME = { saju: '사주', jamidusu: '자미두수', astrology_modern: '점성(현대)', astrology_classical: '점성(고전)',
-  vedic: '베딕', juyeok: '주역', gujeong: '구성학', kabbalah: '카발라', tarot: '타로', thai: '태국',
+  vedic: '베딕', juyeok: '주역', gujeong: '구성학', kabbalah: '수비학', tarot: '타로', thai: '태국',
   hongguk: '홍국기문', yukim: '육임', taeeul: '태을신수', sukyo: '숙요', tojeong: '토정비결', mahabote: '마하보테' };
 const SYS = Object.keys(NAME);
 const OK = 80;

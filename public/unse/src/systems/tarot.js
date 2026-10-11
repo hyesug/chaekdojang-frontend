@@ -119,6 +119,11 @@ function shuffle(deck, rng) {
   return a;
 }
 
+/**
+ * 세 장 배열의 자리 — 산법의 일부다. 씨앗으로 섞은 덱에서 위에서부터 뽑은
+ * 1번 카드 = 상황, 2번 = 과제, 3번 = 조언으로 고정한다(결정론적 3장 스프레드).
+ * 뽑은 뒤에 뜻을 보고 자리를 고르는 것이 아니다.
+ */
 const POSITIONS = [
   { label: '상황', hint: '지금 놓여 있는 자리' },
   { label: '과제', hint: '넘어야 할 지점' },
@@ -148,7 +153,7 @@ export function analyze(input) {
     // 아니라 해마다 바뀐다. 출생 고정 자료로 읽히면 곤란해서 밝혀 둔다.
     ...drawn.map((c, i) => ({
       label: POSITIONS[i].label, value: c.title,
-      note: `${POSITIONS[i].hint} · ${currentYear}년 배열 (생년월일시로 고정한 씨앗에서 뽑음. 해가 바뀌면 달라진다)`,
+      note: `${i + 1}번 카드 = ${POSITIONS[i].label}(고정 배열) · ${POSITIONS[i].hint} · ${currentYear}년 배열 (생년월일시로 고정한 씨앗에서 뽑음. 해가 바뀌면 달라진다)`,
     })),
   ];
 

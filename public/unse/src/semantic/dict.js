@@ -105,9 +105,9 @@ export function dictKeys(r) {
     add('juyeok', hexOf(input).num, '주역');
   });
   safe(() => {
-    const lp = titleOf(r, '카발라', /라이프 패스/).match(/라이프 패스 (\d+)/)?.[1];
-    add('kabbalah', lp ? `인생|${lp}` : null, '카발라');
-    add('kabbalah', `생일|${input.day}`, '카발라(생일)');
+    const lp = titleOf(r, '수비학', /라이프 패스/).match(/라이프 패스 (\d+)/)?.[1];
+    add('kabbalah', lp ? `인생|${lp}` : null, '수비학');
+    add('kabbalah', `생일|${input.day}`, '수비학(생일)');
   });
   safe(() => {
     let s = input.month + input.day + input.year;

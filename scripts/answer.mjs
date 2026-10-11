@@ -25,7 +25,7 @@ import { westernPair } from '../public/unse/src/semantic/structure/western.js';
 import { readClassical } from '../public/unse/src/semantic/structure/yukchin.js';
 
 const ALL = ['사주', '자미두수', '점성술(현대)', '고전 서양', '베딕', '주역', '육임', '홍국기문', '태을신수',
-  '구성학', '숙요', '토정비결', '카발라', '마하보테', '태국 점성술', '타로'];
+  '구성학', '숙요', '토정비결', '수비학', '마하보테', '태국 점성술', '타로'];
 
 const args = process.argv.slice(2);
 let birth = null; let who = null;

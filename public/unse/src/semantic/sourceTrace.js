@@ -15,7 +15,7 @@ const GROUP_LABEL = {
   'ziwei-ming': '자미 명궁', 'ziwei-career': '자미 관록궁', 'ziwei-money': '자미 재백궁',
   'ziwei-spouse': '자미 부처궁', 'ziwei-children': '자미 자녀궁',
   western: '서양 점성', 'western-planets': '서양 점성(행성)', vedic: '베딕', mansion: '28수',
-  gujeong: '구성학', juyeok: '주역', kabbalah: '카발라', tarot: '타로', weekday: '요일',
+  gujeong: '구성학', juyeok: '주역', kabbalah: '수비학', tarot: '타로', weekday: '요일',
   boards: '육임·기문', 'daeun-stem': '대운(천간)', 'daeun-branch': '대운(지지)',
   'pair-stem': '궁합(일간)', 'pair-bond': '궁합(자리)', event: '사건', flow: '오늘·이달 흐름',
 };

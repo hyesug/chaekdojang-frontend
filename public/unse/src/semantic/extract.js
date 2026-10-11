@@ -47,7 +47,7 @@ export const SYSTEM_NAME = {
   saju: '사주', jamidusu: '자미두수', astrology: '점성술', vedic: '베딕',
   juyeok: '주역', yukim: '육임', hongguk: '홍국기문', taeeul: '태을신수',
   gujeong: '구성학', sukyo: '숙요', tojeong: '토정비결',
-  kabbalah: '카발라', mahabote: '마하보테', thai: '태국 점성술', tarot: '타로',
+  kabbalah: '수비학', mahabote: '마하보테', thai: '태국 점성술', tarot: '타로',
 };
 
 const safe = (fn) => { try { return fn(); } catch { return null; } };

@@ -13,8 +13,8 @@ import { j } from '../core/josa.js';
 
 export const meta = {
   id: 'kabbalah',
-  name: '카발라',
-  hanja: 'Kabbalah',
+  name: '수비학',
+  hanja: '세피로트 대응',
   desc: '생명나무의 열 자리 중 어디에서 출발했는지를 본다',
   needsTime: false,
   needsPlace: false,

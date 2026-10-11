@@ -98,7 +98,7 @@ export function yearSlots(input, chart, year, chapters = []) {
 
   for (const [mod, name, re] of [
     [gujeong, '구성학', /9년 주기/],
-    [kabbalah, '카발라', /개인년/],
+    [kabbalah, '수비학', /개인년/],
     [tojeong, '토정비결', /^\d{4}년 —/],
     [tarot, '타로', /상황|과제/],
   ]) {

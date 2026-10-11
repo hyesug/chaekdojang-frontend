@@ -77,13 +77,13 @@ export const KABBALAH = {
 
 /** 마하보테 — 칠요 출생별 (버마 점성 표준) */
 export const MAHABOTE = {
-  빈가: { competitive: 0.70, management: 0.60, independence: 0.55, public: 0.45 },
-  아하: { interpersonal: 0.75, commercial: 0.60, care: 0.45 },
-  야자: { care: 0.75, verbal: 0.60, organization: 0.50, stability: 0.45 },
-  아디: { independence: 0.75, change: 0.65, competitive: 0.50, commercial: 0.45 },
-  마라나: { care: 0.60, technical: 0.55, problemSolving: 0.55, change: 0.55, specialist: 0.45 },
-  푸티: { commercial: 0.75, stability: 0.55, organization: 0.45 },
-  타트: { change: 0.70, commercial: 0.60, physical: 0.55, interpersonal: 0.45 },
+  빙가: { change: 0.75, independence: 0.55, physical: 0.45, commercial: 0.40 },
+  마라나: { competitive: 0.60, change: 0.60, problemSolving: 0.55, specialist: 0.45 },
+  아툰: { public: 0.70, verbal: 0.60, creative: 0.55, interpersonal: 0.50 },
+  테케: { commercial: 0.75, stability: 0.65, organization: 0.50 },
+  야자: { public: 0.75, management: 0.65, organization: 0.55, stability: 0.45 },
+  푸티: { care: 0.70, technical: 0.50, specialist: 0.45, stability: 0.40 },
+  아디파티: { management: 0.75, independence: 0.60, competitive: 0.55, public: 0.45 },
 };
 
 /** 태국 점성술 — 요일 수호행성 (태국 전통) */

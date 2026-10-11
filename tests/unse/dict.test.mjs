@@ -284,3 +284,16 @@ test('시간 기준 선택: 일반 만세력 방식(std)을 고르면 그 기준
   assert.equal(decodeState(encodeState('solo', { ...base, timeBasis: 'std' }, null)).formA.timeBasis, 'std');
   assert.equal(decodeState(encodeState('solo', base, null)).formA.timeBasis, 'tst');
 });
+
+test('마하보테: 자리 = (버마력 − 요일) mod 7, 일곱 궁 — 원 산법 예제와 같다', async () => {
+  const { analyze, seatIndex } = await import('../../public/unse/src/systems/mahabote.js');
+  // 1985-02-20(수) 오전: 버마력 1346, 나머지 2 → 1궁 달·2궁 목성·3궁 태양·4궁 수성 → 수성은 4궁 테케
+  const a = analyze({ year: 1985, month: 2, day: 20, hour: 9, timeKnown: true });
+  assert.match(a.headline, /수성 · 테케\(재물\)/);
+  // 1997-01-01(수): 버마력 1358, 나머지 0 → 토·화·금·월·목·일·수 → 수성은 7궁 아디파티
+  assert.equal(seatIndex(1358, 3), 3);
+  const b = analyze({ year: 1997, month: 1, day: 1, hour: 15, timeKnown: true });
+  // 수요일 오후는 행성만 라후로 바뀌고 자리는 수성 자리 그대로
+  assert.match(b.headline, /라후 · 아디파티\(지도자\)/);
+  assert.doesNotMatch(JSON.stringify(a), /여덟 자리/);
+});

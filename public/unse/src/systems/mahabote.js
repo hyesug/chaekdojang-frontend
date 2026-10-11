@@ -4,13 +4,17 @@
  * 미얀마의 전통 점법이다. 인도 점성술이 들어와 버마식으로 굳은 것으로,
  * 행성 위치를 쓰지 않고 태어난 요일과 태어난 해만 가지고 본다.
  *
- *   1. 태어난 요일 → 일곱 행성 중 하나. 수요일은 낮과 밤을 갈라
- *      밤에 태어나면 라후가 되어 여덟이 된다.
- *   2. 버마력 연도를 7로 나눈 나머지로 배치를 돌린다.
- *   3. 자기 행성이 여덟 자리 중 어디에 떨어지는지가 핵심이다.
+ *   1. 태어난 요일 → 일곱 행성 중 하나. 수요일 오후(정오 뒤)에 태어나면
+ *      행성만 라후로 바뀌고 자리는 수성의 자리를 그대로 쓴다.
+ *   2. 버마력 연도를 7로 나눈 나머지 행성을 1궁에 놓고, 요일을 세 칸씩
+ *      건너뛰며(일→수→토→화→금→월→목) 2궁부터 7궁까지 채운다.
+ *   3. 자기 요일 행성이 일곱 자리 중 어디에 떨어지는지가 핵심이다.
+ *      한 줄로 줄이면 자리 = (버마력 − 요일) mod 7, 요일은 토=0·일=1 … 금=6.
+ *      결과 0~6 이 빙가·아툰·야자·아디파티·마라나·테케·푸티이고, 궁 번호로는
+ *      1·3·5·7·2·4·6궁이다(1 무상 · 2 극단 · 3 명성 · 4 재물 · 5 왕위 · 6 병 · 7 지도자).
  *
- * 배치 규칙은 전승마다 차이가 있어, 여기서는 가장 널리 소개된 방식을
- * 따랐고 계산 과정을 그대로 보여준다.
+ * 예전에는 자리를 여덟 칸(라후 자리를 따로 둔)으로 놓고 (행성 + 나머지) mod 8 로
+ * 돌렸다. 원 산법과 달라 대부분의 사람이 다른 자리를 받았다.
  */
 
 import { toJDN } from '../core/astro.js';
@@ -21,12 +25,12 @@ export const meta = {
   id: 'mahabote',
   name: '마하보테',
   hanja: 'Mahabote',
-  desc: '미얀마 점법. 태어난 요일과 해만으로 여덟 자리 중 내 자리를 찾는다',
+  desc: '미얀마 점법. 태어난 요일과 해만으로 일곱 자리 중 내 자리를 찾는다',
   needsTime: false,
   needsPlace: false,
 };
 
-/** 여덟 행성 — 요일 순서에 수요일 밤의 라후가 더해진다 */
+/** 여덟 행성 — 요일 순서에 수요일 오후의 라후가 더해진다 */
 const PLANETS = [
   { name: '태양', my: 'Taninganway', el: 1 },
   { name: '달', my: 'Taninla', el: 4 },
@@ -38,33 +42,37 @@ const PLANETS = [
   { name: '라후', my: 'Yahu', el: 2 },
 ];
 
-/** 여덟 자리 */
+/**
+ * 일곱 자리 — (버마력 − 요일) mod 7 의 순서. `no` 는 전통 궁 번호.
+ */
 const HOUSES = [
-  { name: '빙가', my: 'Binga', mean: '창의',
-    text: '만들어내는 자리입니다. 손재주나 아이디어로 먹고살 길이 열리고, 남이 못 보는 방식을 찾아냅니다. 다만 꾸준함이 늘 과제로 남습니다.',
-    tags: ['표현', '실행'], domains: { 직업: 66, 학업: 60 } },
-  { name: '아툰', my: 'Ahtun', mean: '동반',
-    text: '함께 가는 자리입니다. 배우자와 동업자가 삶의 방향을 크게 좌우합니다. 혼자 있을 때보다 짝이 있을 때 힘이 몇 배로 커집니다.',
-    tags: ['사교', '돌봄'], domains: { 관계: 72 } },
-  { name: '야자', my: 'Yaza', mean: '권위',
-    text: '자리를 얻는 자리입니다. 윗사람의 눈에 들고 공적인 인정이 따릅니다. 권한이 커질수록 책임도 함께 커지니 처신이 중요해집니다.',
+  { name: '빙가', my: 'Binga', no: 1, mean: '무상',
+    text: '오래 머물지 않는 자리입니다. 사는 곳·하는 일·곁의 사람이 자주 바뀌고, 한 번 자리 잡았다 싶을 때 판이 흔들립니다. 그 대신 바뀐 자리에 빨리 적응하고 새 판에서 다시 시작하는 힘이 있습니다.',
+    tags: ['변화', '자유'], domains: { 직업: 52, 재물: 48 } },
+  { name: '아툰', my: 'Ahtun', no: 3, mean: '명성',
+    text: '이름이 드러나는 자리입니다. 하는 일이 남의 눈에 띄고 평판이 따라옵니다. 칭찬과 시선이 힘이 되는 만큼, 평가가 박해질 때 크게 흔들리지 않게 스스로의 기준을 세워 두는 편이 좋습니다.',
+    tags: ['명예', '표현'], domains: { 직업: 70, 관계: 62 } },
+  { name: '야자', my: 'Yaza', no: 5, mean: '왕위',
+    text: '자리를 얻는 자리입니다. 윗사람의 눈에 들고 공적인 인정이 따릅니다. 권한이 커질수록 책임도 함께 커지니 처신이 중요합니다.',
     tags: ['명예', '책임'], domains: { 직업: 74, 재물: 60 } },
-  { name: '아디파티', my: 'Adipati', mean: '성취',
-    text: '여덟 자리 가운데 가장 좋게 보는 자리입니다. 이끄는 힘이 있고 하는 일이 결국 모양을 갖춥니다. 순조로운 만큼 안주하지 않는 것이 관건입니다.',
-    tags: ['주도', '명예'], domains: { 직업: 78, 재물: 68 } },
-  { name: '마라나', my: 'Marana', mean: '상실',
-    text: '가장 무겁게 보는 자리입니다. 잃는 경험이 반복되지만, 그 자리는 동시에 비워내고 다시 세우는 자리이기도 합니다. 붙들지 않는 법을 배우면 오히려 자유로워집니다.',
-    tags: ['변화', '인내'], domains: { 건강: 40, 재물: 42 } },
-  { name: '테케', my: 'Thike', mean: '안정',
-    text: '버티는 자리입니다. 화려하지 않아도 무너지지 않고, 오래 하는 일에서 신뢰를 얻습니다. 큰 변화를 스스로 만들지는 않는 편입니다.',
-    tags: ['안정', '인내'], domains: { 건강: 66, 재물: 58 } },
-  { name: '푸티', my: 'Puti', mean: '결실',
-    text: '이어지는 자리입니다. 자식·제자·후배처럼 뒤를 잇는 존재와 인연이 깊습니다. 심어둔 것이 시간이 지나 돌아옵니다.',
-    tags: ['돌봄', '학습'], domains: { 관계: 66, 학업: 64 } },
-  { name: '라후', my: 'Rahu', mean: '변수',
-    text: '예측이 어려운 자리입니다. 정해진 길이 잘 안 맞고 뜻밖의 경로로 풀립니다. 남들이 안 가는 쪽에서 오히려 기회가 열립니다.',
-    tags: ['변화', '자유'], domains: { 직업: 56, 재물: 52 } },
+  { name: '아디파티', my: 'Adipati', no: 7, mean: '지도자',
+    text: '앞에서 이끄는 자리입니다. 사람을 모으고 방향을 정하는 역할이 자연스럽게 맡겨지고, 하는 일이 결국 모양을 갖춥니다. 순조로운 만큼 안주하지 않는 것이 과제입니다.',
+    tags: ['주도', '명예'], domains: { 직업: 78, 재물: 66 } },
+  { name: '마라나', my: 'Marana', no: 2, mean: '극단',
+    text: '가장 무겁게 보는 자리입니다. 모 아니면 도로 흐르기 쉬워 크게 얻고 크게 잃는 일이 반복됩니다. 그 자리는 동시에 비워내고 다시 세우는 자리이기도 해서, 붙잡기보다 정리할 때를 아는 사람이 잘 버팁니다.',
+    tags: ['변화', '인내'], domains: { 건강: 42, 재물: 42 } },
+  { name: '테케', my: 'Thike', no: 4, mean: '재물',
+    text: '곳간의 자리입니다. 모으고 쌓는 데 감각이 있어 시간이 지날수록 손에 남는 것이 늘어납니다. 크게 벌기보다 새지 않게 지키는 쪽에서 힘이 나니, 한 번에 거는 승부는 피하는 편이 낫습니다.',
+    tags: ['재물', '안정'], domains: { 재물: 72, 직업: 60 } },
+  { name: '푸티', my: 'Puti', no: 6, mean: '병',
+    text: '몸과 형편이 자주 바뀌는 자리입니다. 무리하면 몸이 먼저 신호를 보내고, 계획한 일이 중간에 방향을 트는 일이 잦습니다. 건강을 먼저 챙기고 일정에 여유를 두면 이 자리의 기복이 크게 줄어듭니다.',
+    tags: ['인내', '돌봄'], domains: { 건강: 40, 재물: 50 } },
 ];
+
+/** 일요일=0 요일을 마하보테 요일 수(토=0·일=1 … 금=6)로 */
+const mbDay = (weekday) => (weekday + 1) % 7;
+/** 자리 = (버마력 − 요일) mod 7 */
+export const seatIndex = (by, weekday) => (((by - mbDay(weekday)) % 7) + 7) % 7;
 
 /**
  * 버마력.
@@ -88,7 +96,7 @@ export function analyze(input) {
   const jdn = toJDN(year, month, day);
   const weekday = weekdayFromJDN(jdn);
 
-  // 수요일 밤(정오 이후)에 태어나면 라후가 된다
+  // 수요일 오후(정오 뒤)에 태어나면 행성만 라후가 된다 — 자리는 수성의 자리
   const isWedNight = weekday === 3 && timeKnown && hour >= 12;
   const planetIndex = isWedNight ? 7 : weekday;
   const planet = PLANETS[planetIndex];
@@ -96,26 +104,26 @@ export function analyze(input) {
   const by = burmeseYear(year, month, day);
   const remainder = ((by % 7) + 7) % 7;
 
-  // 나머지만큼 배치를 돌린다
-  const houseIndex = (planetIndex + remainder) % 8;
+  const houseIndex = seatIndex(by, weekday);
   const house = HOUSES[houseIndex];
 
-  // 여덟 자리 전체 배치 — 어느 행성이 어디에 떨어졌는지 보여준다
-  const layout = PLANETS.map((p, i) => ({
-    planet: p.name,
-    house: HOUSES[(i + remainder) % 8].name,
-    mine: i === planetIndex,
-  }));
+  // 일곱 궁 배치 — 1궁부터 어느 행성이 놓였는지 보여준다
+  const layout = [...HOUSES].sort((x, y) => x.no - y.no).map((h) => {
+    const i = HOUSES.indexOf(h);
+    const wd = (((by - i) % 7) + 7) % 7;          // 마하보테 요일 수
+    const w = (wd + 6) % 7;                        // 일요일=0
+    const name = w === 3 && isWedNight ? '라후' : PLANETS[w].name;
+    return { planet: name, house: `${h.no}궁 ${h.name}`, mine: w === weekday };
+  });
 
   const facts = [
     { label: '태어난 요일', value: `${WEEKDAY_KR[weekday]}요일`, note: isWedNight ? '수요일 오후 → 라후로 본다' : '' },
     { label: '내 행성', value: planet.name, note: planet.my },
     { label: '버마력', value: `${by}년`, note: `서기 ${year} − ${year - by} (버마 새해는 4월 중순)` },
-    { label: '나머지', value: String(remainder), note: `${by} ÷ 7` },
-    // 버마력과 나머지까지는 규칙이 분명한데, 그 나머지를 여덟 자리에
-    // 어떻게 얹느냐는 자료마다 다르다. 어느 배치를 썼는지 밝혀 둔다.
+    { label: '나머지', value: String(remainder), note: `${by} ÷ 7 → 1궁에 ${PLANETS[(remainder + 6) % 7].name}` },
+    // 자리는 표준 산법 (버마력 − 요일) mod 7 로 구했다.
     { label: '내 자리', value: house.name,
-      note: `${house.my} · ${house.mean} · 요일 행성 자리에서 나머지만큼 나아가는 배치를 따랐다. 자리 배치는 유파마다 달라 다른 책과 결과가 다를 수 있다` },
+      note: `${house.my} · ${house.no}궁 · ${house.mean} — 자리 = (버마력 − 요일) mod 7` },
   ];
 
   const readings = [
@@ -134,12 +142,12 @@ export function analyze(input) {
       }[planet.name],
     },
     {
-      title: '여덟 자리 배치',
-      text: layout.map((x) => `${x.planet} → ${x.house}${x.mine ? '  ← 나' : ''}`).join('\n'),
+      title: '일곱 궁 배치',
+      text: layout.map((x) => `${x.house} — ${x.planet}${x.mine ? '  ← 나' : ''}`).join('\n'),
     },
     {
       title: '이 계산에 대하여',
-      text: '마하보테는 전승마다 배치 규칙에 차이가 있습니다. 여기서는 가장 널리 소개된 방식을 따랐고, 위에 계산 과정을 전부 드러냈습니다. 다른 방식으로 본 결과와 다를 수 있습니다.',
+      text: '버마력 연도를 7로 나눈 나머지의 행성을 1궁에 놓고, 요일을 세 칸씩 건너뛰며 7궁까지 채우는 표준 산법을 따랐습니다. 버마 새해(띤잔)는 해마다 4월 13~17일 사이라, 그 며칠 사이에 태어났다면 연도가 한 해 갈릴 수 있습니다.',
     },
   ];
 
@@ -166,33 +174,32 @@ export function analyze(input) {
 }
 
 // ── 궁합 ──
-// 두 사람의 자리가 여덟 칸 안에서 어떻게 놓였는지를 본다.
-// 마주 보는 자리(넉 칸 차이)는 서로를 비추고, 붙어 있는 자리는 닮는다.
+// 두 사람의 자리가 일곱 칸 안에서 얼마나 떨어져 있는지를 본다.
+// 마하보테에는 정해진 궁합 산법이 없어, 이 거리 풀이는 이 사이트의 것이다.
 
 function seatOf(x) {
   const jdn = toJDN(x.year, x.month, x.day);
   const wd = weekdayFromJDN(jdn);
   const wedNight = wd === 3 && x.timeKnown && x.hour >= 12;
   const pi = wedNight ? 7 : wd;
-  const rem = ((burmeseYear(x.year, x.month, x.day) % 7) + 7) % 7;
-  return { planet: PLANETS[pi], house: HOUSES[(pi + rem) % 8], idx: (pi + rem) % 8, weekday: wd };
+  const idx = seatIndex(burmeseYear(x.year, x.month, x.day), wd);
+  return { planet: PLANETS[pi], house: HOUSES[idx], idx, weekday: wd };
 }
 
 export function compare(a, b) {
   const A = seatOf(a), B = seatOf(b);
-  const d = Math.min(Math.abs(A.idx - B.idx), 8 - Math.abs(A.idx - B.idx));
+  const d = Math.min(Math.abs(A.idx - B.idx), 7 - Math.abs(A.idx - B.idx));
 
   const REL = {
-    0: [78, '같은 자리', '두 사람이 여덟 칸 가운데 같은 자리에 들었습니다. 삶의 과제가 같아 서로를 바로 알아봅니다. 같은 약점도 공유합니다.'],
+    0: [78, '같은 자리', '두 사람이 일곱 칸 가운데 같은 자리에 들었습니다. 삶의 과제가 같아 서로를 바로 알아봅니다. 같은 약점도 공유합니다.'],
     1: [72, '이웃한 자리', '바로 옆 칸입니다. 결이 비슷해 편하고, 한쪽이 앞서고 한쪽이 뒤따르는 흐름이 자연스럽게 생깁니다.'],
     2: [64, '두 칸 떨어짐', '적당한 거리입니다. 관심사가 겹치지 않아 부딪칠 일이 적은 대신, 붙어 있게 할 이유도 따로 만들어야 합니다.'],
     3: [58, '세 칸 떨어짐', '삶을 대하는 방식이 꽤 다릅니다. 서로를 이해하려면 설명이 많이 필요합니다.'],
-    4: [82, '마주 보는 자리', '여덟 칸에서 정확히 맞은편입니다. 마하보테에서는 이 배치를 서로를 비추는 거울로 봅니다. 정반대라서 오히려 상대에게서 자기에게 없는 것을 발견합니다.'],
   };
   let [score, label, text] = REL[d];
 
-  // 마라나(상실)나 라후(변수)가 끼면 결이 달라진다
-  const risky = [A, B].filter((x) => x.house.name === '마라나' || x.house.name === '라후');
+  // 마라나(극단)나 푸티(병)가 끼면 결이 달라진다
+  const risky = [A, B].filter((x) => x.house.name === '마라나' || x.house.name === '푸티');
   if (risky.length) score -= 8;
 
   const readings = [
@@ -208,7 +215,7 @@ export function compare(a, b) {
   if (risky.length) {
     readings.push({
       title: `${j(risky.map((x) => x.house.name).join('과 '), '이')} 걸려 있습니다`,
-      text: '마하보테에서 마라나는 잃는 자리, 라후는 예측이 어려운 자리입니다. 관계가 나쁘다는 뜻이 아니라, 이 사람의 삶 자체에 변동이 크다는 뜻입니다. 곁에 있는 쪽이 그 변동을 함께 겪게 되니 미리 알고 있는 편이 낫습니다.',
+      text: '마하보테에서 마라나는 크게 얻고 잃는 극단의 자리, 푸티는 몸과 형편이 자주 바뀌는 자리입니다. 관계가 나쁘다는 뜻이 아니라, 이 사람의 삶 자체에 변동이 크다는 뜻입니다. 곁에 있는 쪽이 그 변동을 함께 겪게 되니 미리 알고 있는 편이 낫습니다.',
     });
   }
 
@@ -228,17 +235,16 @@ export function compare(a, b) {
 // ─────────────────────────────────────────────────────────────
 // 시기 운세
 // ─────────────────────────────────────────────────────────────
-// 나이가 여덟 자리를 돌아 그 해 어느 자리에 서는지 본다.
+// 나이만큼 버마력을 더해 그 해 어느 자리에 서는지 본다(일곱 자리를 돈다).
 
 const SEAT_AREA = {
-  빙가: { 총운: 6, 학업운: 8, 직장운: 6, 애정운: 2, 금전운: 2, 건강운: 3 },
-  아툰: { 총운: 6, 애정운: 14, 금전운: 3, 직장운: 2, 학업운: 0, 건강운: 3 },
+  빙가: { 총운: -2, 직장운: -3, 금전운: -4, 애정운: -2, 학업운: 4, 건강운: 0 },
+  아툰: { 총운: 8, 직장운: 12, 애정운: 6, 금전운: 4, 학업운: 6, 건강운: 2 },
   야자: { 총운: 10, 직장운: 14, 금전운: 7, 학업운: 4, 애정운: 2, 건강운: 2 },
   아디파티: { 총운: 14, 직장운: 12, 금전운: 10, 애정운: 6, 학업운: 6, 건강운: 6 },
   마라나: { 총운: -14, 건강운: -16, 금전운: -10, 애정운: -8, 직장운: -6, 학업운: -2 },
-  테케: { 총운: 5, 건강운: 10, 금전운: 5, 직장운: 3, 애정운: 3, 학업운: 3 },
-  푸티: { 총운: 6, 학업운: 10, 애정운: 7, 금전운: 3, 직장운: 2, 건강운: 4 },
-  라후: { 총운: -5, 금전운: -4, 직장운: 3, 애정운: -6, 학업운: 2, 건강운: -6 },
+  테케: { 총운: 6, 금전운: 14, 직장운: 4, 건강운: 3, 애정운: 2, 학업운: 2 },
+  푸티: { 총운: -6, 건강운: -14, 금전운: -3, 직장운: -2, 애정운: 0, 학업운: 2 },
 };
 
 export function forecast(input, chart, period) {
@@ -247,8 +253,7 @@ export function forecast(input, chart, period) {
   const wedNight = wd === 3 && input.timeKnown && input.hour >= 12;
   const pi = wedNight ? 7 : wd;
   const age = period.sajuYear - input.year;
-  const rem = (((burmeseYear(input.year, input.month, input.day) + age) % 7) + 7) % 7;
-  const house = HOUSES[(pi + rem) % 8];
+  const house = HOUSES[seatIndex(burmeseYear(input.year, input.month, input.day) + age, wd)];
   const eff = SEAT_AREA[house.name] ?? {};
 
   const areas = {};

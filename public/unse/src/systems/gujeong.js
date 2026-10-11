@@ -100,7 +100,7 @@ export function palaceChart(centerStar) {
   return map;
 }
 
-/** 오행 상생 — 나를 낳는 별과 내가 낳는 별이 길하다 */
+/** 오행 상생 — 나를 낳는 별과 내가 낳는 별, 같은 오행의 별이 길하다 */
 const GENERATES = (a, b) => (a + 1) % 5 === b;
 
 /**
@@ -144,7 +144,8 @@ export function yearDirections(sajuYear, year) {
       const s = chart[d.name];
       if (s === 5 || s === honmei) return false;
       const e = STARS[s].element;
-      return GENERATES(e, el) || GENERATES(el, e);
+      // 상생 둘에 비화(같은 오행)까지 길방이다 — 二黒의 길방은 六白·七赤·八白·九紫
+      return e === el || GENERATES(e, el) || GENERATES(el, e);
     })
     .map((d) => ({ dir: d.name, star: STARS[chart[d.name]].name }));
 

@@ -426,8 +426,8 @@ export function otherCareer(results) {
   const mb = by.mahabote;
   if (mb) {
     const hits = [];
-    const seat = headOf(mb).match(/(빈가|아하|야자|아디|마라나|푸티|타트)/)?.[1]
-      ?? String(factOf(mb, '내 자리') ?? '').match(/(빈가|아하|야자|아디|마라나|푸티|타트)/)?.[1];
+    const seat = headOf(mb).match(/(빙가|아툰|야자|아디파티|마라나|테케|푸티)/)?.[1]
+      ?? String(factOf(mb, '내 자리') ?? '').match(/(빙가|아툰|야자|아디파티|마라나|테케|푸티)/)?.[1];
     const planet = String(factOf(mb, '내 행성') ?? '').match(/(태양|달|화성|수성|목성|금성|토성)/)?.[1];
     if (seat) hits.push(hit(`symbol:${seat}`, `내 자리 ${seat}`, 'seat', 1));
     if (planet) hits.push(hit(`planet:${planet}`, `요일 행성 ${planet}`, 'planet', 0.8));

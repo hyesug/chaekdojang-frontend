@@ -255,7 +255,8 @@ const PY_AREA = {
 };
 
 export function forecast(input, chart, period) {
-  const py = digitRoot(input.month + input.day + period.sajuYear, false);
+  // 개인년은 양력 1월 1일에 바뀐다 — 입춘 기준 sajuYear 를 쓰면 1월 한 달이 전년 개인년으로 나온다
+  const py = digitRoot(input.month + input.day + period.on.y, false);
   const pm = digitRoot(py + (period.kind === 'year' ? 0 : period.on.m), false);
   const key = period.kind === 'year' ? py : pm;
   const eff = PY_AREA[key] ?? {};

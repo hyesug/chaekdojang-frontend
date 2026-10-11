@@ -381,7 +381,7 @@ function otherSymbols(results) {
   }
   const mh = by.mahabote;
   if (mh) {
-    const S = /(빈가|아하|야자|아디|마라나|푸티|타트)/;
+    const S = /(빙가|아툰|야자|아디파티|마라나|테케|푸티)/;
     out.mahabote = [head(mh).match(S)?.[1] ?? String(factOf(mh, '내 자리') ?? '').match(S)?.[1]].filter(Boolean);
   }
   const th = by.thai;

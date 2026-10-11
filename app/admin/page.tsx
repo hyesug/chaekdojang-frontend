@@ -255,7 +255,7 @@ interface AdminAuditLog {
 }
 
 interface LottoPrediction {
-  model: "A" | "D" | "E" | "F" | "H";
+  model: "A" | "D" | "E" | "F" | "H" | "S1" | "S2" | "S3";
   revision: number;
   numbers: number[];
   modelVersion: string;
@@ -374,6 +374,12 @@ function formatLogTime(value: string) {
     minute: "2-digit",
   });
 }
+
+const LOTTO_MODELS = ["A", "D", "E", "F", "H", "S1", "S2", "S3"] as const;
+const LOTTO_MODEL_LABELS: Record<LottoPrediction["model"], string> = {
+  A: "A", D: "D", E: "E", F: "F", H: "H",
+  S1: "전략 A: 원본 슬롯 득표순", S2: "전략 B: 2표 이상 우선", S3: "전략 C: 체계 지지와 득표 결합",
+};
 
 function sortedLottoNumbers(numbers: number[]) {
   return [...numbers].sort((a, b) => a - b);

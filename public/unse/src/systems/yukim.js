@@ -113,9 +113,29 @@ export function analyze(input) {
     const matched = pool.filter((c) => sameYin(c.upper));
     if (matched.length === 1) { first = matched[0].upper; style = '비용법'; }
     else {
-      // 섭해 — 지지의 극을 더 많이 받는 쪽을 취한다
-      const score = (b) => BRANCHES.reduce((n, _, i) => n + (overcomes(el(i), el(b)) ? 1 : 0), 0);
-      const best = (matched.length ? matched : pool).sort((a, b) => score(b.upper) - score(a.upper))[0];
+      // 섭해(涉害) — 후보가 앉은 지반에서 제 본가(지반의 같은 지지)까지 순행하며
+      // 지나는 지반 지지와 그 자리에 기궁한 천간 가운데 저를 극하는 것을 센다.
+      // 깊게(많이) 받은 쪽을 쓰고, 같으면 맹(寅申巳亥) 위 → 중(子午卯酉) 위,
+      // 그래도 같으면 양일은 1·2과, 음일은 3·4과를 먼저 쓴다.
+      // (예전에는 열두 지지 중 저를 극하는 지지 수를 세어 오행마다 값이 고정돼 있었다 —
+      //  수(水)만 4, 나머지는 모두 2라 사실상 순서대로 뽑혔다)
+      const depth = (c) => {
+        let n = 0;
+        for (let k = 0, pos = c.lower; k < 12 && pos !== c.upper; k++, pos = (pos + 1) % 12) {
+          if (overcomes(el(pos), el(c.upper))) n++;
+          for (let st = 0; st < 10; st++) {
+            if (GIGUNG[st] === pos && overcomes(STEM_ELEMENT[st], el(c.upper))) n++;
+          }
+        }
+        return n;
+      };
+      const rank = (b) => ([2, 5, 8, 11].includes(b) ? 2 : [0, 3, 6, 9].includes(b) ? 1 : 0);
+      const order = (c) => courses.indexOf(c);
+      const yangDay = STEM_YIN[dayStem] === 0;
+      const best = [...(matched.length ? matched : pool)].sort((a, b) =>
+        depth(b) - depth(a)
+        || rank(b.lower) - rank(a.lower)
+        || (yangDay ? order(a) - order(b) : order(b) - order(a)))[0];
       first = best.upper; style = '섭해법';
     }
   } else {

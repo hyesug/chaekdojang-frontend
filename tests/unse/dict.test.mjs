@@ -297,3 +297,14 @@ test('마하보테: 자리 = (버마력 − 요일) mod 7, 일곱 궁 — 원 �
   assert.match(b.headline, /라후 · 아디파티\(지도자\)/);
   assert.doesNotMatch(JSON.stringify(a), /여덟 자리/);
 });
+
+test('육임 섭해: 본가까지 가며 받는 극(지반 지지 + 기궁 천간)이 깊은 쪽이 초전', async () => {
+  const { readFortune } = await import('../../public/unse/src/engine.js');
+  // 1995-12-18 19:30 서울 — 癸未일, 월장 寅 · 점시 戌. 2과 酉(巳 위)·3과 亥(未 위) 둘 다 賊이고 둘 다 음 → 섭해
+  //   酉: 巳·午 + 丙(巳)·丁(未) = 4 / 亥: 未·戌 + 己(未) = 3 → 초전 酉
+  // (예전에는 오행마다 고정된 점수를 써서 수(水)인 亥가 늘 이겼다)
+  const r = readFortune({ name: 'x', year: 1995, month: 12, day: 18, hour: 19, minute: 30, birthPlace: '서울', homePlace: '서울', gender: 'female' });
+  const f = (k) => r.results.find((x) => x.id === 'yukim').facts.find((x) => x.label === k)?.value ?? '';
+  assert.equal(f('과체'), '섭해법');
+  assert.match(f('초전'), /^酉/);
+});

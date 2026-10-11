@@ -266,12 +266,14 @@ interface LottoPrediction {
   hitCount: number;
   hitNumbers: number[];
   official: boolean;
+  engineVersion: string | null;
 }
 
 interface LottoStrategyRecalculation {
   round: number;
   modelVersion: string;
   sourceCommit: string;
+  engineVersion: string;
   predictions: Array<{ model: "S1" | "S2" | "S3"; numbers: number[]; hitCount: number; hitNumbers: number[] }>;
 }
 

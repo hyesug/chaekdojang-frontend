@@ -24,7 +24,7 @@
  * calc  - 값이 달라질 수 있는 수정. 명반·점수·날짜가 여기 걸린다.
  * read  - 문장과 화면만 바뀐 수정. 같은 입력이면 같은 값이 나온다.
  */
-export const CALC_VERSION = '1.6.0';
+export const CALC_VERSION = '1.7.0';
 export const READ_VERSION = '1.7.0';
 export const ENGINE_VERSION = `계산 v${CALC_VERSION} · 해석 v${READ_VERSION}`;
 
@@ -36,6 +36,14 @@ export const ENGINE_VERSION = `계산 v${CALC_VERSION} · 해석 v${READ_VERSION
  * 정작 값이 바뀐 자리를 못 찾는다.
  */
 export const CALC_CHANGES = [
+  {
+    version: '1.7.0', at: '2026-10-11',
+    fields: ['토정비결 괘', '자미두수 궁간', '천덕', '육임 초전', '매화역수 연수', '시주 시간 기준'],
+    why: '토정비결의 태세수와 일진수를 선천수 합이 아니라 조견표 값으로 바로잡았습니다(午년 말고는 상괘가, 대부분 생일은 하괘가 달라집니다). ' +
+         '세는나이와 올해 생월 대소·생일 일진도 음력 해와 올해 달력으로 셉니다. ' +
+         '이 밖에 자미두수 궁간 오프셋, 천덕 표, 육임의 하적상 우선, 매화역수 연수(음력 해)를 고쳤고 ' +
+         '시주를 세우는 시간 기준(진태양시/일반 만세력 방식)을 고를 수 있게 했습니다.',
+  },
   {
     version: '1.6.0', at: '2026-09-15',
     fields: ['대운 전환 시점', '베딕 마하다샤 전환 시점', '수비학 개인년', '타로 석 장'],

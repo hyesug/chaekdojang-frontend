@@ -11,7 +11,8 @@
  * 셋 다 간지에서 나온 수를 쓴다. 중괘만 음력 월 숫자를 쓰면 잣대가
  * 어긋난다.
  *
- * 수는 선천수를 쓴다. 甲己子午 9, 乙庚丑未 8, 丙辛寅申 7, 丁壬卯酉 6,
+ * 수는 조견표의 태세수·월건수·일진수를 쓴다(아래 TAESE_BRANCH 설명).
+ * 월건수는 선천수 합과 같다 — 甲己子午 9, 乙庚丑未 8, 丙辛寅申 7, 丁壬卯酉 6,
  * 戊癸辰戌 5, 巳亥 4.
  *
  * 괘를 뽑는 산법은 전통 그대로지만, 괘사 본문은 원전을 옮긴 것이 아니라
@@ -38,6 +39,20 @@ export const meta = {
 const STEM_NUM = [9, 8, 7, 6, 5, 9, 8, 7, 6, 5];        // 甲乙丙丁戊己庚辛壬癸
 /** 선천수 — 지지 */
 const BRANCH_NUM = [9, 8, 7, 6, 5, 4, 9, 8, 7, 6, 5, 4]; // 子丑寅卯辰巳午未申酉戌亥
+
+/**
+ * 태세수·일진수의 지지 몫 — 토정비결 조견표 '태세수·월건수·일진수'에서 거꾸로 뽑은 값.
+ * 조견표의 세 칸은 서로 다르다.
+ *   월건수 = 천간 선천수 + 지지 선천수        (甲子 18, 甲寅 16)
+ *   태세수 = 천간 선천수 + 아래 TAESE_BRANCH  (甲子 20, 戊戌 18, 癸酉 17)
+ *   일진수 = 태세수 − 2                       (甲子 18, 乙酉 18, 癸酉 15)
+ * 예전에는 셋 다 선천수 합으로 셈해 午년(차이 0)만 맞고 나머지 해의 상괘와
+ * 대부분 생일의 하괘가 어긋났다 — 예: 癸酉일 일진수를 15가 아니라 11로 셈했다.
+ */
+const TAESE_BRANCH = [11, 13, 10, 10, 13, 9, 9, 13, 12, 12, 13, 11]; // 子丑寅卯辰巳午未申酉戌亥
+export const taeSeSu = (stem, branch) => STEM_NUM[stem] + TAESE_BRANCH[branch];
+export const iljinSu = (stem, branch) => taeSeSu(stem, branch) - 2;
+export const wolGeonSu = (stem, branch) => STEM_NUM[stem] + BRANCH_NUM[branch];
 
 /** 상괘 여덟 — 그 해의 큰 흐름 */
 const UPPER = [
@@ -101,7 +116,7 @@ export function analyze(input) {
   // 세는나이도 음력 해로 — 설날 전에 태어난 1·2월생은 양력 해로 세면 한 살 많게 나온다
   const koreanAge = currentYear - (lunar.year ?? year) + 1;
   const taeSe = yearPillar(currentYear);
-  const taeSeNum = STEM_NUM[taeSe.stem] + BRANCH_NUM[taeSe.branch];
+  const taeSeNum = taeSeSu(taeSe.stem, taeSe.branch);
 
   // 일진 — 생일의 간지
   let tyb = null;
@@ -110,7 +125,7 @@ export function analyze(input) {
   const bigMonth = tyb?.big ?? lunar.isBigMonth;
   const dayStem = (jdn + 9) % 10;
   const dayBranch = (jdn + 1) % 12;
-  const iljinNum = STEM_NUM[dayStem] + BRANCH_NUM[dayBranch];
+  const iljinNum = iljinSu(dayStem, dayBranch);
 
   // 월건 — 그 해 그 음력 달의 간지. 음력 1월이 寅월이고 천간은 오호둔으로 돈다.
   // 예전에는 여기서 음력 월 숫자(12)를 그대로 더했는데, 상괘는 태세수를
@@ -118,7 +133,7 @@ export function analyze(input) {
   // 나란히 간지 수를 쓰는 것이 맞고, 그래야 세 괘가 같은 잣대가 된다.
   const wolGeonBranch = (lunar.month + 1) % 12;
   const wolGeonStem = (((taeSe.stem % 5) * 2 + 2) % 10 + (lunar.month - 1)) % 10;
-  const wolGeonNum = STEM_NUM[wolGeonStem] + BRANCH_NUM[wolGeonBranch];
+  const wolGeonNum = wolGeonSu(wolGeonStem, wolGeonBranch);
 
   const upper = modFrom1(koreanAge + taeSeNum, 8);
   const middle = modFrom1(wolGeonNum + (bigMonth ? 30 : 29), 6);
@@ -143,9 +158,9 @@ export function analyze(input) {
     { label: '중괘', value: String(middle),
       note: `월건 ${STEMS[wolGeonStem]}${BRANCHES[wolGeonBranch]} 수 ${wolGeonNum} + 올해 월대소 ${bigMonth ? 30 : 29} → ÷6` },
     { label: '하괘', value: String(lower),
-      note: `음력 ${lunar.day}일 + 올해 생일 일진수 ${iljinNum} → ÷3 (일진 ${STEMS[dayStem]}${BRANCHES[dayBranch]}의 선천수)` },
+      note: `음력 ${lunar.day}일 + 올해 생일 일진수 ${iljinNum} → ÷3 (일진 ${STEMS[dayStem]}${BRANCHES[dayBranch]})` },
     { label: '태세', value: taeSe.hanja, note: `${currentYear}년 · ${taeSe.kr}` },
-    { label: '일진', value: STEMS[dayStem] + BRANCHES[dayBranch], note: '태어난 날의 간지' },
+    { label: '일진', value: STEMS[dayStem] + BRANCHES[dayBranch], note: '올해 음력 생일의 간지' },
   ];
 
   const readings = [
@@ -195,9 +210,9 @@ export function analyze(input) {
 
 export function compare(a, b) {
   const upperOf = (x) => {
-    const age = x.currentYear - x.year + 1;
+    const age = x.currentYear - (x.lunar?.year ?? x.year) + 1;
     const ts = yearPillar(x.currentYear);
-    return modFrom1(age + STEM_NUM[ts.stem] + BRANCH_NUM[ts.branch], 8);
+    return modFrom1(age + taeSeSu(ts.stem, ts.branch), 8);
   };
   const uA = upperOf(a), uB = upperOf(b);
   const A = UPPER[uA], B = UPPER[uB];
@@ -245,9 +260,9 @@ export function compare(a, b) {
 // 토정비결은 원래 해와 달의 운을 보는 체계라 그대로 쓴다.
 
 export function forecast(input, chart, period) {
-  const age = period.sajuYear - input.year + 1;
+  const age = period.sajuYear - (input.lunar?.year ?? input.year) + 1;
   const ts = yearPillar(period.sajuYear);
-  const upper = modFrom1(age + STEM_NUM[ts.stem] + BRANCH_NUM[ts.branch], 8);
+  const upper = modFrom1(age + taeSeSu(ts.stem, ts.branch), 8);
   const U = UPPER[upper];
 
   // 달 운은 월지를 한 번 더 섞는다

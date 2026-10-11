@@ -480,6 +480,7 @@ function getRouteLabel(value: string) {
     "/privacy": "개인정보처리방침",
     "/terms": "이용약관",
     "/dojangdan": "도장단",
+    "/unse": "운세 페이지",
   };
   if (labels[path]) return labels[path];
   if (/^\/reviews\/\d+$/.test(path)) return "독후감 상세";

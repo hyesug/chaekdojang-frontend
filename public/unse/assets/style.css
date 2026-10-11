@@ -1113,11 +1113,46 @@ footer .ver { font-size: 11.5px; color: var(--ink-3); margin-top: 18px; letter-s
 }
 .cd-menu a:hover { background: #E8E8E0; }
 .cd-menu a.on { background: #E3ECE7; color: #102A2C; font-weight: 600; }
-.cd-header a:focus-visible, .cd-burger:focus-visible { outline: 2px solid #174A46; outline-offset: 2px; }
+.cd-header a:focus-visible, .cd-header button:focus-visible { outline: 2px solid #174A46; outline-offset: 2px; }
+
+/* 로그인 상태 단추 (header.js 가 hidden 을 풀어 준다).
+   아래 display 지정이 hidden 속성을 덮지 않게 먼저 막는다 */
+.cd-header [hidden] { display: none !important; }
+.cd-account { flex: none; display: flex; align-items: center; gap: 6px; }
+.cd-admin {
+  font-size: 14px; font-weight: 500; white-space: nowrap; color: #8B3040;
+  text-decoration: underline; text-decoration-color: rgba(139, 48, 64, .5); text-underline-offset: 4px;
+}
+.cd-admin:hover { color: #A8475A; }
+.cd-icon {
+  position: relative; width: 40px; height: 40px; border-radius: 8px;
+  display: inline-flex; align-items: center; justify-content: center; color: #56706A;
+}
+.cd-icon:hover { background: #ECEBE3; color: #102A2C; }
+.cd-badge {
+  position: absolute; right: 4px; top: 4px; min-width: 16px; height: 16px; padding: 0 4px;
+  display: flex; align-items: center; justify-content: center; border-radius: 999px;
+  background: #8B3040; color: #fff; font-size: 10px; font-weight: 700; line-height: 1;
+  box-shadow: 0 0 0 2px #FCFBF7;
+}
+.cd-ghost {
+  display: inline-flex; align-items: center; min-height: 36px; padding: 0 12px; border-radius: 8px;
+  font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap;
+  color: #56706A; background: transparent; border: 0; cursor: pointer; text-decoration: none;
+}
+.cd-ghost:hover { background: #ECEBE3; color: #102A2C; }
+.cd-outline { border: 1px solid #DCDDD3; color: #174A46; }
+.cd-menu .cd-menu-admin { color: #8B3040; }
+.cd-menu-account { display: flex; gap: 8px; margin: 8px 12px 0; padding-top: 12px; border-top: 1px solid #DCDDD3; }
+.cd-menu-account a, .cd-menu-account button {
+  flex: 1; margin: 0; text-align: center;
+  font: inherit; font-size: 15px; font-weight: 600; color: #174A46;
+  padding: 12px; border-radius: 8px; border: 1px solid #DCDDD3; background: #FCFBF7; cursor: pointer;
+}
 
 /* 좁은 화면 — 가로 메뉴를 접고 햄버거를 연다 (Header.tsx 의 lg 분기와 같은 폭) */
 @media (max-width: 1023px) {
-  .cd-nav, .cd-write { display: none; }
+  .cd-nav, .cd-write, .cd-account { display: none; }
   .cd-burger { display: inline-flex; }
   .cd-menu:not([hidden]) { display: block; padding: 8px 0 16px; border-top: 1px solid #DCDDD3; background: #FCFBF7; }
 }

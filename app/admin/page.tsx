@@ -386,10 +386,21 @@ function formatLogTime(value: string) {
 }
 
 const LOTTO_MODELS = ["A", "D", "E", "F", "H", "S1", "S2", "S3"] as const;
+// 화면 표시용 핵심 규칙 한 줄(lib/lotto-future/predictor.ts 의 선정 로직 기준). 저장 모델 식별자는 그대로 쓴다.
 const LOTTO_MODEL_LABELS: Record<LottoPrediction["model"], string> = {
-  A: "A", D: "D", E: "E", F: "F", H: "H",
-  S1: "전략 A: 원본 슬롯 득표순", S2: "전략 B: 2표 이상 우선", S3: "전략 C: 체계 지지와 득표 결합",
+  A: "달 별자리별 고정 공식",
+  D: "15체계 후보 조합 공식",
+  E: "운세 상태 군집별 공식",
+  F: "유사 과거 10회 최다 번호",
+  H: "행성 경도·날짜 공식",
+  S1: "원본 득표수 우선",
+  S2: "2표 이상 우선",
+  S3: "체계 지지수 우선",
 };
+
+function LottoModelName({ model }: { model: LottoPrediction["model"] }) {
+  return <>{LOTTO_MODEL_LABELS[model] ?? model}<span className="ml-1.5 text-[11px] font-normal text-brown-400">{model}</span></>;
+}
 
 const LOTTO_STRATEGY_MODELS = ["S1", "S2", "S3"] as const;
 

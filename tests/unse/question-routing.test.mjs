@@ -620,3 +620,10 @@ test('복권 당첨은 어떤 등급에서도 단정하지 않는다', () => {
   assert.match(PROMPT, /### 복권 질문에서 절대 쓰지 않는 표현/);
   assert.match(PROMPT, /이 번호가 당첨번호다/);
 });
+
+test('직업은 역할 먼저, 분야는 나란한 후보로 — 줄 세우지 않는다 (압축 때 빠졌던 담당 체계 규칙 복원)', () => {
+  assert.match(PROMPT, /## 문맥 구획 읽는 법/);
+  assert.match(PROMPT, /담당이 침묵하면 같이 침묵하세요/);
+  assert.match(PROMPT, /직업은 역할 먼저, 분야는 후보로/);
+  assert.match(PROMPT, /1·2·3위로 줄 세우지 마세요/);
+});

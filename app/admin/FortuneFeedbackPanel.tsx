@@ -10,7 +10,7 @@ import { buildSentenceIndex, traceSources } from "../../public/unse/src/semantic
 type SectionCount = { section: string; up: number; down: number };
 type FeedbackItem = {
   id: number;
-  mode: "solo" | "pair";
+  mode: "solo" | "pair" | "ai";
   section: string;
   verdict: "up" | "down";
   snippet: string | null;
@@ -167,7 +167,7 @@ export default function FortuneFeedbackPanel() {
             <li key={x.id} className={`rounded-xl bg-cream-50 p-3 ${x.resolvedAt ? "opacity-60" : ""}`}>
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <p className="text-xs text-brown-400">
-                  {new Date(x.createdAt).toLocaleString("ko-KR")} · {x.mode === "pair" ? "궁합" : "개인"} · {x.section} · {x.verdict === "up" ? "👍" : "👎"}
+                  {new Date(x.createdAt).toLocaleString("ko-KR")} · {x.mode === "pair" ? "궁합" : x.mode === "ai" ? "AI 답변" : "개인"} · {x.section} · {x.verdict === "up" ? "👍" : "👎"}
                   {x.resolvedAt && ` · 처리 완료 ${new Date(x.resolvedAt).toLocaleDateString("ko-KR")}`}
                 </p>
                 {x.resolvedAt

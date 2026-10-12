@@ -21,7 +21,7 @@ function sectionName(el) {
 /** 칸에 보였던 문장 — 이름은 지운다 */
 export function snippetOf(el, names = []) {
   const clone = el.cloneNode(true);
-  clone.querySelectorAll('.fb, summary, .rp-card-h').forEach((x) => x.remove());
+  clone.querySelectorAll('.fb, summary, .rp-card-h, button').forEach((x) => x.remove());
   // 칸 이름과 문장이 붙지 않게 덩어리마다 띄어 쓴다(예: '가장 강하게 나타나는 성향신중하고…')
   clone.querySelectorAll('p, li, b, h4, dt, dd, small, article, div').forEach((x) => x.append(' '));
   let t = clone.textContent.replace(/\s+/g, ' ').trim();
@@ -80,4 +80,47 @@ export function attachFeedback(root, { mode, names = [] }) {
       try { await send(payload('down', input.value.trim() || null)); done('알려 주셔서 고마워요. 해석을 고치는 데 쓸게요.'); } catch { done('지금은 보내지 못했어요. 잠시 뒤 다시 눌러 주세요.'); }
     });
   }
+}
+
+/**
+ * AI 답변 한 덩이에 붙이는 👍/👎 + 한 줄(선택).
+ * 보내는 것은 'AI 답변 · 분야', 👍/👎, 답변 앞부분(이름을 지운 것), 한 줄뿐이다.
+ * 질문 글·출생 정보·회원 식별자는 보내지 않는다 — 서버도 답변 발췌에서 연락처·날짜를 한 번 더 지운다.
+ * @param {HTMLElement} bubble 답변 칸
+ * @param {{topic?: string, names?: string[]}} opts topic 은 질문 분야(재물·직업…)
+ */
+export function attachAnswerFeedback(bubble, { topic = '', names = [] } = {}) {
+  if (!bubble || bubble.querySelector('.fb')) return;
+  const section = ('AI 답변' + (topic ? ` · ${topic}` : '')).slice(0, 80);
+  const bar = document.createElement('div');
+  bar.className = 'fb fb-ai';
+  bar.innerHTML = `
+    <span class="fb-q">이 답변, 도움이 됐나요?</span>
+    <button type="button" data-fb="up" aria-label="좋아요">👍 좋아요</button>
+    <button type="button" data-fb="down" aria-label="별로예요">👎 별로예요</button>
+    <form class="fb-form" hidden>
+      <input type="text" maxlength="300" placeholder="한 줄 의견 (선택)" aria-label="한 줄 의견">
+      <button type="submit">보내기</button>
+      <p class="fb-note">이름·연락처는 적지 말아 주세요.</p>
+    </form>`;
+  bubble.appendChild(bar);
+  let verdict = null;
+  const done = (msg) => { bar.innerHTML = `<span class="fb-done">${esc(msg)}</span>`; };
+  bar.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-fb]');
+    if (!b) return;
+    verdict = b.dataset.fb;
+    bar.querySelectorAll('[data-fb]').forEach((x) => { x.disabled = true; x.classList.toggle('on', x === b); });
+    const form = bar.querySelector('.fb-form');
+    form.hidden = false;
+    form.querySelector('input').focus();
+  });
+  bar.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const comment = bar.querySelector('.fb-form input').value.trim() || null;
+    try {
+      await send({ mode: 'ai', section, verdict, snippet: snippetOf(bubble, names), comment });
+      done('고마워요! 답변을 더 낫게 만드는 데 쓸게요.');
+    } catch { done('지금은 보내지 못했어요. 잠시 뒤 다시 눌러 주세요.'); }
+  });
 }

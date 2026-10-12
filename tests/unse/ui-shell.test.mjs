@@ -212,3 +212,19 @@ test("저장한 사람 셀렉트에서 '직접 입력'을 고르면 그 사람 �
   assert.match(boot, /if \(sel\.value === ''\) \{ clearPerson\(prefix\); return; \}/);
   assert.match(boot, /function clearPerson\(prefix\)/);
 });
+
+test('새로고침하면 주소의 이전 결과를 되살리지 않고 처음 상태(나)로 연다 — 공유 링크만 되살린다', async () => {
+  const boot = await read('src/boot.js');
+  assert.match(boot, /performance\.getEntriesByType\('navigation'\)\[0\]\?\.type === 'reload'/);
+  assert.match(boot, /if \(isReload && location\.hash\.length > 1\) history\.replaceState/);
+  assert.ok(boot.indexOf('if (isReload && location.hash.length > 1)') < boot.indexOf('if (location.hash.length > 1) {'));
+});
+
+test('AI 답변마다 👍/👎 + 한 줄(선택)을 받고, 질문 글·출생 정보는 보내지 않는다', async () => {
+  const ai = await read('src/ai.js');
+  const fb = await read('src/feedback.js');
+  assert.match(ai, /attachAnswerFeedback\(bubble, \{ topic:/);
+  assert.match(fb, /export function attachAnswerFeedback\(/);
+  assert.match(fb, /send\(\{ mode: 'ai', section, verdict, snippet: snippetOf\(bubble, names\), comment \}\)/);
+  assert.doesNotMatch(fb.slice(fb.indexOf('export function attachAnswerFeedback')), /question|context|messages/);
+});

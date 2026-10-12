@@ -17,6 +17,7 @@ import { buildHiRes, formatTraits } from './hires/context.js';
 import * as PAIR from './hires/pair.js';
 import { horaryCast, formatHorary } from './systems/horary.js';
 import { loadCreditStatus } from './credits.js';
+import { attachAnswerFeedback } from './feedback.js';
 
 const ENDPOINT = '/fortune-ai';
 
@@ -522,6 +523,8 @@ function wire(context, calc = null, compat = null) {
       if (!acc) throw new Error('빈 응답이 돌아왔습니다.');
       session.messages.push({ role: 'assistant', content: acc });
       paintAnswer(bubble, acc);
+      // 답변마다 👍/👎 + 한 줄(선택) — 질문 글·출생 정보는 보내지 않는다(feedback.js)
+      attachAnswerFeedback(bubble, { topic: session.compat ? '궁합' : (session.lastPlan?.domains ?? []).join('·'), names: session.names.map(([n]) => n).filter(Boolean) });
       saveChat(saveKey, session.messages);
       loadCreditStatus().then(paintCredit);
     } catch (err) {

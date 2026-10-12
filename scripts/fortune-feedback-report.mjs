@@ -43,7 +43,8 @@ function loadIndex() {
 /** 출처별 집계와 고칠 후보 */
 export function summarize(items, index) {
   const by = new Map();
-  for (const x of items) {
+  // AI 답변 피드백(mode 'ai')은 사전 문장이 아니라 모델이 쓴 글이라 자동 고침 대상이 아니다 — 관리자 화면에서 본다
+  for (const x of items.filter((i) => i.mode !== 'ai')) {
     for (const s of traceSources(x.snippet ?? '', index)) {
       const k = `${s.file}|${s.key}|${s.field}`;
       const v = by.get(k) ?? { file: s.file, key: s.key, field: s.field, label: s.label, text: s.text, up: 0, down: 0, comments: [], ids: [] };

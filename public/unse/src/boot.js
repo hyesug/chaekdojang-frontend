@@ -228,14 +228,24 @@ $('#form').addEventListener('submit', async (e) => {
 // 저장한 사람 목록은 **어느 경우든** 읽는다 — 예전에는 주소에 결과가 담겨 있으면(링크·새로고침)
 // 읽지 않아, 로그인했는데도 '저장한 사람 불러오기'가 비어 있었다
 const savedReady = loadSaved();
+
+// 새로고침은 '공유 링크로 들어온 것'이 아니다. 결과를 만들면 주소(#…)에 담기는데, 새로고침할 때마다
+// 그 주소로 이전 사람의 명반이 저절로 다시 생성됐다(피드백). 새로고침이면 주소를 비우고 처음 상태로 연다.
+const isReload = (() => {
+  try { return performance.getEntriesByType('navigation')[0]?.type === 'reload'; } catch { return false; }
+})();
+if (isReload && location.hash.length > 1) history.replaceState(null, '', location.pathname + location.search);
+
 if (location.hash.length > 1) {
-  loadUI().then((ui) => ui.restoreFromHash()).catch(() => {});
+  // 공유 링크 — 결과를 되살리고, 칸에 들어온 사람이 저장한 사람이면 셀렉트도 맞춘다
+  loadUI().then((ui) => ui.restoreFromHash()).then(() => savedReady).then(() => loadSaved()).catch(() => {});
 } else {
   // 로그인해 두고 프로필을 저장했으면 처음에는 '나'(본인 프로필)로 맞춰 첫 사람 칸을 채워 둔다.
   // 그 사이 사람이 이미 적기 시작했으면 덮어쓰지 않는다.
   savedReady.then(() => {
     const self = saved.find((p) => p.self);
-    if (!self || $('#year').value || $('#name').value) return;
+    // 새로고침이면 브라우저가 되살린 이전 값 대신 '나'로 맞춘다. 처음 열 때 사람이 이미 적기 시작했으면 덮어쓰지 않는다
+    if (!self || (!isReload && ($('#year').value || $('#name').value))) return;
     fillPerson('', self);
     $('#savedPick').value = String(saved.indexOf(self));
     $('#profileNote').hidden = false;

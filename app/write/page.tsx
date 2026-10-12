@@ -667,6 +667,9 @@ function WriteContent() {
   }
 
   const feedbackCharCount = content.trim().length;
+  // 운세 AI 질문권 보상 기준 — 서버(AiCreditService.reviewTextLength)와 같게 공백을 한 칸으로 줄여 센다
+  const AI_REWARD_MIN_CHARS = 100;
+  const aiRewardChars = content.replace(/\s+/g, " ").trim().length;
   const isFeedbackTooShort = feedbackCharCount < feedbackConfig.minChars;
   const isFeedbackTooLong = feedbackCharCount > feedbackConfig.maxChars;
   const canRequestFeedback = !feedbackLoading && !isFeedbackTooShort && !isFeedbackTooLong;
@@ -1183,6 +1186,10 @@ function WriteContent() {
             </p>
             <p className="text-brown-300 sm:text-right">{content.length}자</p>
           </div>
+          <p className={`mt-1 text-xs ${aiRewardChars >= AI_REWARD_MIN_CHARS ? "text-sage-700" : "text-brown-400"}`}>
+            독후감을 올리면 <Link href="/unse" className="underline underline-offset-2">운세 AI</Link> 질문권 1회를 받아요 · 책 한 권당 한 번 · {AI_REWARD_MIN_CHARS}자 이상
+            {aiRewardChars >= AI_REWARD_MIN_CHARS ? " (충족)" : ` (지금 ${aiRewardChars}자)`}
+          </p>
 
           {feedback && (
             <section className="mt-4 rounded-md border border-brown-100 bg-white p-4">

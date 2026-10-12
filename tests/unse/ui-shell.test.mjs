@@ -132,3 +132,13 @@ test('로그인하면 여러 사람을 저장하고, 두 사람 칸 모두에서
   // 궁합 결과에도 두 사람 저장 칸
   assert.match(ui, /fillProfileCard\(\[form, formB\]\)/);
 });
+
+test('AI 질문은 Claude 두 모델만, 모델별 질문권(균형 1·심층 2)을 보내기 전에 확인하고, 질문권은 독후감으로 받는다', async () => {
+  const ai = await read('src/ai.js');
+  assert.match(ai, /export const AI_OPEN = true;/);
+  assert.doesNotMatch(ai, /GPT_SOL|GPT_ASTRA/);
+  assert.match(ai, /const TIER_COST = \{ CLAUDE_SONNET: 1, CLAUDE_OPUS: 2 \};/);
+  assert.match(ai, /creditStatus\.totalBalance < cost/);
+  assert.match(ai, /href="\/write">독후감 쓰고 질문권 받기/);
+  assert.doesNotMatch(ai, /질문권 구매/);
+});

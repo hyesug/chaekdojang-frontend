@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { authFetch, getValidToken } from "../../../lib/auth";
+import AiCreditUserPanel from "../../AiCreditUserPanel";
 
 interface TimelineEvent {
   id: number;
@@ -149,6 +150,11 @@ export default function AdminUserActivityPage() {
         <Summary label="생성한 독서모임" value={`${detail.basic.createdGroupCount}개`} />
         <Summary label="가입한 독서모임" value={`${detail.basic.joinedGroupCount}개`} />
       </div>
+
+      <section className="rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+        <h2 className="font-serif text-xl font-bold text-brown-900">AI 질문권</h2>
+        <div className="mt-4"><AiCreditUserPanel userId={detail.basic.id} /></div>
+      </section>
 
       <section className="rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
         <h2 className="font-serif text-xl font-bold text-brown-900">접속 정보</h2>

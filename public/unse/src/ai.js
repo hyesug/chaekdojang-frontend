@@ -27,6 +27,9 @@ const ENDPOINT = '/fortune-ai';
  */
 export const AI_OPEN = true;
 
+/** 모델별 질문권 차감 — 백엔드 FortuneAiModelTier.creditCost 와 같은 값 */
+const TIER_COST = { CLAUDE_SONNET: 1, CLAUDE_OPUS: 2 };
+
 /** 질문권을 얻는 길 — 결제가 붙기 전까지는 독후감 */
 const EARN = '<a href="/write">독후감 쓰고 질문권 받기</a> (책 한 권당 1개 · 100자 이상)';
 
@@ -320,8 +323,8 @@ function wire(context, calc = null, compat = null) {
   const paintCredit = (status) => {
     creditStatus = status;
     if (!credit) return;
-    if (status.kind === 'available') credit.textContent = `남은 질문 ${status.totalBalance}회`;
-    else if (status.kind === 'exhausted') credit.innerHTML = `남은 질문 0회 · ${EARN}`;
+    if (status.kind === 'available') credit.innerHTML = `<a href="/ai-credits">남은 질문 ${status.totalBalance}회</a>`;
+    else if (status.kind === 'exhausted') credit.innerHTML = `<a href="/ai-credits">남은 질문 0회</a> · ${EARN}`;
     else if (status.kind === 'logged-out') credit.innerHTML = `<a href="/auth/login?returnTo=/unse/">로그인하면 첫 질문 무료</a> · 독후감 한 편마다 1개`;
     else credit.textContent = '질문권 상태를 확인하지 못했습니다.';
   };
@@ -343,6 +346,14 @@ function wire(context, calc = null, compat = null) {
     if (creditStatus.kind === 'exhausted') {
       box.value = question;
       showPaywall(log, '질문권이 모두 사용되었습니다. 질문은 입력창에 남겨 두었습니다.');
+      return;
+    }
+    // 모델마다 차감이 다르다(균형 1 · 심층 2). 모자라면 보내기 전에 알린다 — 서버도 같은 값으로 막는다
+    const tierSel = document.getElementById('ai-tier');
+    const cost = TIER_COST[tierSel?.value] ?? 1;
+    if (creditStatus.kind === 'available' && creditStatus.totalBalance < cost) {
+      box.value = question;
+      showPaywall(log, `${tierSel.selectedOptions[0]?.textContent?.split(' · ')[0] ?? '이 모델'}은 질문권 ${cost}회가 필요합니다. 균형 풀이(1회)로 바꾸거나 질문권을 받아 주세요.`);
       return;
     }
     session.busy = true;

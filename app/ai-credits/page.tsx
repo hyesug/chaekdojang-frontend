@@ -91,18 +91,31 @@ export default function AiCreditsPage() {
     <header className="border-b border-cream-300 pb-6">
       <p className="cdj-kicker">책도장 · AI 명반 해석</p>
       <h1 className="cdj-title mt-2">내 질문권</h1>
-      <p className="mt-3 text-sm leading-6 text-brown-500">AI 해석은 계산된 명반을 바탕으로 답합니다. 모델별 질문권 차감량은 선택 메뉴에서 확인할 수 있습니다.</p>
+      <p className="mt-3 text-sm leading-6 text-brown-500">AI 해석은 계산된 명반을 바탕으로 답합니다. 질문 한 번에 고른 모델만큼 질문권이 줄어듭니다.</p>
     </header>
-    {!salesReady && <p className="cdj-alert cdj-alert--warning mt-6 text-sm leading-6" role="status">유료 판매는 사업자 정보, 환불 정책 및 PG 심사가 확정된 뒤에 시작합니다. 현재는 질문권 현황만 확인할 수 있습니다.</p>}
+    <section className="cdj-section mt-7 py-5" aria-label="질문권 받는 법과 모델별 차감">
+      <h2 className="cdj-heading text-xl">질문권 받는 법</h2>
+      <ul className="mt-3 space-y-1.5 text-sm leading-6 text-brown-600">
+        <li>· 로그인하면 첫 질문 1회 무료</li>
+        <li>· <Link className="underline underline-offset-2" href="/write">독후감</Link>을 쓰면 1회 — 책 한 권당 한 번, 100자 이상</li>
+      </ul>
+      <h2 className="cdj-heading mt-6 text-xl">모델별 차감</h2>
+      <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
+        <div className="rounded-lg bg-cream-50 p-3"><dt className="text-brown-500">Claude 균형 풀이</dt><dd className="mt-1 font-semibold text-brown-800">1회</dd></div>
+        <div className="rounded-lg bg-cream-50 p-3"><dt className="text-brown-500">Claude 심층 풀이</dt><dd className="mt-1 font-semibold text-brown-800">2회</dd></div>
+      </dl>
+      <p className="mt-3 text-xs leading-5 text-brown-400">답을 받지 못하고 실패하면 줄어든 질문권은 자동으로 돌아옵니다.</p>
+    </section>
     <section className="cdj-section mt-7 py-5" aria-label="현재 질문권 잔액">
       <dl className="grid grid-cols-3 gap-3 text-center tabular-nums">
-        <div><dt className="text-xs text-brown-400">무료</dt><dd className="mt-1 text-xl font-semibold text-brown-800">{balance?.freeRemaining ?? "-"}회</dd></div>
-        <div><dt className="text-xs text-brown-400">구매</dt><dd className="mt-1 text-xl font-semibold text-brown-800">{balance?.purchasedBalance ?? "-"}회</dd></div>
+        <div><dt className="text-xs text-brown-400">무료 (첫 질문·독후감)</dt><dd className="mt-1 text-xl font-semibold text-brown-800">{balance?.freeRemaining ?? "-"}회</dd></div>
+        <div><dt className="text-xs text-brown-400">구매·지급</dt><dd className="mt-1 text-xl font-semibold text-brown-800">{balance?.purchasedBalance ?? "-"}회</dd></div>
         <div><dt className="text-xs text-brown-400">총 잔액</dt><dd className="mt-1 text-xl font-semibold text-sage-700">{balance?.totalBalance ?? "-"}회</dd></div>
       </dl>
     </section>
-    <ProductSection title="기간권" note="구매 후 정해진 기간 동안 사용할 수 있습니다." products={products.filter((p) => p.validDays > 0)} busy={busy} salesReady={salesReady} onBuy={buy} />
-    <ProductSection title="질문권 묶음" note="만료일 없이 필요한 만큼 사용할 수 있습니다." products={products.filter((p) => p.validDays === 0)} busy={busy} salesReady={salesReady} onBuy={buy} />
+    {/* 판매(사업자 정보·환불 정책·PG 심사)가 확정되기 전에는 상품을 보이지 않는다 */}
+    {salesReady && <ProductSection title="기간권" note="구매 후 정해진 기간 동안 사용할 수 있습니다." products={products.filter((p) => p.validDays > 0)} busy={busy} salesReady={salesReady} onBuy={buy} />}
+    {salesReady && <ProductSection title="질문권 묶음" note="만료일 없이 필요한 만큼 사용할 수 있습니다." products={products.filter((p) => p.validDays === 0)} busy={busy} salesReady={salesReady} onBuy={buy} />}
     <section className="cdj-section mt-9 py-5"><h2 className="cdj-heading text-xl">최근 내역</h2><div className="cdj-table-wrap mt-4">{history.length === 0 ? <p className="p-5 text-sm text-brown-400">아직 사용 내역이 없습니다.</p> : <table className="w-full text-sm"><tbody>{history.map((item, index) => <tr key={`${item.createdAt}-${index}`} className="border-b border-cream-200 last:border-0"><td className="px-3 py-3"><p className="text-brown-700">{item.description}</p><p className="mt-1 text-xs text-brown-400">{new Date(item.createdAt).toLocaleString("ko-KR")}</p></td><td className={item.amount > 0 ? "px-3 py-3 text-right font-semibold text-sage-700" : "px-3 py-3 text-right font-semibold text-brown-700"}>{item.amount > 0 ? "+" : ""}{item.amount}회</td></tr>)}</tbody></table>}</div></section>
     {message && <p role="status" aria-live="polite" className="cdj-alert mt-5 text-sm">{message}</p>}
   </main>;

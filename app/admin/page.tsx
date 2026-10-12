@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import ReviewDetailModal from "../components/ReviewDetailModal";
 import FortuneFeedbackPanel from "./FortuneFeedbackPanel";
+import AiCreditUserPanel from "./AiCreditUserPanel";
 import { API_BASE } from "../lib/api";
 import { authFetch, getValidToken } from "../lib/auth";
 
@@ -928,6 +929,9 @@ export default function AdminPage() {
   const [lottoRecalculating, setLottoRecalculating] = useState(false);
   const [aiCreditStats, setAiCreditStats] = useState<AiCreditStatistics | null>(null);
   const [creditUserId, setCreditUserId] = useState("");
+  // 회원 질문권 조회 — 조회 버튼을 눌렀을 때의 ID 와, 조정 뒤 다시 읽게 하는 신호
+  const [creditLookupId, setCreditLookupId] = useState("");
+  const [creditRefresh, setCreditRefresh] = useState(0);
   const [creditAmount, setCreditAmount] = useState("1");
   const [creditDescription, setCreditDescription] = useState("");
   const [creditAdjusting, setCreditAdjusting] = useState(false);
@@ -1217,6 +1221,7 @@ export default function AdminPage() {
       const res = await authFetch(`${API_BASE}/api/admin/ai-credits/${userId}/adjustments`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ amount, description: creditDescription.trim() }) });
       if (!res.ok) { const json = await res.json().catch(() => null); setCreditMessage(json?.message ?? "질문권 조정에 실패했습니다."); return; }
       setCreditMessage("원장에 기록했습니다."); setCreditDescription("");
+      setCreditLookupId(String(userId)); setCreditRefresh((n) => n + 1);
       setAiCreditStats(await fetchAdmin<AiCreditStatistics>("/api/admin/ai-credits/statistics"));
     } finally { setCreditAdjusting(false); }
   }
@@ -2663,6 +2668,15 @@ export default function AdminPage() {
                   {[["호출", aiCreditStats?.calls], ["성공 / 실패", aiCreditStats ? `${aiCreditStats.successes} / ${aiCreditStats.failures}` : null], ["평균 원가", aiCreditStats?.averageCost], ["P50 / P95", aiCreditStats ? `$${Number(aiCreditStats.p50Cost).toFixed(4)} / $${Number(aiCreditStats.p95Cost).toFixed(4)}` : null], ["누적 API 비용", aiCreditStats ? `$${Number(aiCreditStats.totalCost).toFixed(4)}` : null]].map(([label, value]) => <div key={String(label)} className="rounded-xl bg-cream-50 p-3"><p className="text-xs text-brown-400">{label}</p><p className="mt-1 font-semibold text-brown-800">{value == null ? "-" : typeof value === "number" && label === "평균 원가" ? `$${value.toFixed(4)}` : String(value)}</p></div>)}
                 </div>
                 {aiCreditStats && <p className="mt-4 text-sm text-brown-500">평균 토큰: 입력 {Math.round(aiCreditStats.averageInputTokens).toLocaleString()} · 출력 {Math.round(aiCreditStats.averageOutputTokens).toLocaleString()}</p>}
+              </div>
+              <div className="rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+                <h3 className="font-serif text-lg font-bold text-brown-900">회원 질문권 조회</h3>
+                <p className="mt-1 text-sm text-brown-500">회원 ID로 잔액과 최근 원장(사용·독후감 보상·복구·지급)을 봅니다. 회원 상세 화면에도 같은 내용이 있습니다.</p>
+                <form onSubmit={(e) => { e.preventDefault(); setCreditLookupId(creditUserId.trim()); setCreditRefresh((n) => n + 1); }} className="mt-4 flex gap-2">
+                  <input value={creditUserId} onChange={(e) => setCreditUserId(e.target.value)} inputMode="numeric" placeholder="회원 ID" className="w-40 rounded-lg border border-cream-300 px-3 py-2 text-sm" />
+                  <button className="rounded-lg border border-cream-300 px-4 py-2 text-sm font-semibold text-brown-700">조회</button>
+                </form>
+                {creditLookupId && <div className="mt-4"><AiCreditUserPanel userId={creditLookupId} refreshKey={creditRefresh} /></div>}
               </div>
               <form onSubmit={adjustAiCredit} className="rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
                 <h3 className="font-serif text-lg font-bold text-brown-900">회원 질문권 조정</h3>

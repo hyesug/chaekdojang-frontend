@@ -182,6 +182,11 @@ function renderCompat(formA, formB, r) {
       ${basisNote(people.a?.input ?? r.A?.input, formA.name)}${basisNote(people.b?.input ?? r.B?.input, formB.name)}
     </div>
 
+    <!-- 저장 칸은 맨 위 — 결과를 보자마자 저장하게(피드백) -->
+    <div class="profile-card" id="profileCard">
+      <p class="agree-note" style="margin:0">프로필 저장 여부를 확인하는 중…</p>
+    </div>
+
     ${h ? renderHighlights(h) : ''}
 
     <div class="section-label">상세 분석</div>
@@ -203,9 +208,6 @@ function renderCompat(formA, formB, r) {
       </dl>
     </div>
 
-    <div class="profile-card" id="profileCard">
-      <p class="agree-note" style="margin:0">프로필 저장 여부를 확인하는 중…</p>
-    </div>
   `;
 }
 
@@ -364,6 +366,11 @@ function render(form, r, f) {
       ${basisNote(r.input)}
     </div>
 
+    <!-- 저장 칸은 맨 위 — 결과를 보자마자 저장하게(피드백) -->
+    <div class="profile-card" id="profileCard">
+      <p class="agree-note" style="margin:0">프로필 저장 여부를 확인하는 중…</p>
+    </div>
+
     ${h ? renderHighlights(h) : ''}
 
     <div class="tabs">
@@ -398,9 +405,6 @@ function render(form, r, f) {
 
     ${chartPanel(r)}
 
-    <div class="profile-card" id="profileCard">
-      <p class="agree-note" style="margin:0">프로필 저장 여부를 확인하는 중…</p>
-    </div>
   `;
 }
 
@@ -427,7 +431,7 @@ async function fillProfileCard(forms) {
   if (!loggedIn) {
     el.innerHTML = `
       <p class="agree-note" style="margin:0">
-        <a href="${esc(loginUrl())}">로그인</a>하면 출생 정보를 여러 명 저장해 두고 다음에 바로 불러올 수 있습니다.
+        <a href="${esc(loginUrl())}">로그인</a>하면 이 결과의 출생 정보를 저장해 두고 다음에 바로 불러올 수 있어요.
       </p>`;
     return;
   }
@@ -442,20 +446,24 @@ async function fillProfileCard(forms) {
   }).join('');
 
   const list = profiles.length ? `
-    <p class="agree-note" style="margin:14px 0 6px">저장한 사람 ${profiles.length}명 · 입력 화면 맨 위 '누구의 운세를 볼까요?'에서 고르면 바로 볼 수 있습니다.</p>
+    <p class="agree-note" style="margin:8px 0 6px">입력 화면 맨 위 '누구의 운세를 볼까요?'에서 고르면 바로 볼 수 있습니다.</p>
     <ul class="saved-list">
       ${profiles.map((p) => `<li><span>${p.self ? '<b>나</b> · ' : ''}${esc(p.name)} <small>${p.year}.${p.month}.${p.day}</small></span>
         ${p.id != null ? `<button type="button" data-act="profile-delete" data-id="${p.id}" aria-label="${esc(p.name)} 삭제">삭제</button>` : ''}</li>`).join('')}
     </ul>` : '';
 
+  // 맨 위에 놓이므로 짧게 — 저장 단추만 보이고, 목록·안내는 접어 둔다
   el.innerHTML = `
     <div class="sharebar" style="margin:0">${buttons}</div>
-    ${list}
-    <p class="agree-note" style="margin-top:12px">
-      저장하면 이름·성별·생년월일·태어난 시각·태어난 곳·사는 곳이 책도장 서버에 보관됩니다.
-      가족이나 지인의 정보는 본인에게 알리고 저장해 주세요. 언제든 여기서 삭제할 수 있고, 회원 탈퇴 시 함께 삭제됩니다.
-      <a href="/privacy">개인정보처리방침</a>
-    </p>`;
+    <details class="saved-manage">
+      <summary>${profiles.length ? `저장한 사람 ${profiles.length}명 관리` : '저장하면 무엇이 남나요?'}</summary>
+      ${list}
+      <p class="agree-note" style="margin-top:10px">
+        저장하면 이름·성별·생년월일·태어난 시각·태어난 곳·사는 곳이 책도장 서버에 보관됩니다.
+        가족이나 지인의 정보는 본인에게 알리고 저장해 주세요. 언제든 여기서 삭제할 수 있고, 회원 탈퇴 시 함께 삭제됩니다.
+        <a href="/privacy">개인정보처리방침</a>
+      </p>
+    </details>`;
 }
 
 // ─────────────────────────────────────────────────────────────

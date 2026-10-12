@@ -677,7 +677,9 @@ details.pool[open] > summary::before { content: '▾ '; }
 .compat-details .compat-prose { padding: 2px 0 18px; }
 .compat-extremes { border-top: 1px solid var(--line-soft); padding: 16px 0 18px; }
 .compat-extremes .say-text + .say-text { margin-top: 14px; }
-.profile-card { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 15px; }
+.profile-card { margin: 0 0 18px; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px 14px; background: var(--card); }
+.saved-manage { margin-top: 8px; font-size: 13.5px; }
+.saved-manage summary { cursor: pointer; color: var(--ink-2); }
 .profile-card .sharebar { flex-wrap: wrap; }
 .saved-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .saved-list li { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0;

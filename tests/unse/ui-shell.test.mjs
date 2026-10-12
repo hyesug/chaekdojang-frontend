@@ -181,3 +181,13 @@ test('AI 대화는 명반별로 브라우저에 남아 독후감을 쓰고 돌�
   // 관리자는 무제한으로 보인다
   assert.match(ai, /관리자 · 무제한/);
 });
+
+test('프로필 저장 칸은 결과 맨 위(제목 바로 아래, 핵심 요약 앞)에 있다 — 개인·궁합 모두', async () => {
+  const ui = await read('src/ui.js');
+  for (const start of ['function render(form, r, f)', 'function renderCompat(formA, formB, r)']) {
+    const body = ui.slice(ui.indexOf(start));
+    const card = body.indexOf('id="profileCard"');
+    const hl = body.indexOf('renderHighlights(h)');
+    assert.ok(card > 0 && card < hl, `${start}: 저장 칸이 핵심 요약보다 앞에 있어야 한다`);
+  }
+});

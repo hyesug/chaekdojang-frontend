@@ -308,3 +308,16 @@ test('육임 섭해: 본가까지 가며 받는 극(지반 지지 + 기궁 천�
   assert.equal(f('과체'), '섭해법');
   assert.match(f('초전'), /^酉/);
 });
+
+test('자녀 성별은 사례 검증을 못 넘어 리포트·AI 어디에도 말하지 않는다', async () => {
+  const { readFortune } = await import('../../public/unse/src/engine.js');
+  const { readChildren, childPalaceStars, childrenVerdict, GENDER_VERIFIED } = await import('../../public/unse/src/semantic/structure/children.js');
+  const { childrenPack } = await import('../../public/unse/src/hires/vedicExt.js');
+  assert.equal(GENDER_VERIFIED, false);
+  for (const g of ['female', 'male']) {
+    const r = readFortune({ name: 'x', year: 1990, month: 5, day: 15, hour: 14, minute: 0, birthPlace: '서울', homePlace: '서울', gender: g });
+    const reads = readChildren({ ...r.chart, gender: g }, childPalaceStars(r.input), childrenPack(r.input));
+    const all = reads.map((x) => x.text).join(' ') + childrenVerdict(reads).lines.join(' ');
+    assert.doesNotMatch(all, /성별은|아들|(?<![가-힣])딸/);
+  }
+});

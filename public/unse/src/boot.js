@@ -274,6 +274,9 @@ function wireSavedPick(profiles) {
       fillPerson(prefix, p);
       if (!prefix) $('#profileNote').hidden = true;
       loadUI().catch(() => {});
+      // 고르면 바로 그 사람의 운세를 보여 준다. 궁합은 두 사람을 다 골랐을 때
+      const other = $(`#${prefix ? '' : 'b-'}savedPick`);
+      if (mode === 'solo' || other?.value) $('#form').requestSubmit();
     });
   }
 }

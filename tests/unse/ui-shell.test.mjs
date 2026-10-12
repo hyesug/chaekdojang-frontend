@@ -124,6 +124,8 @@ test('로그인하면 여러 사람을 저장하고, 두 사람 칸 모두에서
   assert.match(html, /<div class="saved-pick" hidden>[\s\S]*<select id="savedPick">/);
   // 두 번째 사람 칸은 첫 칸을 복제하므로 b-savedPick 도 생긴다 — 둘 다 채운다
   assert.match(boot, /for \(const prefix of \['', 'b-'\]\)/);
+  // 고르면 바로 결과 — 궁합은 두 사람을 다 골랐을 때
+  assert.match(boot, /if \(mode === 'solo' \|\| other\?\.value\) \$\('#form'\)\.requestSubmit\(\);/);
   assert.match(profile, /export async function loadProfiles\(/);
   assert.match(profile, /call\('POST', '', bodyOf\(form\)\)/);
   assert.match(profile, /call\('PUT', `\/\$\{id\}`/);

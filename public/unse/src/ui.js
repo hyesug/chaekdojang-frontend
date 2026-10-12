@@ -442,7 +442,7 @@ async function fillProfileCard(forms) {
   }).join('');
 
   const list = profiles.length ? `
-    <p class="agree-note" style="margin:14px 0 6px">저장한 사람 ${profiles.length}명 · 운세 화면 위 '저장한 사람 불러오기'에서 고를 수 있습니다.</p>
+    <p class="agree-note" style="margin:14px 0 6px">저장한 사람 ${profiles.length}명 · 입력 화면 맨 위 '누구의 운세를 볼까요?'에서 고르면 바로 볼 수 있습니다.</p>
     <ul class="saved-list">
       ${profiles.map((p) => `<li><span>${p.self ? '<b>나</b> · ' : ''}${esc(p.name)} <small>${p.year}.${p.month}.${p.day}</small></span>
         ${p.id != null ? `<button type="button" data-act="profile-delete" data-id="${p.id}" aria-label="${esc(p.name)} 삭제">삭제</button>` : ''}</li>`).join('')}

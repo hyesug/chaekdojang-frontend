@@ -54,15 +54,23 @@ export function childPalaceStars(input) {
  * 섞지 않는다. 그리고 이 사이트는 **밝기(묘왕함)를 계산하지 않으므로**
  * 범위를 그대로 내보낸다 — 좁혀 말하면 없는 계산을 지어내는 것이다.
  */
+/** 별마다의 한마디. 성별 대목은 GENDER_VERIFIED 일 때만 붙인다 */
+const starNotes = (rows) => {
+  const parts = rows.map((r) => [r.note, GENDER_VERIFIED && r.g ? `${r.g} 쪽으로 적힌 판본이 많다` : '']
+    .filter(Boolean).join(', '))
+    .map((t, i) => (t ? `${rows[i].star} — ${t}` : '')).filter(Boolean);
+  return parts.length ? ` ${parts.join(' / ')}.` : '';
+};
+
 const ZIWEI_CHILD_COUNT = {
   자미: { n: [2, 3], note: '귀한 자식을 두나 늦는 편으로 본다' },
-  천기: { n: [1, 2], note: '적게 보고, 딸 쪽으로 적은 판본이 많다' },
-  태양: { n: [2, 3], note: '아들 쪽으로 적힌 판본이 많다' },
+  천기: { n: [1, 2], note: '적게 본다', g: '딸' },
+  태양: { n: [2, 3], note: '', g: '아들' },
   무곡: { n: [1, 1], note: '적게 보고 늦게 본다' },
   천동: { n: [3, 5], note: '많은 쪽. 판본 중 가장 후하게 적힌 별이다' },
   염정: { n: [1, 1], note: '적게 보고 굴곡이 있다고 적는다' },
   천부: { n: [3, 5], note: '많은 쪽으로 본다' },
-  태음: { n: [2, 3], note: '딸 쪽으로 적힌 판본이 많다' },
+  태음: { n: [2, 3], note: '', g: '딸' },
   탐랑: { n: [2, 3], note: '늦게 두는 쪽으로 본다' },
   거문: { n: [1, 2], note: '적게 보고, 사이에 말이 오간다고 적는다' },
   천상: { n: [2, 2], note: '무난하게 본다' },
@@ -109,11 +117,14 @@ function sajuGender(chart) {
   const pair = gender === 'female' ? ['식신', '상관'] : ['정관', '편관'];
   const both = pair.every((k) => kinds.includes(k));
 
+  const base = `${gender === 'female' ? '여자 명식은 식상' : '남자 명식은 관성'}으로 자녀를 봅니다.`
+    + ` ${mine.map((x) => `${x.pos} ${x.god}`).join(' · ')} — 모두 ${mine.length}개입니다.`;
+  // 성별은 사례에서 찍기만 못해 말하지 않는다(GENDER_VERIFIED) — 리포트·AI 모두
+  if (!GENDER_VERIFIED) return { count: mine.length, kinds, text: base, genders: [] };
   return {
     count: mine.length,
     kinds,
-    text: `${gender === 'female' ? '여자 명식은 식상' : '남자 명식은 관성'}으로 자녀를 봅니다.`
-      + ` ${mine.map((x) => `${x.pos} ${x.god}`).join(' · ')} — 모두 ${mine.length}개입니다.`
+    text: base
       + (both
         ? ` ${pair[0]}과 ${pair[1]}이 섞여 있어 아들·딸이 함께 있는 쪽으로 봅니다.`
         : ` ${kinds[0]} 한 종류입니다.`)
@@ -160,7 +171,7 @@ export function readChildren(chart, ziweiChildStars = [], vedic = null, allStars
         topic: '수',
         text: `자녀궁에 ${j(ziweiChildStars.join('·'), '이')} 들었습니다. 전서 계열의 자녀궁 수 표로는`
           + ` **${lo === hi ? `${lo}명` : `${lo}~${hi}명`}**입니다.`
-          + ` ${rows.map((r) => `${r.star} — ${r.note}`).join(' / ')}.`
+          + starNotes(rows)
           + ` 판본마다 한둘씩 다르게 적고, 이 사이트는 별의 밝기(묘왕함)를 계산하지 않아`
           + ` 범위를 그대로 냅니다.`,
         source: '자미두수전서 자녀궁 — 주성별 자녀 수',
@@ -242,6 +253,12 @@ export function readChildren(chart, ziweiChildStars = [], vedic = null, allStars
  */
 const COUNT_VERIFIED = false;
 const STANCE_VERIFIED = false;
+export const GENDER_VERIFIED = false;
+/**
+ * 자녀 성별을 말해도 되는가. 2026-10-12 사례(자녀 성별이 확인된 6명)에서 사주 식상·관성 유파 판정이
+ * 6명 중 3명만 맞았다 — 둘 낳은 집에 "아들·딸 함께"라고만 해도 6명 중 4명이라 찍기만 못했다.
+ * 딸 둘인 부모 둘 모두에게 아들을 짚었다. 사례가 쌓여 넘어서면 켠다.
+ */
 
 export function childrenVerdict(reads) {
   const c = consensusOf(reads.filter((x) => x.topicKey === '열림'));
@@ -277,8 +294,8 @@ export function childrenVerdict(reads) {
     lines.push(r.say);
   }
 
-  // 유파를 골랐으므로 성별도 말한다. 고른 것을 밝히는 것이 조건이다
-  const gs = [...new Set(reads.flatMap((x) => x.genders ?? []))];
+  // 유파를 골랐으므로 성별도 말한다. 고른 것을 밝히는 것이 조건이다 — 지금은 꺼 두었다(GENDER_VERIFIED)
+  const gs = GENDER_VERIFIED ? [...new Set(reads.flatMap((x) => x.genders ?? []))] : [];
   if (gs.length === 1) {
     lines.push(`성별은 **${gs[0]}** 쪽입니다(${CHILD_GENDER.school}). ${CHILD_GENDER.other}.`);
   } else if (gs.length > 1) {

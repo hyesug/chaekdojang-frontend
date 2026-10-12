@@ -266,6 +266,8 @@ function formatChildren(input, chart) {
   L.push('');
   L.push('위 종합은 이미 규칙대로 정리한 것이다. **다시 종합하지 말고 그대로 쓸 것.**');
   L.push('갈린다고 적힌 자리는 답에서 빼고, 겹친 자리는 단정해서 말할 것.');
+  // 자녀 성별은 사례 검증에서 찍기만 못해 화면에서도 말하지 않는다(children.js GENDER_VERIFIED)
+  L.push('자녀가 아들인지 딸인지는 말하지 말 것 — 물어도 이 계산으로는 가릴 수 없다고 답할 것.');
 
   // 자녀는 되풀이되는 일이라 창에 이름을 준다 — 첫째·둘째·셋째
   const when = formatTiming(input, chart, '자녀');

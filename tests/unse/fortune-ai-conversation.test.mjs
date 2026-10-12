@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { compactHistory, conclusionOf, timeAnchorsOf, detailLevel, OUTPUT_BUDGET, THINKING_BUDGET, useThinking, HISTORY }
+import { compactHistory, conclusionOf, timeAnchorsOf, detailLevel, OUTPUT_BUDGET, THINKING_BUDGET, wantsThinking, HISTORY }
   from '../../app/fortune-ai/conversation.ts';
 import { routeQuestion, inheritPlan } from '../../public/unse/src/hires/router.js';
 
@@ -72,9 +72,9 @@ test('답 길이 — 짧은 대화체가 기본이고, 자세히·비교·평생
   assert.ok(OUTPUT_BUDGET.short < OUTPUT_BUDGET.normal && OUTPUT_BUDGET.normal < OUTPUT_BUDGET.long);
   assert.equal(OUTPUT_BUDGET.normal, 3000);
   assert.ok(THINKING_BUDGET.long >= OUTPUT_BUDGET.long);
-  assert.equal(useThinking('CLAUDE_SONNET', 'normal'), false);
-  assert.equal(useThinking('CLAUDE_SONNET', 'long'), true);
-  assert.equal(useThinking('CLAUDE_OPUS', 'short'), true);
+  assert.equal(wantsThinking('CLAUDE_SONNET', 'normal'), false);
+  assert.equal(wantsThinking('CLAUDE_SONNET', 'long'), true);
+  assert.equal(wantsThinking('CLAUDE_OPUS', 'short'), true);
 });
 
 // ── 후속 질문이 앞 질문의 분야·기간을 잇는가 (테스트 질문 B → C → D) ──

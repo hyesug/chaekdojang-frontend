@@ -159,7 +159,7 @@ export const THINKING_BUDGET: Record<DetailLevel, number> = {
 };
 
 /** 사고를 켤지 — 심층 풀이는 늘, 균형 풀이는 "자세히·전체 풀이"를 물었을 때만 */
-export const useThinking = (tier: string, level: DetailLevel) => tier === "CLAUDE_OPUS" || level === "long";
+export const wantsThinking = (tier: string, level: DetailLevel) => tier === "CLAUDE_OPUS" || level === "long";
 
 /** 짧은 답을 원할 때만 붙이는 한 줄. 나머지 길이 규칙은 시스템 프롬프트가 이미 갖고 있다 */
 export function lengthHint(level: DetailLevel) {

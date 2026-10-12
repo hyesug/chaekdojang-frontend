@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { compactHistory, detailLevel, lengthHint, OUTPUT_BUDGET, THINKING_BUDGET, useThinking, type DetailLevel } from "./conversation";
+import { compactHistory, detailLevel, lengthHint, OUTPUT_BUDGET, THINKING_BUDGET, wantsThinking, type DetailLevel } from "./conversation";
 
 /**
  * 종합 운세 — Claude 프록시
@@ -615,7 +615,7 @@ export async function POST(req: Request) {
     stream = client.messages.stream({
       model: tierConfig.model,
       // 사고는 심층 풀이와 "자세히"에만 — 균형 풀이의 짧은 답에는 사고 토큰(출력 단가)이 비용만 늘렸다
-      ...(useThinking(tier, detail)
+      ...(wantsThinking(tier, detail)
         ? { max_tokens: THINKING_BUDGET[detail], thinking: { type: "adaptive" as const } }
         : { max_tokens: OUTPUT_BUDGET[detail] }),
       system: [

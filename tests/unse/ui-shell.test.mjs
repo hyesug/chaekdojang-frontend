@@ -115,3 +115,18 @@ test('궁합 전용 칸(결혼 여부)은 숨김 속성이 display:grid 에 덮�
   const css = await read('assets/style.css');
   assert.match(css, /\.pair-only\[hidden\][^{]*\{ display: none; \}/);
 });
+
+test('로그인하면 여러 사람을 저장하고, 두 사람 칸 모두에서 불러온다', async () => {
+  const html = await read('index.html');
+  const boot = await read('src/boot.js');
+  const profile = await read('src/profile.js');
+  const ui = await read('src/ui.js');
+  assert.match(html, /<div class="saved-pick" hidden>[\s\S]*<select id="savedPick">/);
+  // 두 번째 사람 칸은 첫 칸을 복제하므로 b-savedPick 도 생긴다 — 둘 다 채운다
+  assert.match(boot, /for \(const prefix of \['', 'b-'\]\)/);
+  assert.match(profile, /export async function loadProfiles\(/);
+  assert.match(profile, /call\('POST', '', bodyOf\(form\)\)/);
+  assert.match(profile, /call\('PUT', `\/\$\{id\}`/);
+  // 궁합 결과에도 두 사람 저장 칸
+  assert.match(ui, /fillProfileCard\(\[form, formB\]\)/);
+});

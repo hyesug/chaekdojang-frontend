@@ -672,6 +672,16 @@ details.pool[open] > summary::before { content: '▾ '; }
 .compat-extremes { border-top: 1px solid var(--line-soft); padding: 16px 0 18px; }
 .compat-extremes .say-text + .say-text { margin-top: 14px; }
 .profile-card { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 15px; }
+.profile-card .sharebar { flex-wrap: wrap; }
+.saved-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.saved-list li { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0;
+  border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 6px 10px; font-size: 14px; }
+.saved-list li span { min-width: 0; overflow-wrap: anywhere; }
+.saved-list small { opacity: .65; margin-left: 4px; }
+.saved-list button { flex: 0 0 auto; font-size: 13px; padding: 4px 10px; }
+.saved-pick { margin: 0 0 12px; }
+.saved-pick[hidden] { display: none; }
+.saved-pick select { width: 100%; }
 /* 책 추천 — 주제마다 이유 한 줄 + 책 두 권 */
 .rp-book-group + .rp-book-group { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line-soft); }
 .rp-book-list { list-style: none; margin: 6px 0 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }

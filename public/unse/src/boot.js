@@ -22,7 +22,7 @@
 
 import { CITIES } from './core/place.js';
 import { ENGINE_VERSION, CALC_CHANGES } from './meta.js';
-import { loadProfile } from './profile.js';
+import { loadProfiles } from './profile.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) =>
@@ -228,25 +228,54 @@ $('#form').addEventListener('submit', async (e) => {
 if (location.hash.length > 1) {
   loadUI().then((ui) => ui.restoreFromHash()).catch(() => {});
 } else {
-  // 로그인해 두고 프로필을 저장했으면 첫 사람 칸을 채워 둔다.
+  // 로그인해 두고 프로필을 저장했으면 첫 사람 칸을 본인 프로필로 채워 두고,
+  // 저장한 사람이 여럿이면 두 사람 칸 모두에 '저장한 사람 불러오기'를 띄운다.
   // 그 사이 사람이 이미 적기 시작했으면 덮어쓰지 않는다.
-  loadProfile().then(({ profile }) => {
-    if (!profile || $('#year').value || $('#name').value) return;
-    const set = (id, v) => { if (v != null) $('#' + id).value = v; };
-    set('name', profile.name);
-    set('gender', profile.gender);
-    set('calendar', 'solar');
-    set('year', profile.year); set('month', profile.month); set('day', profile.day);
-    const noTime = profile.hour == null;
-    $('#noTime').checked = noTime;
-    $('#noTime').dispatchEvent(new Event('change'));
-    if (!noTime) { set('hour', profile.hour); set('minute', profile.minute); }
-    set('birthPlace', profile.birthPlace);
-    set('homePlace', profile.homePlace);
-    $('#dst').checked = !!profile.dst;
+  loadProfiles().then(({ profiles }) => {
+    if (!profiles.length) return;
+    wireSavedPick(profiles);
+    const self = profiles.find((p) => p.self);
+    if (!self || $('#year').value || $('#name').value) return;
+    fillPerson('', self);
+    $('#savedPick').value = String(profiles.indexOf(self));
     $('#profileNote').hidden = false;
     loadUI().catch(() => {});
   });
+}
+
+/** 저장해 둔 한 사람을 그 칸(prefix '' 또는 'b-')에 채운다 */
+function fillPerson(prefix, p) {
+  const set = (id, v) => { const el = $(`#${prefix}${id}`); if (el && v != null) el.value = v; };
+  set('name', p.name);
+  set('gender', p.gender);
+  set('calendar', 'solar');                  // 서버에는 양력으로 바꿔 저장해 둔다
+  set('year', p.year); set('month', p.month); set('day', p.day);
+  const noTime = p.hour == null;
+  const nt = $(`#${prefix}noTime`);
+  nt.checked = noTime;
+  nt.dispatchEvent(new Event('change'));
+  if (noTime) { set('hour', ''); set('minute', ''); } else { set('hour', p.hour); set('minute', p.minute ?? 0); }
+  set('birthPlace', p.birthPlace);
+  set('homePlace', p.homePlace);
+  $(`#${prefix}dst`).checked = !!p.dst;
+}
+
+function wireSavedPick(profiles) {
+  const label = (p) => `${p.self ? '나 · ' : ''}${p.name} (${p.year}.${p.month}.${p.day})`;
+  for (const prefix of ['', 'b-']) {
+    const sel = $(`#${prefix}savedPick`);
+    if (!sel) continue;
+    sel.innerHTML = '<option value="">직접 입력</option>'
+      + profiles.map((p, i) => `<option value="${i}">${esc(label(p))}</option>`).join('');
+    sel.closest('.saved-pick').hidden = false;
+    sel.addEventListener('change', () => {
+      const p = profiles[Number(sel.value)];
+      if (!p || sel.value === '') return;
+      fillPerson(prefix, p);
+      if (!prefix) $('#profileNote').hidden = true;
+      loadUI().catch(() => {});
+    });
+  }
 }
 
 // 화면 아래에 판 번호를 박아 둔다. "예전과 다른데요"라는 말이 나올 때

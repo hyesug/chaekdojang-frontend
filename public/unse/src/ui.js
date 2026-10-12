@@ -22,7 +22,7 @@ import { readForecast, areaText } from './forecast.js';
 import { renderReport, renderPairReport, pairDigestFor, periodFlow, pairEventsHtml } from './report.js';
 import { buildView, buildCompatView } from './viewmodel.js';
 import { SYSTEM_META, TIER_LABEL, SOURCE_LABEL } from './meta.js';
-import { loadProfile, saveProfile, deleteProfile, loginUrl } from './profile.js';
+import { loadProfiles, createProfile, updateProfile, removeProfile, loginUrl } from './profile.js';
 import { aiSection, initAI, initCompatAI } from './ai.js';
 
 /** 방금 본 결과. 주소 갱신과 프로필 저장이 다시 쓴다 */
@@ -62,6 +62,7 @@ export async function run(mode, box, next) {
     await next();
     box.innerHTML = renderCompat(form, formB, c);
     attachFeedback(box, { mode: 'pair', names: [form.name, formB.name] });
+    fillProfileCard([form, formB]);
     // 화면부터 띄우고, 무거운 계산(두 사람의 시기 → 사건 장, AI 문맥)은 그다음에 — 예전에는 둘 다 끝나야 화면이 떴다.
     // AI 문맥은 사건 장이 계산해 둔 시기를 출생 정보 캐시로 다시 쓰므로 뒤에 두면 금방 끝난다.
     setTimeout(() => {
@@ -88,7 +89,7 @@ export async function run(mode, box, next) {
     fillBooks(box);
     initAI(form, r, f);
     await next();
-    fillProfileCard(form);
+    fillProfileCard([form]);
     await next();
   }
 
@@ -200,6 +201,10 @@ function renderCompat(formA, formB, r) {
         <div><dt>${esc(formA.name)}</dt><dd>${esc(`${formA.year}.${String(formA.month).padStart(2, '0')}.${String(formA.day).padStart(2, '0')}`)} · ${formA.hour == null ? '시각 미상' : `${String(formA.hour).padStart(2, '0')}:${String(formA.minute).padStart(2, '0')}`} · ${esc(formA.birthPlace)}</dd></div>
         <div><dt>${esc(formB.name)}</dt><dd>${esc(`${formB.year}.${String(formB.month).padStart(2, '0')}.${String(formB.day).padStart(2, '0')}`)} · ${formB.hour == null ? '시각 미상' : `${String(formB.hour).padStart(2, '0')}:${String(formB.minute).padStart(2, '0')}`} · ${esc(formB.birthPlace)}</dd></div>
       </dl>
+    </div>
+
+    <div class="profile-card" id="profileCard">
+      <p class="agree-note" style="margin:0">프로필 저장 여부를 확인하는 중…</p>
     </div>
   `;
 }
@@ -402,34 +407,55 @@ function render(form, r, f) {
 /**
  * 프로필 저장 칸. 로그인한 사람에게만 저장 버튼을 준다.
  * 화면을 먼저 그리고 로그인 여부는 뒤에 채운다 — 백엔드가 느려도 결과는 바로 보인다.
+ *
+ * 여러 사람을 저장한다(본인 + 가족·지인). 화면에 나온 사람마다 —
+ *   같은 이름이 저장돼 있고 정보도 같으면 '저장됨', 정보가 다르면 '고치기', 없으면 '저장'.
+ * 처음 저장한 사람이 '나'(본인 프로필)가 되어 다음에 운세 화면을 열면 첫 칸에 채워진다.
+ *
+ * @param {object[]} forms 화면에 나온 사람들 — 개인 운세는 하나, 궁합은 둘
  */
-async function fillProfileCard(form) {
+const sameBirth = (p, f) => p.year === f.year && p.month === f.month && p.day === f.day
+  && (p.hour ?? null) === (f.hour ?? null) && (f.hour == null || (p.minute ?? 0) === (f.minute ?? 0))
+  && p.gender === f.gender && p.birthPlace === f.birthPlace;
+
+async function fillProfileCard(forms) {
   const el = $('#profileCard');
   if (!el) return;
-  const { loggedIn, profile } = await loadProfile();
+  const { loggedIn, profiles } = await loadProfiles();
   if (!el.isConnected) return;
 
   if (!loggedIn) {
     el.innerHTML = `
       <p class="agree-note" style="margin:0">
-        <a href="${esc(loginUrl())}">로그인</a>하면 이 출생 정보를 프로필로 저장해 두고 다음에 바로 불러올 수 있습니다.
+        <a href="${esc(loginUrl())}">로그인</a>하면 출생 정보를 여러 명 저장해 두고 다음에 바로 불러올 수 있습니다.
       </p>`;
     return;
   }
 
-  const same = profile && profile.year === form.year && profile.month === form.month &&
-    profile.day === form.day && profile.hour === form.hour && profile.name === form.name;
+  const who = (f) => esc(f.name || '이 사람');
+  const buttons = forms.map((f, i) => {
+    const byName = profiles.find((p) => p.name === (f.name || '').trim());
+    if (byName && sameBirth(byName, f)) return `<button type="button" disabled>${who(f)} — 저장됨</button>`;
+    if (byName) return `<button type="button" data-act="profile-save" data-who="${i}" data-id="${byName.id}">${who(f)} 정보 고치기</button>`;
+    const first = !profiles.length && i === 0;
+    return `<button type="button" data-act="profile-save" data-who="${i}">${who(f)} ${first ? '내 프로필로 저장' : '저장'}</button>`;
+  }).join('');
+
+  const list = profiles.length ? `
+    <p class="agree-note" style="margin:14px 0 6px">저장한 사람 ${profiles.length}명 · 운세 화면 위 '저장한 사람 불러오기'에서 고를 수 있습니다.</p>
+    <ul class="saved-list">
+      ${profiles.map((p) => `<li><span>${p.self ? '<b>나</b> · ' : ''}${esc(p.name)} <small>${p.year}.${p.month}.${p.day}</small></span>
+        ${p.id != null ? `<button type="button" data-act="profile-delete" data-id="${p.id}" aria-label="${esc(p.name)} 삭제">삭제</button>` : ''}</li>`).join('')}
+    </ul>` : '';
+
   el.innerHTML = `
-    <div class="sharebar" style="margin:0">
-      <button type="button" data-act="profile-save">${same ? '저장된 프로필과 같습니다' : profile ? '이 정보로 프로필 바꾸기' : '내 프로필로 저장'}</button>
-      ${profile ? '<button type="button" data-act="profile-delete">저장된 프로필 삭제</button>' : ''}
-    </div>
+    <div class="sharebar" style="margin:0">${buttons}</div>
+    ${list}
     <p class="agree-note" style="margin-top:12px">
       저장하면 이름·성별·생년월일·태어난 시각·태어난 곳·사는 곳이 책도장 서버에 보관됩니다.
-      언제든 여기서 삭제할 수 있고, 회원 탈퇴 시 함께 삭제됩니다.
+      가족이나 지인의 정보는 본인에게 알리고 저장해 주세요. 언제든 여기서 삭제할 수 있고, 회원 탈퇴 시 함께 삭제됩니다.
       <a href="/privacy">개인정보처리방침</a>
     </p>`;
-  if (same) el.querySelector('[data-act="profile-save"]').disabled = true;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -578,18 +604,21 @@ $('#result').addEventListener('click', async (e) => {
   if (!act || !last) return;
   if (act !== 'profile-save' && act !== 'profile-delete') return;
   btn.disabled = true;
+  const forms = last.mode === 'pair' ? [last.formA, last.formB] : [last.formA];
   try {
     if (act === 'profile-save') {
-      await saveProfile(last.formA);
-      toast('프로필을 저장했습니다');
+      const form = forms[Number(btn.dataset.who) || 0];
+      if (btn.dataset.id) await updateProfile(btn.dataset.id, form);
+      else await createProfile(form);
+      toast(`${form.name || '이 사람'} 정보를 저장했습니다`);
     } else {
-      await deleteProfile();
-      toast('저장된 프로필을 삭제했습니다');
+      await removeProfile(btn.dataset.id);
+      toast('저장된 정보를 삭제했습니다');
     }
   } catch (err) {
     toast(err.message, false);
   }
-  await fillProfileCard(last.formA);
+  await fillProfileCard(forms);
 });
 
 /**

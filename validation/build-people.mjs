@@ -7,9 +7,13 @@
  *   validation/attribution.json   직업
  *   validation/attributes.json    수입형태·직업전환
  *   validation/cases.json         날짜가 있는 사건 (결혼·출산 등)
+ *   validation-data/profiles.json 결혼 여부(mar)·자녀 수(kids) — 날짜 없는 사실
  *
  * 쓰는 것
  *   validation/people.json        새 규격 (.gitignore)
+ *
+ * ⚠ 지금의 people.json 은 이 스크립트 결과에 손으로 더한 칸(배우자 나이차·P12·출생지 등)이
+ *   있다. 다시 돌리면 그 칸이 사라지니, 돌리기 전에 people.json 을 백업하고 차이를 확인할 것.
  *
  * ── 이 스크립트가 하지 않는 일 ──────────────────────────────
  * **모르는 칸을 채우지 않는다.** 학업·주거·재물은 지금 자료에 없으므로
@@ -42,6 +46,8 @@ function lunarToSolar(y, lm, ld) {
 const attribution = read('validation/attribution.json') ?? [];
 const attributes = read('validation/attributes.json') ?? [];
 const cases = read('validation/cases.json') ?? [];
+const profiles = read('validation-data/profiles.json') ?? [];
+const profById = Object.fromEntries(profiles.map((p) => [p.id, p]));
 
 if (!attribution.length) {
   console.error('validation/attribution.json 이 없습니다. 개인정보 파일이라 저장소에 없습니다.');
@@ -58,6 +64,7 @@ const people = attribution.map((row) => {
   const y = solar?.y ?? row.y, m = solar?.m ?? row.m, d = solar?.d ?? row.d;
   const a = attrById[row.id] ?? {};
   const c = caseById[row.id] ?? null;
+  const prof = profById[row.id] ?? null;
   const birthPlace = c?.birth?.birthPlace ?? '대전';
   const homePlace = c?.birth?.homePlace ?? birthPlace;
 
@@ -92,6 +99,10 @@ const people = attribution.map((row) => {
       status: 'known', marriedAtAge: at,
       unionTiming: at <= mean - 3 ? 'early' : at >= mean + 3 ? 'late' : 'mid',
     };
+  } else if (['기혼', '이혼', '사별'].includes(prof?.mar)) {
+    // 결혼한 것은 알지만 해를 모른다 — 미혼(censored)으로 두면 '결혼 안 한 사람'으로 세어진다
+    relationship = { status: 'married_year_unknown', marital: prof.mar,
+      why: '결혼한 적은 있으나 해가 기록되지 않았다' };
   } else {
     // **미혼을 '결혼 안 함'으로 적지 않는다**
     relationship = { status: 'censored', observedUntilAge: age,
@@ -99,9 +110,13 @@ const people = attribution.map((row) => {
   }
 
   // ── 자녀 ──
-  const births = (c?.events ?? []).filter((e) => e.domain === '자녀').length;
-  const children = c
-    ? { status: 'known', count: births, band: childrenBand(births) }
+  const birthEvents = (c?.events ?? []).filter((e) => e.domain === '자녀');
+  // 사건이 없어도 프로필에 자녀 수가 있으면 그것이 정답이다(부모 사례처럼)
+  const births = Math.max(birthEvents.length, Number.isFinite(prof?.kids) ? prof.kids : 0);
+  const genders = birthEvents.map((e) => (/\(딸\)|딸\)/.test(e.what) ? '딸' : /\(아들\)|아들\)/.test(e.what) ? '아들' : null));
+  const children = (c || Number.isFinite(prof?.kids))
+    ? { status: 'known', count: births, band: childrenBand(births),
+        ...(genders.length && genders.every(Boolean) ? { genders } : {}) }
     : { status: 'unknown', why: '사건 자료가 없다' };
 
   return {

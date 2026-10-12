@@ -627,3 +627,24 @@ test('직업은 역할 먼저, 분야는 나란한 후보로 — 줄 세우지 �
   assert.match(PROMPT, /직업은 역할 먼저, 분야는 후보로/);
   assert.match(PROMPT, /1·2·3위로 줄 세우지 마세요/);
 });
+
+test('답 모양에서 "지금 할 일"은 뺐고, 건강은 몸의 자리를 근거·상징·한계로 먼저 말한다', () => {
+  assert.doesNotMatch(PROMPT, /## 지금 할 일/);
+  assert.match(PROMPT, /## 건강을 물으면/);
+  assert.match(PROMPT, /명반에서 주의할 몸의 자리를 먼저/);
+  assert.match(PROMPT, /구체적인 증상·질병을 예측하지 마세요/);
+});
+
+test('달을 묻지 않으면 달 단위 계산(월운·유월·트랜싯)을 싣지 않는다 — 질문마다 1만 자 가까이 줄었다', async () => {
+  const { buildHiRes } = await import('../../public/unse/src/hires/context.js');
+  const r = readFortune(BIRTH, { now: NOW });
+  const f = readForecast(BIRTH, NOW);
+  const q = '재물운 시기와 지출 구간은 언제인가요?';
+  const off = buildHiRes(r, f, { ...route(q), wantsMonths: false }).text;
+  const on = buildHiRes(r, f, { ...route(q), wantsMonths: true }).text;
+  assert.doesNotMatch(off, /월운 \(절기 기준/);
+  assert.doesNotMatch(off, /유월 \(음력 달 기준/);
+  assert.match(off, /달 단위 값.*싣지 않았다/);
+  assert.match(on, /월운 \(절기 기준/);
+  assert.ok(off.length < on.length * 0.85);
+});

@@ -519,6 +519,9 @@ const cap = (arr, n) => arr.slice(0, n);
 
 export function formatHiRes(j, plan) {
   const out = [];
+  // 달 단위 값(월운·유월·달별 트랜싯·진행·고차라)은 **달을 물었을 때만** 싣는다.
+  // 달 단위 시기는 검증에서 기준선을 못 넘어 답에 꺼내지 않는데, 질문마다 1.3만 자가 따라가 비용만 들었다.
+  const monthly = !!plan?.wantsMonths;
   out.push('## 고해상도 계산 (기간 ' + j.period + ')');
   // **질문 범위 잠금은 맨 앞에 온다.** 뒤에 적으면 이미 다 읽고 난 다음이라
   // 늦는다. 분야 라우팅보다 앞선다는 것도 여기서 못박는다
@@ -531,6 +534,7 @@ export function formatHiRes(j, plan) {
       + ' 다른 체계로 메우지 않는다. 사용자가 "종합해서"라고 할 때만 나머지를 켠다.');
   }
   out.push(`신뢰도 표기 — ${CONFIDENCE_LEGEND}`);
+  if (!monthly) out.push('달 단위 값(월운·유월·달별 트랜싯·고차라)은 이번 질문이 달을 묻지 않아 싣지 않았다. 시기는 해 단위로 답할 것.');
   if (j.matchedQuestion === false) {
     out.push('※ 질문에서 분야를 가려내지 못해 기본 분야(직업·재물·관계)로 계산했다. 분야가 다르면 그렇다고 밝힐 것.');
   }
@@ -552,8 +556,8 @@ export function formatHiRes(j, plan) {
       (y.sexagenaryReturn ? ' ※환갑(세운 간지가 원국 년주로 돌아옴 — 기념 행사·여행이 몰리는 해)' : '') +
       (y.zodiacReturn && !y.sexagenaryReturn ? ' ※본명년(띠해)' : ''));
   }
-  out.push('월운 (절기 기준, 시작일~):');
-  for (const m of j.bazi.monthly) {
+  if (monthly) out.push('월운 (절기 기준, 시작일~):');
+  for (const m of monthly ? j.bazi.monthly : []) {
     const bits = [m.gz, m.god];
     if (m.hits.length) bits.push(m.hits.join('·'));
     if (m.combos.length) bits.push(m.combos.join('·'));
@@ -590,8 +594,8 @@ export function formatHiRes(j, plan) {
         for (const row of p.rows) out.push(`    ${ZE.formatPalace(row)}`);
       }
     }
-    out.push('유월 (음력 달 기준. 앞의 날짜는 짝지은 절기월의 시작일이다):');
-    for (const m of cap(j.ziwei.monthly, 72)) {
+    if (monthly) out.push('유월 (음력 달 기준. 앞의 날짜는 짝지은 절기월의 시작일이다):');
+    for (const m of monthly ? cap(j.ziwei.monthly, 72) : []) {
       out.push(`  ${m.label} 음${m.lunarMonth}월 명궁 ${m.myeong}(원국 ${m.natalPalace})` +
         (m.stars.length ? ` ${m.stars.join('·')}` : ' 공궁') +
         (m.sihwa.length ? ` · ${m.sihwa.join(' ')}` : ''));
@@ -605,13 +609,13 @@ export function formatHiRes(j, plan) {
   for (const s of j.western.solarReturn) {
     out.push(`솔라리턴 ${s.year} (${s.at}) ASC ${s.asc} MC ${s.mc} · 태양 ${s.sunHouse}H 달 ${s.moonHouse}H · SR ASC는 출생 ${s.ascInNatalHouse ?? '—'}H, SR MC는 출생 ${s.mcInNatalHouse ?? '—'}H`);
   }
-  out.push('트랜싯 (달별, 위 네 개까지):');
-  for (const t of j.western.transits) {
+  if (monthly) out.push('트랜싯 (달별, 위 네 개까지):');
+  for (const t of monthly ? j.western.transits : []) {
     if (!t.hits.length) continue;
     out.push(`  ${t.label} ${t.hits.join(', ')}`);
   }
-  out.push('진행(2차 프로그레션) 석 달 간격:');
-  for (const p of j.western.progressions) {
+  if (monthly) out.push('진행(2차 프로그레션) 석 달 간격:');
+  for (const p of monthly ? j.western.progressions : []) {
     out.push(`  ${p.label} 달 ${p.moon ?? '—'} · 태양 ${p.sun ?? '—'} · ASC ${p.asc ?? '—'} · MC ${p.mc ?? '—'}`);
   }
   if (j.western.progressedMoonIngress.length) {
@@ -637,7 +641,7 @@ export function formatHiRes(j, plan) {
     out.push(`[${kind}] 전용 배치`);
     for (const line of formatPack(kind, d)) out.push(`  ${line}`);
   }
-  for (const t of j.vedic.transits) {
+  for (const t of monthly ? j.vedic.transits : []) {
     out.push(`  고차라 ${t.label} ${t.rows.join(' ')}${t.sadeSati ? ' ※사데사티' : ''}`);
   }
   out.push('');

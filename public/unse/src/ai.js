@@ -225,11 +225,16 @@ export function initAI(form, fortune, forecast) {
  * 이 질문에 필요한 고해상도 계산만 돌려 한 덩이로 만든다.
  * 계산이 터져도 질문 자체는 가야 하므로 실패는 조용히 삼킨다.
  */
+/** 달을 묻는 질문 — 이때만 달 단위 계산(월운·유월·트랜싯)과 달 표를 싣는다 */
+const MONTH_ASK = /몇 ?월|달별|월별|이번 ?달|다음 ?달|어느 ?달|무슨 ?달|몇 ?달|\d{1,2} ?월에/;
+
 function focusFor(question, calc, prevPlan = null) {
   if (!calc?.fortune) return null;
   try {
     // 후속 질문("아까 그 시기", "그중 몇 월")은 앞 질문의 분야·기간을 잇는다
-    const plan = inheritPlan(routeQuestion(question, calc.fortune.input.currentYear), prevPlan);
+    const routed = inheritPlan(routeQuestion(question, calc.fortune.input.currentYear), prevPlan);
+    // 달을 물었을 때만 달 단위 계산을 싣는다(hires/context.js formatHiRes)
+    const plan = { ...routed, wantsMonths: routed.needsDay || MONTH_ASK.test(question) };
     session.lastPlan = plan;
     const hires = buildHiRes(calc.fortune, calc.forecast, plan);
     // 성향만 물었으면 시기 계산·분야 구획 없이 속성별 담당 체계 구획만 보낸다
@@ -242,7 +247,7 @@ function focusFor(question, calc, prevPlan = null) {
 
     // 달 표는 달을 물었을 때만. 달 단위는 검증에서 진 값이라 안 물었는데
     // 실어 보내면 돈만 쓰고 답에는 잡음을 더한다
-    if (plan.needsDay || /몇 ?월|달별|월별|이번 달|다음 달/.test(question)) {
+    if (plan.wantsMonths) {
       parts.push(monthSection(calc.fortune));
     }
 

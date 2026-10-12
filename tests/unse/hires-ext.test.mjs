@@ -442,7 +442,7 @@ test('부위가 갈리지 않는 명반은 갈리지 않는다고 말한다', ()
   const read = BD.bodyRead(WS.natalPack(R.input), elementDistribution(R.chart.pillars).pct);
   assert.equal(typeof read.spread, 'number');
   assert.equal(typeof read.flat, 'boolean');
-  if (read.flat) assert.match(BD.formatBody(read), /부위가 갈리지 않는다/);
+  if (read.flat) assert.match(BD.formatBody(read), /부위가 하나로 갈리지 않는다[\s\S]*나란히 말할 것/);
   // 검증되지 않았다는 말이 항상 붙는다
   assert.match(BD.formatBody(read), /검증되지 않았다/);
   assert.match(BD.formatBody(read), /진단으로 말하지 말 것/);

@@ -46,6 +46,11 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) =>
 
 /** 문단을 최소한으로만 꾸민다. 마크다운 전체를 지원하지는 않는다 */
 function renderText(t) {
+  // 모델이 줄바꿈 대신 넣는 역슬래시 줄("\", "- \")과 불릿 사이 빈 줄을 걷는다 — 빈 불릿이 '* \'로 보였다
+  t = String(t ?? '')
+    .replace(/^[ \t]*(?:[-*•][ \t]*)?\\[ \t]*$/gm, '')
+    .replace(/[ \t]*\\[ \t]*$/gm, '')
+    .replace(/(^[-*] .+)\n\s*\n(?=[-*] )/gm, '$1\n');
   return esc(t)
     .replace(/^### (.+)$/gm, '<h5>$1</h5>')
     .replace(/^## (.+)$/gm, '<h4>$1</h4>')

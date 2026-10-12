@@ -281,7 +281,14 @@ let saved = [];
  */
 async function loadSaved() {
   const { loggedIn, profiles } = await loadProfiles();
-  if (!loggedIn) return;
+  if (!loggedIn) {
+    // 로그인 전에도 칸은 보인다 — 어디서 고르는지 알 수 있게, 로그인 길을 붙인다
+    const back = encodeURIComponent(location.pathname);
+    document.querySelectorAll('.saved-pick-note').forEach((n) => {
+      n.innerHTML = `<a href="/auth/login?returnTo=${back}">로그인</a>하면 가족·지인 출생 정보를 저장해 두고 여기서 골라 볼 수 있어요.`;
+    });
+    return;
+  }
   saved = profiles;
   const label = (p) => `${p.self ? '나 · ' : ''}${p.name} (${p.year}.${p.month}.${p.day})`;
   for (const prefix of ['', 'b-']) {
@@ -293,7 +300,8 @@ async function loadSaved() {
       : '<option value="">아직 저장한 사람이 없어요 — 결과 화면 맨 위에서 저장할 수 있어요</option>';
     sel.disabled = !saved.length;
     if (keep && saved[Number(keep)]) sel.value = keep;
-    sel.closest('.saved-pick').hidden = false;
+    const note = sel.closest('.saved-pick').querySelector('.saved-pick-note');
+    if (note) note.textContent = saved.length ? '고르면 바로 그 사람의 결과를 보여 줍니다.' : '결과 화면 맨 위에서 저장하면 여기서 고를 수 있어요.';
   }
 }
 

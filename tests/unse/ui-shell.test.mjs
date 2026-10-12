@@ -121,7 +121,9 @@ test('로그인하면 여러 사람을 저장하고, 두 사람 칸 모두에서
   const boot = await read('src/boot.js');
   const profile = await read('src/profile.js');
   const ui = await read('src/ui.js');
-  assert.match(html, /<div class="saved-pick" hidden>[\s\S]*<select id="savedPick">/);
+  // 출생 정보 칸 맨 위에 늘 보인다(로그인 전에는 로그인 길을 알려 준다)
+  assert.match(html, /<div class="saved-pick">\s*<label for="savedPick">[\s\S]*<select id="savedPick"/);
+  assert.ok(html.indexOf('id="savedPick"') < html.indexOf('id="year"'), '생년월일 칸보다 위에 있어야 한다');
   // 두 번째 사람 칸은 첫 칸을 복제하므로 b-savedPick 도 생긴다 — 둘 다 채운다
   assert.match(boot, /for \(const prefix of \['', 'b-'\]\)/);
   // 고르면 바로 결과 — 궁합은 두 사람을 다 골랐을 때

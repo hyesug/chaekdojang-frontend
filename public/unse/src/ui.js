@@ -446,7 +446,7 @@ async function fillProfileCard(forms) {
   }).join('');
 
   const list = profiles.length ? `
-    <p class="agree-note" style="margin:8px 0 6px">위 입력 칸의 '저장한 사람 불러오기'에서 고르면 바로 볼 수 있어요.</p>
+    <p class="agree-note" style="margin:8px 0 6px">위 입력 칸의 '저장한 사람 불러오기'에서 골라 명반 생성하기를 누르면 볼 수 있어요.</p>
     <ul class="saved-list">
       ${profiles.map((p) => `<li><span>${p.self ? '<b>나</b> · ' : ''}${esc(p.name)} <small>${p.year}.${p.month}.${p.day}</small></span>
         ${p.id != null ? `<button type="button" data-act="profile-delete" data-id="${p.id}" aria-label="${esc(p.name)} 삭제">삭제</button>` : ''}</li>`).join('')}

@@ -231,7 +231,7 @@ const savedReady = loadSaved();
 if (location.hash.length > 1) {
   loadUI().then((ui) => ui.restoreFromHash()).catch(() => {});
 } else {
-  // 로그인해 두고 프로필을 저장했으면 첫 사람 칸을 본인 프로필로 채워 둔다.
+  // 로그인해 두고 프로필을 저장했으면 처음에는 '나'(본인 프로필)로 맞춰 첫 사람 칸을 채워 둔다.
   // 그 사이 사람이 이미 적기 시작했으면 덮어쓰지 않는다.
   savedReady.then(() => {
     const self = saved.find((p) => p.self);
@@ -313,7 +313,7 @@ async function loadSaved() {
       if (i >= 0) sel.value = String(i);
     }
     const note = sel.closest('.saved-pick').querySelector('.saved-pick-note');
-    if (note) note.textContent = saved.length ? '고르면 바로 그 사람의 결과를 보여 줍니다.' : '결과 화면 맨 위에서 저장하면 여기서 고를 수 있어요.';
+    if (note) note.textContent = saved.length ? '고르면 아래 칸이 채워져요. 명반 생성하기를 눌러 주세요.' : '결과 화면 맨 위에서 저장하면 여기서 고를 수 있어요.';
   }
 }
 
@@ -326,10 +326,8 @@ for (const prefix of ['', 'b-']) {
     if (!p) return;
     fillPerson(prefix, p);
     if (!prefix) $('#profileNote').hidden = true;
+    // 칸만 채운다. 결과는 '명반 생성하기'를 눌렀을 때 — 고르자마자 생성하니 고쳐 볼 틈이 없었다(피드백)
     loadUI().catch(() => {});
-    // 고르면 바로 그 사람의 운세를 보여 준다. 궁합은 두 사람을 다 골랐을 때
-    const other = $(`#${prefix ? '' : 'b-'}savedPick`);
-    if (mode === 'solo' || other?.value) $('#form').requestSubmit();
   });
 }
 

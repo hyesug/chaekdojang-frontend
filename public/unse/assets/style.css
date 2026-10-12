@@ -617,6 +617,11 @@ details.pool[open] > summary::before { content: '▾ '; }
 .ai-turn .ai-retry:hover { background: var(--bg); }
 
 .ai-input { display: flex; gap: 8px; align-items: stretch; }
+/* 질문권을 다 썼을 때 — 입력은 막고 독후감 쓰러 가는 단추 */
+.ai-earn { margin-top: 10px; padding: 12px 14px; border: 1px solid var(--gold-soft); border-radius: var(--radius-sm); background: var(--card); }
+.ai-earn-btn { display: inline-block; padding: 9px 16px; border-radius: var(--radius-sm); background: var(--ink); color: #fff; font-weight: 600; font-size: 14px; text-decoration: none; }
+.ai-earn p { margin: 8px 0 0; font-size: 13px; color: var(--ink-3); }
+.ai-input textarea:disabled { opacity: .6; }
 .ai-input textarea {
   flex: 1; padding: 11px 13px; background: var(--bg-soft);
   border: 1px solid var(--line-strong); border-radius: var(--radius-sm); color: var(--ink);

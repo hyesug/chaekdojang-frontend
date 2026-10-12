@@ -228,3 +228,10 @@ test('AI 답변마다 👍/👎 + 한 줄(선택)을 받고, 질문 글·출생 
   assert.match(fb, /send\(\{ mode: 'ai', section, verdict, snippet: snippetOf\(bubble, names\), comment \}\)/);
   assert.doesNotMatch(fb.slice(fb.indexOf('export function attachAnswerFeedback')), /question|context|messages/);
 });
+
+test('질문권을 다 쓰면 입력을 막고 독후감 쓰러 가는 단추를 띄운다', async () => {
+  const ai = await read('src/ai.js');
+  assert.match(ai, /function lockWhenEmpty\(status\)/);
+  assert.match(ai, /box\.disabled = empty;/);
+  assert.match(ai, /이용권 얻으러 독후감 쓰러 가기/);
+});

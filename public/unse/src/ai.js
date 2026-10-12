@@ -419,7 +419,28 @@ function wire(context, calc = null, compat = null) {
     else if (status.kind === 'exhausted') credit.innerHTML = `<a href="/ai-credits">남은 질문 0회</a> · ${EARN}`;
     else if (status.kind === 'logged-out') credit.innerHTML = `<a href="/auth/login?returnTo=/unse/">로그인하면 첫 질문 무료</a> · 독후감 한 편마다 1개`;
     else credit.textContent = '질문권 상태를 확인하지 못했습니다.';
+    lockWhenEmpty(status);
   };
+
+  /**
+   * 질문권을 다 쓰면 입력·보내기·빠른 질문을 막고 '이용권 얻으러 독후감 쓰러 가기' 단추를 띄운다.
+   * 독후감을 쓰고 돌아오면(visibilitychange) 질문권을 다시 읽어 저절로 풀린다.
+   */
+  function lockWhenEmpty(status) {
+    const empty = status.kind === 'exhausted' && !status.unlimited;
+    box.disabled = empty;
+    send.disabled = empty || session.busy;
+    box.placeholder = empty ? '질문권을 다 썼어요. 독후감을 쓰면 1회를 받아요.' : '궁금한 걸 물어보세요 (Ctrl+Enter 로 보내기)';
+    document.querySelectorAll('.ai-quick button[data-q], .ai-follow button').forEach((b) => { b.disabled = empty; });
+    let cta = document.querySelector('.ai-earn');
+    if (empty && !cta) {
+      cta = document.createElement('div');
+      cta.className = 'ai-earn';
+      cta.innerHTML = '<a class="ai-earn-btn" href="/write">이용권 얻으러 독후감 쓰러 가기</a>'
+        + '<p>독후감 한 편(책 한 권당 한 번, 100자 이상)마다 질문권 1회를 드려요. 쓰고 돌아오면 이어서 물을 수 있어요.</p>';
+      box.closest('.ai-input')?.after(cta);
+    } else if (!empty && cta) cta.remove();
+  }
   loadCreditStatus().then(paintCredit);
   // 독후감을 쓰고 이 탭으로 돌아오면 늘어난 질문권을 바로 보여 준다
   document.addEventListener('visibilitychange', () => {

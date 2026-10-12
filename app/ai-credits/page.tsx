@@ -93,17 +93,14 @@ export default function AiCreditsPage() {
       <h1 className="cdj-title mt-2">내 질문권</h1>
       <p className="mt-3 text-sm leading-6 text-brown-500">AI 해석은 계산된 명반을 바탕으로 답합니다. 질문 한 번에 고른 모델만큼 질문권이 줄어듭니다.</p>
     </header>
-    <section className="cdj-section mt-7 py-5" aria-label="질문권 받는 법과 모델별 차감">
+    <section className="cdj-section mt-7 py-5" aria-label="질문권 받는 법과 차감">
       <h2 className="cdj-heading text-xl">질문권 받는 법</h2>
       <ul className="mt-3 space-y-1.5 text-sm leading-6 text-brown-600">
         <li>· 로그인하면 첫 질문 1회 무료</li>
         <li>· <Link className="underline underline-offset-2" href="/write">독후감</Link>을 쓰면 1회 — 책 한 권당 한 번, 100자 이상</li>
       </ul>
-      <h2 className="cdj-heading mt-6 text-xl">모델별 차감</h2>
-      <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
-        <div className="rounded-lg bg-cream-50 p-3"><dt className="text-brown-500">Claude 균형 풀이</dt><dd className="mt-1 font-semibold text-brown-800">1회</dd></div>
-        <div className="rounded-lg bg-cream-50 p-3"><dt className="text-brown-500">Claude 심층 풀이</dt><dd className="mt-1 font-semibold text-brown-800">2회</dd></div>
-      </dl>
+      <h2 className="cdj-heading mt-6 text-xl">차감</h2>
+      <p className="mt-3 text-sm text-brown-600">질문 한 번에 1회 (Claude 심층 풀이)</p>
       <p className="mt-3 text-xs leading-5 text-brown-400">질문권 1회는 질문 1개와 그 답변 한 벌입니다. 답을 받지 못하고 실패하면 자동으로 돌아오고, 답을 받다 연결이 끊겨도 하루 2번까지 돌려드립니다.</p>
     </section>
     <section className="cdj-section mt-7 py-5" aria-label="현재 질문권 잔액">

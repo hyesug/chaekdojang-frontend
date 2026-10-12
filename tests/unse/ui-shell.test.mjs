@@ -139,8 +139,10 @@ test('AI 질문은 Claude 두 모델만, 모델별 질문권(균형 1·심층 2)
   const ai = await read('src/ai.js');
   assert.match(ai, /export const AI_OPEN = true;/);
   assert.doesNotMatch(ai, /GPT_SOL|GPT_ASTRA/);
-  assert.match(ai, /const TIER_COST = \{ CLAUDE_SONNET: 1, CLAUDE_OPUS: 2 \};/);
-  assert.match(ai, /creditStatus\.totalBalance < cost/);
+  // 모델은 Claude 심층 하나로 고정, 질문권 1회, 고르는 칸 없음
+  assert.match(ai, /const AI_TIER = 'CLAUDE_OPUS';/);
+  assert.match(ai, /const AI_COST = 1;/);
+  assert.doesNotMatch(ai, /id="ai-tier"/);
   assert.match(ai, /href="\/write">독후감 쓰고 질문권 받기/);
   assert.doesNotMatch(ai, /질문권 구매/);
   // 질문권 1회 = 질문 1개 + 그 답변. 답을 받다 끊기면 돌려준다(하루 2번까지)

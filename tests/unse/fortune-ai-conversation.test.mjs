@@ -72,9 +72,8 @@ test('답 길이 — 소제목+짧은 문단이 기본이고, 자세히·비교�
   assert.ok(OUTPUT_BUDGET.short < OUTPUT_BUDGET.normal && OUTPUT_BUDGET.normal < OUTPUT_BUDGET.long);
   assert.equal(OUTPUT_BUDGET.normal, 4000);
   assert.ok(THINKING_BUDGET.long >= OUTPUT_BUDGET.long);
-  assert.equal(wantsThinking('CLAUDE_SONNET', 'normal'), false);
-  assert.equal(wantsThinking('CLAUDE_SONNET', 'long'), true);
-  assert.equal(wantsThinking('CLAUDE_OPUS', 'short'), true);
+  // 사고는 끈다 — 사고가 상한을 다 써서 글이 안 나온 일이 있었다
+  for (const l of ['short', 'normal', 'long']) assert.equal(wantsThinking('CLAUDE_OPUS', l), false);
 });
 
 // ── 후속 질문이 앞 질문의 분야·기간을 잇는가 (테스트 질문 B → C → D) ──

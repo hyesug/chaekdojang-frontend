@@ -158,8 +158,12 @@ export const THINKING_BUDGET: Record<DetailLevel, number> = {
   long: 16_000,
 };
 
-/** 사고를 켤지 — 심층 풀이는 늘, 균형 풀이는 "자세히·전체 풀이"를 물었을 때만 */
-export const wantsThinking = (tier: string, level: DetailLevel) => tier === "CLAUDE_OPUS" || level === "long";
+/**
+ * 사고(adaptive thinking)를 켤지 — 지금은 끈다.
+ * 모델을 Opus 하나로 고정해 사고 없이도 품질이 충분하고, 사고 토큰이 답 상한을 다 써 버려
+ * 글이 한 자도 안 나온 일이 있었다(2027년 운세 질문). 다시 켜려면 상한을 사고 몫만큼 넉넉히 잡을 것.
+ */
+export const wantsThinking = (_tier: string, _level: DetailLevel) => false;
 
 /** 짧은 답을 원할 때만 붙이는 한 줄. 나머지 길이 규칙은 시스템 프롬프트가 이미 갖고 있다 */
 export function lengthHint(level: DetailLevel) {

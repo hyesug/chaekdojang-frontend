@@ -536,8 +536,8 @@ export async function POST(req: Request) {
   }
 
   const context = String(body.context ?? "");
-  // 운세 AI 는 Claude 만 쓴다 — GPT 모델은 받지 않고 기본(Claude 균형)으로 돌린다
-  const tier = body.tier && body.tier in TIERS && TIERS[body.tier as Tier].provider === "ANTHROPIC" ? body.tier : "CLAUDE_SONNET";
+  // 운세 AI 는 Claude 심층(Opus) 하나로 고정한다 — 고르는 칸을 없앴고, 무엇을 보내도 이 모델로 답한다
+  const tier = "CLAUDE_OPUS" as Tier;
   const tierConfig = TIERS[tier];
   const focus = body.focus ? String(body.focus) : "";
   const raw = Array.isArray(body.messages) ? body.messages : [];
@@ -694,6 +694,9 @@ export async function POST(req: Request) {
         }
         if (clientGone) throw new Error("client aborted");
         const final = await stream.finalMessage();
+        // 글이 한 자도 나오지 않았으면(사고만 하다 상한에 걸린 경우 등) 실패로 보고 질문권을 돌려준다 —
+        // 예전에는 "답이 길어 끊겼다"는 안내 한 줄만 나가고 질문권은 쓰인 것으로 처리됐다
+        if (delivered === 0 && final.stop_reason !== "refusal") throw new Error(`EMPTY_ANSWER (${final.stop_reason})`);
         await finishCall(req, creditRequestId, tier, meta, {
           inputTokens: final.usage.input_tokens,
           outputTokens: final.usage.output_tokens,

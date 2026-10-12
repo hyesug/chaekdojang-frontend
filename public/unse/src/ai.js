@@ -27,8 +27,9 @@ const ENDPOINT = '/fortune-ai';
  */
 export const AI_OPEN = true;
 
-/** 모델별 질문권 차감 — 백엔드 FortuneAiModelTier.creditCost 와 같은 값 */
-const TIER_COST = { CLAUDE_SONNET: 1, CLAUDE_OPUS: 2 };
+/** AI 모델은 하나로 고정 — Claude 심층(Opus), 질문 한 번에 질문권 1회(백엔드 FortuneAiModelTier 와 같은 값) */
+const AI_TIER = 'CLAUDE_OPUS';
+const AI_COST = 1;
 
 /** 질문권을 얻는 길 — 결제가 붙기 전까지는 독후감 */
 const EARN = '<a href="/write">독후감 쓰고 질문권 받기</a> (책 한 권당 1개 · 100자 이상)';
@@ -192,10 +193,6 @@ export function aiSection(mode = 'solo', view = null) {
         ${quick.map((q, i) => `<button type="button" data-q="${i}"${off}>${esc(q[0])}</button>`).join('')}
       </div>
       <div id="ai-log" class="ai-log" aria-live="polite" aria-relevant="additions text"></div>
-      <div class="ai-quick"><select id="ai-tier" aria-label="AI 풀이 모델"${off}>
-        <option value="CLAUDE_SONNET">Claude 균형 풀이 · 질문권 1회</option>
-        <option value="CLAUDE_OPUS">Claude 심층 풀이 · 질문권 2회</option>
-      </select></div>
       <div class="ai-input">
         <label class="sr-only" for="ai-q">명반에 관해 질문하기</label>
         <textarea id="ai-q" rows="3" placeholder="${AI_OPEN ? '궁금한 걸 물어보세요 (Ctrl+Enter 로 보내기)' : 'AI 질문은 준비 중이에요'}"${off}></textarea>
@@ -364,7 +361,6 @@ function wire(context, calc = null, compat = null) {
   const log = document.querySelector('#ai-log');
   const box = document.querySelector('#ai-q');
   const send = document.querySelector('#ai-send');
-  const tier = document.querySelector('#ai-tier');
   const credit = document.querySelector('#ai-credit-status');
   if (!log) return;
   // 닫혀 있으면 질문권 조회도, 버튼 배선도 하지 않는다 — 막힌 단추가 눌려도 아무 요청이 나가지 않게
@@ -447,12 +443,10 @@ function wire(context, calc = null, compat = null) {
       showPaywall(log, '질문권이 모두 사용되었습니다. 질문은 입력창에 남겨 두었습니다.');
       return;
     }
-    // 모델마다 차감이 다르다(균형 1 · 심층 2). 모자라면 보내기 전에 알린다 — 서버도 같은 값으로 막는다
-    const tierSel = document.getElementById('ai-tier');
-    const cost = TIER_COST[tierSel?.value] ?? 1;
-    if (creditStatus.kind === 'available' && !creditStatus.unlimited && creditStatus.totalBalance < cost) {
+    // 질문 한 번에 질문권 1회. 모자라면 보내기 전에 알린다 — 서버도 같은 값으로 막는다
+    if (creditStatus.kind === 'available' && !creditStatus.unlimited && creditStatus.totalBalance < AI_COST) {
       box.value = question;
-      showPaywall(log, `${tierSel.selectedOptions[0]?.textContent?.split(' · ')[0] ?? '이 모델'}은 질문권 ${cost}회가 필요합니다. 균형 풀이(1회)로 바꾸거나 질문권을 받아 주세요.`);
+      showPaywall(log, '질문권이 모두 사용되었습니다. 질문은 입력창에 남겨 두었습니다.');
       return;
     }
     session.busy = true;
@@ -485,7 +479,7 @@ function wire(context, calc = null, compat = null) {
       const res = await fetch(ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ context: session.context, focus: redactNames(focus, session.names), messages: session.messages, tier: tier?.value ?? 'CLAUDE_SONNET', sessionId: session.id, category }),
+        body: JSON.stringify({ context: session.context, focus: redactNames(focus, session.names), messages: session.messages, tier: AI_TIER, sessionId: session.id, category }),
       });
 
       if (!res.ok || !res.body) {

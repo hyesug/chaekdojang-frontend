@@ -1163,7 +1163,8 @@ export async function POST(req: Request) {
   }
 
   const context = String(body.context ?? "");
-  const tier = body.tier && body.tier in TIERS ? body.tier : "CLAUDE_SONNET";
+  // 운세 AI 는 Claude 만 쓴다 — GPT 모델은 받지 않고 기본(Claude 균형)으로 돌린다
+  const tier = body.tier && body.tier in TIERS && TIERS[body.tier as Tier].provider === "ANTHROPIC" ? body.tier : "CLAUDE_SONNET";
   const tierConfig = TIERS[tier];
   const focus = body.focus ? String(body.focus) : "";
   const raw = Array.isArray(body.messages) ? body.messages : [];

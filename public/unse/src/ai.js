@@ -21,11 +21,14 @@ import { loadCreditStatus } from './credits.js';
 const ENDPOINT = '/fortune-ai';
 
 /**
- * AI 질문을 받을지. 결제(질문권 구매)가 붙기 전까지는 닫아 둔다.
+ * AI 질문을 받을지. 결제는 아직 없고, 질문권은 처음 1회 무료 + 독후감 한 편(책 한 권당 한 번, 100자 이상)마다 1개.
  * false 면 질문 영역은 그대로 보여 주되 버튼·입력칸을 막고 "준비 중"을 띄운다.
  * 서버 쪽도 막으려면 Vercel 환경변수 FORTUNE_AI_DISABLED=1 을 함께 둔다.
  */
-export const AI_OPEN = false;
+export const AI_OPEN = true;
+
+/** 질문권을 얻는 길 — 결제가 붙기 전까지는 독후감 */
+const EARN = '<a href="/write">독후감 쓰고 질문권 받기</a> (책 한 권당 1개 · 100자 이상)';
 
 /** 결제 안내는 서버가 잔액 부족으로 확정한 경우에만 연다. */
 export function isCreditExhausted(error) {
@@ -183,9 +186,7 @@ export function aiSection(mode = 'solo', view = null) {
       <div id="ai-log" class="ai-log" aria-live="polite" aria-relevant="additions text"></div>
       <div class="ai-quick"><select id="ai-tier" aria-label="AI 풀이 모델"${off}>
         <option value="CLAUDE_SONNET">Claude 균형 풀이 · 1 질문권</option>
-        <option value="GPT_SOL">GPT 균형 풀이 · 1 질문권</option>
         <option value="CLAUDE_OPUS">Claude 심층 풀이 · 2 질문권</option>
-        <option value="GPT_ASTRA">GPT 최고 심층 풀이 · 5 질문권</option>
       </select></div>
       <div class="ai-input">
         <label class="sr-only" for="ai-q">명반에 관해 질문하기</label>
@@ -320,8 +321,8 @@ function wire(context, calc = null, compat = null) {
     creditStatus = status;
     if (!credit) return;
     if (status.kind === 'available') credit.textContent = `남은 질문 ${status.totalBalance}회`;
-    else if (status.kind === 'exhausted') credit.textContent = '남은 질문 0회';
-    else if (status.kind === 'logged-out') credit.innerHTML = `<a href="/auth/login?returnTo=/unse/">로그인 후 질문권 사용</a>`;
+    else if (status.kind === 'exhausted') credit.innerHTML = `남은 질문 0회 · ${EARN}`;
+    else if (status.kind === 'logged-out') credit.innerHTML = `<a href="/auth/login?returnTo=/unse/">로그인하면 첫 질문 무료</a> · 독후감 한 편마다 1개`;
     else credit.textContent = '질문권 상태를 확인하지 못했습니다.';
   };
   loadCreditStatus().then(paintCredit);
@@ -458,7 +459,8 @@ function wire(context, calc = null, compat = null) {
     const row = document.createElement('div');
     row.className = 'ai-paywall';
     const balance = Number.isFinite(creditStatus.totalBalance) ? `현재 잔액 ${creditStatus.totalBalance}회 · ` : '';
-    row.innerHTML = `<p><strong>질문권이 필요합니다.</strong> ${esc(reason)}</p><p>${balance}<a href="/ai-credits">질문권 구매</a> · <a href="/payment-info">환불·결제 안내</a> · <a href="/terms">이용약관</a></p>`;
+    // 결제는 아직 열지 않았다 — 질문권은 독후감으로 받는다
+    row.innerHTML = `<p><strong>질문권이 필요합니다.</strong> ${esc(reason)}</p><p>${balance}${EARN} · <a href="/terms">이용약관</a></p>`;
     parent.appendChild(row);
     row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }

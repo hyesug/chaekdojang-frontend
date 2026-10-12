@@ -143,14 +143,23 @@ export function detailLevel(question: string): DetailLevel {
 /**
  * max_tokens — 응답 상한.
  *
- * 적응형 사고(adaptive thinking)의 사고 토큰도 이 안에 들어가므로 너무 낮추면
- * 생각하다 잘린다. short 도 넉넉히 둔다. long 은 기존 값 그대로다.
+ * 답은 짧은 대화체(기본 400~700자)라 사고 없이 쓰는 균형 풀이는 이 정도면 넉넉하다.
+ * 사고(adaptive thinking)를 켜는 호출(심층 풀이·"자세히")은 사고 토큰도 이 안에 들어가므로
+ * THINKING_BUDGET 을 따로 둔다. 예전 값(8k/16k/32k)은 긴 보고서형 답을 전제로 해 비용이 컸다.
  */
 export const OUTPUT_BUDGET: Record<DetailLevel, number> = {
-  short: 8_000,
-  normal: 16_000,
-  long: 32_000,
+  short: 1_500,
+  normal: 3_000,
+  long: 8_000,
 };
+export const THINKING_BUDGET: Record<DetailLevel, number> = {
+  short: 4_000,
+  normal: 8_000,
+  long: 16_000,
+};
+
+/** 사고를 켤지 — 심층 풀이는 늘, 균형 풀이는 "자세히·전체 풀이"를 물었을 때만 */
+export const useThinking = (tier: string, level: DetailLevel) => tier === "CLAUDE_OPUS" || level === "long";
 
 /** 짧은 답을 원할 때만 붙이는 한 줄. 나머지 길이 규칙은 시스템 프롬프트가 이미 갖고 있다 */
 export function lengthHint(level: DetailLevel) {

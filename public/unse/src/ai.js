@@ -10,7 +10,7 @@
  */
 
 import { buildContext, READING_PROMPT, buildCompatContext, COMPAT_PROMPT,
-         domainSections, monthSection } from './aiContext.js';
+         domainSections, monthSection, dayContext } from './aiContext.js';
 import { readForecast } from './forecast.js';
 import { routeQuestion, inheritPlan } from './hires/router.js';
 import { buildHiRes, formatTraits } from './hires/context.js';
@@ -240,6 +240,9 @@ function focusFor(question, calc, prevPlan = null) {
     if (plan.needsDay || /몇 ?월|달별|월별|이번 달|다음 달/.test(question)) {
       parts.push(monthSection(calc.fortune));
     }
+
+    // 날짜를 고르는 질문에만 120일 일자별 표·수술 택일 후보를 붙인다(캐시 문맥에서 떼어 냄 — 매번 약 4천 자였다)
+    if (plan.needsDay) parts.push(dayContext(calc.fortune, calc.forecast));
 
     // 점시는 **묻는 순간**에 세우는 것이라 캐시되는 명반 문맥이 아니라
     // 질문마다 새로 붙는 이 자리에 온다. 출생괘와 섞이지 않는 이유이기도 하다

@@ -408,7 +408,7 @@ test('사화를 현실 의미로 한 번에 좁히지 말라는 규칙이 있다
 });
 
 test('"평생 최고·정점"을 아껴 쓰라는 규칙과 결론 예시가 있다', () => {
-  assert.match(PROMPT, /### "평생 최고", "정점"은 아껴 쓰세요/);
+  assert.match(PROMPT, /"평생 최고"·"정점"은 아껴 쓰세요/);
   assert.match(PROMPT, /여러 강한 근거가 겹칠 때만/);
   assert.match(PROMPT, /가장 크게 확장되는 핵심 구간/);
   assert.match(PROMPT, /명예는 중상~상, 재물은 중상이며 후반 확장형입니다/);
@@ -517,7 +517,7 @@ test('배치를 직업 하나로 바로 좁히지 말라는 규칙이 있다', (
 });
 
 test('빈 하우스를 약한 하우스로 읽지 않는다 — 프롬프트와 엔진 양쪽', () => {
-  assert.match(PROMPT, /### 빈 하우스는 약한 하우스가 아닙니다/);
+  assert.match(PROMPT, /빈 하우스는 약한 하우스가 아닙니다/);
   // 엔진 쪽 문구도 같이 고정한다. 프롬프트만 고치면 문맥이 반대로 말한다
   const empty = modernHouse(
     { results: { astro: { name: '점성술', facts: [] } } }, 5, '자녀');

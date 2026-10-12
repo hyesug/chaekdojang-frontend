@@ -146,3 +146,22 @@ test('AI 질문은 Claude 두 모델만, 모델별 질문권(균형 1·심층 2)
   const route = await readFile(new URL('../../app/fortune-ai/route.ts', import.meta.url), 'utf8');
   assert.match(route, /settleCredit\(req, requestId, "refund", \{ errorType: "CLIENT_ABORTED_MID_ANSWER" \}\)/);
 });
+
+test('AI 문맥 — 일자별 120일 표·수술 택일은 캐시 문맥에서 빼고 날짜 질문에만 붙인다', async () => {
+  const { readFortune } = await import('../../public/unse/src/engine.js');
+  const { readForecast } = await import('../../public/unse/src/forecast.js');
+  const { buildContext, dayContext } = await import('../../public/unse/src/aiContext.js');
+  const { routeQuestion } = await import('../../public/unse/src/hires/router.js');
+  const form = { name: 'x', year: 1990, month: 5, day: 15, hour: 14, minute: 0, birthPlace: '서울', homePlace: '서울', gender: 'female' };
+  const r = readFortune(form); const f = readForecast(form);
+  const base = buildContext(form, r, f);
+  assert.doesNotMatch(base, /## 일자별|## 수술·시술 택일 참고 후보/);
+  const day = dayContext(r, f);
+  assert.match(day, /## 일자별 \(/);
+  assert.match(day, /## 수술·시술 택일 참고 후보/);
+  for (const q of ['다음 달 계약하기 좋은 날 알려줘', '수술 날짜 잡아줘', '이사 날 골라줘']) {
+    assert.equal(routeQuestion(q, 2026).needsDay, true, q);
+  }
+  const ai = await read('src/ai.js');
+  assert.match(ai, /if \(plan\.needsDay\) parts\.push\(dayContext\(calc\.fortune, calc\.forecast\)\);/);
+});

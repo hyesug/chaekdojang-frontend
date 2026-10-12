@@ -204,3 +204,9 @@ test('저장한 사람 고르기는 입력 칸 한 곳뿐이고, 링크로 열�
   // 결과 칸의 '다른 사람 보기'는 위 칸과 합쳤다
   assert.doesNotMatch(ui, /profile-switch/);
 });
+
+test("저장한 사람 셀렉트에서 '직접 입력'을 고르면 그 사람 칸을 비운다", async () => {
+  const boot = await read('src/boot.js');
+  assert.match(boot, /if \(sel\.value === ''\) \{ clearPerson\(prefix\); return; \}/);
+  assert.match(boot, /function clearPerson\(prefix\)/);
+});

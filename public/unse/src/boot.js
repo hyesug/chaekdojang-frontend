@@ -246,6 +246,21 @@ if (location.hash.length > 1) {
 // 결과 화면에서 저장·고치기·삭제를 하면 입력 칸의 목록도 새로 읽는다
 document.addEventListener('unse:profiles-changed', () => { loadSaved(); });
 
+/** 그 칸(prefix '' 또는 'b-')의 출생 정보를 비운다 */
+function clearPerson(prefix) {
+  for (const id of ['name', 'year', 'month', 'day', 'hour', 'minute', 'birthPlace', 'homePlace']) {
+    const el = $(`#${prefix}${id}`);
+    if (el) el.value = '';
+  }
+  const cal = $(`#${prefix}calendar`); if (cal) cal.value = 'solar';
+  const mar = $(`#${prefix}marital`); if (mar) mar.value = '';
+  const nt = $(`#${prefix}noTime`);
+  if (nt) { nt.checked = false; nt.dispatchEvent(new Event('change')); }
+  const dst = $(`#${prefix}dst`); if (dst) dst.checked = false;
+  if (!prefix) $('#profileNote').hidden = true;
+  $(`#${prefix}name`)?.focus();
+}
+
 /** 저장해 둔 한 사람을 그 칸(prefix '' 또는 'b-')에 채운다 */
 function fillPerson(prefix, p) {
   const set = (id, v) => { const el = $(`#${prefix}${id}`); if (el && v != null) el.value = v; };
@@ -305,8 +320,10 @@ async function loadSaved() {
 for (const prefix of ['', 'b-']) {
   const sel = $(`#${prefix}savedPick`);
   sel?.addEventListener('change', () => {
+    // '직접 입력'을 고르면 그 사람 칸을 비운다 — 앞 사람 정보가 남아 섞이지 않게
+    if (sel.value === '') { clearPerson(prefix); return; }
     const p = saved[Number(sel.value)];
-    if (!p || sel.value === '') return;
+    if (!p) return;
     fillPerson(prefix, p);
     if (!prefix) $('#profileNote').hidden = true;
     loadUI().catch(() => {});

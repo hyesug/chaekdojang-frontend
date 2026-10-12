@@ -153,7 +153,7 @@ export default function AdminUserActivityPage() {
 
       <section className="rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
         <h2 className="font-serif text-xl font-bold text-brown-900">AI 질문권</h2>
-        <div className="mt-4"><AiCreditUserPanel userId={detail.basic.id} /></div>
+        <div className="mt-4"><AiCreditUserPanel userId={detail.basic.id} canGrant /></div>
       </section>
 
       <section className="rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">

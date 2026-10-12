@@ -143,13 +143,13 @@ export function detailLevel(question: string): DetailLevel {
 /**
  * max_tokens — 응답 상한.
  *
- * 답은 짧은 대화체(기본 400~700자)라 사고 없이 쓰는 균형 풀이는 이 정도면 넉넉하다.
+ * 답은 소제목 + 짧은 문단(기본 800~1,500자)이라 사고 없이 쓰는 균형 풀이는 이 정도면 넉넉하다.
  * 사고(adaptive thinking)를 켜는 호출(심층 풀이·"자세히")은 사고 토큰도 이 안에 들어가므로
  * THINKING_BUDGET 을 따로 둔다. 예전 값(8k/16k/32k)은 긴 보고서형 답을 전제로 해 비용이 컸다.
  */
 export const OUTPUT_BUDGET: Record<DetailLevel, number> = {
   short: 1_500,
-  normal: 3_000,
+  normal: 4_000,
   long: 8_000,
 };
 export const THINKING_BUDGET: Record<DetailLevel, number> = {
@@ -164,6 +164,6 @@ export const wantsThinking = (tier: string, level: DetailLevel) => tier === "CLA
 /** 짧은 답을 원할 때만 붙이는 한 줄. 나머지 길이 규칙은 시스템 프롬프트가 이미 갖고 있다 */
 export function lengthHint(level: DetailLevel) {
   return level === "short"
-    ? "이번 질문은 짧은 답을 원합니다. 결론을 1~3문장으로 말하고 가장 강한 근거 하나만 괄호로 답니다. 소제목·목록 없이 끝내세요."
+    ? "이번 질문은 짧은 답을 원합니다. 소제목 없이 결론과 가장 강한 근거 하나를 2~4문장(해요체)으로 말하고, 끝에 [이어서 물어보기] 블록만 붙이세요."
     : "";
 }

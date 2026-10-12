@@ -305,6 +305,43 @@ export function redactNames(text, names) {
   return out;
 }
 
+// ─────────────────────────────────────────────────────────────
+// 대화 이어 가기 — 질문권이 떨어져 독후감을 쓰고 돌아와도 대화가 남아 있게
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * 대화는 **그 사람의 브라우저에만** 명반별로 남긴다(서버에 저장하지 않는다). 30일이 지나면 버린다.
+ * 열쇠는 출생 정보 자체가 아니라 그것을 섞은 짧은 값이라, 저장소를 열어 봐도 생년월일이 보이지 않는다.
+ */
+const SAVE_DAYS = 30;
+const SAVE_MAX = 30;              // 메시지 수 상한 — 오래된 것부터 버린다
+const hashOf = (str) => { let h = 5381; for (let i = 0; i < str.length; i++) h = ((h * 33) ^ str.charCodeAt(i)) >>> 0; return h.toString(36); };
+function saveKeyOf(calc, compat) {
+  const who = (x) => (x ? [x.year, x.month, x.day, x.hour, x.minute, x.gender, x.birthPlace].join('|') : '');
+  const raw = compat ? `pair:${who(compat.A?.input)}:${who(compat.B?.input)}` : `solo:${who(calc?.fortune?.input)}`;
+  return `unse-ai-chat:${hashOf(raw)}`;
+}
+function loadChat(key) {
+  try {
+    const v = JSON.parse(localStorage.getItem(key) ?? 'null');
+    if (!v || !Array.isArray(v.messages) || Date.now() - (v.at ?? 0) > SAVE_DAYS * 864e5) return [];
+    return v.messages.filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string');
+  } catch { return []; }
+}
+function saveChat(key, messages) {
+  try { localStorage.setItem(key, JSON.stringify({ at: Date.now(), messages: messages.slice(-SAVE_MAX) })); } catch { /* 저장 못 해도 대화는 계속된다 */ }
+}
+function clearChat(key) { try { localStorage.removeItem(key); } catch { /* */ } }
+
+/** 답 끝의 '[이어서 물어보기]' 블록을 떼어 본문과 이어 물을 질문으로 나눈다 */
+export function splitFollowUps(text) {
+  const at = String(text ?? '').lastIndexOf('[이어서 물어보기]');
+  if (at < 0) return { body: text, followUps: [] };
+  const followUps = text.slice(at).split('\n').slice(1)
+    .map((l) => l.replace(/^\s*[-*•\d.)]+\s*/, '').trim()).filter((l) => l && l.length <= 60).slice(0, 3);
+  return { body: text.slice(0, at).trimEnd(), followUps };
+}
+
 /** 화면이 그려진 뒤 입력칸과 버튼을 붙인다. 개인·궁합이 같은 배선을 쓴다 */
 function wire(context, calc = null, compat = null) {
   // sessionId 는 사용량 로그를 상담 단위로 묶는 데만 쓴다 (사람을 가리키지 않는 임의 값)
@@ -324,15 +361,63 @@ function wire(context, calc = null, compat = null) {
   if (!AI_OPEN) return;
   let creditStatus = { kind: 'unavailable' };
 
+  // 지난 대화를 되살린다 — 질문권이 떨어져 독후감을 쓰고 돌아와도 이어서 물을 수 있게
+  const saveKey = saveKeyOf(calc, compat);
+  const restored = loadChat(saveKey);
+  if (restored.length) {
+    session.messages = restored;
+    const head = document.createElement('div');
+    head.className = 'ai-restored';
+    head.innerHTML = '<span>지난 대화를 이어서 보여 드려요.</span> <button type="button" class="ai-restart">새로 시작</button>';
+    log.appendChild(head);
+    for (const m of restored) {
+      if (m.role === 'user') { log.insertAdjacentHTML('beforeend', `<div class="ai-turn me"><p>${esc(m.content)}</p></div>`); continue; }
+      const b = document.createElement('div');
+      b.className = 'ai-turn bot';
+      paintAnswer(b, m.content, false);
+      log.appendChild(b);
+    }
+    head.querySelector('.ai-restart').addEventListener('click', () => {
+      clearChat(saveKey);
+      session.messages = [];
+      log.innerHTML = '';
+    });
+  }
+
+  /** 답 한 덩이를 그린다 — 본문, 복사 단추, 이어 물을 질문 단추(마지막 답에만) */
+  function paintAnswer(bubble, text, withFollowUps = true) {
+    const { body, followUps } = splitFollowUps(text);
+    bubble.innerHTML = `<p>${renderText(body)}</p>`;
+    addCopy(bubble, body);
+    log.querySelectorAll('.ai-follow').forEach((x) => x.remove());
+    if (withFollowUps && followUps.length) {
+      const row = document.createElement('div');
+      row.className = 'ai-follow ai-quick';
+      for (const q of followUps) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = q;
+        b.addEventListener('click', () => ask(q));
+        row.appendChild(b);
+      }
+      bubble.after(row);
+    }
+  }
+
   const paintCredit = (status) => {
     creditStatus = status;
     if (!credit) return;
-    if (status.kind === 'available') credit.innerHTML = `<a href="/ai-credits">남은 질문 ${status.totalBalance}회</a>`;
+    if (status.unlimited) credit.innerHTML = '<a href="/ai-credits">관리자 · 무제한</a>';
+    else if (status.kind === 'available') credit.innerHTML = `<a href="/ai-credits">남은 질문 ${status.totalBalance}회</a>`;
     else if (status.kind === 'exhausted') credit.innerHTML = `<a href="/ai-credits">남은 질문 0회</a> · ${EARN}`;
     else if (status.kind === 'logged-out') credit.innerHTML = `<a href="/auth/login?returnTo=/unse/">로그인하면 첫 질문 무료</a> · 독후감 한 편마다 1개`;
     else credit.textContent = '질문권 상태를 확인하지 못했습니다.';
   };
   loadCreditStatus().then(paintCredit);
+  // 독후감을 쓰고 이 탭으로 돌아오면 늘어난 질문권을 바로 보여 준다
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) loadCreditStatus().then(paintCredit);
+  });
 
   document.querySelectorAll('.ai-quick button').forEach((b) => {
     b.addEventListener('click', () => ask(quick[+b.dataset.q][1]));
@@ -355,7 +440,7 @@ function wire(context, calc = null, compat = null) {
     // 모델마다 차감이 다르다(균형 1 · 심층 2). 모자라면 보내기 전에 알린다 — 서버도 같은 값으로 막는다
     const tierSel = document.getElementById('ai-tier');
     const cost = TIER_COST[tierSel?.value] ?? 1;
-    if (creditStatus.kind === 'available' && creditStatus.totalBalance < cost) {
+    if (creditStatus.kind === 'available' && !creditStatus.unlimited && creditStatus.totalBalance < cost) {
       box.value = question;
       showPaywall(log, `${tierSel.selectedOptions[0]?.textContent?.split(' · ')[0] ?? '이 모델'}은 질문권 ${cost}회가 필요합니다. 균형 풀이(1회)로 바꾸거나 질문권을 받아 주세요.`);
       return;
@@ -432,7 +517,9 @@ function wire(context, calc = null, compat = null) {
 
       if (!acc) throw new Error('빈 응답이 돌아왔습니다.');
       session.messages.push({ role: 'assistant', content: acc });
-      addCopy(bubble, acc);
+      paintAnswer(bubble, acc);
+      saveChat(saveKey, session.messages);
+      loadCreditStatus().then(paintCredit);
     } catch (err) {
       // **받아 둔 답을 버리지 않는다.** 여기서 bubble 을 통째로 덮어쓰고
       // 있었는데, 휴대폰에서 화면을 벗어나면 연결이 끊겨 이 자리로 오므로

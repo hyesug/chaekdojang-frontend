@@ -568,6 +568,12 @@ details.pool[open] > summary::before { content: '▾ '; }
   font-family: inherit; cursor: pointer; transition: border-color .15s, color .15s;
 }
 .ai-quick button:hover { border-color: var(--gold-soft); color: var(--gold); }
+/* 답 끝의 '이어서 물어보기' 단추 — 마지막 답 아래에만 */
+.ai-follow { margin: 10px 0 4px; }
+.ai-follow button { text-align: left; }
+/* 되살린 지난 대화 머리줄 */
+.ai-restored { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-3); padding: 6px 0 10px; border-bottom: 1px solid var(--line-soft); }
+.ai-restored .ai-restart { font-size: 12.5px; padding: 3px 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: transparent; color: var(--ink-2); cursor: pointer; }
 
 .ai-log { display: flex; flex-direction: column; gap: 0; border-top: 1px solid var(--line-soft); }
 .ai-log:not(:empty) { margin-bottom: 16px; }

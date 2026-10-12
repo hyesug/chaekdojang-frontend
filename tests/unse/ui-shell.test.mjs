@@ -165,3 +165,19 @@ test('AI 문맥 — 일자별 120일 표·수술 택일은 캐시 문맥에서 �
   const ai = await read('src/ai.js');
   assert.match(ai, /if \(plan\.needsDay\) parts\.push\(dayContext\(calc\.fortune, calc\.forecast\)\);/);
 });
+
+test('AI 대화는 명반별로 브라우저에 남아 독후감을 쓰고 돌아와도 이어지고, 답 끝 질문은 단추가 된다', async () => {
+  const ai = await read('src/ai.js');
+  assert.match(ai, /const restored = loadChat\(saveKey\);/);
+  assert.match(ai, /saveChat\(saveKey, session\.messages\);/);
+  // 돌아오면 질문권을 다시 읽는다
+  assert.match(ai, /visibilitychange', \(\) => \{\s*if \(!document\.hidden\) loadCreditStatus\(\)\.then\(paintCredit\);/);
+  // 저장소 열쇠에 생년월일이 그대로 드러나지 않는다(섞은 값)
+  assert.match(ai, /return `unse-ai-chat:\$\{hashOf\(raw\)\}`;/);
+  const { splitFollowUps } = await import('../../public/unse/src/ai.js');
+  const r = splitFollowUps('## 한마디로\n바뀌는 해예요.\n\n[이어서 물어보기]\n- 언제 옮길까요?\n- 분야는요?');
+  assert.equal(r.body, '## 한마디로\n바뀌는 해예요.');
+  assert.deepEqual(r.followUps, ['언제 옮길까요?', '분야는요?']);
+  // 관리자는 무제한으로 보인다
+  assert.match(ai, /관리자 · 무제한/);
+});

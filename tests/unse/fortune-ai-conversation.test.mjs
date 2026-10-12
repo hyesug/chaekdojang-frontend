@@ -62,7 +62,7 @@ test('시기 표현을 원문 그대로 뽑는다', () => {
   assert.ok(t.includes('40대'));
 });
 
-test('답 길이 — 짧은 대화체가 기본이고, 자세히·비교·평생만 길게 쓴다(사고는 심층·자세히에만)', () => {
+test('답 길이 — 소제목+짧은 문단이 기본이고, 자세히·비교·평생만 길게 쓴다(사고는 심층·자세히에만)', () => {
   assert.equal(detailLevel('올해 연애운 한 줄로 알려줘'), 'short');
   assert.equal(detailLevel('내 성격을 자세하게 분석해줘'), 'long');
   assert.equal(detailLevel('2027년과 2028년 결혼운을 비교해줘'), 'long');
@@ -70,7 +70,7 @@ test('답 길이 — 짧은 대화체가 기본이고, 자세히·비교·평생
   assert.equal(detailLevel('2027년 연애운 알려줘'), 'normal');
   // 비용 — 균형 풀이의 보통 답은 사고 없이 3천 토큰 안, 사고를 켜는 호출만 따로 넉넉히
   assert.ok(OUTPUT_BUDGET.short < OUTPUT_BUDGET.normal && OUTPUT_BUDGET.normal < OUTPUT_BUDGET.long);
-  assert.equal(OUTPUT_BUDGET.normal, 3000);
+  assert.equal(OUTPUT_BUDGET.normal, 4000);
   assert.ok(THINKING_BUDGET.long >= OUTPUT_BUDGET.long);
   assert.equal(wantsThinking('CLAUDE_SONNET', 'normal'), false);
   assert.equal(wantsThinking('CLAUDE_SONNET', 'long'), true);

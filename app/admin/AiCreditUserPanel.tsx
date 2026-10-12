@@ -8,7 +8,7 @@ import { authFetch, getValidToken } from "../lib/auth";
  * 회원 한 명의 AI 질문권 — 잔액(무료·구매/지급·총)과 최근 원장.
  * 관리자 회원 상세와 'AI 질문권' 탭이 같이 쓴다. 백엔드 GET /api/admin/ai-credits/{userId}.
  */
-type Balance = { freeRemaining: number; purchasedBalance: number; totalBalance: number };
+type Balance = { freeRemaining: number; purchasedBalance: number; totalBalance: number; unlimited?: boolean };
 type Ledger = { id: string; amount: number; type: string; referenceId: string | null; description: string; createdAt: string };
 type AdminView = { balance: Balance; ledger: Ledger[]; orders: unknown[]; staleReservations: number };
 
@@ -22,10 +22,13 @@ const TYPE_LABEL: Record<string, string> = {
   PURCHASE: "구매",
 };
 
-export default function AiCreditUserPanel({ userId, refreshKey = 0 }: { userId: string | number; refreshKey?: number }) {
+export default function AiCreditUserPanel({ userId, refreshKey = 0, canGrant = false }: { userId: string | number; refreshKey?: number; canGrant?: boolean }) {
   const [view, setView] = useState<AdminView | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [reason, setReason] = useState("");
+  const [granting, setGranting] = useState(false);
+  const [grantMessage, setGrantMessage] = useState("");
 
   const load = useCallback(async () => {
     const token = getValidToken();
@@ -47,6 +50,29 @@ export default function AiCreditUserPanel({ userId, refreshKey = 0 }: { userId: 
   }, [userId]);
 
   useEffect(() => { void load(); }, [load, refreshKey]);
+
+  /** 질문권 지급 — 모든 변경은 원장과 관리자 감사 로그에 남는다(백엔드 adjust) */
+  async function grant(amount: number) {
+    const token = getValidToken();
+    if (!token) return;
+    const why = reason.trim() || "관리자 지급";
+    setGranting(true);
+    setGrantMessage("");
+    try {
+      const res = await authFetch(`${API_BASE}/api/admin/ai-credits/${encodeURIComponent(String(userId).trim())}/adjustments`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ amount, description: why }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok) { setGrantMessage(json?.message ?? "지급하지 못했습니다."); return; }
+      setGrantMessage(`${amount}회를 지급했습니다.`);
+      setReason("");
+      await load();
+    } finally {
+      setGranting(false);
+    }
+  }
 
   if (loading && !view) return <p className="text-sm text-brown-400">질문권을 불러오는 중...</p>;
   if (error) return <p className="text-sm text-red-500">{error}</p>;
@@ -70,6 +96,16 @@ export default function AiCreditUserPanel({ userId, refreshKey = 0 }: { userId: 
           </div>
         ))}
       </dl>
+      {view.balance.unlimited && <p className="mt-3 text-sm text-sage-700">관리자 계정이라 질문권 제한 없이 물을 수 있습니다(모자라면 자동 충전).</p>}
+      {canGrant && (
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="지급 사유 (비우면 '관리자 지급')" className="min-w-0 flex-1 rounded-lg border border-cream-300 px-3 py-2 text-sm" />
+          {[1, 3, 5].map((n) => (
+            <button key={n} type="button" disabled={granting} onClick={() => void grant(n)} className="rounded-lg bg-brown-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">+{n}회</button>
+          ))}
+          {grantMessage && <p className="w-full text-sm text-brown-600">{grantMessage}</p>}
+        </div>
+      )}
       {view.staleReservations > 0 && (
         <p className="mt-3 text-sm text-amber-700">15분 넘게 정산되지 않은 예약이 {view.staleReservations}건 있습니다.</p>
       )}

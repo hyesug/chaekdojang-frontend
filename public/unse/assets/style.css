@@ -679,6 +679,8 @@ details.pool[open] > summary::before { content: '▾ '; }
 .compat-extremes .say-text + .say-text { margin-top: 14px; }
 .profile-card { margin: 0 0 18px; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px 14px; background: var(--card); }
 .saved-manage { margin-top: 8px; font-size: 13.5px; }
+.saved-switch { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 13.5px; color: var(--ink-2); }
+.saved-switch select { flex: 1; min-width: 0; }
 .saved-manage summary { cursor: pointer; color: var(--ink-2); }
 .profile-card .sharebar { flex-wrap: wrap; }
 .saved-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }

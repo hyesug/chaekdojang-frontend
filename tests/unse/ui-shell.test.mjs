@@ -191,3 +191,13 @@ test('프로필 저장 칸은 결과 맨 위(제목 바로 아래, 핵심 요약
     assert.ok(card > 0 && card < hl, `${start}: 저장 칸이 핵심 요약보다 앞에 있어야 한다`);
   }
 });
+
+test('로그인하면 저장한 사람이 없어도 고르는 칸이 보이고, 결과 맨 위에서도 다른 사람으로 바로 바꿔 본다', async () => {
+  const boot = await read('src/boot.js');
+  const ui = await read('src/ui.js');
+  assert.match(boot, /아직 저장한 사람이 없어요/);
+  assert.match(boot, /document\.addEventListener\('unse:profiles-changed'/);
+  assert.match(boot, /document\.addEventListener\('unse:pick'/);
+  assert.match(ui, /data-act="profile-switch"/);
+  assert.match(ui, /new CustomEvent\('unse:pick'/);
+});

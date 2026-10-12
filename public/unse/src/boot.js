@@ -231,17 +231,29 @@ if (location.hash.length > 1) {
   // 로그인해 두고 프로필을 저장했으면 첫 사람 칸을 본인 프로필로 채워 두고,
   // 저장한 사람이 여럿이면 두 사람 칸 모두에 '저장한 사람 불러오기'를 띄운다.
   // 그 사이 사람이 이미 적기 시작했으면 덮어쓰지 않는다.
-  loadProfiles().then(({ profiles }) => {
-    if (!profiles.length) return;
-    wireSavedPick(profiles);
-    const self = profiles.find((p) => p.self);
+  loadSaved().then(() => {
+    const self = saved.find((p) => p.self);
     if (!self || $('#year').value || $('#name').value) return;
     fillPerson('', self);
-    $('#savedPick').value = String(profiles.indexOf(self));
+    $('#savedPick').value = String(saved.indexOf(self));
     $('#profileNote').hidden = false;
     loadUI().catch(() => {});
   });
 }
+
+// 결과 화면에서 저장·고치기·삭제를 하면 입력 칸의 목록도 새로 읽는다
+document.addEventListener('unse:profiles-changed', () => { loadSaved(); });
+// 결과 화면 맨 위 '다른 사람 보기'에서 고르면 첫 칸을 그 사람으로 채우고 바로 보여 준다
+document.addEventListener('unse:pick', (e) => {
+  const p = e.detail;
+  if (!p) return;
+  fillPerson('', p);
+  const i = saved.findIndex((x) => x.id === p.id);
+  if (i >= 0) $('#savedPick').value = String(i);
+  $('#profileNote').hidden = true;
+  if (mode === 'solo') $('#form').requestSubmit();
+  else $('#personA').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
 
 /** 저장해 둔 한 사람을 그 칸(prefix '' 또는 'b-')에 채운다 */
 function fillPerson(prefix, p) {
@@ -260,25 +272,43 @@ function fillPerson(prefix, p) {
   $(`#${prefix}dst`).checked = !!p.dst;
 }
 
-function wireSavedPick(profiles) {
+/** 저장한 사람 — 로그인했을 때만 채워진다 */
+let saved = [];
+
+/**
+ * 입력 칸 맨 위 '누구의 운세를 볼까요?'. 로그인했으면 저장한 사람이 없어도 보여 주고 저장하는 길을 알려 준다
+ * (예전에는 한 명도 없으면 숨어서 어디 있는지 찾지 못했다).
+ */
+async function loadSaved() {
+  const { loggedIn, profiles } = await loadProfiles();
+  if (!loggedIn) return;
+  saved = profiles;
   const label = (p) => `${p.self ? '나 · ' : ''}${p.name} (${p.year}.${p.month}.${p.day})`;
   for (const prefix of ['', 'b-']) {
     const sel = $(`#${prefix}savedPick`);
     if (!sel) continue;
-    sel.innerHTML = '<option value="">직접 입력</option>'
-      + profiles.map((p, i) => `<option value="${i}">${esc(label(p))}</option>`).join('');
+    const keep = sel.value;
+    sel.innerHTML = saved.length
+      ? '<option value="">직접 입력</option>' + saved.map((p, i) => `<option value="${i}">${esc(label(p))}</option>`).join('')
+      : '<option value="">아직 저장한 사람이 없어요 — 결과 화면 맨 위에서 저장할 수 있어요</option>';
+    sel.disabled = !saved.length;
+    if (keep && saved[Number(keep)]) sel.value = keep;
     sel.closest('.saved-pick').hidden = false;
-    sel.addEventListener('change', () => {
-      const p = profiles[Number(sel.value)];
-      if (!p || sel.value === '') return;
-      fillPerson(prefix, p);
-      if (!prefix) $('#profileNote').hidden = true;
-      loadUI().catch(() => {});
-      // 고르면 바로 그 사람의 운세를 보여 준다. 궁합은 두 사람을 다 골랐을 때
-      const other = $(`#${prefix ? '' : 'b-'}savedPick`);
-      if (mode === 'solo' || other?.value) $('#form').requestSubmit();
-    });
   }
+}
+
+for (const prefix of ['', 'b-']) {
+  const sel = $(`#${prefix}savedPick`);
+  sel?.addEventListener('change', () => {
+    const p = saved[Number(sel.value)];
+    if (!p || sel.value === '') return;
+    fillPerson(prefix, p);
+    if (!prefix) $('#profileNote').hidden = true;
+    loadUI().catch(() => {});
+    // 고르면 바로 그 사람의 운세를 보여 준다. 궁합은 두 사람을 다 골랐을 때
+    const other = $(`#${prefix ? '' : 'b-'}savedPick`);
+    if (mode === 'solo' || other?.value) $('#form').requestSubmit();
+  });
 }
 
 // 화면 아래에 판 번호를 박아 둔다. "예전과 다른데요"라는 말이 나올 때

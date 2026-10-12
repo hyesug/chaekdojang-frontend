@@ -194,12 +194,13 @@ test('프로필 저장 칸은 결과 맨 위(제목 바로 아래, 핵심 요약
   }
 });
 
-test('로그인하면 저장한 사람이 없어도 고르는 칸이 보이고, 결과 맨 위에서도 다른 사람으로 바로 바꿔 본다', async () => {
+test('저장한 사람 고르기는 입력 칸 한 곳뿐이고, 링크로 열어도(주소에 결과가 있어도) 목록을 읽는다', async () => {
   const boot = await read('src/boot.js');
   const ui = await read('src/ui.js');
   assert.match(boot, /아직 저장한 사람이 없어요/);
   assert.match(boot, /document\.addEventListener\('unse:profiles-changed'/);
-  assert.match(boot, /document\.addEventListener\('unse:pick'/);
-  assert.match(ui, /data-act="profile-switch"/);
-  assert.match(ui, /new CustomEvent\('unse:pick'/);
+  // 주소에 결과가 있든 없든 먼저 읽는다
+  assert.ok(boot.indexOf('const savedReady = loadSaved();') < boot.indexOf('if (location.hash.length > 1)'));
+  // 결과 칸의 '다른 사람 보기'는 위 칸과 합쳤다
+  assert.doesNotMatch(ui, /profile-switch/);
 });

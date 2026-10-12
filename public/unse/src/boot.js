@@ -225,13 +225,15 @@ $('#form').addEventListener('submit', async (e) => {
 
 // ── 링크로 들어온 경우 그대로 되살린다 ──
 // 주소에 결과가 담겨 있으면 어차피 결과를 그릴 것이므로 지금 받아도 된다.
+// 저장한 사람 목록은 **어느 경우든** 읽는다 — 예전에는 주소에 결과가 담겨 있으면(링크·새로고침)
+// 읽지 않아, 로그인했는데도 '저장한 사람 불러오기'가 비어 있었다
+const savedReady = loadSaved();
 if (location.hash.length > 1) {
   loadUI().then((ui) => ui.restoreFromHash()).catch(() => {});
 } else {
-  // 로그인해 두고 프로필을 저장했으면 첫 사람 칸을 본인 프로필로 채워 두고,
-  // 저장한 사람이 여럿이면 두 사람 칸 모두에 '저장한 사람 불러오기'를 띄운다.
+  // 로그인해 두고 프로필을 저장했으면 첫 사람 칸을 본인 프로필로 채워 둔다.
   // 그 사이 사람이 이미 적기 시작했으면 덮어쓰지 않는다.
-  loadSaved().then(() => {
+  savedReady.then(() => {
     const self = saved.find((p) => p.self);
     if (!self || $('#year').value || $('#name').value) return;
     fillPerson('', self);
@@ -243,17 +245,6 @@ if (location.hash.length > 1) {
 
 // 결과 화면에서 저장·고치기·삭제를 하면 입력 칸의 목록도 새로 읽는다
 document.addEventListener('unse:profiles-changed', () => { loadSaved(); });
-// 결과 화면 맨 위 '다른 사람 보기'에서 고르면 첫 칸을 그 사람으로 채우고 바로 보여 준다
-document.addEventListener('unse:pick', (e) => {
-  const p = e.detail;
-  if (!p) return;
-  fillPerson('', p);
-  const i = saved.findIndex((x) => x.id === p.id);
-  if (i >= 0) $('#savedPick').value = String(i);
-  $('#profileNote').hidden = true;
-  if (mode === 'solo') $('#form').requestSubmit();
-  else $('#personA').scrollIntoView({ behavior: 'smooth', block: 'start' });
-});
 
 /** 저장해 둔 한 사람을 그 칸(prefix '' 또는 'b-')에 채운다 */
 function fillPerson(prefix, p) {
@@ -300,6 +291,12 @@ async function loadSaved() {
       : '<option value="">아직 저장한 사람이 없어요 — 결과 화면 맨 위에서 저장할 수 있어요</option>';
     sel.disabled = !saved.length;
     if (keep && saved[Number(keep)]) sel.value = keep;
+    else {
+      // 칸에 이미 들어 있는 사람이 저장한 사람이면 그 이름을 골라 둔다(링크로 열었을 때)
+      const v = (id) => $(`#${prefix}${id}`)?.value;
+      const i = saved.findIndex((p) => p.name === v('name') && String(p.year) === v('year') && String(p.month) === v('month') && String(p.day) === v('day'));
+      if (i >= 0) sel.value = String(i);
+    }
     const note = sel.closest('.saved-pick').querySelector('.saved-pick-note');
     if (note) note.textContent = saved.length ? '고르면 바로 그 사람의 결과를 보여 줍니다.' : '결과 화면 맨 위에서 저장하면 여기서 고를 수 있어요.';
   }

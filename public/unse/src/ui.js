@@ -427,11 +427,6 @@ async function fillProfileCard(forms) {
   if (!el) return;
   const { loggedIn, profiles } = await loadProfiles();
   if (!el.isConnected) return;
-  const sw = () => el.querySelector('[data-act="profile-switch"]');
-  queueMicrotask(() => sw()?.addEventListener('change', (e) => {
-    const p = profiles[Number(e.target.value)];
-    if (p) document.dispatchEvent(new CustomEvent('unse:pick', { detail: p }));
-  }));
 
   if (!loggedIn) {
     el.innerHTML = `
@@ -451,25 +446,15 @@ async function fillProfileCard(forms) {
   }).join('');
 
   const list = profiles.length ? `
-    <p class="agree-note" style="margin:8px 0 6px">입력 화면 맨 위 '누구의 운세를 볼까요?'에서 고르면 바로 볼 수 있습니다.</p>
+    <p class="agree-note" style="margin:8px 0 6px">위 입력 칸의 '저장한 사람 불러오기'에서 고르면 바로 볼 수 있어요.</p>
     <ul class="saved-list">
       ${profiles.map((p) => `<li><span>${p.self ? '<b>나</b> · ' : ''}${esc(p.name)} <small>${p.year}.${p.month}.${p.day}</small></span>
         ${p.id != null ? `<button type="button" data-act="profile-delete" data-id="${p.id}" aria-label="${esc(p.name)} 삭제">삭제</button>` : ''}</li>`).join('')}
     </ul>` : '';
 
-  // 다른 사람 보기 — 저장한 사람을 고르면 바로 그 사람 결과로(개인 운세에서만. 궁합은 입력 칸에서 두 사람을 고른다)
-  const switcher = forms.length === 1 && profiles.length > 1 ? `
-    <label class="saved-switch"><span>다른 사람 보기</span>
-      <select data-act="profile-switch">
-        <option value="">저장한 사람 고르기</option>
-        ${profiles.map((p, i) => `<option value="${i}">${p.self ? '나 · ' : ''}${esc(p.name)} (${p.year}.${p.month}.${p.day})</option>`).join('')}
-      </select>
-    </label>` : '';
-
   // 맨 위에 놓이므로 짧게 — 저장 단추만 보이고, 목록·안내는 접어 둔다
   el.innerHTML = `
     <div class="sharebar" style="margin:0">${buttons}</div>
-    ${switcher}
     <details class="saved-manage">
       <summary>${profiles.length ? `저장한 사람 ${profiles.length}명 관리` : '저장하면 무엇이 남나요?'}</summary>
       ${list}

@@ -188,8 +188,8 @@ export function aiSection(mode = 'solo', view = null) {
       </div>
       <div id="ai-log" class="ai-log" aria-live="polite" aria-relevant="additions text"></div>
       <div class="ai-quick"><select id="ai-tier" aria-label="AI 풀이 모델"${off}>
-        <option value="CLAUDE_SONNET">Claude 균형 풀이 · 1 질문권</option>
-        <option value="CLAUDE_OPUS">Claude 심층 풀이 · 2 질문권</option>
+        <option value="CLAUDE_SONNET">Claude 균형 풀이 · 질문권 1회</option>
+        <option value="CLAUDE_OPUS">Claude 심층 풀이 · 질문권 2회</option>
       </select></div>
       <div class="ai-input">
         <label class="sr-only" for="ai-q">명반에 관해 질문하기</label>
@@ -197,6 +197,7 @@ export function aiSection(mode = 'solo', view = null) {
         <button type="button" id="ai-send"${off}>${AI_OPEN ? '보내기' : '준비 중'}</button>
       </div>
       <p class="ai-note" id="ai-note">
+        질문권 1회는 질문 1개와 그 답변 한 벌입니다.
         위의 열일곱 체계 계산 결과와 앞으로 120일치 일진을 그대로 넘겨서 묻습니다.
         간지·절기는 이미 계산된 값을 쓰므로 AI 가 ${mode === 'pair' ? '두 사람 사주를' : '사주를'} 다시 셈하지 않고,
         날짜를 물으면 지어내지 않고 그 표에서 골라 답합니다.
@@ -435,7 +436,7 @@ function wire(context, calc = null, compat = null) {
       // 그때까지 흘러온 답이 통째로 사라졌다. 끊긴 것은 연결이지 답이 아니다.
       const why = (leftPage && !err.fromServer)
         ? '화면을 벗어나 있는 동안 연결이 끊겼습니다.' +
-          (acc ? ' 답을 받기 시작한 뒤라 이 질문의 질문권은 사용 처리되었습니다.' : '')
+          (acc ? ' 답을 다 받지 못한 질문은 질문권을 돌려드립니다(하루 2번까지). 다시 묻기를 누르면 처음부터 답합니다.' : '')
         : esc(err.message);
       if (isCreditExhausted(err)) {
         box.value = question;

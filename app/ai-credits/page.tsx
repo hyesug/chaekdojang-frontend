@@ -104,7 +104,7 @@ export default function AiCreditsPage() {
         <div className="rounded-lg bg-cream-50 p-3"><dt className="text-brown-500">Claude 균형 풀이</dt><dd className="mt-1 font-semibold text-brown-800">1회</dd></div>
         <div className="rounded-lg bg-cream-50 p-3"><dt className="text-brown-500">Claude 심층 풀이</dt><dd className="mt-1 font-semibold text-brown-800">2회</dd></div>
       </dl>
-      <p className="mt-3 text-xs leading-5 text-brown-400">답을 받지 못하고 실패하면 줄어든 질문권은 자동으로 돌아옵니다.</p>
+      <p className="mt-3 text-xs leading-5 text-brown-400">질문권 1회는 질문 1개와 그 답변 한 벌입니다. 답을 받지 못하고 실패하면 자동으로 돌아오고, 답을 받다 연결이 끊겨도 하루 2번까지 돌려드립니다.</p>
     </section>
     <section className="cdj-section mt-7 py-5" aria-label="현재 질문권 잔액">
       <dl className="grid grid-cols-3 gap-3 text-center tabular-nums">

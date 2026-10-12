@@ -141,4 +141,8 @@ test('AI 질문은 Claude 두 모델만, 모델별 질문권(균형 1·심층 2)
   assert.match(ai, /creditStatus\.totalBalance < cost/);
   assert.match(ai, /href="\/write">독후감 쓰고 질문권 받기/);
   assert.doesNotMatch(ai, /질문권 구매/);
+  // 질문권 1회 = 질문 1개 + 그 답변. 답을 받다 끊기면 돌려준다(하루 2번까지)
+  assert.match(ai, /질문권 1회는 질문 1개와 그 답변 한 벌입니다/);
+  const route = await readFile(new URL('../../app/fortune-ai/route.ts', import.meta.url), 'utf8');
+  assert.match(route, /settleCredit\(req, requestId, "refund", \{ errorType: "CLIENT_ABORTED_MID_ANSWER" \}\)/);
 });

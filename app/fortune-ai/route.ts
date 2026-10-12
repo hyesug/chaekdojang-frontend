@@ -1013,6 +1013,11 @@ async function settleCredit(req: Request, requestId: string, path: "complete" | 
       console.error(`[fortune-ai] 질문권 정산 실패 ${JSON.stringify({ requestId, path, status: res.status })}`);
       return false;
     }
+    // 환불은 백엔드가 거절할 수 있다(답 중간 끊김의 하루 한도) — data:false 면 돌려주지 않은 것이다
+    if (path === "refund") {
+      const json = await res.json().catch(() => null);
+      return json?.data !== false;
+    }
     return true;
   } catch (err) {
     // 원장 확정 실패는 사용자 응답을 망치지 않는다. 동일 requestId 재전송은 백엔드에서 안전하다.
@@ -1024,17 +1029,19 @@ async function settleCredit(req: Request, requestId: string, path: "complete" | 
 /**
  * 오류로 끝난 호출을 정산한다.
  *
- * 사용자가 스스로 연결을 끊었는데 이미 답 일부를 받아 갔으면 **사용으로 확정**한다.
- * 예전에는 여기서도 환불해서, 답을 거의 다 받은 뒤 탭을 닫으면 질문권이 돌아왔다 —
- * 질문권 하나로 비용이 드는 호출을 무한히 만들 수 있는 구멍이었다.
- * 제공자 오류처럼 사용자가 만들 수 없는 실패만 환불한다.
+ * 질문권 1회는 **질문과 그 답변 한 벌**이다. 답을 받다 연결이 끊기면(다 받지 못했으면) 돌려준다.
+ * 다만 무한히 돌려주면 답을 거의 다 받은 뒤 탭을 닫는 식으로 공짜 호출을 만들 수 있어,
+ * 하루 두 번까지만 돌려주고(백엔드 MID_ANSWER_REFUNDS_PER_DAY) 넘으면 사용으로 확정한다.
+ * 제공자 오류처럼 사용자가 만들 수 없는 실패는 늘 환불한다.
  * @returns 환불했으면 true
  */
 async function settleFailure(req: Request, requestId: string | null, tier: Tier, meta: CallMeta, err: unknown,
   clientGone: boolean, deliveredChars: number, usage: CallUsage, requestedAt: Date) {
   if (!requestId) return false;
   if (clientGone && deliveredChars > 0) {
-    console.info(`[fortune-ai] 연결 끊김 — 받아 간 답이 있어 사용 확정 ${JSON.stringify({ requestId, tier, deliveredChars })}`);
+    const refunded = await settleCredit(req, requestId, "refund", { errorType: "CLIENT_ABORTED_MID_ANSWER" });
+    if (refunded) return true;
+    console.info(`[fortune-ai] 연결 끊김 — 오늘 돌려줄 한도를 넘어 사용 확정 ${JSON.stringify({ requestId, tier, deliveredChars })}`);
     await finishCall(req, requestId, tier, meta, usage, requestedAt);
     return false;
   }

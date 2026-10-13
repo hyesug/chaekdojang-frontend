@@ -17,7 +17,7 @@
 
 import {
   BRANCHES, BRANCHES_KR, STEMS, STEMS_KR,
-  BRANCH_ELEMENT, STEM_ELEMENT, STEM_YIN, isClash, branchRelations,
+  BRANCH_ELEMENT, STEM_ELEMENT, STEM_YIN, isClash,
 } from '../core/ganzhi.js';
 import { sunLongitude, norm360 } from '../core/astro.js';
 import { j } from '../core/josa.js';
@@ -293,8 +293,9 @@ export function compare(a, b) {
   const [sA, tA] = judge(a.dayStem, onB);
   const [sB, tB] = judge(b.dayStem, onA);
 
-  const rel = branchRelations(a.dayBranch, b.dayBranch);
-  const relScore = rel.length ? (rel.some((r) => r.good) ? 20 : 6) : 13;
+  // 일지끼리 합·충·원진은 사주의 판정이다. 여기에도 실으면 같은 사실 하나가
+  // "사주도 육임도 원진"처럼 두 체계의 근거로 세어졌다(외부 검증 19·20번). 육임은 판 위의 자리만 본다.
+  const relScore = 13;
 
   const score = Math.max(10, Math.min(94, sA + sB + relScore + 22));
   const bn = (x) => `${BRANCHES[x]}(${BRANCHES_KR[x]})`;
@@ -302,14 +303,13 @@ export function compare(a, b) {
   return {
     id: meta.id, name: meta.name, score,
     weight: 0.9,
-    headline: `${bn(onB)} / ${bn(onA)} · 일지 ${rel.length ? rel[0].kind : '무관'}`,
+    headline: `${bn(onB)} / ${bn(onA)}`,
     facts: [
       { label: `${a.name}의 기궁`, value: `${STEMS[a.dayStem]} → ${bn(giA)}`, note: '' },
       { label: `${b.name}의 기궁`, value: `${STEMS[b.dayStem]} → ${bn(giB)}`, note: '' },
       // '나'가 누구인지 적어두지 않으면 어느 쪽 이야기인지 헷갈린다
       { label: `${b.name} 판 위의 ${a.name}`, value: bn(onB), note: `${a.name}(${STEMS[a.dayStem]}) 기준 — ${tA}` },
       { label: `${a.name} 판 위의 ${b.name}`, value: bn(onA), note: `${b.name}(${STEMS[b.dayStem]}) 기준 — ${tB}` },
-      { label: '일지 관계', value: rel.length ? rel.map((r) => r.kind).join('·') : '무관', note: '' },
     ],
     readings: [
       {
@@ -318,12 +318,6 @@ export function compare(a, b) {
           `${a.name}의 천반 위에서 ${b.name}의 자리는 ${bn(onA)}입니다. ${tB}.\n\n` +
           '육임은 원래 한 순간의 판을 읽는 점술입니다. 궁합으로 쓸 때는 서로의 판에 상대를 올려놓고 어느 자리에 떨어지는지를 봅니다. ' +
           '누르는 쪽과 눌리는 쪽이 갈리면 관계에서도 그 결이 나타납니다.',
-      },
-      {
-        title: '일지끼리',
-        text: rel.length
-          ? rel.map((r) => `${r.kind}: ${r.text}`).join('\n')
-          : '두 일지 사이에 합도 충도 걸리지 않습니다. 서로의 일상에 크게 간섭하지 않는 배치입니다.',
       },
     ],
   };

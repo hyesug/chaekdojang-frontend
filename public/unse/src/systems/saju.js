@@ -379,6 +379,9 @@ export function analyze(input) {
   });
 }
 
+/** 보조 관계(원진)는 이름 뒤에 (보조)를 붙인다 */
+const relLabel = (r) => (r.minor ? `${r.kind}(보조)` : r.kind);
+
 // ─────────────────────────────────────────────────────────────
 // 궁합
 //
@@ -507,10 +510,11 @@ export function compare(a, b) {
     { label: '일주', value: `${A.pillars.day.hanja} / ${B.pillars.day.hanja}`, note: '두 사람 자신' },
     { label: '일간 관계', value: combine ? '천간합' : `${godAB} / ${godBA}`,
       note: combine ? `${STEMS[A.dayStem]}${STEMS[B.dayStem]} 합 — 서로 손을 잡는 짝` : '서로에게 무엇인가 (방향별)' },
-    { label: '일지 관계', value: dayRel.length ? dayRel.map((r) => r.kind).join('·') : '무관',
+    // 원진은 충·합보다 약한 보조 관계라 그렇게 적는다 — 모델이 "가장 강한 충돌"로 올려 세웠다(외부 검증 19·20번)
+    { label: '일지 관계', value: dayRel.length ? dayRel.map(relLabel).join('·') : '무관',
       note: `${BRANCHES[A.pillars.day.branch]} / ${BRANCHES[B.pillars.day.branch]}` },
     { label: '띠', value: `${A.zodiac} / ${B.zodiac}`,
-      note: yearRel.length ? yearRel.map((r) => r.kind).join('·') : '특별한 관계 없음' },
+      note: yearRel.length ? yearRel.map(relLabel).join('·') : '특별한 관계 없음' },
     { label: '오행 보완', value: `${fillAB} + ${fillBA} / 20`,
       note: `${a.name}의 약한 ${ELEMENTS[dA.weakest]}, ${b.name}의 약한 ${ELEMENTS[dB.weakest]}` },
     { label: '여덟 글자 전체',
@@ -534,7 +538,7 @@ export function compare(a, b) {
     {
       title: `일지 — 배우자 자리끼리`,
       text: dayRel.length
-        ? dayRel.map((r) => `${r.kind}: ${r.text}`).join('\n') +
+        ? dayRel.map((r) => `${relLabel(r)}: ${r.text}`).join('\n') +
           '\n\n일지는 사주에서 배우자가 앉는 자리입니다. 두 사람의 일지가 어떻게 만나는지가 실제 살림의 결을 좌우합니다.'
         : '두 일지 사이에 합도 충도 없습니다. 서로를 세게 끌어당기지도, 부딪치지도 않는 배치입니다. 밋밋해 보여도 오래 가는 데는 이런 조합이 오히려 편합니다.',
     },

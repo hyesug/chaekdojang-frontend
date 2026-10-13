@@ -199,13 +199,13 @@ export function compare(a, b) {
   const ovc = (x, y) => (x + 2) % 5 === y;
   const eA = A.P.el, eB = B.P.el;
 
-  let score, kind, text;
+  let score, kind, text, giver = null;
   if (A.p === B.p) {
     score = 76; kind = '같은 궁';
     text = `두 사람이 구궁 위에서 같은 자리에 섰습니다. 세상을 같은 방향에서 보고 있다는 뜻이라 말이 잘 통합니다. 같은 문(${A.P.gate})을 쓰기 때문에 기회도 위험도 같은 얼굴로 찾아옵니다.`;
   } else if (gen(eA, eB) || gen(eB, eA)) {
     score = 84; kind = '상생';
-    const giver = gen(eA, eB) ? a.name : b.name;
+    giver = gen(eA, eB) ? a.name : b.name;
     text = `두 궁의 오행이 상생합니다. ${giver} 쪽의 기운이 상대를 키워주는 배치라, 함께 있을 때 일이 잘 풀립니다. 홍국기문에서 가장 반기는 조합입니다.`;
   } else if (eA === eB) {
     score = 70; kind = '같은 오행';
@@ -228,7 +228,8 @@ export function compare(a, b) {
   return {
     id: meta.id, name: meta.name, score,
     weight: 0.9,
-    headline: `${A.P.hanja}궁 × ${B.P.hanja}궁 · ${kind}`,
+    // 상생은 누가 누구를 키우는지까지 적는다 — 방향 없이 "상생"만 주면 모델이 반대로 읽었다(외부 검증 19번)
+    headline: `${A.P.hanja}궁 × ${B.P.hanja}궁 · ${kind}${giver ? `(${giver} 쪽이 상대를 키움)` : ''}`,
     facts: [
       { label: `${a.name}`, value: `${A.p}궁 ${A.P.hanja}`, note: `${A.P.dir} · ${A.P.gate}` },
       { label: `${b.name}`, value: `${B.p}궁 ${B.P.hanja}`, note: `${B.P.dir} · ${B.P.gate}` },

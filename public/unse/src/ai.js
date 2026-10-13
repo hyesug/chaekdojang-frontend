@@ -617,7 +617,9 @@ function wire(context, calc = null, compat = null) {
         (u.cacheRead
           ? '명반을 캐시에서 읽어 입력 비용이 10분의 1로 줄었습니다.'
           : '이번엔 명반을 캐시에 올리느라 값이 붙었습니다. 다음 질문부터 크게 줄어듭니다.') +
-        (Number.isInteger(u.remaining) ? `<br><strong>남은 AI 질문권: ${u.remaining}회</strong>` : '');
+        // 관리자는 잔액이 있으면 그걸 먼저 쓰고 모자랄 때만 자동 충전된다 — 숫자가 줄어 보여도 막히지 않는다
+        (creditStatus.unlimited ? '<br><strong>AI 질문권: 관리자 · 무제한</strong>'
+          : Number.isInteger(u.remaining) ? `<br><strong>남은 AI 질문권: ${u.remaining}회</strong>` : '');
     }
   }
 }

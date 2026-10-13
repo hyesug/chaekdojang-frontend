@@ -38,6 +38,9 @@ const NOT_NOW = /평생|일생|언제|몇 년|몇 월|내년|작년|올해 전�
 export function isHoraryQuestion(question) {
   const q = String(question ?? '');
   if (!q.trim()) return false;
+  // 연도를 짚은 질문("2027년에 이직할까")은 그 해의 운이 답할 자리다. "현재 직장"처럼
+  // '현재'가 섞여도 점시를 세우지 않는다 — 점시가 답의 절반을 차지했다(외부 검증 26번)
+  if (/20\d{2}\s*년|내후년/.test(q)) return false;
   if (NOT_NOW.test(q) && !/지금|현재|이번|이대로/.test(q)) return false;
   return NOW_WORDS.some((w) => q.includes(w));
 }

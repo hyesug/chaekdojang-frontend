@@ -1465,7 +1465,8 @@ function kidsAdvice(rA, rB, sharedEvent) {
 }
 
 const SEAT_GOOD = new Set(['육합', '반합', '같음']);
-const SEAT_BAD = new Set(['충', '형', '해', '파', '원진']);
+// 원진은 보조 관계라 혼인 판정의 감점·'부딪침'에 넣지 않는다(외부 검증 19·20번)
+const SEAT_BAD = new Set(['충', '형', '해', '파']);
 const REL_CAUTION = /관계|상대|배우자|말|감정|고집|표현|마음|화|서운|통제|간섭|기대/;
 export function pairLoveDigest(rA, rB, A, B, v, { married = false } = {}) {
   // married — 한 사람이라도 기혼을 골랐으면 부부용 말로(이미 결혼한 사람에게 "연애할 때 더 잘 맞는 궁합"은 아프다)

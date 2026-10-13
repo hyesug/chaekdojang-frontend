@@ -1348,15 +1348,16 @@ export function consensusReading(r, block) {
   if (agreed.length) {
     const [first, second] = agreed;
     const parts = [
-      `계산 방식이 전혀 다른 ${first.count}곳이 나란히 짚는 것이 있습니다. ` +
-      `${j(tagWord(first.word), '이')} 이 사람의 바탕입니다.`,
+      // 꼬리표가 겹친 것이지 같은 계산값이 같은 뜻을 가리킨 것은 아니다 — 단정하지 않는다
+      `여러 체계의 풀이에 ${tagWord(first.word)}이라는 결이 ${first.count}번 나옵니다. ` +
+      `체계마다 상징이 달라 같은 뜻이라고 단정할 수는 없지만, 이 사람을 읽는 실마리로 삼을 만합니다.`,
     ];
     if (tagShows(first.word)) parts.push(`${tagShows(first.word)}.`);
     if (second) {
       parts.push(`여기에 ${tagWord(second.word)}이라는 결이 겹칩니다.`);
       if (tagShows(second.word)) parts.push(`${tagShows(second.word)}.`);
     }
-    parts.push('한 곳만 말했다면 흘려들어도 되지만, 서로 다른 길로 걸어와 같은 자리를 가리킨 것이라 이 두 가지는 평생 따라다니는 결로 보셔도 됩니다.');
+    parts.push('어느 체계가 어떤 계산으로 그렇게 봤는지는 아래 체계별 풀이에서 확인할 수 있습니다.');
     out.공통 = { text: parts.join(' '), sources: first.from };
   } else {
     out.공통 = {

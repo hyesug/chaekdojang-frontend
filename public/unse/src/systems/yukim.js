@@ -179,9 +179,9 @@ export function analyze(input) {
     { label: '점시', value: bn(hourBranch), note: '태어난 시각의 지지' },
     { label: '일간 기궁', value: `${STEMS[dayStem]} → ${bn(gi)}`, note: '천간이 몸을 붙이는 자리' },
     { label: '과체', value: style, note: '삼전을 뽑을 때 걸린 규칙' },
-    { label: '초전', value: `${bn(first)} ${gAt(first)}`, note: '일의 시작' },
-    { label: '중전', value: `${bn(second)} ${gAt(second)}`, note: '과정' },
-    { label: '말전', value: `${bn(third)} ${gAt(third)}`, note: '결말' },
+    { label: '초전', value: `${bn(first)} ${gAt(first)}`, note: '시작하는 결' },
+    { label: '중전', value: `${bn(second)} ${gAt(second)}`, note: '이어 가는 결' },
+    { label: '말전', value: `${bn(third)} ${gAt(third)}`, note: '맺는 결' },
     // 귀인은 일간이 정하는 글자이고, 그것이 어느 지반에 올라탔는지가 따로다.
     // 지반만 적어두면 그 자리가 귀인인 줄로 읽힌다.
     { label: '귀인', value: `${bn(nobleSeat)} → ${bn(noblePos)}`,
@@ -199,7 +199,8 @@ export function analyze(input) {
     {
       title: `삼전 — ${style}`,
       text: `초전 ${bn(first)}, 중전 ${bn(second)}, 말전 ${bn(third)}.\n` +
-        `일이 ${bn(first)}에서 시작해 ${j(bn(second), '를')} 거쳐 ${j(bn(third), '로')} 끝나는 구조입니다. ` +
+        // 출생 시각으로 세운 판이라 특정 일의 전개·결말이 아니라 일을 대하는 결로 읽는다(외부 검증 5번)
+        `기운이 ${bn(first)}에서 일어나 ${j(bn(second), '를')} 거쳐 ${j(bn(third), '로')} 맺히는 판입니다. 태어난 순간의 판이라 어떤 일이 이렇게 흘러간다는 예고가 아니라, 일을 시작하고 맺는 이 사람의 결로 봅니다. ` +
         (isBokeum
           ? '천반과 지반이 완전히 겹친 복음과입니다. 움직임이 막히고 안으로 눌리는 형국이라, 나아가기보다 자리를 지키는 쪽이 맞습니다.'
           : isBaneum
@@ -209,13 +210,13 @@ export function analyze(input) {
     {
       title: `초전의 천장 — ${generalAt[first] ? generalAt[first][0] : '없음'}`,
       text: generalAt[first]
-        ? `${generalAt[first][1]}. ${generalAt[first][2]}입니다. 일이 처음 움직일 때 이 성질이 따라붙습니다.`
+        ? `${generalAt[first][1]}. ${generalAt[first][2]}입니다. 무언가를 시작할 때 이 성질이 따라붙는 사람입니다.`
         : '초전에 천장이 배치되지 않았습니다.',
     },
     {
       title: `말전의 천장 — ${generalAt[third] ? generalAt[third][0] : '없음'}`,
       text: generalAt[third]
-        ? `${generalAt[third][1]}. ${generalAt[third][2]}입니다. 결말의 성격이 여기서 드러납니다.`
+        ? `${generalAt[third][1]}. ${generalAt[third][2]}입니다. 일을 맺는 방식에 이 성질이 드러납니다.`
         : '말전에 천장이 배치되지 않았습니다.',
     },
     {

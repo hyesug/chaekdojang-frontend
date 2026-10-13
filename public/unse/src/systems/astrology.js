@@ -163,6 +163,21 @@ export function analyze(input) {
   }
   aspects.sort((a, b) => a.orbUsed - b.orbUsed);
 
+  // 바깥 행성(천왕성·해왕성·명왕성)이 개인 행성에 바짝 붙은 각.
+  // 바깥 행성끼리는 같은 해에 난 사람이 다 같으니 세지 않고, 개인 행성과 3° 안만 본다.
+  // 화성–천왕성 합(0.3°)처럼 성향을 크게 가르는 각이 빠져 있었다(외부 검증 25번).
+  const OUTER = ['천왕성', '해왕성', '명왕성'];
+  const PERSONAL = ['태양', '달', '수성', '금성', '화성'];
+  const outerAspects = [];
+  for (const o of OUTER) {
+    if (!pos[o]) continue;
+    for (const p of PERSONAL) {
+      const a = findAspect(pos[p].lon, pos[o].lon);
+      if (a && a.orbUsed <= 3) outerAspects.push({ from: p, to: o, ...a });
+    }
+  }
+  outerAspects.sort((a, b) => a.orbUsed - b.orbUsed);
+
   const facts = [
     { label: '태양', value: `${SIGNS[sun].name} ${degInSign(pos.태양.lon).toFixed(1)}°`,
       note: timeKnown ? `${houseOf(pos.태양.lon, h.cusps)}하우스` : '하우스는 시간 필요' },
@@ -236,6 +251,14 @@ export function analyze(input) {
       title: '가장 팽팽한 각들',
       text: aspects.slice(0, 4).map((a) =>
         `${a.from}–${a.to} ${a.name}(${a.orbUsed.toFixed(1)}°${a.exact ? ', 정각' : ''}): ${a.text}`
+      ).join('\n'),
+    });
+  }
+  if (outerAspects.length) {
+    readings.push({
+      title: '바깥 행성이 개인 행성에 붙은 각 (3° 안)',
+      text: outerAspects.slice(0, 4).map((a) =>
+        `${a.from}(${SIGNS[signOf(pos[a.from].lon)].name} ${degInSign(pos[a.from].lon).toFixed(1)}°)–${a.to}(${SIGNS[signOf(pos[a.to].lon)].name} ${degInSign(pos[a.to].lon).toFixed(1)}°) ${a.name}(${a.orbUsed.toFixed(1)}°): ${PLANET_MEANING[a.to]}`
       ).join('\n'),
     });
   }

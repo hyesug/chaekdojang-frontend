@@ -291,7 +291,7 @@ test('계산값과 해석의 구분 규칙이 남아 있다', () => {
 test('근거가 모이면 단정하라는 규칙이 있다', () => {
   assert.match(PROMPT, /## 근거가 모였으면 흐리지 마세요/);
   assert.match(PROMPT, /Tier S 또는 A/);
-  assert.match(PROMPT, /가장 강한 시기는 2028년이다/);
+  assert.match(PROMPT, /가장 강한 시기는 ○○년이다/);
   assert.match(PROMPT, /직업 변화가 먼저이고 주거 이동이 뒤따르는 흐름이다/);
 });
 
@@ -541,11 +541,11 @@ test('강한 답변과 과도한 구체화를 가르는 규칙이 있다', () =>
   assert.match(PROMPT, /## 강한 답변과 과도한 구체화는 다릅니다/);
   assert.match(PROMPT, /강도는 디테일의 양이 아니라 근거의 일치도로 정합니다/);
   // 되는 쪽 / 안 되는 쪽이 짝으로 적혀 있어야 한다
-  for (const ok of ['2027~2028년이 핵심이다', '조직형 경력이 더 강하다',
+  for (const ok of ['○○~○○년이 핵심이다', '조직형 경력이 더 강하다',
     '전문성 기반 추가수입이 유리하다', '이동 가능성이 강하다']) {
     assert.ok(PROMPT.includes(ok), `해도 되는 예가 있어야 한다: ${ok}`);
   }
-  for (const no of ['2028년 2~5월에 실제로 이직한다', '외부에서 먼저 제안이 온다',
+  for (const no of ['○○년 ○~○월에 실제로 이직한다', '외부에서 먼저 제안이 온다',
     '강의·자문 계약이 들어온다', '가까운 지역으로 이동한다']) {
     assert.ok(PROMPT.includes(no), `하면 안 되는 예가 있어야 한다: ${no}`);
   }

@@ -172,7 +172,7 @@ function spanFromQuestion(q, thisYear) {
     const lo = Math.min(...years);
     const to = Math.max(...years);
     const from = lo !== to ? lo : (lo > thisYear ? lo - 1 : lo);
-    return { fromYear: from, years: Math.max(1, Math.min(6, to - from + 1)), periodExplicit: true };
+    return { fromYear: from, years: Math.max(1, Math.min(10, to - from + 1)), periodExplicit: true };
   }
   if (/올해|금년|이번 ?해/.test(q)) return { fromYear: thisYear, years: 1, periodExplicit: true };
   if (/내년|다음 ?해/.test(q)) return { fromYear: thisYear, years: 2, periodExplicit: true };

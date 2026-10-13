@@ -687,7 +687,7 @@ function domainActions(r) {
 
 
 /**
- * 나만의 특징 — 열일곱 체계의 풀이 가운데 **사람들 사이에서 드물게 나오는 것**부터.
+ * 나만의 특징 — 열다섯 체계의 풀이 가운데 **사람들 사이에서 드물게 나오는 것**부터.
  * 같은 유형표에서 문장을 꺼내 쓰면 결과지가 서로 비슷해진다(scripts/report-sameness.mjs).
  * 드문 정도는 무작위 2천 명으로 미리 잰 표를 쓴다(semantic/distinct.js).
  */
@@ -1401,7 +1401,7 @@ export function renderReport(form, r, f, v, { memo = null } = {}) {
       <header class="rp-cover">
         <p class="rp-kicker">인생 데이터 분석 · ${esc(today)}</p>
         <h2 class="rp-title" id="rp-title"><span aria-hidden="true">🔮</span> ${esc(name ? `${name}님의` : '나의')} 인생 데이터 분석 리포트</h2>
-        <p class="rp-lead">열일곱 가지 동양·서양 점술이 함께 가리키는 것을 나만을 위한 결과지로 정리했습니다.</p>
+        <p class="rp-lead">열다섯 가지 동양·서양 점술이 함께 가리키는 것을 나만을 위한 결과지로 정리했습니다.</p>
       </header>
       ${lifeReport(form, r, f, memo)}
       <h3 class="rp-more">더 자세히 보기</h3>

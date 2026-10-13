@@ -211,7 +211,7 @@ export function buildHighlights(r, f = null) {
     ]),
     // 앞으로 찾아올 일 하나 — 언제·무슨 일·한 줄 풀이
     teaser: teaserOf(near, now),
-    cta: { head: '나는 어떤 타입일까?', sub: '생년월일만 넣으면 무료 · 17가지 점술이 함께 보는 나' },
+    cta: { head: '나는 어떤 타입일까?', sub: '생년월일만 넣으면 무료 · 15가지 점술이 함께 보는 나' },
   };
 
   return { summary: summary.slice(0, 5), traits, discover, flow, shareLines, shareCard, memo };

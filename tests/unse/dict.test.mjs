@@ -1,5 +1,5 @@
 /**
- * 17체계 해석 사전 — 빠진 칸 없이, 명반에서 고른 열쇠가 모두 사전에 있는가
+ * 15체계 해석 사전 — 빠진 칸 없이, 명반에서 고른 열쇠가 모두 사전에 있는가
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';

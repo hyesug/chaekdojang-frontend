@@ -575,7 +575,8 @@ details.pool[open] > summary::before { content: '▾ '; }
 .ai-restored { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-3); padding: 6px 0 10px; border-bottom: 1px solid var(--line-soft); }
 .ai-restored .ai-restart { font-size: 12.5px; padding: 3px 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: transparent; color: var(--ink-2); cursor: pointer; }
 
-.ai-log { display: flex; flex-direction: column; gap: 0; border-top: 1px solid var(--line-soft); }
+.ai-log { display: flex; flex-direction: column; gap: 0; border-top: 1px solid var(--line-soft);
+  max-height: min(70vh, 640px); overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
 .ai-log:not(:empty) { margin-bottom: 16px; }
 .ai-turn { border-radius: 0; padding: 15px 0; font-size: 14.5px; line-height: 1.8; border-bottom: 1px solid var(--line-soft); }
 .ai-turn.me {

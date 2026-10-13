@@ -81,7 +81,7 @@ export async function run(mode, box, next) {
     const r = readFortune(form);
     await next();
     const f = readForecast(form);
-    // 17체계 해석 사전 — 리포트 "나는 어떤 사람인가" 가 쓴다. 못 불러와도 리포트는 그려진다
+    // 15체계 해석 사전 — 리포트 "나는 어떤 사람인가" 가 쓴다. 못 불러와도 리포트는 그려진다
     await loadDicts().catch(() => null);
     await next();
     box.innerHTML = render(form, r, f);
@@ -178,7 +178,7 @@ function renderCompat(formA, formB, r) {
     <div class="result-header">
       <p class="result-kicker">분석 기록 · 궁합</p>
       <h2 class="hero-title">${esc(formA.name)} <span style="color:var(--gold-soft)">×</span> ${esc(formB.name)}</h2>
-      <p class="result-meta">두 사람의 출생 기준을 열일곱 체계로 나란히 살폈습니다. 계산 기준은 맨 아래에 있습니다.</p>
+      <p class="result-meta">두 사람의 출생 기준을 열다섯 체계로 나란히 살폈습니다. 계산 기준은 맨 아래에 있습니다.</p>
       ${basisNote(people.a?.input ?? r.A?.input, formA.name)}${basisNote(people.b?.input ?? r.B?.input, formB.name)}
     </div>
 

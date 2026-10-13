@@ -114,7 +114,7 @@ const PAIR_QUICK = [
   ['결혼 날짜', '두 사람의 흐름을 함께 보고 결혼을 준비하기 좋은 달과 예식에 맞는 실제 날짜를 골라주세요. 피해야 할 날도 알려주세요.'],
   ['서로 뭘 채워주나요?', '한쪽에 없는 것을 다른 쪽이 가지고 있는 부분을 짚어 주세요.'],
   ['일로 만나면', '연애가 아니라 동업이나 같이 일하는 사이라면 어떤지 봐주세요.'],
-  ['갈리는 지점', '열일곱 체계 가운데 판단이 엇갈리는 곳은 어디이고, 왜 그런지 설명해 주세요.'],
+  ['갈리는 지점', '열다섯 체계 가운데 판단이 엇갈리는 곳은 어디이고, 왜 그런지 설명해 주세요.'],
 ];
 
 /** 지금 화면에 걸린 빠른 질문 목록 */
@@ -201,7 +201,7 @@ export function aiSection(mode = 'solo', view = null) {
       </div>
       <p class="ai-note" id="ai-note">
         질문권 1회는 질문 1개와 그 답변 한 벌입니다.
-        위의 열일곱 체계 계산 결과와 앞으로 120일치 일진을 그대로 넘겨서 묻습니다.
+        위의 열다섯 체계 계산 결과와 앞으로 120일치 일진을 그대로 넘겨서 묻습니다.
         간지·절기는 이미 계산된 값을 쓰므로 AI 가 ${mode === 'pair' ? '두 사람 사주를' : '사주를'} 다시 셈하지 않고,
         날짜를 물으면 지어내지 않고 그 표에서 골라 답합니다.
       </p>
@@ -384,6 +384,7 @@ function wire(context, calc = null, compat = null) {
       paintAnswer(b, m.content, false);
       log.appendChild(b);
     }
+    log.scrollTop = log.scrollHeight;
     head.querySelector('.ai-restart').addEventListener('click', () => {
       clearChat(saveKey);
       session.messages = [];
@@ -487,7 +488,9 @@ function wire(context, calc = null, compat = null) {
     bubble.className = 'ai-turn bot';
     bubble.innerHTML = '<p class="ai-wait">생각하는 중…</p>';
     log.appendChild(bubble);
-    bubble.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    // 대화 칸은 자체 스크롤이다 — 새 질문은 칸 맨 아래로 내리고, 칸이 화면에 보이게 한다
+    log.scrollTop = log.scrollHeight;
+    log.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
     session.messages.push({ role: 'user', content: question });
     let acc = '';
@@ -528,8 +531,10 @@ function wire(context, calc = null, compat = null) {
           try { ev = JSON.parse(ln); } catch { continue; }
           if (ev.t) {
             acc += ev.t;
+            // 사용자가 위로 올려 읽는 중이면 끌어내리지 않는다
+            const stick = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
             bubble.innerHTML = `<p>${renderText(acc)}</p>`;
-            bubble.scrollIntoView({ block: 'nearest' });
+            if (stick) log.scrollTop = log.scrollHeight;
           } else if (ev.error) {
             throw Object.assign(new Error(ev.error), { fromServer: true });
           } else if (ev.done) {

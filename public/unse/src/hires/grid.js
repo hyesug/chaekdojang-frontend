@@ -34,7 +34,7 @@ import * as VD from './vedic.js';
  */
 export function buildGrid(input, chart, opts = {}) {
   const fromYear = opts.fromYear ?? input.currentYear;
-  const years = Math.max(1, Math.min(6, opts.years ?? 3));
+  const years = Math.max(1, Math.min(10, opts.years ?? 3));
   const domain = opts.domain ?? '직업';
 
   const N = WS.natalPack(input);

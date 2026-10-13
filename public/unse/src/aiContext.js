@@ -476,14 +476,10 @@ export function buildContext(form, r, f = null) {
 
   // ── 종합 ──
   out.push('## 종합');
-  out.push(
-    `합의도 ${s.consensus.ratio}%` +
-    (s.consensus.word ? ` — ${s.consensus.total}개 중 ${s.consensus.count}개가 '${s.consensus.word}'을 가리킴 (${s.consensus.from.join(', ')})` : '')
-  );
-  out.push(`합산 오행 ${ELEMENTS.map((e, i) => `${e}${s.elements.pct[i]}%`).join(' ')} — 강한 ${s.elements.strongestName}, 약한 ${s.elements.weakestName}`);
-  if (s.sharedTags.length) {
-    out.push(`겹친 낱말 ${s.sharedTags.map((t) => `${t.word}×${t.count}`).join(' ')}`);
-  }
+  // 합의도·겹친 낱말·합산 오행은 싣지 않는다. 체계마다 상징표가 다른 꼬리표를 센 값이라
+  // 모델이 "열다섯 중 일곱이 인내"처럼 한 낱말로 체계를 끌어모았다(외부 검증 11~14번).
+  // 합산 오행도 셈법이 다른 체계를 그냥 더한 것이라 사주 오행과 어긋나 보인다.
+  out.push('체계끼리 공통점을 말할 때는 꼬리표를 세지 말고, 각 체계의 계산값(궁·별·괘·배치)이 그 뜻을 실제로 가리키는지 하나씩 확인한다. 오행은 사주 줄의 값만 쓴다.');
   out.push(
     '기질 ' +
     Object.entries(s.traits)

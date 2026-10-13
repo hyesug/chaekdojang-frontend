@@ -152,18 +152,18 @@ export const OUTPUT_BUDGET: Record<DetailLevel, number> = {
   normal: 4_000,
   long: 8_000,
 };
+/** 사고 몫을 더한 실제 상한 — Opus 5.5 는 사고가 늘 켜져 있어 이쪽을 쓴다 */
 export const THINKING_BUDGET: Record<DetailLevel, number> = {
-  short: 4_000,
-  normal: 8_000,
-  long: 16_000,
+  short: 8_000,
+  normal: 12_000,
+  long: 20_000,
 };
 
 /**
- * 사고(adaptive thinking)를 켤지 — 지금은 끈다.
- * 모델을 Opus 하나로 고정해 사고 없이도 품질이 충분하고, 사고 토큰이 답 상한을 다 써 버려
- * 글이 한 자도 안 나온 일이 있었다(2027년 운세 질문). 다시 켜려면 상한을 사고 몫만큼 넉넉히 잡을 것.
+ * 깊게 생각할지 — "자세히·전체 풀이·평생"만 effort medium, 나머지는 low.
+ * Opus 5.5 는 사고를 끌 수 없어(400) 깊이만 고른다. low 가 첫 글자가 빠르고 비용도 적다.
  */
-export const wantsThinking = (_tier: string, _level: DetailLevel) => false;
+export const wantsThinking = (_tier: string, level: DetailLevel) => level === "long";
 
 /** 짧은 답을 원할 때만 붙이는 한 줄. 나머지 길이 규칙은 시스템 프롬프트가 이미 갖고 있다 */
 export function lengthHint(level: DetailLevel) {

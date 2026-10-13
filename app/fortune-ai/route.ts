@@ -651,11 +651,11 @@ export async function POST(req: Request) {
     stream = client.messages.stream({
       model: tierConfig.model,
       // 사고는 심층 풀이와 "자세히"에만 — 균형 풀이의 짧은 답에는 사고 토큰(출력 단가)이 비용만 늘렸다
-      // 사고를 쓰지 않을 때는 **명시적으로 끈다.** 지정하지 않으면 최신 모델이 스스로 사고해서
-      // 답 상한을 다 쓰고 글이 한 자도 안 나왔다(스테이징 2026-10-13, 45초 뒤 빈 답)
-      ...(wantsThinking(tier, detail)
-        ? { max_tokens: THINKING_BUDGET[detail], thinking: { type: "adaptive" as const } }
-        : { max_tokens: OUTPUT_BUDGET[detail], thinking: { type: "disabled" as const } }),
+      // Opus 5.5 는 사고를 끌 수 없다({type:"disabled"}는 400). 깊이(effort)만 낮출 수 있고,
+      // 사고 토큰도 max_tokens 안에 들어가므로 상한은 사고 몫까지 넉넉히 잡는다.
+      // 예전에 상한을 답 길이만큼(4천)만 두었더니 사고가 다 써 버려 45초 뒤 빈 답이 났다(스테이징 2026-10-13).
+      max_tokens: THINKING_BUDGET[detail],
+      output_config: { effort: wantsThinking(tier, detail) ? "medium" as const : "low" as const },
       system: [
         // 규칙은 모든 사용자가 같다. 따로 캐시 지점을 두면 처음 묻는 사람도
         // 다른 사람이 데워 둔 규칙을 읽어 간다 (예전에는 명반과 한 덩이라 사람마다 새로 썼다)

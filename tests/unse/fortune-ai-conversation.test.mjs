@@ -72,8 +72,10 @@ test('답 길이 — 소제목+짧은 문단이 기본이고, 자세히·비교�
   assert.ok(OUTPUT_BUDGET.short < OUTPUT_BUDGET.normal && OUTPUT_BUDGET.normal < OUTPUT_BUDGET.long);
   assert.equal(OUTPUT_BUDGET.normal, 4000);
   assert.ok(THINKING_BUDGET.long >= OUTPUT_BUDGET.long);
-  // 사고는 끈다 — 사고가 상한을 다 써서 글이 안 나온 일이 있었다
-  for (const l of ['short', 'normal', 'long']) assert.equal(wantsThinking('CLAUDE_OPUS', l), false);
+  // Opus 5.5 는 사고를 끌 수 없어 깊이만 — 자세히·평생만 medium, 나머지 low
+  assert.equal(wantsThinking('CLAUDE_OPUS', 'normal'), false);
+  assert.equal(wantsThinking('CLAUDE_OPUS', 'long'), true);
+  for (const l of ['short', 'normal', 'long']) assert.ok(THINKING_BUDGET[l] >= OUTPUT_BUDGET[l] + 4000, '사고 몫까지 넉넉히');
 });
 
 // ── 후속 질문이 앞 질문의 분야·기간을 잇는가 (테스트 질문 B → C → D) ──
@@ -130,8 +132,10 @@ test('기대는 말이 없는 새 질문은 분야 낱말이 없어도 앞 분�
   assert.equal(inheritPlan(a, f), a);
 });
 
-test('사고를 쓰지 않을 때는 thinking 을 명시적으로 끈다 — 지정하지 않으면 모델이 스스로 사고해 빈 답이 났다', async () => {
+test('Opus 5.5 — thinking 을 끄지 않고(400) effort 로 깊이만 낮추며, 상한은 사고 몫까지 잡는다', async () => {
   const { readFile } = await import('node:fs/promises');
   const route = await readFile(new URL('../../app/fortune-ai/route.ts', import.meta.url), 'utf8');
-  assert.match(route, /max_tokens: OUTPUT_BUDGET\[detail\], thinking: \{ type: "disabled" as const \}/);
+  assert.doesNotMatch(route, /type: "disabled"/);
+  assert.match(route, /max_tokens: THINKING_BUDGET\[detail\],/);
+  assert.match(route, /output_config: \{ effort: wantsThinking\(tier, detail\) \? "medium" as const : "low" as const \}/);
 });

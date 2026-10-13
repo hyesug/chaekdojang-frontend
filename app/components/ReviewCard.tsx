@@ -37,6 +37,8 @@ export type Review = {
   rating: number;
   content: string;
   hidden?: boolean;
+  /** 예약 발송 시각(KST, ISO). 있으면 그때까지 비공개로 있다 */
+  scheduledAt?: string | null;
   likeCount: number;
   commentCount: number;
   createdAt: string;
@@ -45,6 +47,12 @@ export type Review = {
   keywords?: string[];
   spoiler?: boolean;
 };
+
+/** 예약 시각 "2026-10-20T09:00:00" → "10/20 09:00" (서버가 한국 시각으로 준다) */
+function formatSchedule(at: string) {
+  const m = /^\d{4}-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(at);
+  return m ? `${Number(m[1])}/${Number(m[2])} ${m[3]}:${m[4]}` : at;
+}
 
 type Comment = {
   id: number;
@@ -329,6 +337,8 @@ export default function ReviewCard({
   const [displayContent, setDisplayContent] = useState(post.content);
   const [displayRating, setDisplayRating] = useState(post.rating);
   const [hidden, setHidden] = useState(Boolean(post.hidden));
+  // 공개·비공개를 누르면 서버가 예약을 거둔다 — 그 뒤로는 예약 표시를 하지 않는다
+  const [scheduledAt, setScheduledAt] = useState<string | null>(post.scheduledAt ?? null);
   const [saving, setSaving] = useState(false);
   const [visibilitySaving, setVisibilitySaving] = useState(false);
 
@@ -517,6 +527,7 @@ export default function ReviewCard({
       }
       const json = await res.json().catch(() => null);
       const savedHidden = json?.data?.hidden;
+      setScheduledAt(null);
       const updatedPost = {
         ...post,
         hidden: typeof savedHidden === "boolean" ? savedHidden : next,
@@ -641,10 +652,10 @@ export default function ReviewCard({
                   className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold transition-colors disabled:opacity-50 ${
                     hidden ? "bg-wine-50 text-wine-700 hover:bg-red-100" : "bg-brown-100 text-brown-700 hover:bg-brown-200"
                   }`}
-                  title={hidden ? "누르면 공개로 바뀝니다" : "누르면 비공개로 바뀝니다"}
+                  title={scheduledAt ? "예약 시각에 공개됩니다. 누르면 지금 바로 공개됩니다" : hidden ? "누르면 공개로 바뀝니다" : "누르면 비공개로 바뀝니다"}
                 >
                   {hidden ? <Lock size={11} aria-hidden="true" /> : <Globe size={11} aria-hidden="true" />}
-                  {visibilitySaving ? "저장 중" : hidden ? "비공개" : "공개"}
+                  {visibilitySaving ? "저장 중" : scheduledAt ? `예약 ${formatSchedule(scheduledAt)}` : hidden ? "비공개" : "공개"}
                 </button>
                 <button
                   onClick={() => router.push(`/write?reviewId=${post.id}`)}

@@ -17,6 +17,7 @@
 
 import { BRANCHES, BRANCHES_KR, STEMS, STEMS_KR, branchRelations } from '../core/ganzhi.js';
 import { j } from '../core/josa.js';
+import { STAR_NATURE } from '../semantic/structure/stars.js';
 import {
   auxPlacements, helperPlacements, trineSquare, SIX_EVIL, STAR_MEANING,
 } from '../core/ziweiStars.js';
@@ -597,12 +598,23 @@ export function forecast(input, chart, period) {
   return {
     id: meta.id, name: meta.name, weight: 1.2,
     headline: `${palace}에 얹힘${stars.length ? ' · ' + stars.join('·') : ' · 공궁'}`,
-    text: `이 시기의 기운이 원국의 ${palace}에 떨어집니다. ` +
-      (stars.length
-        ? `${j(stars.join('·'), '이')} 든 자리라 그 별의 성질이 이 시기에 드러납니다.`
-        : '주성이 없는 자리라 큰 사건 없이 지나갈 가능성이 높습니다.'),
+    text: `이 시기의 기운이 원국의 ${palace}에 떨어집니다. ` + starsInPeriod(stars),
     areas,
   };
+}
+
+/**
+ * 시기의 자리에 든 별이 무엇을 드러내는가. "그 별의 성질이 드러납니다"만으로는
+ * 무슨 성질인지 알 수 없어서(사용자 지적), 별마다 성질·끌리는 쪽·조심할 점을 적는다.
+ */
+function starsInPeriod(stars) {
+  const main = (stars ?? []).filter((s) => STAR_NATURE[s]);
+  if (!main.length) return '주성이 없는 자리라 큰 사건 없이 지나갈 가능성이 높습니다.';
+  const parts = main.map((s) => `${j(s, "은")} ${STAR_NATURE[s].nature}`);
+  const toward = [...new Set(main.map((s) => STAR_NATURE[s].toward))].join(', ');
+  const risk = STAR_NATURE[main[0]].risk;
+  return `그 자리의 별을 보면 ${parts.join(', ')}입니다. 이 시기에는 ${toward} 일이 앞으로 나오기 쉽습니다.` +
+    (risk ? ` 다만 ${risk}는 점을 조심하세요.` : '');
 }
 
 export default { meta, analyze, compare , forecast };

@@ -212,7 +212,8 @@ function WriteContent() {
         setOneLineReview("");
         setContent(fullContent);
         setRating(data.rating ?? 0);
-        setIsPublic(!data.hidden);
+        setIsPublic(!data.hidden || Boolean(data.scheduledAt));
+        if (data.scheduledAt) { setScheduleOn(true); setScheduleAt(String(data.scheduledAt).slice(0, 16)); }
         setSelectedEmotions(Array.isArray(data.keywords) ? data.keywords : []);
         setHasSpoiler(Boolean(data.spoiler));
         setGenerateAiSummary(false);
@@ -347,6 +348,9 @@ function WriteContent() {
   const [emotionInput, setEmotionInput] = useState("");
   const [selectedEmotions, setSelectedEmotions] = useState<string[]>([]);
   const [isPublic, setIsPublic] = useState(true);
+  // 예약 발송 — 공개일 때만. 값은 한국 시각 "YYYY-MM-DDTHH:mm"
+  const [scheduleOn, setScheduleOn] = useState(false);
+  const [scheduleAt, setScheduleAt] = useState("");
   const [hasSpoiler, setHasSpoiler] = useState(false);
   const [generateAiSummary, setGenerateAiSummary] = useState(true);
 
@@ -576,6 +580,15 @@ function WriteContent() {
 
     const composedContent = buildReviewContent();
     if (!composedContent) { setError("감상을 입력해주세요."); return; }
+    const scheduledAt = isPublic && scheduleOn ? scheduleAt : null;
+    if (scheduledAt !== null) {
+      // 한국 시각으로 받은 값을 지금(한국 시각)과 견준다 — 서버도 같은 범위를 다시 확인한다
+      const at = new Date(`${scheduledAt}:00+09:00`).getTime();
+      if (!scheduledAt || Number.isNaN(at) || at < Date.now() + 5 * 60_000) {
+        setError("예약 시각은 지금부터 5분 뒤 이후로 골라주세요.");
+        return;
+      }
+    }
     setSubmitting(true);
     setError("");
 
@@ -597,6 +610,7 @@ function WriteContent() {
             generateAiSummary,
             keywords: selectedEmotions,
             spoiler: hasSpoiler,
+            scheduledAt,
           }),
         });
         if (res.status === 401) { router.push("/auth/login"); return; }
@@ -639,6 +653,7 @@ function WriteContent() {
           sourceReviewId: isContinuationMode ? continuationSource?.id : null,
           keywords: selectedEmotions,
           spoiler: hasSpoiler,
+          scheduledAt,
         }),
       });
 
@@ -654,7 +669,8 @@ function WriteContent() {
         if (feedbackUsedForCurrentDraft) {
           trackMetric("revision_saved", "/write", 0, { reviewId: createdReview?.id ?? null, mode: "create" });
         }
-        router.push(isLinkedWriteMode && createdReview?.id ? `/reviews/${createdReview.id}` : "/");
+        // 예약 글은 아직 피드에 없으니 내 글 화면으로 보낸다
+        router.push((isLinkedWriteMode || scheduledAt) && createdReview?.id ? `/reviews/${createdReview.id}` : "/");
       } else {
         const data = await res.json().catch(() => ({}));
         setError((data as { message?: string }).message ?? "저장에 실패했습니다.");
@@ -1098,6 +1114,31 @@ function WriteContent() {
                   className="cdj-field text-sm h-5 w-5"
                 />
               </label>
+              {isPublic && (
+                <div className="rounded-xl bg-cream-50 px-4 py-3">
+                  <label className="flex items-center justify-between gap-3">
+                    <span>
+                      <span className="block text-sm font-medium text-brown-700">예약 발송</span>
+                      <span className="mt-0.5 block text-xs text-brown-400">정한 날짜·시간(한국 시간)에 공개됩니다. 그때까지는 나만 볼 수 있어요.</span>
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={scheduleOn}
+                      onChange={(event) => setScheduleOn(event.target.checked)}
+                      className="cdj-field text-sm h-5 w-5"
+                    />
+                  </label>
+                  {scheduleOn && (
+                    <input
+                      type="datetime-local"
+                      value={scheduleAt}
+                      onChange={(event) => setScheduleAt(event.target.value)}
+                      aria-label="예약 발송 날짜와 시간"
+                      className="cdj-field mt-3 w-full rounded-lg border border-cream-200 px-3 py-2 text-sm"
+                    />
+                  )}
+                </div>
+              )}
               <label className="flex items-center justify-between gap-3 rounded-xl bg-cream-50 px-4 py-3">
                 <span>
                   <span className="block text-sm font-medium text-brown-700">스포일러 포함</span>
@@ -1332,7 +1373,7 @@ function WriteContent() {
           disabled={submitting}
           className="hidden sm:block w-full py-3 bg-brown-600 text-white rounded-xl font-medium hover:bg-brown-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {submitting ? "저장 중..." : isEditMode ? "수정 완료" : isRereadMode ? "재독 기록 남기기" : isContinuationMode ? "내 생각 남기기" : "독후감 올리기"}
+          {submitting ? "저장 중..." : isEditMode ? "수정 완료" : isRereadMode ? "재독 기록 남기기" : isContinuationMode ? "내 생각 남기기" : isPublic && scheduleOn ? "예약하기" : "독후감 올리기"}
         </button>
 
         <div className="fixed left-0 right-0 bottom-0 z-40 bg-white/95 backdrop-blur border-t border-cream-200 px-4 py-3 sm:hidden">
@@ -1350,7 +1391,7 @@ function WriteContent() {
             disabled={submitting}
             className="w-full py-3 bg-brown-700 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {submitting ? "저장 중..." : isEditMode ? "수정 완료" : isRereadMode ? "재독 기록 남기기" : isContinuationMode ? "내 생각 남기기" : "독후감 올리기"}
+            {submitting ? "저장 중..." : isEditMode ? "수정 완료" : isRereadMode ? "재독 기록 남기기" : isContinuationMode ? "내 생각 남기기" : isPublic && scheduleOn ? "예약하기" : "독후감 올리기"}
           </button>
           </div>
         </div>

@@ -537,6 +537,13 @@ const DASHA_AREA = {
   수성: { 총운: 5, 학업운: 12, 직장운: 7, 금전운: 6, 애정운: 2, 건강운: 2 },
 };
 
+/** 큰 운(다샤) 주인의 전통적 소관 — 시기 운세 문장에 쓴다 */
+const LORD_THEME = {
+  태양: '지위·명예·윗사람과의 관계', 달: '감정·가족·생활의 안정', 화성: '추진력·경쟁·몸을 쓰는 일',
+  수성: '배움·거래·말과 글', 목성: '확장·배움·도와주는 사람', 금성: '관계·즐거움·재물',
+  토성: '책임·인내·오래 걸리는 일의 정리', 라후: '욕망과 낯선 변화', 케투: '내려놓음과 정리',
+};
+
 export function forecast(input, chart, period) {
   const natalMoon = toSidereal(planetPositions(input.jdUT).달.lon, input.jdUT);
   const nowMoon = toSidereal(planetPositions(period.jd).달.lon, period.jd);
@@ -552,6 +559,9 @@ export function forecast(input, chart, period) {
   // 타라 — 본명 나크샤트라에서 오늘 달까지 세어 아홉으로 나눈 나머지
   const tara = (((nB - nA + 27) % 27) + 1) % 9;
   const TARA_NAME = ['파라마 미트라', '잔마', '삼파트', '비파트', '크셰마', '프라티아리', '사다카', '바다', '미트라'];
+  // 아홉 타라의 뜻 — 이름만 주면 읽는 사람이 알 수 없다
+  const TARA_MEANING = ['가장 가까운 벗, 도움이 붙는 때', '태어난 자리로 돌아옴, 몸과 마음을 살필 때', '얻는 것이 생기는 때',
+    '막힘과 손실을 조심할 때', '무탈하게 지나는 때', '부딪침을 조심할 때', '애쓴 것이 이뤄지는 때', '무리하면 다치는 때', '사람 덕을 보는 때'];
   const badTara = [3, 5, 7].includes(tara);
 
   const areas = {};
@@ -562,10 +572,10 @@ export function forecast(input, chart, period) {
   return {
     id: meta.id, name: meta.name, weight: 1.1,
     headline: `${cur.lord} 다샤 · 타라 ${TARA_NAME[tara]}`,
-    text: `큰 시기로는 ${cur.lord} 다샤 안에 있습니다. ` +
+    text: `인도 점성술로 지금은 ${j(cur.lord, '이')} 이끄는 큰 운 안에 있습니다${LORD_THEME[cur.lord] ? ` — ${j(LORD_THEME[cur.lord], '이')} 앞으로 나오는 때입니다` : ''}. ` +
       (badTara
-        ? `이 시기 달의 자리가 본명 나크샤트라에서 거친 쪽(${TARA_NAME[tara]})에 떨어져, 무리한 시도는 미루는 편이 낫습니다.`
-        : `이 시기 달의 자리가 본명 나크샤트라에서 순한 쪽(${TARA_NAME[tara]})에 떨어집니다.`),
+        ? `지금 달이 지나는 별자리가 태어날 때 달의 별자리와 견주어 거친 자리(${TARA_NAME[tara]} — ${TARA_MEANING[tara]})에 있어, 무리한 시도는 미루는 편이 낫습니다.`
+        : `지금 달이 지나는 별자리가 태어날 때 달의 별자리와 견주어 순한 자리(${TARA_NAME[tara]} — ${TARA_MEANING[tara]})에 있습니다.`),
     areas,
   };
 }

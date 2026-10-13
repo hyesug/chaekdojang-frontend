@@ -25,7 +25,7 @@ import { j } from './core/josa.js';
 import { timingFor } from './semantic/compose/timing.js';
 import { reportTimingPolicy } from './semantic/timing/policy.js';
 import { selectedWindows, selectedSpan, pastWindows, isMarried, PAST_DOMAINS } from './semantic/timing/selected.js';
-import { palaceStars, natureOf } from './semantic/structure/stars.js';
+import { palaceStars, natureOf, STAR_NATURE } from './semantic/structure/stars.js';
 import { readSpouse, spousePalaceStars, spouseVerdict } from './semantic/structure/spouse.js';
 import { readChildren, childPalaceStars, childrenVerdict } from './semantic/structure/children.js';
 import { childrenPack, marriagePack } from './hires/vedicExt.js';
@@ -634,7 +634,6 @@ function distinctCard(r) {
   return items.join('');
 }
 
-const PILLAR_AREA = { year: '집안·윗사람', month: '일과 직장', day: '나 자신과 배우자', hour: '자녀·아랫사람·내 결과물' };
 
 /**
  * 지켜야 할 원칙 — 조심할 점 칸의 다음 문장(드문 순서 5~8번째). 없으면 예전 원칙표로.
@@ -1124,10 +1123,66 @@ function futureDigestRaw(r) {
  * 판 위에서 사람마다 갈리는 것만 싣는다. 태어난 해로만 정해져 또래가 같은 글을 받는
  * 토정비결·태을신수는 넣지 않는다. 달마다의 사건·몸 상태는 예고하지 않는다(AI 대화와 같은 원칙).
  */
-const SIHWA_SAY = {
-  화록: '돈과 기회가 붙는 자리입니다', 화권: '주도권을 쥐는 자리입니다', 화과: '이름이 나고 인정받는 자리입니다', 화기: '막히거나 마음이 붙들리기 쉬운 자리입니다 — 그 일만큼은 서두르지 마세요',
+// "'부모·윗사람' 쪽이 돈과 기회가 붙는 편"으로는 무슨 일인지 알 수 없었다(사용자 지적) —
+// 자리마다 실제로 어떤 일이 그 자리에 드는지 적고, 표시마다 무엇이 생기고 어떻게 하면 되는지까지 쓴다
+const PALACE_SCENE = {
+  명궁: '나 자신의 결정과 새 출발', 형제궁: '형제·동료·동업자와의 일', 부처궁: '연애·배우자·동업 관계',
+  자녀궁: '자녀·후배, 내가 만든 결과물(작품·프로젝트)', 재백궁: '수입·지출·돈 관리', 질액궁: '건강과 몸 관리',
+  천이궁: '출장·이동·바깥 활동과 대외 관계', 노복궁: '친구·거래처·아랫사람', 관록궁: '직장 일·맡은 역할·평판',
+  전택궁: '집·부동산·가족이 함께 사는 공간', 복덕궁: '취미·휴식·마음의 여유', 부모궁: '부모님·윗사람·상사, 문서와 계약',
 };
-const SIHWA_HEAD = { 화록: '돈과 기회', 화권: '주도권', 화과: '인정받는 자리', 화기: '조심할 자리' };
+const SIHWA_SAY = {
+  화록: (x) => `${x} 쪽에서 기회와 이득이 생기기 쉬워요. 들어오는 제안이나 도움을 그냥 넘기지 말고 살펴보세요.`,
+  화권: (x) => `${x} 쪽에서 내가 결정하고 맡는 몫이 커져요. 책임도 함께 늘어나니 어디까지 맡을지 분명히 해 두세요.`,
+  화과: (x) => `${x} 쪽에서 평가·칭찬을 받거나 이름이 나기 쉬워요. 해 온 것을 드러내 보이기 좋은 해예요.`,
+  화기: (x) => `${x} 쪽 일이 뜻대로 안 풀리거나 마음이 쓰이기 쉬워요. 이쪽 결정은 서두르지 말고 한 번 더 확인하세요.`,
+};
+// 건강 자리는 "이름이 난다·이득이 생긴다"가 어색하다 — 몸 관리 쪽 말로. 병이나 증상은 말하지 않는다
+const SIHWA_BODY = {
+  화록: '몸을 챙기는 데 쓰는 시간과 돈이 아깝지 않은 해예요. 미뤄 둔 관리를 시작하기 좋아요.',
+  화권: '생활 리듬을 내가 정해 지키기 좋은 해예요. 운동·수면 같은 습관을 새로 잡아 보세요.',
+  화과: '꾸준히 해 온 몸 관리의 보람이 드러나기 쉬운 해예요.',
+  화기: '무리하면 몸이 먼저 신호를 보내기 쉬운 해예요. 일정에 여유를 두세요.',
+};
+const SIHWA_HEAD = { 화록: '기회가 붙는 곳', 화권: '내 몫이 커지는 곳', 화과: '인정받는 곳', 화기: '조심할 곳' };
+const PILLAR_SCENE = {
+  year: ['태어난 해', '부모님·집안 어른·회사 윗선'], month: ['태어난 달', '직장·일터의 동료와 형제'],
+  day: ['태어난 날', '나 자신과 배우자·가까운 관계'], hour: ['태어난 시', '자녀·후배·내가 만든 결과물'],
+};
+const DASHA_THEME = {
+  태양: '지위·명예·윗사람과의 관계', 달: '감정·가족·생활의 안정', 화성: '추진력·경쟁·몸을 쓰는 일',
+  수성: '배움·거래·말과 글', 목성: '확장·배움·도와주는 사람', 금성: '관계·즐거움·재물',
+  토성: '책임·인내·오래 걸리는 일의 정리', 라후: '욕망과 낯선 변화', 케투: '내려놓음과 정리',
+};
+const TARA_PLAIN = {
+  '파라마 미트라': '도움이 붙는 때', 잔마: '몸과 마음을 살필 때', 삼파트: '얻는 것이 생기는 때', 비파트: '막힘과 손실을 조심할 때',
+  크셰마: '무탈하게 지나는 때', 프라티아리: '부딪침을 조심할 때', 사다카: '애쓴 것이 이뤄지는 때', 바다: '무리하면 다치는 때', 미트라: '사람 덕을 보는 때',
+};
+/**
+ * 올해 카드의 체계별 한 줄. 결과지는 용어가 든 문장을 걸러 내서 자미두수·베딕 줄이 통째로
+ * 사라지거나 "그 별의 성질"처럼 비어 있었다(사용자 지적) — 이 둘은 머리글의 계산값으로 쉬운 문장을 새로 짓는다.
+ */
+function yearLineOf(x) {
+  if (x.name === '자미두수') {
+    const m = /^(\S+궁)에 얹힘 · (.+)$/.exec(x.headline ?? '');
+    if (!m) return x.text;
+    const where = PALACE_SCENE[m[1]] ? `${PALACE_SCENE[m[1]]} 쪽` : '';
+    const main = m[2].split('·').filter((st) => STAR_NATURE[st]);
+    if (!main.length) return `올해의 기운이 ${where}에 떨어집니다. 그 자리가 비어 있어 큰 사건 없이 지나가기 쉬운 해예요.`;
+    const n = STAR_NATURE[main[0]];
+    return `올해의 기운이 ${where}에 떨어집니다. 그 자리에 든 별은 ${n.nature}이라, 올해는 ${n.toward} 일이 앞으로 나오기 쉬워요. 다만 ${n.risk}는 점을 조심하세요.`;
+  }
+  if (x.name === '베딕') {
+    const m = /^(\S+) 다샤 · 타라 (.+)$/.exec(x.headline ?? '');
+    if (!m) return x.text;
+    const theme = DASHA_THEME[m[1]];
+    return `인도식으로 보면 지금은 ${theme ? `${j(theme, '이')} 앞으로 나오는` : '한'} 큰 운 안에 있어요.` +
+      (TARA_PLAIN[m[2]] ? ` 요즘 달의 흐름은 '${TARA_PLAIN[m[2]]}'에 해당합니다.` : '');
+  }
+  if (x.name === '점성술' && !/[一-鿿°]|하우스/.test(x.headline ?? '')) return `${x.headline} — ${x.text}`;
+  return x.text;
+}
+
 function yearDetail(r, f) {
   const yr = f?.year?.period?.sajuYear ?? r.input.currentYear;
   const out = [];
@@ -1146,8 +1201,7 @@ function yearDetail(r, f) {
     .filter((x) => PER_PERSON.includes(x.name) && x.text)
     .sort((a, b) => PER_PERSON.indexOf(a.name) - PER_PERSON.indexOf(b.name))
     // 머리글(간지·별 이름)은 결과지 원칙대로 싣지 않는다. 점성술만은 어떤 행성인지가 곧 내용이라 붙인다
-    .map((x) => [x.name === '수비학' ? '수비학(숫자)' : x.name,
-      x.name === '점성술' && !/[一-鿿°]|하우스/.test(x.headline ?? '') ? `${x.headline} — ${x.text}` : x.text]);
+    .map((x) => [x.name === '수비학' ? '수비학(숫자)' : x.name, yearLineOf(x)]);
   if (rows.length) out.push(sub('', '체계마다 본 올해', timeline(rows)));
 
   // 3. 내 판 위에서 올해 움직이는 자리 — 유년명궁·유년사화(원국 궁을 밝힌다)·세운 지지와 원국 기둥
@@ -1158,23 +1212,32 @@ function yearDetail(r, f) {
       const map = palaceMap(b.myeong);
       const yb = ((Number(yr) - 4) % 12 + 12) % 12;
       const center = map[yb];
-      if (AREA[center]) placed.push(['올해의 중심', `'${AREA[center]}' 쪽이 한 해의 중심에 섭니다.`]);
+      if (PALACE_SCENE[center]) placed.push(['올해의 중심', `올해는 ${PALACE_SCENE[center]} 쪽 일이 한 해의 중심이 돼요. 이쪽에서 생기는 일이 올해 전체 흐름을 이끌기 쉬우니, 계획을 세울 때 이쪽부터 챙기세요.`]);
       const stem = ((Number(yr) - 4) % 10 + 10) % 10;
       for (const x of sihwaOn(b.board, stem)) {
         const pal = x.branch != null ? map[x.branch] : null;
-        if (pal && AREA[pal] && SIHWA_SAY[x.kind]) placed.push([SIHWA_HEAD[x.kind], `'${AREA[pal]}' 쪽이 ${SIHWA_SAY[x.kind]}.`]);
+        if (pal && PALACE_SCENE[pal] && SIHWA_SAY[x.kind]) placed.push([SIHWA_HEAD[x.kind], pal === '질액궁' ? SIHWA_BODY[x.kind] : SIHWA_SAY[x.kind](PALACE_SCENE[pal])]);
       }
     }
     const yb = ((Number(yr) - 4) % 12 + 12) % 12;
+    const pillarHits = {};
     for (const key of ['day', 'month', 'year', 'hour']) {
       const pz = r.chart.pillars[key];
       if (!pz) continue;
       // 원진 같은 보조 관계는 넣지 않는다
       const rel = branchRelations(pz.branch, yb).find((x) => !x.minor);
       if (!rel) continue;
-      if (rel.kind === '충') placed.push(['크게 움직이는 곳', `${PILLAR_AREA[key]} 쪽이 크게 바뀌거나 자리를 옮기기 쉽습니다 (올해의 띠와 정면으로 부딪침).`]);
-      else if (/합/.test(rel.kind)) placed.push(['붙는 인연', `${PILLAR_AREA[key]} 쪽에 새 인연·협력이 붙기 쉽습니다 (올해의 띠와 맞물림).`]);
-      else if (/형/.test(rel.kind)) placed.push(['되풀이되는 일', `${PILLAR_AREA[key]} 쪽에서 같은 문제가 되풀이되기 쉽습니다 (올해의 띠와 서로 벼름).`]);
+      const kind = rel.kind === '충' ? '충' : /합/.test(rel.kind) ? '합' : /형/.test(rel.kind) ? '형' : null;
+      if (kind) (pillarHits[kind] ??= []).push(PILLAR_SCENE[key][1]);
+    }
+    // 같은 종류는 한 줄로 — "붙는 인연"이 세 줄 나란히 나왔다
+    const PILLAR_SAY = {
+      충: ['크게 움직이는 곳', (x) => `${x} 쪽에 자리 이동·변화·의견 충돌이 생기기 쉬워요. 큰 결정은 충분히 따져 보고 내리세요.`],
+      합: ['붙는 인연', (x) => `${x} 쪽에서 새 인연·협력·도움이 붙기 쉬워요. 소개나 제안이 오면 만나 보세요.`],
+      형: ['되풀이되는 일', (x) => `${x} 쪽에서 같은 문제나 마찰이 되풀이되기 쉬워요. 반복되는 일은 규칙으로 정해 두세요.`],
+    };
+    for (const k of ['충', '합', '형']) {
+      if (pillarHits[k]) placed.push([PILLAR_SAY[k][0], PILLAR_SAY[k][1](pillarHits[k].join(', '))]);
     }
   } catch { /* 판을 못 세우면 이 칸만 비운다 */ }
   if (placed.length) out.push(sub('', '내 명반 위에서 올해 움직이는 자리', timeline(placed)));

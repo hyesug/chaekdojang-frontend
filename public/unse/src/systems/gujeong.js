@@ -177,6 +177,19 @@ function boardDirections(honmei, center, breakBranch, breakKind, breakFrom) {
   return { center, myDir, good, bad };
 }
 
+/** 아홉 해 주기의 국면 — 풀이와 시기 운세가 같은 문장을 쓴다 */
+const PHASE_TEXT = [
+  '씨를 뿌리는 해입니다. 결과가 눈에 보이지 않아도 지금 시작한 것이 아홉 해를 갑니다.',
+  '싹이 트는 해입니다. 움직임이 생기고 사람이 붙기 시작합니다.',
+  '자라는 해입니다. 일이 늘고 바빠집니다. 벌이는 쪽으로 힘이 실립니다.',
+  '넓어지는 해입니다. 관계와 활동 반경이 커지고 평판이 만들어집니다.',
+  '가장 높은 자리입니다. 드러나고 인정받는 해이며, 동시에 가장 소모되는 해입니다.',
+  '거두는 해입니다. 벌여둔 것을 정리해 실제 결과로 바꾸는 시기입니다.',
+  '나누는 해입니다. 성과가 손에 들어오고, 사람과 즐거움에 쓰게 됩니다.',
+  '멈추는 해입니다. 변화의 압력이 큽니다. 무리하게 벌이기보다 방향을 다시 잡을 때입니다.',
+  '비우는 해입니다. 끝나는 것들이 나옵니다. 다음 아홉 해를 준비하는 자리입니다.',
+];
+
 export function analyze(input) {
   const { sajuYear, sectorIndex, currentYear, age } = input;
 
@@ -196,17 +209,6 @@ export function analyze(input) {
 
   // 아홉 해 주기 안의 현재 위치 — 구성학의 연운
   const phase = ((currentYear - sajuYear) % 9 + 9) % 9;
-  const PHASE_TEXT = [
-    '씨를 뿌리는 해입니다. 결과가 눈에 보이지 않아도 지금 시작한 것이 아홉 해를 갑니다.',
-    '싹이 트는 해입니다. 움직임이 생기고 사람이 붙기 시작합니다.',
-    '자라는 해입니다. 일이 늘고 바빠집니다. 벌이는 쪽으로 힘이 실립니다.',
-    '넓어지는 해입니다. 관계와 활동 반경이 커지고 평판이 만들어집니다.',
-    '가장 높은 자리입니다. 드러나고 인정받는 해이며, 동시에 가장 소모되는 해입니다.',
-    '거두는 해입니다. 벌여둔 것을 정리해 실제 결과로 바꾸는 시기입니다.',
-    '나누는 해입니다. 성과가 손에 들어오고, 사람과 즐거움에 쓰게 됩니다.',
-    '멈추는 해입니다. 변화의 압력이 큽니다. 무리하게 벌이기보다 방향을 다시 잡을 때입니다.',
-    '비우는 해입니다. 끝나는 것들이 나옵니다. 다음 아홉 해를 준비하는 자리입니다.',
-  ];
 
   const facts = [
     { label: '본명성', value: star.hanja, note: `${star.name} · ${sajuYear}년생 (입춘 기준)` },
@@ -388,7 +390,7 @@ export function forecast(input, chart, period) {
     id: meta.id, name: meta.name, weight: 1.1,
     headline: eff.name,
     text: `${period.sajuYear}년 방위반에서 본명성 ${j(STARS[honmei].name, '이')} ${eff.name.split(' · ')[0]}에 듭니다. ` +
-      `아홉 해 주기로는 ${phase + 1}번째 해입니다.`,
+      `아홉 해 주기로는 ${phase + 1}번째 해 — ${PHASE_TEXT[phase]}`,
     areas,
   };
 }

@@ -129,3 +129,9 @@ test('기대는 말이 없는 새 질문은 분야 낱말이 없어도 앞 분�
   assert.equal(a.fallback, true);
   assert.equal(inheritPlan(a, f), a);
 });
+
+test('사고를 쓰지 않을 때는 thinking 을 명시적으로 끈다 — 지정하지 않으면 모델이 스스로 사고해 빈 답이 났다', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const route = await readFile(new URL('../../app/fortune-ai/route.ts', import.meta.url), 'utf8');
+  assert.match(route, /max_tokens: OUTPUT_BUDGET\[detail\], thinking: \{ type: "disabled" as const \}/);
+});

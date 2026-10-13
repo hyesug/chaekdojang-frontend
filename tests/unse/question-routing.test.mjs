@@ -648,3 +648,19 @@ test('달을 묻지 않으면 달 단위 계산(월운·유월·트랜싯)을 �
   assert.match(on, /월운 \(절기 기준/);
   assert.ok(off.length < on.length * 0.85);
 });
+
+test('자미 — 원국·대한·유년 층을 밝히고, 협은 양옆 별을 적을 때만 말한다', () => {
+  assert.match(PROMPT, /원국·대한·유년 중 어느 층의 궁인지/);
+  assert.match(PROMPT, /양옆 두 궁에 실제로 든 별/);
+});
+
+test('유년 관록궁은 유년명궁에서 네 칸 — 2028 戊申 유년명궁 申이면 관록궁 子 (辰은 재백궁 자리)', async () => {
+  const Z = await import('../../public/unse/src/hires/ziwei.js');
+  const b = { myeong: 5 };                         // 명궁 巳
+  const nat = Z.palaceMap(5);
+  assert.equal(nat[9], '관록궁');                   // 원국 관록궁 酉
+  const m = Z.palaceMap(8);                         // 유년명궁 申
+  assert.equal(m[0], '관록궁');                     // 子
+  assert.equal(m[4], '재백궁');                     // 辰
+  assert.ok(b);
+});

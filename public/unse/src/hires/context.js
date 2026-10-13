@@ -416,8 +416,21 @@ function formatPack(kind, d) {
   return L.filter(Boolean);
 }
 
+/**
+ * 질문이 콕 집은 분할도 — "D9", "나밤샤"처럼 물으면 분야와 상관없이 싣는다.
+ * 예전에는 직업 질문에 D1·D10만 실어, "D1·D9·D10으로 각각 봐 달라"고 해도 D9가 빠졌다(외부 검증 3번).
+ */
+const VARGA_NAMES = { D2: /호라/, D4: /차투르탐샤/, D7: /삽탐샤/, D9: /나밤샤|나밤사/, D10: /다샴샤|다삼샤/ };
+export function askedVargas(question = '') {
+  const q = String(question);
+  const out = new Set();
+  for (const m of q.matchAll(/D\s?(1|2|4|7|9|10)(?!\d)/gi)) out.add(`D${m[1]}`);
+  for (const [code, re] of Object.entries(VARGA_NAMES)) if (re.test(q)) out.add(code);
+  return [...out];
+}
+
 function vedicJson(grid, input, plan) {
-  const codes = [...new Set((plan.pipeline?.vedic ?? []).filter((x) => /^D\d+$/.test(x)))];
+  const codes = [...new Set([...(plan.pipeline?.vedic ?? []), ...askedVargas(plan.question)].filter((x) => /^D\d+$/.test(x)))];
   const vargas = {};
   for (const c of ['D1', ...codes]) {
     const v = VD.vargaChart(input, c);

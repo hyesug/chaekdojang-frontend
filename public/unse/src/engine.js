@@ -221,6 +221,9 @@ export function prepareInput(form, opts = {}) {
     age,
     // 입춘에 바뀌는 해. 세운·구성학 연반·태을이 쓴다
     currentYear,
+    // 계산한 순간 — 구성학 월반처럼 '지금 몇째 절월인가'를 묻는 곳이 쓴다
+    atJD: nowJD(at),
+    homeGiven: !!findCity(form.homePlace),
     // 양력 1월 1일에 바뀌는 해. 수비학 개인년·타로 씨앗이 쓴다
     civilYear,
     // 소수로 떨어지는 나이. 대운·다샤 경계 판정이 쓴다

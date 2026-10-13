@@ -664,3 +664,25 @@ test('유년 관록궁은 유년명궁에서 네 칸 — 2028 戊申 유년명�
   assert.equal(m[4], '재백궁');                     // 辰
   assert.ok(b);
 });
+
+test('질문이 콕 집은 분할도(D9·나밤샤)는 분야와 상관없이 싣는다', async () => {
+  const { askedVargas, buildHiRes } = await import('../../public/unse/src/hires/context.js');
+  assert.deepEqual(askedVargas('D1, D9, D10 차트로 직업운').sort(), ['D1', 'D10', 'D9']);
+  assert.deepEqual(askedVargas('나밤샤로 보면 결혼은?'), ['D9']);
+  const q = '베딕 점성술의 D1, D9, D10 차트로 각각 볼 때 내 직업운은 어떻게 다른가요?';
+  const text = buildHiRes(readFortune(BIRTH, { now: NOW }), readForecast(BIRTH, NOW), { ...route(q), question: q }).text;
+  assert.match(text, /^D9 라그나/m);
+  assert.match(text, /^D10 라그나/m);
+});
+
+test('구성학 월반 — 寅월 중궁은 해 지지로 정하고, 이사 방위는 연반·월반이 둘 다 열려야 한다', async () => {
+  const { monthCenterStar } = await import('../../public/unse/src/systems/gujeong.js');
+  const { monthBoardSection } = await import('../../public/unse/src/aiContext.js');
+  assert.deepEqual([2023, 2024, 2025, 2026].map((y) => monthCenterStar(y, 0)), [8, 5, 2, 8]);
+  assert.equal(monthCenterStar(2026, 8), 9);   // 2026 戌월
+  const r = readFortune(BIRTH, { now: NOW });
+  const s = monthBoardSection(r.input);
+  assert.match(s, /연반·월반 모두 열림/);
+  assert.match(s, /출발지/);
+  assert.equal(s.split('\n').filter((l) => /^\d+\/\d+~/.test(l)).length, 3);
+});

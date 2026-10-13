@@ -22,7 +22,8 @@ import { futureDigest, careerFocus, lifeEventItems, periodFlow, pairLoveDigest, 
 import { buildCompatView } from './viewmodel.js';
 import { AREAS } from './forecast.js';
 import { candidatesToward, DIR8 } from './hires/location.js';
-import { yearDirections } from './systems/gujeong.js';
+import { yearDirections, monthDirections } from './systems/gujeong.js';
+import { solarTermSector, fromJD } from './core/astro.js';
 import { dayRange, rankSurgeryDays, structureReading, patternReading,
          yearTimeline, innerReading, tabooReading } from './reading.js';
 import { buildMultilayer, formatMultilayer } from './multilayerInterpretation.js';
@@ -569,6 +570,7 @@ export function buildContext(form, r, f = null) {
     }
   }
   out.push('도시는 방위에 맞는 후보일 뿐 운세가 특정 도시를 고른 것이 아니다. 동네·회사까지 단정하지 말 것.');
+  if (input.atJD) out.push(monthBoardSection(input));
   out.push('');
 
   // ── 타고난 구성 ──
@@ -911,3 +913,32 @@ export const COMPAT_PROMPT =
   '마주할 중요한 일은 목록에서 가장 큰 두세 가지를 골라 무슨 일이, 어떤 모양으로 오고, 어떻게 대비할지로 풀어 주세요. ' +
   '각 소제목은 두 사람이 앞으로 무엇을 하면 좋은지 구체적인 행동으로 끝내 주세요. ' +
   '열일곱 체계가 어긋나는 지점이 있으면 그것도 짚어 주세요.';
+
+/**
+ * 구성학 월반 — 이사·여행 방위는 연반과 월반이 **둘 다** 열려야 쓴다.
+ * 연반만 주면 모델이 "다음 달 이사 방향"을 연반으로 확정해 버린다(외부 검증 6번 대비).
+ * 지금 절월부터 석 달을 싣는다.
+ */
+export function monthBoardSection(input) {
+  const out = [`## 구성학 월반 — 달마다 바뀌는 방위 (출발지 ${input.home.name}${input.homeGiven ? '' : ' — 거주지를 입력하지 않아 출생지로 대신했다'})`];
+  let jd = input.atJD;
+  for (let k = 0; k < 3; k++) {
+    const sec = solarTermSector(jd);
+    const a = fromJD(sec.startJD + 9 / 24), b = fromJD(sec.endJD + 9 / 24);
+    const year = sec.index === 11 ? a.y - 1 : a.y;   // 丑월(소한~)만 양력 새해에 들지만 입춘 전이라 앞 해다
+    const yd = yearDirections(input.sajuYear, year);
+    const md = monthDirections(input.sajuYear, year, sec.index);
+    const yBad = new Set(yd.bad.map((x) => x.dir)), mBad = new Set(md.bad.map((x) => x.dir));
+    const yGood = new Set(yd.good.map((x) => x.dir).filter((d) => !yBad.has(d)));
+    const both = md.good.map((x) => x.dir).filter((d) => !mBad.has(d) && yGood.has(d));
+    const monthOnly = md.good.map((x) => x.dir).filter((d) => !mBad.has(d) && !yGood.has(d));
+    out.push(`${a.m}/${a.d}~${b.m}/${b.d} (월반 중궁 ${md.center})`
+      + ` · 연반·월반 모두 열림: ${both.length ? both.join('·') : '없음'}`
+      + (monthOnly.length ? ` · 월반만 열림(연반은 아님): ${monthOnly.join('·')}` : '')
+      + ` · 월반 흉방: ${md.bad.map((x) => `${x.dir}(${x.kind})`).join(', ')}`);
+    jd = sec.endJD + 1;
+  }
+  out.push('이사 방위를 물으면 **연반·월반이 둘 다 열린 방위만** 길방으로 말한다. 둘 다 열린 방위가 없는 달은 "그 달은 맞는 방위가 없다"고 말할 것.');
+  out.push('방위는 출발지 기준이다. 거주지를 입력하지 않았으면 출생지 기준이라는 것을 밝히고 실제 출발지를 확인하라고 할 것. 이사 날짜(절입일 전후)에 따라 월반이 바뀐다.');
+  return out.join('\n') + '\n';
+}

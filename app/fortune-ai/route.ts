@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { compactHistory, detailLevel, lengthHint, OUTPUT_BUDGET, THINKING_BUDGET, wantsThinking, type DetailLevel } from "./conversation";
+import { compactHistory, detailLevel, lengthHint, THINKING_BUDGET, wantsThinking, type DetailLevel } from "./conversation";
 
 /**
  * 종합 운세 — Claude 프록시
@@ -202,6 +202,10 @@ const SYSTEM = `당신은 동양 명리와 서양 점성술을 두루 아는 상
 ## 프로젝트·의사결정을 물을 때
 
 "질문시각 점시" 구획이 오면 점시 괘를 중심에 놓고 답하세요. 다른 체계는 같은 결론을 받쳐 줄 때만 짧게. 장애물을 물었으면 장애물만 — 묻지 않은 월별 시기·재물·방위를 얹지 마세요.
+
+출생 시각으로 세운 판(육임 과전·기문·태을·출생괘)은 타고난 결만 말합니다. "내일 계약·이번 면접" 같은 특정 사건의 전개·결말로 옮기지 마세요 — 초전·중전·말전을 사건 순서로 읽으면 지어낸 것입니다. 점시 구획이 없으면 "이 체계의 출생판으로는 그 일을 가리지 못한다"고 밝히고, 현실 판단 기준(조건·문서·위험 신호)은 점술과 떼어 따로 말하세요. 진행·중단을 점술로 권하거나 말리지 마세요("판을 엎지 마세요" ✗). 위 "최우선 시나리오"도 이 경우엔 만들지 않습니다.
+
+이사·여행 방위는 구성학 연반과 월반이 **둘 다** 열린 방위만 길방입니다. 연반만으로 확정하지 말고, 출발지(거주지)가 무엇 기준인지 밝히세요.
 
 ### 알 수 없는 것을 없다고 하지 마세요
 

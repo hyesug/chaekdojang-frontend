@@ -108,8 +108,37 @@ const GENERATES = (a, b) => (a + 1) % 5 === b;
  * 풀이 문장과 AI 문맥(길방 도시 후보)이 같은 판정을 쓰도록 한곳에 둔다.
  */
 export function yearDirections(sajuYear, year) {
-  const honmei = starOfYear(sajuYear);
-  const center = starOfYear(year);
+  // 세파(歳破) — 그 해 태세(년지)와 정면으로 부딪치는 방위.
+  // 오황살 계열이 구성(九星) 배치에서 나오는 것과 달리 이쪽은 **간지**에서
+  // 나온다. 근거가 다른 흉방이라 겹칠 수 있고, 겹치면 겹쳤다고만 적는다 —
+  // 두 개니까 두 배로 나쁘다는 식으로 세지 않는다.
+  const bi = ((year - 4) % 12 + 12) % 12;
+  return boardDirections(starOfYear(sajuYear), starOfYear(year), bi, '세파', '태세');
+}
+
+/**
+ * 그 달(절기 기준) 방위반 — 월반.
+ * 이사·여행 방위는 연반과 월반이 **둘 다** 열려야 쓴다(구성기학의 통례).
+ * 寅월(입춘~경칩)의 중궁성은 해의 지지로 정해진다 — 子午卯酉년 八白, 丑辰未戌년 五黃,
+ * 寅巳申亥년 二黑 — 그 뒤로 달마다 하나씩 내려간다.
+ *
+ * @param {number} sajuYear 본명성을 정하는 출생 사주 연도
+ * @param {number} year 입춘 기준 해
+ * @param {number} monthIndex 0=寅월(입춘~) … 11=丑월(소한~)
+ */
+export function monthCenterStar(year, monthIndex) {
+  const bi = ((year - 4) % 12 + 12) % 12;
+  const first = [8, 5, 2][bi % 3];
+  return ((first - 1 - monthIndex) % 9 + 9) % 9 + 1;
+}
+
+export function monthDirections(sajuYear, year, monthIndex) {
+  const bi = (monthIndex + 2) % 12;   // 寅월=寅
+  return boardDirections(starOfYear(sajuYear), monthCenterStar(year, monthIndex), bi, '월파', '월건');
+}
+
+/** 한 판(연반·월반)에서 본명성에게 열린 방위와 막힌 방위 */
+function boardDirections(honmei, center, breakBranch, breakKind, breakFrom) {
   const chart = palaceChart(center);
 
   const myDir = Object.keys(chart).find((d) => chart[d] === honmei);
@@ -125,13 +154,9 @@ export function yearDirections(sajuYear, year) {
     if (OPPOSITE[myDir]) bad.push({ dir: OPPOSITE[myDir], kind: '본명적살' });
   }
 
-  // 세파(歳破) — 그 해 태세(년지)와 정면으로 부딪치는 방위.
-  // 오황살 계열이 구성(九星) 배치에서 나오는 것과 달리 이쪽은 **간지**에서
-  // 나온다. 근거가 다른 흉방이라 겹칠 수 있고, 겹치면 겹쳤다고만 적는다 —
-  // 두 개니까 두 배로 나쁘다는 식으로 세지 않는다.
-  const taesePos = BRANCH_DIR[((year - 4) % 12 + 12) % 12];
-  const sepa = OPPOSITE[taesePos];
-  if (sepa) bad.push({ dir: sepa, kind: '세파', from: `태세 ${BRANCHES[((year - 4) % 12 + 12) % 12]}(${taesePos})의 정반대` });
+  const pos = BRANCH_DIR[breakBranch];
+  const brk = OPPOSITE[pos];
+  if (brk) bad.push({ dir: brk, kind: breakKind, from: `${breakFrom} ${BRANCHES[breakBranch]}(${pos})의 정반대` });
 
   // 같은 방위에 흉방이 둘 이상이면 그 사실만 표시한다
   const count = {};

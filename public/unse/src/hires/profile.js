@@ -315,7 +315,6 @@ export function spouseProfile(input, st = null) {
 export function careerProfile(input, st = null) {
   const wp = VE.wealthPack(input);
   if (!wp) return null;
-  const basis = [];
 
   const l10 = wp.d1_10?.lord ?? null;
   const l10In = wp.d1_10?.lordIn ?? null;
@@ -347,9 +346,12 @@ export function careerProfile(input, st = null) {
   const SELF_STARS = ['파군', '칠살', '탐랑'];
   const ORG_STARS = ['자미', '천부', '천상', '천량'];
   const income = {};
-  const bump = (k, w, why) => { income[k] = (income[k] ?? 0) + w; basis.push(why); };
+  // 근거는 선택지마다 따로 모은다. 한 목록에 섞으면 사업형 근거(태양 호라)가 월급형의
+  // 근거처럼 나갔다(외부 검증 33번)
+  const incomeWhy = {};
+  const bump = (k, w, why) => { income[k] = (income[k] ?? 0) + w; (incomeWhy[k] ??= []).push(why); };
   const L10 = j(l10 ?? '', '이');
-  if (l10In === 6 || l10In === 10) bump('월급형 — 조직에 소속되어 버는 쪽', 2, `10궁주 ${L10} ${l10In}하우스`);
+  if (l10In === 6 || l10In === 10) bump('월급형 — 조직에 소속되어 버는 쪽', 2, `10궁주 ${L10} ${l10In}하우스${l10In === 6 ? '(노동·용역 — 고용에만 한정되지 않고 전문 서비스로도 나타난다)' : ''}`);
   if (l10In === 7) bump('거래처형 — 상대가 있어야 도는 쪽', 2.5, `10궁주 ${L10} 7하우스(거래·동업)`);
   if (l10In === 11) bump('반복 매출형 — 쌓여서 들어오는 쪽', 2, `10궁주 ${L10} 11하우스(수입)`);
   if (l10In === 5 || l10In === 9) bump('지식·기술형 — 아는 것을 파는 쪽', 2, `10궁주 ${L10} ${l10In}하우스`);
@@ -370,7 +372,7 @@ export function careerProfile(input, st = null) {
   let org = null;
   if (a10) {
     const q = VE.qualityOf(a10.sign);
-    orgBasis.push(`A10(세상에 보이는 직업 자리) ${a10.signName} · ${q}궁`);
+    orgBasis.push(`A10(세상에 보이는 직업 자리 — 10궁 자체와 다르다) ${a10.signName} · ${q}궁`);
     org = q === '고정' ? '한번 자리 잡으면 오래 가는 조직. 제도가 잡힌 쪽'
       : q === '활동' ? '판을 새로 여는 조직. 앞에 나서는 자리'
       : '여러 갈래를 오가는 조직. 형태가 자주 바뀌는 쪽';
@@ -439,7 +441,11 @@ export function careerProfile(input, st = null) {
         { tier: tradeLean?.clear ? null : 'C' }),
       item('다음 후보', tradeLean?.clear ? null : tradeLean?.runnerUp,
         tradeLean?.runnerUp ? ['1위와 크게 벌어지지 않아 함께 적는다'] : []),
-      item('수입의 모양', incomeLean?.name, [...new Set(basis)].slice(0, 5)),
+      item('수입의 모양', incomeLean?.name, [...new Set(incomeWhy[incomeLean?.name] ?? [])].slice(0, 5),
+        { tier: incomeLean?.clear ? null : 'C' }),
+      // 1위와 가까우면 반대쪽도 근거째 나란히 — 한쪽만 보이면 결론이 고정된다
+      item('수입의 다른 모양', incomeLean?.clear ? null : incomeLean?.runnerUp,
+        [...new Set(incomeWhy[incomeLean?.runnerUp] ?? [])].slice(0, 5)),
       item('조직의 성격', org, orgBasis),
       item('규모의 방향', scaleValue, big.map((x) => x.why)),
       item('직업 자리의 별', careerStars.length ? careerStars.join('·') : null,

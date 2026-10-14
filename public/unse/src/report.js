@@ -248,6 +248,24 @@ const AREA = {
  *   어떤 일이 맞는가 · 일하는 방식(조직형/독립형) · 일에서 앞으로 올 변화
  *   돈을 버는 방식 · 쓰는 습관과 모으는 법 · 돈이 크게 움직이는 때 · 일과 돈에서 조심할 것
  */
+/**
+ * 성격·일·돈·관계 칸의 문장 — 여러 체계가 같은 뜻을 말한 문장을 먼저, 한 체계만 말한 문장은 칸마다 하나까지.
+ * 한 체계만의 문장을 셋씩 늘어놓으니 누구에게나 맞을 것 같은 말이 되고, 직업 역할과도 엇갈렸다(사용자 지적).
+ * AI 대화 지침("같은 뜻이 모인 것만 세게, 하나뿐이면 덜")과 같은 원칙이다.
+ */
+function strongField(es, field, n, keep = null) {
+  const all = coreField(es, field, 30, 0, keep);
+  // 같은 뜻으로 겹친 문장끼리는 하나만 — 겹침이 근거이지 문장을 두 번 쓸 이유는 아니다
+  const agreed = [];
+  for (const x of all.filter((c) => c.agree >= 1)) {
+    if (agreed.some((o) => o.themes.some((k) => x.themes.includes(k)))) continue;
+    agreed.push(x);
+    if (agreed.length >= n) break;
+  }
+  const solo = all.filter((x) => x.agree < 1).slice(0, agreed.length >= n ? 0 : 1);
+  return [...agreed, ...solo].map((x) => x.text);
+}
+
 function careerLife(v, r) {
   let es = [];
   try { es = dictEntries(r); } catch { /* */ }
@@ -277,7 +295,9 @@ function careerLife(v, r) {
         ? '정해진 틀과 역할이 있는 조직에서 힘을 내는 편입니다. 혼자 판을 벌이기보다 조직 안에서 자리와 책임을 키워 가는 쪽이 맞습니다.'
         : '조직 안에서 일하면서도 나만의 전문 영역을 하나 갖는 방식이 맞습니다. 회사 일과 내 이름으로 하는 일을 함께 키워 가세요.';
   } catch { /* */ }
-  const manner = pick('w', 2, (t) => !FIELD_FIT.test(t), 3).join(' ');
+  // 맨 위 '일할 때의 나'가 쓴 문장은 건너뛰고 그다음 문장을
+  const shownWork = new Set(strongField(es, 'w', 3, (t) => !FIELD_FIT.test(t)));
+  const manner = coreField(es, 'w', 30, 0, (t) => !FIELD_FIT.test(t) && !shownWork.has(t)).slice(0, 2).map((x) => x.text).join(' ');
 
   // 일에서 앞으로 올 변화 — 사건(직업)과 다음 10년의 자미 대한
   let nextArea = '';
@@ -1120,10 +1140,10 @@ function futureDigestRaw(r) {
       drawn: pick('r', 1, (t) => DRAWN_TO.test(t)),
     },
     know: {
-      p: pick('p', 3),
-      work: pick('w', 3, (t) => !FIELD_FIT.test(t)),
-      spend: pick('m', 2, (t) => !EARN.test(t) && !IMPERATIVE.test(t)),
-      rel: pick('r', 2, (t) => !DRAWN_TO.test(t)),
+      p: strongField(es, 'p', 3),
+      work: strongField(es, 'w', 3, (t) => !FIELD_FIT.test(t)),
+      spend: strongField(es, 'm', 2, (t) => !EARN.test(t) && !IMPERATIVE.test(t)),
+      rel: strongField(es, 'r', 2, (t) => !DRAWN_TO.test(t)),
     },
     caution: {
       careful: [...careful, ...pick('m', 1, (t) => IMPERATIVE.test(t))],

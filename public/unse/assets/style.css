@@ -1400,6 +1400,12 @@ input, select, textarea, button.go, .ask-btn, .mode, .lt, .ft, .planned span {
 .fb-note { width: 100%; margin: 0; font-size: 12px; color: var(--ink-3); }
 .fb-form input { flex: 1; min-width: 0; font: inherit; font-size: 14px; padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); color: var(--ink); }
 .fb-done { color: var(--gold); }
+.fb-lines { width: 100%; margin: 0; padding: 8px 10px; border: 1px solid var(--line-soft); border-radius: var(--radius-sm); max-height: 240px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+.fb-lines[hidden] { display: none; }
+.fb-lines legend { padding: 0 4px; font-size: 12px; color: var(--ink-3); }
+.fb-lines label { display: flex; align-items: flex-start; gap: 6px; font-size: 13px; line-height: 1.5; color: var(--ink-2); cursor: pointer; }
+.fb-form .fb-lines input { flex: none; width: auto; margin: 3px 0 0; padding: 0; }
+.fb-lines .fb-all { padding-top: 6px; border-top: 1px dashed var(--line-soft); color: var(--ink-3); }
 
 /* 시주 기준 안내 (ui.js basisNote) */
 .basis-note { margin: 12px 0 0; padding: 12px 14px; border: 1px solid var(--line); border-left: 3px solid var(--stamp); border-radius: var(--radius-sm); background: var(--bg-soft); font-size: 14px; line-height: 1.7; color: var(--ink-2); }

@@ -100,8 +100,10 @@ test('결과 칸마다 피드백(👍/👎 + 한 줄)을 붙이고, 출생 정�
   assert.match(ui, /attachFeedback\(box, \{ mode: 'pair', names: \[form\.name, formB\.name\] \}\)/);
   assert.match(fb, /fetch\('\/api\/fortune\/feedback'/);
   // 보내는 필드는 mode·section·verdict·snippet·comment 뿐 — 생년월일·시각·이름 필드가 없다
-  const payload = fb.match(/const payload = [^\n]+/)[0];
-  assert.match(payload, /\{ mode, section, verdict, snippet: snippetOf\(el, names\), comment \}/);
+  assert.match(fb, /snippet: picked \? picked\.join\(' '\)\.slice\(0, 600\) : snippetOf\(el, names\), comment/);
+  // 👎는 다른 줄만 골라 보낸다 — 칸 전체를 보내면 한 줄만 달라도 그 칸 문장이 모두 고칠 후보로 밀린다
+  assert.match(fb, /linesOf\(el, names\)/);
+  assert.match(fb, /칸 전체가 달라요/);
   assert.doesNotMatch(fb, /year|month|day|hour|birth/);
   assert.match(fb, /split\(n\)\.join\('○○'\)/);   // 문장 속 이름은 지운다
 });

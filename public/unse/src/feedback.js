@@ -29,6 +29,24 @@ export function snippetOf(el, names = []) {
   return t.slice(0, 600);
 }
 
+/**
+ * 칸의 문장을 한 줄씩 — 👎를 누르면 다른 줄만 고르게 한다.
+ * 칸 전체를 한 덩어리로 보내면 주간 자동 수정이 그 안의 문장마다 👎를 하나씩 세어,
+ * 한 줄만 달라도 같은 칸 문장이 모두 고칠 후보 쪽으로 밀렸다(사용자 지적).
+ */
+export function linesOf(el, names = []) {
+  const clone = el.cloneNode(true);
+  clone.querySelectorAll('.fb, summary, .rp-card-h, h4, button').forEach((x) => x.remove());
+  const leaves = [...clone.querySelectorAll('p, li, dd')].filter((x) => !x.querySelector('p, li, dd'));
+  const out = [];
+  for (const x of leaves) {
+    let t = x.textContent.replace(/\s+/g, ' ').trim();
+    for (const n of names.filter((v) => v && v.length >= 1)) t = t.split(n).join('○○');
+    for (const s of t.split(/(?<=[.!?])\s+/)) if (s.length >= 6 && !out.includes(s)) out.push(s);
+  }
+  return out.slice(0, 40);
+}
+
 async function send(payload) {
   const res = await fetch('/api/fortune/feedback', {
     method: 'POST',
@@ -54,6 +72,7 @@ export function attachFeedback(root, { mode, names = [] }) {
       <button type="button" data-fb="up" aria-label="맞아요">👍 맞아요</button>
       <button type="button" data-fb="down" aria-label="아니에요">👎 아니에요</button>
       <form class="fb-form" hidden>
+        <fieldset class="fb-lines" hidden></fieldset>
         <input type="text" maxlength="300" placeholder="어디가 달랐나요? (선택)" aria-label="다른 점 한 줄">
         <button type="submit">보내기</button>
         <p class="fb-note">이름·연락처·생년월일은 적지 말아 주세요.</p>
@@ -61,7 +80,10 @@ export function attachFeedback(root, { mode, names = [] }) {
     (el.matches('.rp-ch') ? el.querySelector('.rp-ch-body') ?? el : el).appendChild(bar);
 
     const done = (msg) => { bar.innerHTML = `<span class="fb-done">${esc(msg)}</span>`; };
-    const payload = (verdict, comment = null) => ({ mode, section, verdict, snippet: snippetOf(el, names), comment });
+    let lines = [];
+    // 👎는 고른 줄만 보낸다. '칸 전체가 달라요'를 고르거나 줄이 하나뿐이면 칸 전체를
+    const payload = (verdict, comment = null, picked = null) =>
+      ({ mode, section, verdict, snippet: picked ? picked.join(' ').slice(0, 600) : snippetOf(el, names), comment });
     bar.addEventListener('click', async (e) => {
       const b = e.target.closest('[data-fb]');
       if (!b) return;
@@ -72,12 +94,31 @@ export function attachFeedback(root, { mode, names = [] }) {
       const form = bar.querySelector('.fb-form');
       form.hidden = false;
       bar.querySelectorAll('[data-fb]').forEach((x) => { x.disabled = true; });
-      form.querySelector('input').focus();
+      lines = linesOf(el, names);
+      const box = form.querySelector('.fb-lines');
+      if (lines.length > 1) {
+        box.innerHTML = '<legend>어느 줄이 달랐나요? 고른 줄만 고칩니다.</legend>'
+          + lines.map((l, i) => `<label><input type="checkbox" value="${i}"> <span>${esc(l)}</span></label>`).join('')
+          + '<label class="fb-all"><input type="checkbox" value="all"> <span>칸 전체가 달라요</span></label>';
+        box.hidden = false;
+        box.querySelector('input').focus();
+      } else {
+        form.querySelector('input[type="text"]').focus();
+      }
     });
     bar.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const input = bar.querySelector('.fb-form input');
-      try { await send(payload('down', input.value.trim() || null)); done('알려 주셔서 고마워요. 해석을 고치는 데 쓸게요.'); } catch { done('지금은 보내지 못했어요. 잠시 뒤 다시 눌러 주세요.'); }
+      const input = bar.querySelector('.fb-form input[type="text"]');
+      const checked = [...bar.querySelectorAll('.fb-lines input:checked')].map((x) => x.value);
+      let picked = null;
+      if (lines.length > 1 && !checked.includes('all')) {
+        if (!checked.length) {
+          bar.querySelector('.fb-note').textContent = '다른 줄을 하나 이상 골라 주세요. 칸 전체가 다르면 맨 아래를 고르세요.';
+          return;
+        }
+        picked = checked.map((i) => lines[Number(i)]).filter(Boolean);
+      }
+      try { await send(payload('down', input.value.trim() || null, picked)); done('알려 주셔서 고마워요. 고른 줄을 고치는 데 쓸게요.'); } catch { done('지금은 보내지 못했어요. 잠시 뒤 다시 눌러 주세요.'); }
     });
   }
 }

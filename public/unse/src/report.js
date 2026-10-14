@@ -19,7 +19,8 @@
  */
 import { areaText } from './forecast.js';
 import { currentDaeun, computeDaeun, TEN_GOD_GROUP, elementDistribution, tenGod, tenGodDistribution, branchRelations } from './core/ganzhi.js';
-import { buildBoard, decadeLimits, palaceMap, sihwaOn } from './hires/ziwei.js';
+import { buildBoard, decadeLimits, palaceMap, sihwaOn, stackAt } from './hires/ziwei.js';
+import { readAll, auxReads, bestRead } from './hires/interpret.js';
 import { yearTimeline } from './reading.js';
 import { j } from './core/josa.js';
 import { timingFor } from './semantic/compose/timing.js';
@@ -111,7 +112,8 @@ function plain(text) {
   }
   return out.join(' ')
     // 번역투 다듬기: "~한 결입니다" → "~한 편입니다", "~하는 자리입니다" → "~하는 편입니다"
-    .replace(/결(입니다|이라|이고|이에요)/g, '편$1')
+    // 흐리는 말("~편입니다")보다 단정하는 말로(사용자 요청) — 성질을 말하는 "결"은 사람·성향으로
+    .replace(/결입니다/g, '사람입니다').replace(/결이에요/g, '사람이에요').replace(/결(이라|이고)/g, '성향$1')
     .replace(/([가-힣]+[는은운한]) 자리입니다/g, '$1 편입니다')
     .replace(/되는 자리는/g, '되는 경우는')
     .replace(/자녀 자리는 열리는 쪽/g, '자녀 인연이 넉넉한 쪽')
@@ -246,18 +248,6 @@ const AREA = {
  *   어떤 일이 맞는가 · 일하는 방식(조직형/독립형) · 일에서 앞으로 올 변화
  *   돈을 버는 방식 · 쓰는 습관과 모으는 법 · 돈이 크게 움직이는 때 · 일과 돈에서 조심할 것
  */
-/** 맞는 일 갈래마다 어떤 일인지 한두 문장 — 갈래 이름만으로는 무슨 일인지 감이 오지 않는다 */
-const CAREER_DESC = {
-  '돈과 숫자를 다루는 일': '숫자와 돈의 흐름을 읽고 관리하는 일에서 실력이 드러납니다. 금융·회계·재무·투자처럼 결과가 숫자로 남는 일이 맞습니다.',
-  '깊이 파는 전문 분야': '한 분야를 오래 파고들어 전문가가 되는 길이 맞습니다. 연구·분석·기술·법률처럼 정확함이 실력이 되는 일에서 인정받습니다.',
-  '말과 가르침으로 하는 일': '사람 앞에서 말하고 설명하고 가르칠 때 힘이 납니다. 교육·상담·강의·컨설팅·글쓰기처럼 말과 글로 사람을 움직이는 일이 맞습니다.',
-  '감각과 표현을 쓰는 일': '보고 느낀 것을 결과물로 만들어 낼 때 빛납니다. 디자인·콘텐츠·미디어·예술처럼 감각이 곧 실력인 일이 맞습니다.',
-  '사람을 돕고 돌보는 일': '누군가에게 직접 도움이 될 때 보람과 힘을 얻습니다. 의료·돌봄·복지·서비스처럼 사람을 편하게 해 주는 일이 맞습니다.',
-  '조직을 이끌고 관리하는 일': '사람과 일을 정리하고 이끌 때 힘이 납니다. 관리·운영·행정처럼 판을 짜고 책임지는 자리가 맞습니다.',
-  '새 길을 여는 일': '정해진 길보다 새로운 판을 여는 일에서 힘이 납니다. 기획·IT·창업·해외 사업처럼 처음을 만드는 일이 맞습니다.',
-  '몸과 현장을 쓰는 일': '책상 앞보다 몸을 움직이고 현장에서 결과를 확인하는 일에서 힘이 납니다. 체육·제조·건설·현장 관리처럼 손에 잡히는 결과가 나오는 일이 맞습니다.',
-};
-
 function careerLife(v, r) {
   let es = [];
   try { es = dictEntries(r); } catch { /* */ }
@@ -268,16 +258,9 @@ function careerLife(v, r) {
   try { events = lifeEventItems(r); } catch { /* */ }
   const evOf = (domain) => events.filter((e) => e.domain === domain);
 
-  // 어떤 일이 맞는가 — 고른 갈래, 그 갈래의 문장(위 카드가 쓴 첫 문장 다음), 자미 관록궁(같은 갈래일 때)
-  const fitMore = coreField(es, 'w', 30, 0, (t) => FIELD_FIT.test(t)).map((x) => x.text)
-    // 고른 갈래에만 드는 문장 하나만(다른 갈래가 섞인 문장은 말이 엇갈려 보인다)
-    .filter((t) => !focus.lines.includes(t) && catsOf(t).length === 1 && CAREER_CATS[catsOf(t)[0]][0] === focus.name).slice(0, 1);
-  const fit = [
-    focus.name ? `${focus.name}이 맞습니다. ${CAREER_DESC[focus.name] ?? ''}` : '',
-    focus.verified.length ? `그중에서도 ${focus.verified.join(', ')} 분야가 가능성이 높습니다.` : '',
-    ...fitMore,
-    focus.workFits ? `${work.h} ${work.g}` : '',
-  ].filter(Boolean).join(' ');
+  // 어떤 일이 맞는가 — AI 대화와 같은 직업 정책(careerRoles)
+  const roles = careerRoles(r);
+  const fit = [roles.lead, roles.each.length ? `체계마다 본 일 — ${roles.each.join(' / ')}.` : ''].filter(Boolean).join(' ');
 
   // 일하는 방식 — 내 힘·표현(비겁·식상)과 책임·배움(관성·인성)의 견줌으로 조직형인지 독립형인지
   let style = '';
@@ -338,12 +321,13 @@ function careerLife(v, r) {
  * 건강 — 간단히. 가장 옅은 기운과 가장 넘치는 기운을 전통적으로 이어 보는 몸의 자리,
  * 그 기운을 채우는 생활 습관, 몸을 챙겨야 할 때(사건). 진단이 아니라 생활 관리로만 쓴다.
  */
+// 증상("붓는다·뻐근해진다")은 예고하지 않는다 — AI 대화 지침과 같게, 전통적으로 이어 보는 자리만 단정한다
 const ELEM_BODY = {
-  목: '간·눈·근육과 힘줄 쪽으로, 피로가 쌓이면 눈과 어깨·목이 먼저 뻣뻣해지기 쉽습니다.',
-  화: '심장·혈관과 잠 쪽으로, 열이 오르거나 잠이 얕아지기 쉽습니다.',
-  토: '위장과 소화 쪽으로, 끼니가 불규칙해지면 속이 먼저 탈이 나기 쉽습니다.',
-  금: '폐·호흡기와 피부 쪽으로, 환절기에 기침이나 피부 트러블이 먼저 오기 쉽습니다.',
-  수: '신장·방광과 허리·뼈 쪽으로, 몸이 차고 붓거나 허리가 뻐근해지기 쉽습니다.',
+  목: '간·눈·근육과 힘줄을 먼저 챙길 자리로 봅니다.',
+  화: '심장·혈관과 잠을 먼저 챙길 자리로 봅니다.',
+  토: '위장과 소화를 먼저 챙길 자리로 봅니다.',
+  금: '폐·호흡기와 피부를 먼저 챙길 자리로 봅니다.',
+  수: '신장·방광과 허리·뼈를 먼저 챙길 자리로 봅니다.',
 };
 export const ELEM_PART = { 목: '간·눈·근육', 화: '심장·혈관', 토: '위장·소화', 금: '폐·호흡기·피부', 수: '신장·허리' };
 function healthChapter(r) {
@@ -742,6 +726,38 @@ const CAREER_CATS = [
   ['몸과 현장을 쓰는 일', /체육|운동|제조|건설|현장|생산|농업|운송|군|경찰|몸을 쓰/],
 ];
 const catsOf = (t) => CAREER_CATS.map(([, re], i) => (re.test(t) ? i : -1)).filter((i) => i >= 0);
+/**
+ * 직업 — AI 대화와 같은 정책(사례집으로 정한 담당 넷: 자미두수·점성술·사주·베딕을 나란히).
+ * 예전 결과지는 다른 정책(자미·육임·숙요로 고른 분야)을 써서 "금융·보험이 가능성이 높다"처럼
+ * 한 분야를 단정했고, AI 대화와 말이 엇갈렸다(사용자 지적).
+ * 네 체계의 답을 역할로 묶어 **둘 이상이 같은 역할이면 그 역할을 단정**하고, 갈리면 갈린다고 말한다.
+ */
+const CAREER_ROLE = [
+  ['조직 안에서 책임과 관리를 맡는 역할', /공직|관리|행정|조직|직책|제도|공공/],
+  ['가르치고 판단해 주는 역할', /교육|법률|강의|상담|금융|컨설팅/],
+  ['기술과 분석으로 문제를 푸는 역할', /기술|IT|공학|분석|연구|네트워크/],
+  ['앞장서 개척하고 겨루는 역할', /개척|경쟁|체육|군경/],
+  ['사람을 돌보고 서비스하는 역할', /돌봄|서비스|복지|요식|접객/],
+  ['표현하고 만드는 역할', /예술|디자인|글|예능|창작|출판/],
+  ['자기 판을 꾸리는 역할', /자기 사업|독립|자기 판/],
+];
+export function careerRoles(r) {
+  let said = [];
+  try {
+    const st = r.input.timeKnown ? stackAt(r.input, r.input.currentYear, null) : null;
+    said = bestRead([...readAll(r.input, r.chart, st), ...auxReads(r.results ?? r.systems ?? [])])?.직업?.said ?? [];
+  } catch { /* 읽지 못하면 직업 칸을 비운다 */ }
+  const votes = CAREER_ROLE.map(([name, re]) => ({ name, by: said.filter((x) => re.test(x.value)).map((x) => x.system) }))
+    .filter((v) => v.by.length).sort((a, b) => b.by.length - a.by.length);
+  const top = votes[0]?.by.length >= 2 && votes[0].by.length > (votes[1]?.by.length ?? 0) ? votes[0] : null;
+  const lead = !said.length ? ''
+    : top ? `가장 잘 맞는 역할은 ${top.name}이에요. 네 체계 가운데 ${top.by.length}곳(${top.by.join('·')})이 같은 쪽을 가리켜요.`
+    : '직업은 체계마다 보는 역할이 갈려요. 한 분야로 좁히지 말고 아래 넷을 견주어 보세요.';
+  // "개척하는 일 — 경쟁·체육" 처럼 값 안에도 대시가 있어 "점성술: 개척하는 일(경쟁·체육)" 꼴로 적는다
+  const each = said.map((x) => `${x.system}: ${x.value.replace(/ — (.+)$/, '($1)')}`);
+  return { role: top?.name ?? '', lead, each };
+}
+
 export function careerFocus(r) {
   let es = [];
   try { es = dictEntries(r); } catch { /* */ }
@@ -883,14 +899,14 @@ function lifeEventItemsRaw(r) {
     const [title, what, prep] = pickEvent(key, DOMAIN_EVENT[domain]);
     items.push({ y, domain, group: groupAt(y), when: `${ageOf(y)}세 무렵`, title, what, prep });
   }
-  // 사건마다 그 사람 몫의 말을 붙인다 — 일은 맞는 갈래, 돈은 돈을 키우는 방향, 건강은 가장 옅은 기운을 채우는 법
-  const focus = careerFocus(r);
+  // 사건마다 그 사람 몫의 말을 붙인다 — 일은 맞는 역할, 돈은 돈을 키우는 방향, 건강은 가장 옅은 기운을 채우는 법
+  const roles = careerRoles(r);
   let es = [];
   try { es = dictEntries(r); } catch { /* */ }
   const earn = coreField(es, 'm', 1, 0, (t) => EARN.test(t) && !IMPERATIVE.test(t))[0]?.text;
   const weak = weakKey ? ELEM_FILL[weakKey] : null;
   for (const it of items) {
-    if (it.domain === '직업' && focus.name) it.prep += ` 옮긴다면 ${focus.name} 쪽이 이 명반에 맞습니다.`;
+    if (it.domain === '직업' && roles.role) it.prep += ` 옮긴다면 ${roles.role}을 맡는 자리가 이 명반에 맞습니다.`;
     if (it.domain === '재물' && earn) it.what += ` 이 명반은 ${earn}`;
     if (it.domain === '건강' && weak) it.prep += ` 이 명반에서 가장 옅은 것은 ${weak.name} 기운(${weak.means})이라, ${weak.how}`;
   }
@@ -1089,7 +1105,7 @@ function futureDigestRaw(r) {
   try { es = dictEntries(r); } catch { /* */ }
   const pick = (f, n, keep, skip = 0) => coreField(es, f, n, skip, keep).map((x) => x.text);
   const careful = pick('c', 3);
-  const focus = careerFocus(r);
+  const roles = careerRoles(r);
   return {
     hasDict: es.length > 0,
     season: seasonNow(r),
@@ -1097,10 +1113,8 @@ function futureDigestRaw(r) {
       // 직업 분야와 맞는 일을 한 칸으로 — 두 칸으로 나눠 두니 서로 다른 말을 했다
       career: '',
       // "여러 점술이 함께 가리키는 쪽은 …" 머리말은 뺐다(사용자 요청) — 분야와 문장만
-      fields: [
-        focus.verified.length ? `${focus.verified.join(', ')} 분야가 가능성이 높습니다.` : '',
-        ...focus.lines,
-      ].filter(Boolean).concat(!focus.verified.length && !focus.lines.length && focus.name ? [`${focus.name}이 잘 맞습니다.`] : []),
+      // 직업은 AI 대화와 같은 정책으로 — 역할을 단정하고 체계마다 본 일을 나란히(careerRoles)
+      fields: [roles.lead, roles.each.length ? `체계마다 본 일: ${roles.each.join(' / ')}` : ''].filter(Boolean),
       earn: pick('m', 2, (t) => EARN.test(t) && !IMPERATIVE.test(t)),
       // 한 문장만 — 두 문장이면 "안정된 관계를 원합니다"처럼 같은 말이 되풀이되었다
       drawn: pick('r', 1, (t) => DRAWN_TO.test(t)),
@@ -1170,7 +1184,7 @@ function yearLineOf(x) {
     const main = m[2].split('·').filter((st) => STAR_NATURE[st]);
     if (!main.length) return `올해의 기운이 ${where}에 떨어집니다. 그 자리가 비어 있어 큰 사건 없이 지나가기 쉬운 해예요.`;
     const n = STAR_NATURE[main[0]];
-    return `올해의 기운이 ${where}에 떨어집니다. 그 자리에 든 별은 ${n.nature}이라, 올해는 ${n.toward} 일이 앞으로 나오기 쉬워요. 다만 ${n.risk}는 점을 조심하세요.`;
+    return `올해의 기운이 ${where}에 떨어집니다. 그 자리에 든 별은 ${n.nature.replace(/결$/, '성질')}이라, 올해는 ${n.toward} 일이 앞으로 나오기 쉬워요. 다만 ${n.risk}는 점을 조심하세요.`;
   }
   if (x.name === '베딕') {
     const m = /^(\S+) 다샤 · 타라 (.+)$/.exec(x.headline ?? '');

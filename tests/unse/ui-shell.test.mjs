@@ -227,7 +227,9 @@ test('AI 답변마다 👍/👎 + 한 줄(선택)을 받고, 질문 글·출생 
   const fb = await read('src/feedback.js');
   assert.match(ai, /attachAnswerFeedback\(bubble, \{ topic:/);
   assert.match(fb, /export function attachAnswerFeedback\(/);
-  assert.match(fb, /send\(\{ mode: 'ai', section, verdict, snippet: snippetOf\(bubble, names\), comment \}\)/);
+  assert.match(fb, /send\(\{ mode: 'ai', section, verdict, snippet: picked \? picked\.join\(' '\)\.slice\(0, 600\) : snippetOf\(bubble, names\), comment \}\)/);
+  assert.match(fb, /linesOf\(bubble, names\)/);
+  assert.match(fb, /답 전체가 별로예요/);
   assert.doesNotMatch(fb.slice(fb.indexOf('export function attachAnswerFeedback')), /question|context|messages/);
 });
 

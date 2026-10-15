@@ -270,14 +270,6 @@ interface LottoPrediction {
   engineVersion: string | null;
 }
 
-interface LottoStrategyRecalculation {
-  round: number;
-  modelVersion: string;
-  sourceCommit: string;
-  engineVersion: string;
-  predictions: Array<{ model: "S1" | "S2" | "S3"; numbers: number[]; hitCount: number; hitNumbers: number[] }>;
-}
-
 interface LottoPredictionRound {
   round: number;
   drawDate: string;
@@ -385,37 +377,6 @@ function formatLogTime(value: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-const LOTTO_MODELS = ["A", "D", "E", "F", "H", "S1", "S2", "S3"] as const;
-// 화면 표시용 핵심 규칙 한 줄(lib/lotto-future/predictor.ts 의 선정 로직 기준). 저장 모델 식별자는 그대로 쓴다.
-const LOTTO_MODEL_LABELS: Record<LottoPrediction["model"], string> = {
-  A: "달 별자리별 고정 공식",
-  D: "15체계 후보 조합 공식",
-  E: "운세 상태 군집별 공식",
-  F: "유사 과거 10회 최다 번호",
-  H: "행성 경도·날짜 공식",
-  S1: "원본 득표수 우선",
-  S2: "2표 이상 우선",
-  S3: "체계 지지수 우선",
-};
-
-function LottoModelName({ model }: { model: LottoPrediction["model"] }) {
-  return <>{LOTTO_MODEL_LABELS[model] ?? model}<span className="ml-1.5 text-[11px] font-normal text-brown-400">{model}</span></>;
-}
-
-const LOTTO_STRATEGY_MODELS = ["S1", "S2", "S3"] as const;
-
-function officialLottoPrediction(round: LottoPredictionRound, model: LottoPrediction["model"]) {
-  return round.predictions.find((prediction) => prediction.model === model && prediction.active && prediction.official);
-}
-
-function lottoRoundsWithoutOfficialStrategies(rounds: LottoPredictionRound[]) {
-  return rounds.filter((round) => round.actualNumbers && !officialLottoPrediction(round, "S1"));
-}
-
-function sortedLottoNumbers(numbers: number[]) {
-  return [...numbers].sort((a, b) => a - b);
 }
 
 function hasLottoDrawPassed(round: Pick<LottoPredictionRound, "drawDate" | "drawTime">) {
@@ -918,8 +879,6 @@ export default function AdminPage() {
   const [auditLogs, setAuditLogs] = useState<AdminAuditLog[]>([]);
   const [lottoRounds, setLottoRounds] = useState<LottoPredictionRound[]>([]);
   const [lottoGenerating, setLottoGenerating] = useState(false);
-  const [lottoRecalculations, setLottoRecalculations] = useState<LottoStrategyRecalculation[]>([]);
-  const [lottoRecalculating, setLottoRecalculating] = useState(false);
   const [lottoLeaderboardGenerating, setLottoLeaderboardGenerating] = useState(false);
   const [aiCreditStats, setAiCreditStats] = useState<AiCreditStatistics | null>(null);
   const [creditUserId, setCreditUserId] = useState("");
@@ -1273,17 +1232,6 @@ export default function AdminPage() {
     });
     if (response.ok) setLottoRounds(await fetchAdmin<LottoPredictionRound[]>("/api/admin/lotto-future-validations") ?? []);
     else window.alert("추첨시각은 추첨 전에만 변경할 수 있습니다.");
-  }
-
-  async function loadLottoStrategyRecalculations() {
-    setLottoRecalculating(true);
-    try {
-      const rounds = lottoRoundsWithoutOfficialStrategies(lottoRounds);
-      const results = await Promise.all(rounds.map((round) => fetchAdmin<LottoStrategyRecalculation>(`/api/admin/lotto-future-validations/${round.round}/strategy-recalculation`)));
-      setLottoRecalculations(results.filter((result): result is LottoStrategyRecalculation => result != null));
-    } finally {
-      setLottoRecalculating(false);
-    }
   }
 
   async function reviseLottoModel(round: number) {

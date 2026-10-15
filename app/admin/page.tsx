@@ -289,6 +289,7 @@ interface LottoPredictionRound {
   actualNumbers: number[] | null;
   resultConfirmedAt: string | null;
   predictions: LottoPrediction[];
+  leaderboard?: LottoLeaderboardEntry[];
 }
 
 interface DashboardSummary {
@@ -927,6 +928,7 @@ export default function AdminPage() {
   const [lottoGenerating, setLottoGenerating] = useState(false);
   const [lottoRecalculations, setLottoRecalculations] = useState<LottoStrategyRecalculation[]>([]);
   const [lottoRecalculating, setLottoRecalculating] = useState(false);
+  const [lottoLeaderboardGenerating, setLottoLeaderboardGenerating] = useState(false);
   const [aiCreditStats, setAiCreditStats] = useState<AiCreditStatistics | null>(null);
   const [creditUserId, setCreditUserId] = useState("");
   // 회원 질문권 조회 — 조회 버튼을 눌렀을 때의 ID 와, 조정 뒤 다시 읽게 하는 신호
@@ -1302,6 +1304,23 @@ export default function AdminPage() {
     });
     if (response.ok) setLottoRounds(await fetchAdmin<LottoPredictionRound[]>("/api/admin/lotto-future-validations") ?? []);
     else window.alert("모델 revision은 추첨 전에만 생성할 수 있습니다.");
+  }
+
+  async function generateLottoLeaderboard(round: number) {
+    const reason = window.prompt("순위표 생성 사유를 입력하세요.", "순위표 생성");
+    if (!reason?.trim()) return;
+    const token = getToken();
+    if (!token) return;
+    setLottoLeaderboardGenerating(true);
+    try {
+      const response = await authFetch(`${API_BASE}/api/admin/lotto-future-validations/${round}/leaderboard`, {
+        method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ reason: reason.trim() }),
+      });
+      if (response.ok) setLottoRounds(await fetchAdmin<LottoPredictionRound[]>("/api/admin/lotto-future-validations") ?? []);
+      else window.alert("순위표는 추첨 전 회차에서만 만들 수 있고, 직전 회차까지 당첨번호가 입력돼 있어야 합니다.");
+    } finally {
+      setLottoLeaderboardGenerating(false);
+    }
   }
 
   async function searchAdminUsers(event?: React.FormEvent) {

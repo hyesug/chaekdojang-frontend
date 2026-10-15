@@ -84,7 +84,7 @@ export default function AiCreditUserPanel({ userId, refreshKey = 0, canGrant = f
     <div>
       <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-5">
         {[
-          ["총 잔액", `${view.balance.totalBalance}회`],
+          ["총 잔액", view.balance.unlimited ? `무제한 (원장 ${view.balance.totalBalance}회)` : `${view.balance.totalBalance}회`],
           ["무료 (첫 질문·독후감)", `${view.balance.freeRemaining}회`],
           ["구매·지급", `${view.balance.purchasedBalance}회`],
           ["최근 사용", `${used}회`],

@@ -147,7 +147,7 @@ function UserRowView({ u, open, onToggle, refreshKey }: { u: UserRow; open: bool
           {u.admin && <span className="ml-1 rounded bg-sage-100 px-1 text-xs text-sage-700">관리자</span>}
           <span className="block text-xs text-brown-400">#{u.userId}{u.email ? ` · ${u.email}` : ""}</span>
         </td>
-        <td className="whitespace-nowrap py-2 pr-3 text-right font-semibold text-brown-800">{u.totalBalance}회</td>
+        <td className="whitespace-nowrap py-2 pr-3 text-right font-semibold text-brown-800">{u.admin ? <span title={`원장상 잔액 ${u.totalBalance}회`}>무제한</span> : `${u.totalBalance}회`}</td>
         <td className="whitespace-nowrap py-2 pr-3 text-right text-brown-600">{u.freeRemaining} / {u.purchasedBalance}</td>
         <td className="whitespace-nowrap py-2 pr-3 text-right text-brown-600">{u.uses.toLocaleString()}회</td>
         <td className="whitespace-nowrap py-2 pr-3 text-right text-brown-400">{u.failures}</td>

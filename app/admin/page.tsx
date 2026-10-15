@@ -7,6 +7,7 @@ import Link from "next/link";
 import ReviewDetailModal from "../components/ReviewDetailModal";
 import FortuneFeedbackPanel from "./FortuneFeedbackPanel";
 import AiCreditUserPanel from "./AiCreditUserPanel";
+import AiCreditUserList from "./AiCreditUserList";
 import { API_BASE } from "../lib/api";
 import { authFetch, getValidToken } from "../lib/auth";
 
@@ -2628,6 +2629,7 @@ export default function AdminPage() {
                 </div>
                 {aiCreditStats && <p className="mt-4 text-sm text-brown-500">평균 토큰: 입력 {Math.round(aiCreditStats.averageInputTokens).toLocaleString()} · 출력 {Math.round(aiCreditStats.averageOutputTokens).toLocaleString()}</p>}
               </div>
+              <AiCreditUserList refreshKey={creditRefresh} onSelect={(id) => setCreditUserId(String(id))} />
               <div className="rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
                 <h3 className="font-serif text-lg font-bold text-brown-900">회원 질문권 조회</h3>
                 <p className="mt-1 text-sm text-brown-500">회원 ID로 잔액과 최근 원장(사용·독후감 보상·복구·지급)을 봅니다. 회원 상세 화면에도 같은 내용이 있습니다.</p>

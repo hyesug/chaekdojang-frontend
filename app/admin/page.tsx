@@ -410,14 +410,6 @@ function officialLottoPrediction(round: LottoPredictionRound, model: LottoPredic
   return round.predictions.find((prediction) => prediction.model === model && prediction.active && prediction.official);
 }
 
-// 정식 성적: 추첨 전 생성·저장되고 결과가 확정된 예측만 집계한다.
-function lottoStrategyOfficialScores(rounds: LottoPredictionRound[]) {
-  return LOTTO_STRATEGY_MODELS.map((model) => {
-    const hits = rounds.filter((round) => round.actualNumbers).map((round) => officialLottoPrediction(round, model)?.hitCount).filter((hit): hit is number => hit != null);
-    return { model, rounds: hits.length, totalHits: hits.reduce((sum, hit) => sum + hit, 0), bestHit: hits.length ? Math.max(...hits) : 0 };
-  });
-}
-
 function lottoRoundsWithoutOfficialStrategies(rounds: LottoPredictionRound[]) {
   return rounds.filter((round) => round.actualNumbers && !officialLottoPrediction(round, "S1"));
 }

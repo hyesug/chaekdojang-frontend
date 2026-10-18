@@ -110,17 +110,15 @@ test('앞으로 마주할 중요한 일은 시기표가 아니라 사건·모양
   assert.doesNotMatch(html, /출산·가족 확장 신호가 높은 때는 <strong>/);
 });
 
-test('잘 맞는 일은 AI 대화와 같은 직업 정책 — 둘 이상이 같은 역할이면 단정, 체계마다 본 일을 나란히', async () => {
+test('잘 맞는 일은 역할이 아니라 실제 직업 이름으로, 체계 이름·표 수 없이 싣는다', async () => {
   const { careerRoles } = await import('../../public/unse/src/report.js');
   const r = readFortune(A);
   const roles = careerRoles(r);
   const html = personal(A);
-  // 예전 정책의 한 분야 단정은 다시 싣지 않는다
-  assert.doesNotMatch(html, /분야가 가능성이 높습니다/);
-  assert.ok(roles.lead && html.includes(roles.lead.slice(0, 20)));
-  assert.ok(roles.each.length >= 2);
-  if (roles.role) assert.match(roles.lead, /가장 잘 맞는 역할은/);
-  else assert.match(roles.lead, /체계마다 보는 역할이 갈려요/);
+  assert.doesNotMatch(html, /분야가 가능성이 높습니다|체계마다 본 일|같은 쪽을 가리켜요|가장 잘 맞는 역할은/);
+  assert.ok(roles.jobs.length >= 1 && roles.jobs.length <= 4);
+  assert.match(roles.lead, /^잘 맞는 직업은 .+(이에요|예요)\.$/);
+  assert.ok(html.includes(roles.lead.slice(0, 20)));
 });
 
 test('개인 리포트 화면 글에는 전문용어·한자·강조 표시가 남지 않는다', () => {

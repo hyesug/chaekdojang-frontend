@@ -278,7 +278,7 @@ function careerLife(v, r) {
 
   // 어떤 일이 맞는가 — AI 대화와 같은 직업 정책(careerRoles)
   const roles = careerRoles(r);
-  const fit = [roles.lead, roles.each.length ? `체계마다 본 일 — ${roles.each.join(' / ')}.` : ''].filter(Boolean).join(' ');
+  const fit = roles.lead;
 
   // 일하는 방식 — 내 힘·표현(비겁·식상)과 책임·배움(관성·인성)의 견줌으로 조직형인지 독립형인지
   let style = '';
@@ -761,21 +761,50 @@ const CAREER_ROLE = [
   ['표현하고 만드는 역할', /예술|디자인|글|예능|창작|출판/],
   ['자기 판을 꾸리는 역할', /자기 사업|독립|자기 판/],
 ];
+/**
+ * 체계가 낸 직업 말(분야 낱말)을 실제 직업 이름으로 옮긴다.
+ * "조직 안에서 책임과 관리를 맡는 역할"처럼 역할로만 말하면 어느 직업에나 맞는 말이 됐다(사용자 지적).
+ * 여러 체계가 함께 짚은 직업을 앞에 두고, 같으면 표를 많이 받은 역할에 드는 직업을 앞에 둔다.
+ */
+const CAREER_JOB = [
+  ['공무원', /공직|공공|행정|제도권/, 0],
+  ['회사 관리직(총무·인사)', /관리|조직에서 자리|직책|보좌|조율/, 0],
+  ['경찰·군인', /군경/, 3],
+  ['운동선수·체육 지도자', /체육/, 3],
+  ['교사·강사', /교육|가르치|아동/, 1],
+  ['변호사·법무사', /법률/, 1],
+  ['은행원·회계사', /금융|재무|남의 돈|돈과 기술|돈을 직접/, 1],
+  ['상담사', /상담/, 1],
+  ['개발자·엔지니어', /IT|기술|공학|네트워크/, 2],
+  ['연구원', /연구|학술|분석|조사/, 2],
+  ['기획자', /기획/, 2],
+  ['간호사·의료인', /의료/, 4],
+  ['사회복지사', /돌봄|돌보/, 4],
+  ['서비스·접객직(호텔·항공)', /서비스|접객/, 4],
+  ['요리사·외식업', /요식|먹이/, 4],
+  ['영업직', /영업|상업|유통/, 6],
+  ['디자이너', /디자인/, 5],
+  ['작가·편집자', /글|출판/, 5],
+  ['예술가·방송인', /예술|창작|예능/, 5],
+  ['미용사', /미용/, 5],
+  ['공인중개사', /부동산/, 6],
+  ['건설·제조 기술자', /제조|건설|현장/, 3],
+  ['무역·해외 영업', /외국|무역/, 6],
+  ['자영업·창업', /자기 사업|독립|판을 갈아/, 6],
+];
 export function careerRoles(r) {
   let said = [];
   try {
     const st = r.input.timeKnown ? stackAt(r.input, r.input.currentYear, null) : null;
     said = bestRead([...readAll(r.input, r.chart, st), ...auxReads(r.results ?? r.systems ?? [])])?.직업?.said ?? [];
   } catch { /* 읽지 못하면 직업 칸을 비운다 */ }
-  const votes = CAREER_ROLE.map(([name, re]) => ({ name, by: said.filter((x) => re.test(x.value)).map((x) => x.system) }))
-    .filter((v) => v.by.length).sort((a, b) => b.by.length - a.by.length);
-  const top = votes[0]?.by.length >= 2 && votes[0].by.length > (votes[1]?.by.length ?? 0) ? votes[0] : null;
-  const lead = !said.length ? ''
-    : top ? `가장 잘 맞는 역할은 ${top.name}이에요. 네 체계 가운데 ${top.by.length}곳(${top.by.join('·')})이 같은 쪽을 가리켜요.`
-    : '직업은 체계마다 보는 역할이 갈려요. 한 분야로 좁히지 말고 아래 넷을 견주어 보세요.';
-  // "개척하는 일 — 경쟁·체육" 처럼 값 안에도 대시가 있어 "점성술: 개척하는 일(경쟁·체육)" 꼴로 적는다
-  const each = said.map((x) => `${x.system}: ${x.value.replace(/ — (.+)$/, '($1)')}`);
-  return { role: top?.name ?? '', lead, each };
+  const roleVotes = CAREER_ROLE.map(([, re]) => said.filter((x) => re.test(x.value)).length);
+  const jobs = CAREER_JOB.map(([name, re, role], i) => ({ name, i, n: said.filter((x) => re.test(x.value)).length, rv: roleVotes[role] }))
+    .filter((j) => j.n).sort((a, b) => b.n - a.n || b.rv - a.rv || a.i - b.i).slice(0, 4).map((j) => j.name);
+  // 받침에 따라 "이에요/예요" — 괄호로 끝나면 괄호 앞 글자를 본다
+  const last = jobs.length ? jobs[jobs.length - 1].replace(/\([^)]*\)$/, '').slice(-1).charCodeAt(0) - 0xac00 : -1;
+  const lead = jobs.length ? `잘 맞는 직업은 ${jobs.join(', ')}${last >= 0 && last % 28 ? '이에요' : '예요'}.` : '';
+  return { jobs, lead, each: [] };
 }
 
 export function careerFocus(r) {
@@ -926,7 +955,7 @@ function lifeEventItemsRaw(r) {
   const earn = coreField(es, 'm', 1, 0, (t) => EARN.test(t) && !IMPERATIVE.test(t))[0]?.text;
   const weak = weakKey ? ELEM_FILL[weakKey] : null;
   for (const it of items) {
-    if (it.domain === '직업' && roles.role) it.prep += ` 옮긴다면 ${roles.role}을 맡는 자리가 이 명반에 맞습니다.`;
+    if (it.domain === '직업' && roles.jobs.length) it.prep += ` 옮긴다면 ${roles.jobs.slice(0, 2).join('·')} 쪽이 이 명반에 맞습니다.`;
     if (it.domain === '재물' && earn) it.what += ` 이 명반은 ${earn}`;
     if (it.domain === '건강' && weak) it.prep += ` 이 명반에서 가장 옅은 것은 ${weak.name} 기운(${weak.means})이라, ${weak.how}`;
   }
@@ -1133,8 +1162,8 @@ function futureDigestRaw(r) {
       // 직업 분야와 맞는 일을 한 칸으로 — 두 칸으로 나눠 두니 서로 다른 말을 했다
       career: '',
       // "여러 점술이 함께 가리키는 쪽은 …" 머리말은 뺐다(사용자 요청) — 분야와 문장만
-      // 직업은 AI 대화와 같은 정책으로 — 역할을 단정하고 체계마다 본 일을 나란히(careerRoles)
-      fields: [roles.lead, roles.each.length ? `체계마다 본 일: ${roles.each.join(' / ')}` : ''].filter(Boolean),
+      // 직업은 체계들이 짚은 분야를 실제 직업 이름으로 옮겨 싣는다(careerRoles)
+      fields: [roles.lead].filter(Boolean),
       earn: pick('m', 2, (t) => EARN.test(t) && !IMPERATIVE.test(t)),
       // 한 문장만 — 두 문장이면 "안정된 관계를 원합니다"처럼 같은 말이 되풀이되었다
       drawn: pick('r', 1, (t) => DRAWN_TO.test(t)),

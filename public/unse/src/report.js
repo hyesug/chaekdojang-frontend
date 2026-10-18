@@ -767,40 +767,73 @@ const CAREER_ROLE = [
  * 여러 체계가 함께 짚은 직업을 앞에 두고, 같으면 표를 많이 받은 역할에 드는 직업을 앞에 둔다.
  */
 const CAREER_JOB = [
-  ['공무원', /공직|공공|행정|제도권/, 0],
-  ['회사 관리직(총무·인사)', /관리|조직에서 자리|직책|보좌|조율/, 0],
-  ['경찰·군인', /군경/, 3],
-  ['운동선수·체육 지도자', /체육/, 3],
-  ['교사·강사', /교육|가르치|아동/, 1],
-  ['변호사·법무사', /법률/, 1],
-  ['은행원·회계사', /금융|재무|남의 돈|돈과 기술|돈을 직접/, 1],
-  ['상담사', /상담/, 1],
-  ['개발자·엔지니어', /IT|기술|공학|네트워크/, 2],
-  ['연구원', /연구|학술|분석|조사/, 2],
-  ['기획자', /기획/, 2],
-  ['간호사·의료인', /의료/, 4],
-  ['사회복지사', /돌봄|돌보/, 4],
-  ['서비스·접객직(호텔·항공)', /서비스|접객/, 4],
-  ['요리사·외식업', /요식|먹이/, 4],
-  ['영업직', /영업|상업|유통/, 6],
-  ['디자이너', /디자인/, 5],
-  ['작가·편집자', /글|출판/, 5],
-  ['예술가·방송인', /예술|창작|예능/, 5],
-  ['미용사', /미용/, 5],
-  ['공인중개사', /부동산/, 6],
-  ['건설·제조 기술자', /제조|건설|현장/, 3],
-  ['무역·해외 영업', /외국|무역/, 6],
-  ['자영업·창업', /자기 사업|독립|판을 갈아/, 6],
+  ['공무원', /공직|공공|제도권|행정/],
+  ['사무·관리직(총무·경리)', /관리|행정|실무|문서|직책|보좌|조율|조직에서 자리/],
+  ['경찰·군인', /군경/],
+  ['운동선수·트레이너', /체육/],
+  ['교사·강사', /교육|가르치|아동|말과/],
+  ['변호사·법무사', /법률/],
+  ['금융·보험·회계직', /금융|재무|남의 돈|돈과 기술|돈을 직접/],
+  ['상담사', /상담|중재/],
+  ['개발자', /IT|네트워크/],
+  ['엔지니어·기술자', /기술|공학|제조/],
+  ['연구원', /연구|학술|분석|조사/],
+  ['기획자', /기획/],
+  ['간호사·의료인', /의료/],
+  ['사회복지사', /돌봄|돌보/],
+  ['서비스·접객직', /서비스|접객|사교/],
+  ['요리사·외식업', /요식|먹이|농식품/],
+  ['영업·판매직', /영업|상업|유통/],
+  ['디자이너', /디자인/],
+  ['작가·편집자', /글|출판/],
+  ['예술가·방송인', /예술|창작|예능/],
+  ['미용사', /미용/],
+  ['공인중개사', /부동산/],
+  ['건설 현장직', /건설|현장/],
+  ['무역·해외 영업', /외국|무역/],
+  ['자영업·창업', /사업|독립|판을 갈아/],
 ];
-export function careerRoles(r) {
-  let said = [];
+/** 담당 체계들이 직업에 대해 한 말([{ system, value }]) */
+export function careerSaid(r) {
   try {
     const st = r.input.timeKnown ? stackAt(r.input, r.input.currentYear, null) : null;
-    said = bestRead([...readAll(r.input, r.chart, st), ...auxReads(r.results ?? r.systems ?? [])])?.직업?.said ?? [];
-  } catch { /* 읽지 못하면 직업 칸을 비운다 */ }
-  const roleVotes = CAREER_ROLE.map(([, re]) => said.filter((x) => re.test(x.value)).length);
-  const jobs = CAREER_JOB.map(([name, re, role], i) => ({ name, i, n: said.filter((x) => re.test(x.value)).length, rv: roleVotes[role] }))
-    .filter((j) => j.n).sort((a, b) => b.n - a.n || b.rv - a.rv || a.i - b.i).slice(0, 4).map((j) => j.name);
+    return bestRead([...readAll(r.input, r.chart, st), ...auxReads(r.results ?? r.systems ?? [])])?.직업?.said ?? [];
+  } catch { return []; /* 읽지 못하면 직업 칸을 비운다 */ }
+}
+/** 한 체계의 말에서 나온 직업 — 말 안에서 먼저 나온 낱말의 직업이 앞(그 체계가 가장 먼저 꼽은 분야) */
+const jobsIn = (value) => CAREER_JOB.map(([name, re]) => ({ name, at: value.search(re) })).filter((j) => j.at >= 0)
+  .sort((a, b) => a.at - b.at).map((j) => j.name);
+/**
+ * 사례로 검증된 직업 범주(verifiedCareer: 자미두수·육임·숙요 합산 상위 3범주)를 실제 직업 이름으로.
+ * 2026-10-18 사례집: 이 범주에서 뽑은 직업이 실제 직업과 맞은 사람 5/9(시각 없는 2명 제외, 찍기 기대 약 1.8명).
+ * 네 담당 체계(자미·점성·사주·베딕) 말에서 뽑은 직업은 3/11 로 찍기 수준이라, 출생 시각이 없을 때만 쓴다.
+ */
+const CATEGORY_JOBS = {
+  it_software: ['개발자', '데이터 분석가'], engineering: ['엔지니어', '기계·설비 기술자'], research_analysis: ['연구원', '데이터 분석가'],
+  planning_management: ['기획자', '사무·관리직'], finance_insurance: ['회계사·경리', '은행원·보험설계사'], sales_commerce: ['영업직', '판매·유통업'],
+  education_counsel: ['교사·강사', '상담사'], medical_health: ['간호사·의료인', '물리치료사'], sports: ['헬스트레이너', '운동선수'],
+  beauty_design: ['미용사', '디자이너'], arts_content: ['작가·예술가', '콘텐츠 제작자'], food_service: ['요리사·외식업', '서비스·접객직'],
+  public_admin: ['공무원', '경찰·소방관'], manufacturing_construction: ['생산·제조직', '건설 기술자'], transport_machine: ['기관사·운전직', '기계 정비사'],
+};
+function verifiedJobs(r) {
+  let vc = null;
+  try { vc = verifiedCareer(r.input); } catch { /* */ }
+  if (!vc?.available) return [];
+  const cats = vc.top.map((x) => CATEGORY_JOBS[x.key] ?? []);
+  // 범주마다 대표 직업 하나씩, 남는 칸은 1순위 범주의 둘째 직업
+  const jobs = [];
+  for (const js of [...cats.map((c) => c[0]), cats[0]?.[1]]) if (js && !jobs.includes(js) && jobs.length < 4) jobs.push(js);
+  return jobs;
+}
+export function careerRoles(r) {
+  const verified = verifiedJobs(r);
+  const said = verified.length ? [] : careerSaid(r);
+  // 둘 이상의 체계가 함께 짚은 직업을 먼저, 그다음은 체계마다 앞선 직업을 하나씩 돌아가며 — 낱말이 많은 체계 하나가
+  // 칸을 다 채우지 않게 한다(예전엔 베딕 "교육·법률·금융·상담" 넷이 칸을 독차지했다)
+  const per = said.map((x) => jobsIn(x.value));
+  const count = new Map(); per.forEach((js) => new Set(js).forEach((j) => count.set(j, (count.get(j) ?? 0) + 1)));
+  const jobs = verified.length ? verified : [...count].filter(([, c]) => c >= 2).sort((a, b) => b[1] - a[1]).map(([j]) => j).slice(0, 4);
+  for (let k = 0; jobs.length < 4 && per.some((js) => js.length > k); k++) for (const js of per) if (js[k] && !jobs.includes(js[k]) && jobs.length < 4) jobs.push(js[k]);
   // 받침에 따라 "이에요/예요" — 괄호로 끝나면 괄호 앞 글자를 본다
   const last = jobs.length ? jobs[jobs.length - 1].replace(/\([^)]*\)$/, '').slice(-1).charCodeAt(0) - 0xac00 : -1;
   const lead = jobs.length ? `잘 맞는 직업은 ${jobs.join(', ')}${last >= 0 && last % 28 ? '이에요' : '예요'}.` : '';

@@ -46,8 +46,24 @@ let session = null;
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+/**
+ * 화면에 보일 때만 "첫 번째 사람·두 번째 사람"을 입력한 이름으로 바꾼다(이름이 없으면 그대로).
+ * AI 로는 이름을 보내지 않는다(redactNames) — 바꾸는 것은 화면·복사 글뿐이다.
+ * "사람"과 "님"이 둘 다 ㅁ 받침이라 뒤 조사(이·은·과)가 그대로 맞는다.
+ */
+function showNames(t) {
+  let out = String(t ?? '');
+  for (const [name, label] of session?.names ?? []) {
+    const n = String(name ?? '').trim();
+    if (!n || !PAIR_LABELS.includes(label)) continue;
+    out = out.split(`${label}님`).join(`${n}님`).split(label).join(`${n}님`);
+  }
+  return out;
+}
+
 /** 문단을 최소한으로만 꾸민다. 마크다운 전체를 지원하지는 않는다 */
 function renderText(t) {
+  t = showNames(t);
   // 모델이 줄바꿈 대신 넣는 역슬래시 줄("\", "- \")과 불릿 사이 빈 줄을 걷는다 — 빈 불릿이 '* \'로 보였다
   t = String(t ?? '')
     .replace(/^[ \t]*(?:[-*•][ \t]*)?\\[ \t]*$/gm, '')
@@ -403,7 +419,7 @@ function wire(context, calc = null, compat = null) {
   function paintAnswer(bubble, text, withFollowUps = true) {
     const { body, followUps } = splitFollowUps(text);
     bubble.innerHTML = `<p>${renderText(body)}</p>`;
-    addCopy(bubble, body);
+    addCopy(bubble, showNames(body));
     log.querySelectorAll('.ai-follow').forEach((x) => x.remove());
     if (withFollowUps && followUps.length) {
       const row = document.createElement('div');
@@ -411,7 +427,7 @@ function wire(context, calc = null, compat = null) {
       for (const q of followUps) {
         const b = document.createElement('button');
         b.type = 'button';
-        b.textContent = q;
+        b.textContent = showNames(q);
         b.addEventListener('click', () => ask(q));
         row.appendChild(b);
       }
@@ -499,7 +515,8 @@ function wire(context, calc = null, compat = null) {
     log.scrollTop = log.scrollHeight;
     log.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-    session.messages.push({ role: 'user', content: question });
+    // 직접 친 질문에 들어간 이름도 AI 로는 순서 이름으로 보낸다
+    session.messages.push({ role: 'user', content: redactNames(question, session.names) });
     let acc = '';
 
     try {

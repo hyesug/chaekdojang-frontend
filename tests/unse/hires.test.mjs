@@ -442,6 +442,26 @@ test('문맥은 계산과 해석을 구획으로 갈라 놓는다', () => {
   assert.ok(h.text.length <= 40_000, `고해상도 문맥이 ${h.text.length}자`);
 });
 
+test('남을까 옮길까를 물으면 후보 순위로 판정하지 않게 막고, 직업 궁 사화를 먼저 보인다', () => {
+  // 2026-10-19 사용자 지적: "2027년에 회사를 지키는 게 낫냐"에 '직무·역할 변경'(같은 회사인지
+  // 새 회사인지 가리지 않는 후보)을 근거로 "네, 지키는 쪽"이라 판정했고, 관록궁 화권은 빠뜨렸고,
+  // 점수가 음수일 뿐인 '창업·독립'을 "막는 신호"로 단정했다
+  const { r, f } = load(FORM);
+  const plan = routeQuestion('2027년에 회사를 지키는게 낫냐', 2026);
+  assert.equal(plan.asksStayOrGo, true);
+  const h = buildHiRes(r, f, plan);
+  assert.match(h.text, /두 길 중 하나를 고르는/);
+  assert.match(h.text, /지금 회사 안인지 새 회사인지를 가리지 않는다/);
+  assert.match(h.text, /직업 핵심 궁\(관록궁\)에 직접 떨어진 사화/);
+  assert.doesNotMatch(h.text, /쪽을 막는 신호가 있다/);
+  // 시기 질문·다른 분야에는 켜지 않는다
+  assert.equal(routeQuestion('2027년 이직 시기가 언제인가요?', 2026).asksStayOrGo, false);
+  assert.equal(routeQuestion('이 사람과 계속 만나도 될까', 2026).asksStayOrGo, false);
+  for (const q of ['지금 회사에 남는 게 나을까 옮길까', '이 직장 계속 다니는 게 맞아?', '회사를 버틸까 나갈까']) {
+    assert.equal(routeQuestion(q, 2026).asksStayOrGo, true, q);
+  }
+});
+
 test('지역을 물으면 방향은 계산으로, 도시는 추정으로 표시한다', () => {
   const { r, f } = load(FORM);
   const h = buildHiRes(r, f, routeQuestion('서울과 부산 중 어디가 나을까요?', 2026));

@@ -1000,7 +1000,7 @@ export function inferEvents(grid, domain, opts = {}) {
     scenarios: {
       main: main && { name: main.name, weight: main.score > 0 ? '상대적으로 강함' : '근거 얇음' },
       alternative: alternative && { name: alternative.name, weight: '중간' },
-      contrary: contrary && { name: contrary.name, note: '이 방향을 막는 신호가 있다' },
+      contrary: contrary && { name: contrary.name, note: '근거가 가장 얇다(반대쪽 신호가 더 많을 뿐, 막힌다는 뜻은 아니다)' },
     },
     confidence: confidenceOf(activeSystems),
     activeSystems,

@@ -57,6 +57,38 @@ const NOT_A_DETECTOR = [
   '봉우리를 세어 사건의 횟수를 말하지 말 것.',
 ];
 
+/**
+ * 두 길 중 하나를 고르는 질문 — 사건 후보 순위로 판정하지 않게 막는다.
+ *
+ * "2027년에 회사를 지키는 게 낫냐"에 '직무·역할 변경'(같은 회사인지 새 회사인지 가리지
+ * 않는 후보)을 근거로 "네, 지키는 쪽"이라 답했다(2026-10-19 사용자 지적). 이사·주거·결혼·
+ * 자녀·학업 후보에는 '그대로 두는 쪽'이 아예 없어 같은 일이 어느 분야에서나 생긴다.
+ * 다만 회피도 답이 아니다 — 흐름을 근거로 어느 쪽이 더 맞는지는 조건과 함께 분명히 말하게 한다.
+ */
+function choiceLines(j, plan) {
+  const STAY = { 직업: '현 직장 유지' };
+  const out = ['### ⚠ 이 질문은 **두 길 중 하나를 고르는** 질문이다 — 아래 사건 후보 순위는 판정 근거가 아니다'];
+  out.push("- 사건 후보는 '무언가 일어나는 쪽'을 줄 세운 것이다. 이사·주거·결혼·자녀·학업에는 '그대로 두는 쪽' 후보가 아예 없고, " +
+    "직업도 '전환' 신호가 이동 쪽 여럿에 더해지고 '현 직장 유지'에서만 빠진다(실측: 유지가 이기는 달 0~6%). 그래서 1위는 늘 '하는 쪽'으로 기운다.");
+  for (const c of j.candidateEvents ?? []) {
+    const top = c.scenarios?.main?.name;
+    if (STAY[c.domain] && top === STAY[c.domain]) {
+      out.push(`- [${c.domain}] 이번 계산은 '${top}'가 1위다. 구조상 불리한데도 이긴 것이라 그대로 두는 쪽에 무게를 둘 수 있다.`);
+    } else if (top) {
+      out.push(`- [${c.domain}] 1위 '${top}'는 "그 일이 일어나기 쉬운 결"일 뿐, 하는 게 낫다는 판정이 아니다.`);
+    }
+  }
+  if (plan.asksStayOrGo) {
+    out.push("- 직업: '직무·역할 변경'·'승진·보상 조정'·'조직 개편에 따른 이동'은 **지금 회사 안인지 새 회사인지를 가리지 않는다.** " +
+      '이 후보가 주 시나리오여도 "회사에 남는다"는 근거가 아니다.');
+  }
+  out.push('**답하는 법:** 첫 문장에서 사건 후보만으로 "○○하는 게 낫다"고 판정하지 말 것. 그렇다고 "운세로는 알 수 없다"로 피하지도 말 것. ' +
+    '그 시기에 무엇이 강해지고 무엇이 약해지는지(질문 분야 핵심 궁의 사화, 사주 세운의 십성·합충, MC·해당 하우스 같은 계산값)를 근거로 ' +
+    '"지금 흐름은 ○○ 쪽과 더 맞는다 — 다만 ~이면 반대쪽"처럼 기울기와 갈림 조건을 함께 분명히 말한다.');
+  out.push('');
+  return out;
+}
+
 const p2 = (n) => String(n).padStart(2, '0');
 
 /**
@@ -549,7 +581,7 @@ export function formatHiRes(j, plan) {
   out.push(`신뢰도 표기 — ${CONFIDENCE_LEGEND}`);
   if (!monthly) out.push('달 단위 값(월운·유월·달별 트랜싯·고차라)은 이번 질문이 달을 묻지 않아 싣지 않았다. 시기는 해 단위로 답할 것.');
   if (j.matchedQuestion === false) {
-    out.push('※ 질문이 특정 분야(직업·재물·연애…)를 묻지 않는다. 아래 분야별 시기 계산은 참고만 하고, 질문 자체에 맞는 명반 배치·그날/그달 운으로 답할 것. 이런 내부 사정은 사용자에게 설명하지 말 것.');
+    out.push('※ 질문이 특정 분야(직업·재물·연애…)를 묻지 않는다. 분야별 사건 후보는 싣지 않았으니, 질문 자체에 맞는 명반 배치·그날/그달 운으로 답할 것. 이런 내부 사정은 사용자에게 설명하지 말 것.');
   }
   out.push('');
 
@@ -606,6 +638,16 @@ export function formatHiRes(j, plan) {
           (p.repeated.length ? ` · 겹침 ${p.repeated.map((x) => `${x.branchName}×${x.layers}`).join(',')}` : '') + ')');
         for (const row of p.rows) out.push(`    ${ZE.formatPalace(row)}`);
       }
+      // 이 분야 궁 자체에 떨어진 사화를 한 줄로 모은다. 줄 사이에 묻혀 있으니 답이
+      // 명궁 화기 하나만 집고 관록궁 화권은 빠뜨렸다(2026-10-19 사용자 지적)
+      // 명궁은 어느 분야에나 들어가니, 그 분야의 핵심 궁(직업=관록궁, 재물=재백궁 …)을 앞에 둔다
+      const core = g.palaces.find((p) => p.palace !== '명궁') ?? g.palaces[0];
+      const lines = (ps) => ps.flatMap((p) => p.rows.filter((row) => row.sihwa.length)
+        .map((row) => `${row.layer} ${row.palace} ${row.branchName}(원국 ${row.natalPalace})에 ${row.sihwa.join('·')}`));
+      const coreLines = core ? lines([core]) : [], restLines = lines(g.palaces.filter((p) => p !== core));
+      out.push(`  ▶ ${g.domain} 핵심 궁(${core?.palace ?? '—'})에 직접 떨어진 사화: ${coreLines.join(' / ') || '없음 — 삼방사정 쪽 사화로 볼 것'}`);
+      if (restLines.length) out.push(`    그 밖의 ${g.domain} 관련 궁: ${restLines.join(' / ')}`);
+      out.push('    자미두수를 근거로 쓸 때는 **핵심 궁 사화부터** 쓸 것. 화록·화권·화과·화기를 함께 보고, 한 궁의 화기 하나만 들어 결론 내지 말 것.');
     }
     if (monthly) out.push('유월 (음력 달 기준. 앞의 날짜는 짝지은 절기월의 시작일이다):');
     for (const m of monthly ? cap(j.ziwei.monthly, 72) : []) {
@@ -704,11 +746,24 @@ export function formatHiRes(j, plan) {
     out.push('');
   }
 
+  // 남을까 옮길까 — 아래 사건 후보를 보기 전에 막는다. 뒤에 적으면 이미 주 시나리오로 판정한 다음이다
+  if (plan.asksChoice || plan.asksStayOrGo) out.push(...choiceLines(j, plan));
+
   out.push(...interpretedLines(j));
+
+  // 분야를 가리지 않은 질문(이번 달 운세·인생 흐름·가족)에는 기본 분야(직업)의 사건 후보를 싣지 않는다.
+  // "참고만 하라"고 적어 두었지만 '직업 주 시나리오: 외부 제안으로 이동'이 그대로 실려 답이 직장 얘기로
+  // 끌려갔다(2026-10-19 답변 품질 전수 점검). [A] 계산 사실은 위에 그대로 남는다
+  // (사건 후보·프로파일·단언 등급은 afterBaseRates 가 빼고, 지역·부위 같은 구획은 남긴다)
+  if (j.matchedQuestion === false) {
+    out.push('### 분야를 가리지 않은 질문 — 특정 분야의 사건 후보·기저율은 싣지 않았다');
+    out.push('위 [A] 계산 사실과 기본 문맥(올해·이번 달 흐름, 명반 배치)으로 질문 자체에 답할 것.');
+    out.push('');
+  }
 
   // ── F. 기저율 — 순위를 보기 전에 ──
   // 뒤에 적으면 이미 순위를 확률로 읽은 다음이다
-  for (const b of j.baseRates ?? []) {
+  for (const b of j.matchedQuestion === false ? [] : j.baseRates ?? []) {
     out.push(BR.formatBaseRate(b.domain, j.who));
     out.push('');
   }
@@ -766,6 +821,8 @@ function interpretedLines(j) {
 /** formatHiRes 의 기저율 다음 부분 (사건 추론부터 끝까지) */
 function afterBaseRates(j, plan) {
   const out = [];
+  // 분야를 가리지 않은 질문이면 기본 분야(직업)의 사건 추론·프로파일·단언 등급을 빼낸다
+  const keepEvents = j.matchedQuestion !== false;
   // ── B~E. 사건 추론 ──
   out.push('### [B~E] 사건 추론 — 위 계산값을 현실 사건으로 옮긴 것 (계산이 아니라 해석)');
   out.push('구간 등급은 이 사람의 이 기간 안에서의 상대 순위다. 확률이 아니며 숫자로 옮기지 말 것.');
@@ -836,9 +893,12 @@ function afterBaseRates(j, plan) {
       }
     }
     if (c.scenarios.alternative) out.push(`  대안: ${mark(c.scenarios.alternative.name)}`);
-    if (c.scenarios.contrary) out.push(`  반대 근거: ${c.scenarios.contrary.name} 쪽을 막는 신호가 있다`);
+    // 점수가 음수라는 건 반대쪽 신호가 더 많다는 뜻일 뿐이다. "막는 신호"로 적었더니
+    // 답이 "창업은 막혀 있다"로 단정했다(2026-10-19 사용자 지적)
+    if (c.scenarios.contrary) out.push(`  근거가 가장 얇은 쪽: ${c.scenarios.contrary.name} — 반대쪽 신호가 더 많을 뿐, "막혀 있다·불가능하다"로 단정하지 말 것`);
   }
   out.push('');
+  if (!keepEvents) out.length = 0;
 
   // ── 몸의 어느 자리인가 — 건강 질문에만 ──
   if (j.body) {
@@ -872,6 +932,7 @@ function afterBaseRates(j, plan) {
   }
 
   // ── 분야별 프로파일 — 누구와·어떤 모양으로 ──
+  const beforeProfiles = out.length;
   if (j.profiles?.length) {
     out.push('### [B~E] 프로파일 — "무엇이 일어나는가"를 "어떤 것인가"까지 내린 것');
     out.push('항목마다 근거를 달았다. 근거를 대지 못하는 항목은 아예 만들지 않았으니, 여기 없는 차원은 답에서도 만들지 말 것.');
@@ -911,6 +972,7 @@ function afterBaseRates(j, plan) {
     if (j.chain.notes.length) out.push(`  ${j.chain.notes.join(' · ')}`);
   }
   out.push('');
+  if (!keepEvents) out.length = beforeProfiles;
 
   // ── 지역 ──
   if (j.location) {

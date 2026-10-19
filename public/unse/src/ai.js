@@ -242,14 +242,14 @@ export function initAI(form, fortune, forecast) {
 /** 달을 묻는 질문 — 이때만 달 단위 계산(월운·유월·트랜싯)과 달 표를 싣는다 */
 const MONTH_ASK = /몇 ?월|달별|월별|이번 ?달|다음 ?달|어느 ?달|무슨 ?달|몇 ?달|\d{1,2} ?월에/;
 
-function focusFor(question, calc, prevPlan = null) {
+export function focusFor(question, calc, prevPlan = null) {
   if (!calc?.fortune) return null;
   try {
     // 후속 질문("아까 그 시기", "그중 몇 월")은 앞 질문의 분야·기간을 잇는다
     const routed = inheritPlan(routeQuestion(question, calc.fortune.input.currentYear), prevPlan);
     // 달을 물었을 때만 달 단위 계산을 싣는다(hires/context.js formatHiRes)
     const plan = { ...routed, wantsMonths: routed.needsDay || MONTH_ASK.test(question) };
-    session.lastPlan = plan;
+    if (session) session.lastPlan = plan;
     const hires = buildHiRes(calc.fortune, calc.forecast, plan);
     // 성향만 물었으면 시기 계산·분야 구획 없이 속성별 담당 체계 구획만 보낸다
     if (plan.traitsOnly) return formatTraits(hires.json) || hires.text;

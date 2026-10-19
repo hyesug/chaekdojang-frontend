@@ -139,3 +139,35 @@ test('Opus 5.5 — thinking 을 끄지 않고(400) effort 로 깊이만 낮추�
   assert.match(route, /max_tokens: THINKING_BUDGET\[detail\],/);
   assert.match(route, /output_config: \{ effort: wantsThinking\(tier, detail\) \? "medium" as const : "low" as const \}/);
 });
+
+test('복합 질문은 심층, 길이 지시는 세 단계 모두 붙는다(2026-10-19)', async () => {
+  const { detailLevel, lengthHint } = await import('../../app/fortune-ai/conversation.ts');
+  assert.equal(detailLevel('내 직업운이랑 재물운을 종합해서 봐줘'), 'long');
+  assert.equal(detailLevel('이직하면 좋은 점은? 나쁜 점은?'), 'long');
+  assert.equal(detailLevel('올해 이직해도 될까?'), 'normal');
+  assert.match(lengthHint('short'), /2~5문장/);
+  assert.match(lengthHint('normal'), /700~1,200자/);
+  assert.match(lengthHint('long'), /1,200~2,000자.*엇갈리는 근거.*종합/);
+});
+
+test('단순 질문만 고해상도 층별 원자료를 빼고 보낸다 — 담당 체계 읽기·단언 등급은 남긴다', async () => {
+  const { slimFocus } = await import('../../app/fortune-ai/conversation.ts');
+  const focus = ['## 고해상도 계산', '### [A] 계산 사실 — 사주 다층 (원국×대운×세운×월운)', 'x', '### [A] 계산 사실 — 자미두수 층 (원국·대한·유년·유월)', 'y',
+    '### [A] 계산 사실 — 베딕 (다샤)', 'z', '### [B~D] 속성마다 담당 체계 하나가 읽은 것', 'w', '### [B~E] 사건마다 따로 세운 달', 'v', '### 단언 등급 — 얼마나', 'u'].join('\n');
+  const short = slimFocus(focus, 'short');
+  assert.match(short, /사주 다층/); assert.match(short, /\[B~D\]/); assert.match(short, /단언 등급/);
+  assert.doesNotMatch(short, /자미두수 층|베딕 \(다샤\)|사건마다 따로 세운 달/);
+  assert.equal(slimFocus(focus, 'normal'), focus);
+  assert.equal(slimFocus(focus, 'long'), focus);
+});
+
+test('답 길이 세 단계와 인과 설명·후속 질문 규칙이 시스템 지시에 있다', async () => {
+  const { readFileSync } = await import('node:fs');
+  const P = readFileSync('app/fortune-ai/route.ts', 'utf8');
+  assert.match(P, /단순\(사실 하나·한 줄 요청\): 소제목 없이 2~5문장/);
+  assert.match(P, /일반: 700~1,200자/);
+  assert.match(P, /심층\(비교·여러 갈래·"자세히"·종합\): 1,200~2,000자/);
+  assert.match(P, /\*\*계산값 → 그 뜻 → 그래서 이 질문에는\*\*/);
+  assert.match(P, /\*\*후속 질문\*\*/);
+  assert.doesNotMatch(P, /800~1,500자/);
+});

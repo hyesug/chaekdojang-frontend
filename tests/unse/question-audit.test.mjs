@@ -93,3 +93,17 @@ test('둘 중 하나를 물으면 하나를 고르게 하고, 두 사람은 순�
   assert.match(ai, /function showNames\(t\)/);
   assert.match(ai, /content: redactNames\(question, session\.names\)/);
 });
+
+test('결혼식 날짜 후보 — 18개월 달마다 주말, 가까운 석 달은 따로 표시하고 가까운 날부터 고르지 말라고 적는다', async () => {
+  const { readFortune } = await import('../../public/unse/src/engine.js');
+  const { weddingDayCandidates } = await import('../../public/unse/src/aiContext.js');
+  const A = readFortune({ name: 'a', gender: 'male', year: 1990, month: 3, day: 2, hour: 9, minute: 0, birthPlace: '서울', homePlace: '서울' });
+  const B = readFortune({ name: 'b', gender: 'female', year: 1992, month: 8, day: 20, hour: 9, minute: 30, birthPlace: '부산', homePlace: '부산' });
+  const text = weddingDayCandidates(A, B, 18, new Date('2026-10-19T03:00:00Z'));
+  const rows = text.split('\n').filter((l) => /^\d{4}년 \d{1,2}월/.test(l));
+  assert.ok(rows.length >= 17, `달 수 ${rows.length}`);
+  assert.equal(rows.filter((l) => l.includes('가까운 석 달')).length, 3);
+  for (const l of rows) for (const d of l.matchAll(/\((.)\)/g)) assert.match(d[1], /[토일]/);
+  assert.match(text, /가장 가까운 날부터 고르지 말 것/);
+  assert.match(text, /2027년 /);
+});

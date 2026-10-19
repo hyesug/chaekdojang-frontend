@@ -10,7 +10,7 @@
  */
 
 import { buildContext, READING_PROMPT, buildCompatContext, COMPAT_PROMPT,
-         domainSections, monthSection, dayContext, targetDayContext, FAMILY_NOTE } from './aiContext.js';
+         domainSections, monthSection, dayContext, targetDayContext, FAMILY_NOTE, weddingDayCandidates } from './aiContext.js';
 import { readForecast } from './forecast.js';
 import { routeQuestion, inheritPlan, targetDayOf } from './hires/router.js';
 import { buildHiRes, formatTraits } from './hires/context.js';
@@ -311,7 +311,10 @@ function pairFocus(question, compat) {
     const rel = PAIR.relationshipCharts(compat.A, compat.B, mw.rows.map((r) => r.year));
     const nav = PAIR.navamsaPair(compat.A, compat.B);
     // 이름은 AI 로 보내지 않는다(개인정보처리방침). 두 사람은 순서로만 부른다
-    return PAIR.formatPair(mw, rel, nav, PAIR_LABELS[0], PAIR_LABELS[1]);
+    const parts = [PAIR.formatPair(mw, rel, nav, PAIR_LABELS[0], PAIR_LABELS[1])];
+    // 결혼식·예식·상견례 날짜를 물으면 120일 너머까지 달별 주말 후보를 싣는다(가까운 날만 고르던 문제)
+    if (/날짜|날 ?잡|택일|며칠|예식|식장|결혼식|웨딩|상견례|좋은 날/.test(question)) parts.push(weddingDayCandidates(compat.A, compat.B));
+    return parts.join('\n\n');
   } catch (e) {
     console.warn('[운세] 두 사람 겹침 계산을 건너뜁니다:', e.message);
     return null;

@@ -20,7 +20,7 @@ import { dictEntries, ziweiPalaceEntry } from './semantic/dict.js';
 import { readFortune } from './engine.js';
 import { futureDigest, careerFocus, lifeEventItems, periodFlow, pairLoveDigest, pairEventItems } from './report.js';
 import { buildCompatView } from './viewmodel.js';
-import { AREAS, readDay, makePeriod } from './forecast.js';
+import { AREAS, readDay, makePeriod, todayKST } from './forecast.js';
 import { candidatesToward, DIR8 } from './hires/location.js';
 import { yearDirections, monthDirections, goodDirectionsOn, dailyStar } from './systems/gujeong.js';
 import { solarTermSector, fromJD } from './core/astro.js';
@@ -926,7 +926,7 @@ export function buildCompatContext(formA, formB, c, forecastA = null, forecastB 
       .sort((x, y) => x.i - y.i);
 
     out.push(`## 두 사람에게 같이 맞는 날 (${forecastA.today.y}년 ${forecastA.today.m}월 ${forecastA.today.d}일부터 120일)`);
-    out.push('두 사람의 일진을 각각 계산해 겹친 것이다. 예식·상견례·여행처럼 날을 잡는 질문에는 여기서 실제 날짜를 골라 답할 것.');
+    out.push('두 사람의 일진을 각각 계산해 겹친 것이다. 120일 안의 가까운 일정(상견례·여행·데이트)은 여기서 실제 날짜를 골라 답할 것. 결혼식·예식 날짜는 날짜 질문에 따로 붙는 "결혼식·예식 날짜 후보"(18개월)를 먼저 쓸 것 — 이 표에서 가장 가까운 날을 고르지 말 것.');
     out.push(yearNote(dA));
     for (const x of bestDays) out.push(`좋음 ${label(x)}`);
     for (const x of avoidDays) out.push(`피함 ${label(x)}`);
@@ -941,6 +941,37 @@ export function buildCompatContext(formA, formB, c, forecastA = null, forecastB 
   out.push('체계마다 잣대가 다르다. 베딕 아쉬타쿠타처럼 혼인을 전제로 만든 잣대는 박하고, 요일 하나로 보는 체계는 후하다. 점수를 가로로 견주지 말 것.');
   out.push('궁합은 두 사람 사이의 경향이지 판결이 아니다. 헤어지라거나 결혼하라고 말하지 말 것. 두 사람의 앞날은 "앞으로 두 사람이 마주할 중요한 일" 목록의 사건과 "무렵"을 근거로 답할 것. 결혼·출산을 언제 하게 되는지는 예측하지 말고, 그 대신 목록에 있는 두 사람의 사건(관계를 공식적으로 묶는 일 등)이 있으면 그것을 말할 것. 아이를 낳으면 좋은지·몇 명이 좋은지 물으면 위 "자녀와 함께라면"의 권하는 말을 근거로 답하고, 리포트와 다른 수를 말하지 말 것. 이미 하기로 한 일의 날짜를 고를 때는 두 사람에게 함께 힘이 실리는 달, 같이 맞는 날 표에서 실제 날짜와 요일을 두세 개 골라 주고 피할 날도 함께 적을 것.');
 
+  return out.join('\n');
+}
+
+/**
+ * 결혼식·예식 날짜 후보 — 앞으로 열여덟 달, 달마다 두 사람에게 같이 맞는 주말 이틀.
+ * 120일 표만 있으면 "결혼 날짜"를 물어도 다음 달 날짜를 골랐다(2026-10-19 사용자 지적). 예식은 보통 반년 이상 준비하므로
+ * 멀리까지 달별로 싣고, 가까운 석 달은 따로 표시한다. 날짜 질문(ai.js pairFocus)에만 붙인다.
+ */
+export function weddingDayCandidates(A, B, months = 18, now = new Date()) {
+  const today = todayKST(now);
+  const span = months * 31;
+  const dA = dayRange(A.input, A.chart, today, span), dB = dayRange(B.input, B.chart, today, span);
+  const RANK = { '아주 좋음': 5, '좋음': 4, '무난': 3, '조심': 2, '나쁨': 1, '특히 조심': 0 };
+  const byMonth = new Map();
+  dA.forEach((a, i) => {
+    const b = dB[i];
+    if (!b || !/[토일]/.test(a.weekday)) return; // 예식은 대개 주말
+    if (a.taekil.clashDay || b.taekil.clashDay || a.sinsal.includes('양인') || b.sinsal.includes('양인')) return;
+    const score = (RANK[a.grade] ?? 3) + (RANK[b.grade] ?? 3) + (a.taekil.good && b.taekil.good ? 2 : a.taekil.good || b.taekil.good ? 1 : 0);
+    const key = `${a.y}-${a.m}`;
+    (byMonth.get(key) ?? byMonth.set(key, []).get(key)).push({ a, b, score, i });
+  });
+  const out = [`## 결혼식·예식 날짜 후보 — ${today.y}년 ${today.m}월부터 ${months}개월, 달마다 두 사람에게 같이 맞는 주말`];
+  out.push('형식: 연/월/일(요일) 일진 · 첫째 등급 / 둘째 등급 · 황도. 일지충·양인이 한쪽에라도 있는 날은 뺐다.');
+  let k = 0;
+  for (const [key, list] of byMonth) {
+    const top = list.sort((x, y) => y.score - x.score || x.i - y.i).slice(0, 2).sort((x, y) => x.i - y.i);
+    const near = k++ < 3 ? ' (준비 기간이 짧은 가까운 석 달)' : '';
+    out.push(`${key.replace('-', '년 ')}월${near}: ` + top.map(({ a, b }) => `${a.y}/${a.m}/${a.d}(${a.weekday}) ${a.gz.hanja} · ${a.grade} / ${b.grade}${a.taekil.good && b.taekil.good ? ' · 둘 다 황도' : ''}`).join(' , '));
+  }
+  out.push('결혼·예식 날짜를 물으면 **가장 가까운 날부터 고르지 말 것.** 사용자가 시기를 말했으면 그 시기 안에서, 말하지 않았으면 먼저 위 "두 사람의 결혼 시기" 표(연 단위)에서 두 사람에게 함께 켜지는 해를 고르고, 그 해의 달 후보에서 날짜 두세 개를 우선순위로 준다. 준비 기간(보통 6개월 이상)을 생각해 가까운 석 달 날짜는 "서두른다면"으로만 덧붙인다. 피할 날(일지충·양인)도 함께 말한다.');
   return out.join('\n');
 }
 

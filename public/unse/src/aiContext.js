@@ -20,7 +20,7 @@ import { dictEntries, ziweiPalaceEntry } from './semantic/dict.js';
 import { readFortune } from './engine.js';
 import { futureDigest, careerFocus, lifeEventItems, periodFlow, pairLoveDigest, pairEventItems } from './report.js';
 import { buildCompatView } from './viewmodel.js';
-import { AREAS } from './forecast.js';
+import { AREAS, readDay } from './forecast.js';
 import { candidatesToward, DIR8 } from './hires/location.js';
 import { yearDirections, monthDirections } from './systems/gujeong.js';
 import { solarTermSector, fromJD } from './core/astro.js';
@@ -654,6 +654,41 @@ export function buildContext(form, r, f = null) {
 
   return out.join('\n');
 }
+
+/**
+ * 질문이 짚은 하루의 운 — "내일 수술", "다음 주 금요일 면접"처럼 날이 정해진 일을 물을 때만 붙인다.
+ * 120일 표 전체(약 4천 자)가 아니라 그날 한 줄짜리 묶음이라 짧다. 화면의 '오늘의 운세'와 같은 계산(readDay·periodFlow).
+ * @param {{y,m,d,label}} day router.targetDayOf 결과
+ */
+export function targetDayContext(form, r, day) {
+  if (!form || !day) return '';
+  try {
+    const block = readDay(form, day);
+    const row = dayRange(r.input, r.chart, { y: day.y, m: day.m, d: day.d }, 1)[0];
+    const gz = block.period.ruling;
+    const out = [`## 그날 운 — 질문이 짚은 날: ${day.label} (${day.y}년 ${day.m}월 ${day.d}일${row ? `, ${row.weekday}요일` : ''})`];
+    out.push(`${gz.hanja}(${gz.kr})일 — ` + AREAS.map((a) => `${a.replace('운', '')}${block.areas[a].score}`).join(' '));
+    const top = block.results.slice().sort((x, y) => (y.areas?.총운 ?? 0) - (x.areas?.총운 ?? 0)).slice(0, 4)
+      .map((x) => `${x.name}(${x.headline})`).join(', ');
+    if (top) out.push(`주요 근거: ${top}`);
+    const fl = periodFlow(r, block, 'day');
+    if (fl?.theme) out.push(`그날의 결: ${fl.theme}${fl.seat ? ` ${fl.seat}` : ''}`);
+    if (fl?.areas?.length) out.push(`분야별: ${fl.areas.map(([a, t]) => `${a.replace('운', '')} — ${t}`).join(' / ')}`);
+    if (row) {
+      const t = row.taekil;
+      const tags = [t.good ? '황도(일이 잘 풀리는 날)' : '흑도(조심하는 날)', t.cheonui ? '천의(치료·수술에 쓰는 날)' : '',
+        t.clashDay ? '일지충(본인과 부딪치는 날)' : '', t.clashYear ? '띠충' : '', ...row.sinsal].filter(Boolean).join(' · ');
+      out.push(`택일 표시: ${tags} · 일반 등급 ${row.grade}`);
+    }
+    out.push('이 구획이 그 일에 대한 1차 근거다. 점수는 순서로만 쓰고 숫자를 옮기지 말 것. 그날 흐름을 바탕으로 그 일이 어떤 결로 풀리기 쉬운지, 무엇을 챙기면 좋은지를 구체적으로 말할 것.');
+    return out.join('\n');
+  } catch { return ''; }
+}
+
+/**
+ * 가족(부모·형제·시댁)을 물었을 때 — 시기표 분야가 따로 없어 볼 자리를 일러 둔다.
+ */
+export const FAMILY_NOTE = '## 가족 관계 질문\n가족(부모·형제·시댁)을 물었다. 명반 문맥에서 자미두수 부모를 보는 자리·형제를 보는 자리(와 그 자리의 별·표시), 사주의 가족 자리(년주·월주)와 육친 줄, 서양 4하우스(집안)·10하우스(부모)를 먼저 근거로 쓸 것. 직업·재물 구획이 있어도 끌어다 쓰지 말 것.';
 
 /**
  * 날짜를 고를 때만 붙이는 구획 — 120일 일자별 표, 영역별로 앞서는 날, 수술·시술 택일 후보, 택일 규칙.

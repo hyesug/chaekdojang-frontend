@@ -35,9 +35,20 @@ const NOW_WORDS = [
 /** 평생·시기를 묻는 말이면 점시가 아니다 — 그건 명반이 답할 자리다 */
 const NOT_NOW = /평생|일생|언제|몇 년|몇 월|내년|작년|올해 전체|사주|타고난/;
 
+/**
+ * 가까운 날의 정해진 일(수술·면접·시험·소개팅…)이 잘 풀릴지 묻는 말. "내일 수술인데 잘될까"가 NOW_WORDS 에
+ * 걸리지 않아 점시가 꺼졌고, 답이 "이 질문을 볼 판이 없다"로 시작했다(2026-10-19 전수 점검).
+ */
+const NEAR_DAY = /오늘|내일|모레|글피|이따|이번 ?주|다음 ?주|담주|\d{1,2}\s*월\s*\d{1,2}\s*일/;
+const HOW_IT_GOES = /될까|되나|되려나|잘 ?될|괜찮을까|어떨까|어때|붙을까|합격|성공|무사|잘 ?끝|해도 될까|할까/;
+/** 시기 운세("이번 달 운세", "올해 운세")는 점시가 아니라 그 시기의 운이 답할 자리다 */
+const PERIOD_FORTUNE = /(이번|다음) ?(달|해|년)|올해|금년|운세|운이 어때|총운/;
+
 export function isHoraryQuestion(question) {
   const q = String(question ?? '');
   if (!q.trim()) return false;
+  if (PERIOD_FORTUNE.test(q) && !/해도 될까|할까/.test(q)) return false;
+  if (NEAR_DAY.test(q) && HOW_IT_GOES.test(q)) return true;
   // 연도를 짚은 질문("2027년에 이직할까")은 그 해의 운이 답할 자리다. "현재 직장"처럼
   // '현재'가 섞여도 점시를 세우지 않는다 — 점시가 답의 절반을 차지했다(외부 검증 26번)
   if (/20\d{2}\s*년|내후년/.test(q)) return false;

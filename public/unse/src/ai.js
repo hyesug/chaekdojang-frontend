@@ -10,9 +10,9 @@
  */
 
 import { buildContext, READING_PROMPT, buildCompatContext, COMPAT_PROMPT,
-         domainSections, monthSection, dayContext } from './aiContext.js';
+         domainSections, monthSection, dayContext, targetDayContext, FAMILY_NOTE } from './aiContext.js';
 import { readForecast } from './forecast.js';
-import { routeQuestion, inheritPlan } from './hires/router.js';
+import { routeQuestion, inheritPlan, targetDayOf } from './hires/router.js';
 import { buildHiRes, formatTraits } from './hires/context.js';
 import * as PAIR from './hires/pair.js';
 import { horaryCast, formatHorary } from './systems/horary.js';
@@ -216,7 +216,7 @@ export function aiSection(mode = 'solo', view = null) {
  * 물을 때마다 다시 만든다. 그래서 두 덩이를 갈라 보낸다.
  */
 export function initAI(form, fortune, forecast) {
-  wire(buildContext(form, fortune, forecast), { fortune, forecast });
+  wire(buildContext(form, fortune, forecast), { form, fortune, forecast });
 }
 
 /**
@@ -240,8 +240,15 @@ function focusFor(question, calc, prevPlan = null) {
     const parts = [hires.text];
 
     // 분야 구획은 **걸린 분야만** 온다. 일곱을 다 캐시에 넣어 두었더니
-    // 자녀를 물어도 재물·건강이 따라가 캐시 덩어리가 47,600자였다
-    parts.push(domainSections(calc.fortune, plan.domains));
+    // 자녀를 물어도 재물·건강이 따라가 캐시 덩어리가 47,600자였다.
+    // 분야를 못 가린 질문(가족·오늘 운세…)에는 싣지 않는다 — 예전엔 폴백이 직업이라 직업 구획이 따라가 답이 직업 쪽으로 끌렸다
+    if (!plan.fallback) parts.push(domainSections(calc.fortune, plan.domains));
+    if (plan.family) parts.push(FAMILY_NOTE);
+
+    // 질문이 짚은 하루(내일 수술·다음 주 금요일 면접)는 그날 운을 싣는다. 날짜를 고르는 질문(needsDay)은 아래 120일 표가 맡는다
+    if (plan.asksDay && !plan.needsDay && calc.form && calc.forecast?.today) {
+      parts.push(targetDayContext(calc.form, calc.fortune, targetDayOf(question, calc.forecast.today)));
+    }
 
     // 달 표는 달을 물었을 때만. 달 단위는 검증에서 진 값이라 안 물었는데
     // 실어 보내면 돈만 쓰고 답에는 잡음을 더한다

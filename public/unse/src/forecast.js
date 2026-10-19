@@ -399,6 +399,16 @@ export function periodSummary(f) {
  * 오늘·이번 달·올해를 한 번에 본다.
  * @param {object} form 개인 운세와 같은 형식
  */
+/**
+ * 하루 운 하나만 본다 — AI 대화에서 "내일 수술", "다음 주 금요일 면접"처럼 질문이 날을 짚었을 때 그날 값을 싣는다.
+ * readForecast 는 올해 열두 달까지 다 계산해서 하루 하나에 쓰기엔 무겁다.
+ * @param {{y:number,m:number,d:number}} day 한국 날짜
+ */
+export function readDay(form, day) {
+  const { input, chart } = prepareInput(form);
+  return forecastPeriod(input, chart, makePeriod('day', { y: day.y, m: day.m, d: day.d }));
+}
+
 export function readForecast(form, now = new Date()) {
   const { input, chart, birth, lunar } = prepareInput(form);
   const t = todayKST(now);

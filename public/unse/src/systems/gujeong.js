@@ -11,6 +11,7 @@
 
 import { ELEMENTS as ELEM, BRANCHES } from '../core/ganzhi.js';
 import { j } from '../core/josa.js';
+import { toJDN, solarTermJD } from '../core/astro.js';
 import { result } from './_base.js';
 
 export const meta = {
@@ -88,6 +89,50 @@ export function starOfYear(year) {
   while (s > 9) s = String(s).split('').reduce((a, c) => a + Number(c), 0);
   const v = 11 - s;
   return v > 9 ? v - 9 : v;
+}
+
+/**
+ * 일가구성(日家九星) — 그날 중궁에 드는 별. 일본 역서에서 가장 널리 쓰는 방식이다.
+ *
+ * 동지에 가장 가까운 甲子일을 1(일백)로 양둔(하루에 하나씩 올라감), 하지에 가장 가까운 甲子일을 9(구자)로
+ * 음둔(하루에 하나씩 내려감). 동지·하지가 甲午일(두 甲子 한가운데)이면 뒤의 甲子일로 한다.
+ *
+ * 윤(閏): 두 전환일 사이가 240일이면 뒤 60일이 윤이다. 그 윤 가운데 甲午일에서 둔을 미리 바꾼다 —
+ * 동지 쪽 윤이면 甲午를 7(칠적)로 양둔, 하지 쪽 윤이면 甲午를 3(삼벽)으로 음둔. 11~12년에 한 번 생긴다.
+ * 윤 처리는 유파마다 다르다(ja.wikipedia 九星). 중국식 자백비성(skillon.com 등)은 전환 규칙이 달라 값이 다르다.
+ * 검증: 일본 역서(rekichu.com 2026년 매월 1일, 전환일 반복)와 대조 — tests/unse/gujeong-daily.test.mjs.
+ */
+const sexagenaryOfJDN = (jdn) => (((jdn + 49) % 60) + 60) % 60; // 0 = 甲子 (2000-01-01 = 戊午 54)
+const kstDateJDN = (jdUT) => Math.floor(jdUT + 0.5 + 9 / 24);
+function nearestJiaZi(jdn) {
+  const back = sexagenaryOfJDN(jdn); // 직전 甲子에서 며칠 지났나
+  return back < 30 ? jdn - back : jdn + (60 - back); // 甲午(30)는 뒤의 甲子
+}
+const switchCache = new Map();
+function switchesAround(y) {
+  if (switchCache.has(y)) return switchCache.get(y);
+  const out = [];
+  for (let yy = y - 2; yy <= y + 1; yy++) {
+    const start = toJDN(yy, 1, 1) - 0.5;
+    out.push({ at: nearestJiaZi(kstDateJDN(solarTermJD(90, start + 120))), up: false });  // 하지
+    out.push({ at: nearestJiaZi(kstDateJDN(solarTermJD(270, start + 300))), up: true }); // 동지
+  }
+  out.sort((a, b) => a.at - b.at);
+  switchCache.set(y, out);
+  return out;
+}
+export function dailyStar(y, m, d) {
+  const jdn = toJDN(y, m, d);
+  const sw = switchesAround(y);
+  const i = sw.findLastIndex((t) => t.at <= jdn);
+  const prev = sw[i], next = sw[i + 1];
+  const off = jdn - prev.at;
+  // 윤: 이 구간이 240일이고 뒤 60일 가운데 甲午(구간 시작 210일째) 이후면, 다음 둔을 甲午에서 미리 시작한다
+  if (next && next.at - prev.at === 240 && off >= 210) {
+    const k = off - 210;
+    return next.up ? ((7 - 1 + k) % 9) + 1 : ((((3 - 1 - k) % 9) + 9) % 9) + 1;
+  }
+  return prev.up ? (off % 9) + 1 : 9 - (off % 9);
 }
 
 /** 중궁에 어떤 별이 들어왔을 때의 아홉 방위 배치 */

@@ -182,6 +182,31 @@ export function monthDirections(sajuYear, year, monthIndex) {
   return boardDirections(starOfYear(sajuYear), monthCenterStar(year, monthIndex), bi, '월파', '월건');
 }
 
+/**
+ * 그날 방위반 — 일반(日盤). 하루짜리 움직임(외출·미팅·데이트·당일 출발)에 쓴다.
+ * 이사·장기 여행은 연반·월반·일반이 **모두** 열린 방위를 쓴다(goodDirectionsOn).
+ * 일파는 그날 일지와 정반대 방위다.
+ */
+export function dayDirections(sajuYear, y, m, d) {
+  const bi = (toJDN(y, m, d) + 1) % 12; // 일지(forecast.js makePeriod 와 같은 식)
+  return boardDirections(starOfYear(sajuYear), dailyStar(y, m, d), bi, '일파', '일진');
+}
+
+/** 판 하나에서 흉방을 뺀 길방 이름 */
+const openDirs = (b) => { const bad = new Set(b.bad.map((x) => x.dir)); return b.good.map((x) => x.dir).filter((d) => !bad.has(d)); };
+
+/**
+ * 그날 본명성에게 열린 방위 — 일반만 열린 것(하루짜리)과 연반·월반·일반이 다 열린 것(이사·여행).
+ * @param {number} monthIndex 0=寅월 … 11=丑월 (절기), year 는 입춘 기준 해
+ */
+export function goodDirectionsOn(sajuYear, year, monthIndex, y, m, d) {
+  const day = dayDirections(sajuYear, y, m, d);
+  const yOpen = new Set(openDirs(yearDirections(sajuYear, year)));
+  const mOpen = new Set(openDirs(monthDirections(sajuYear, year, monthIndex)));
+  const dayOpen = openDirs(day);
+  return { center: day.center, myDir: day.myDir, day: dayOpen, all: dayOpen.filter((x) => yOpen.has(x) && mOpen.has(x)), bad: day.bad };
+}
+
 /** 한 판(연반·월반)에서 본명성에게 열린 방위와 막힌 방위 */
 function boardDirections(honmei, center, breakBranch, breakKind, breakFrom) {
   const chart = palaceChart(center);
@@ -407,7 +432,11 @@ export function getsumeiOf(honmei, sectorIndex) {
 
 export function forecast(input, chart, period) {
   const honmei = starOfYear(chart.sajuYear);
-  const center = starOfYear(period.sajuYear);
+  // 일운은 그날의 판(일가구성), 월운은 그달의 판(월반), 연운은 그해의 판(연반).
+  // 예전엔 셋 다 연반이라 구성학의 오늘·이달 운이 한 해 내내 같았다(2026-10-19).
+  const center = period.kind === 'day' && period.on?.d ? dailyStar(period.on.y, period.on.m, period.on.d)
+    : period.kind === 'month' ? monthCenterStar(period.sajuYear, period.sectorIndex)
+    : starOfYear(period.sajuYear);
   const board = palaceChart(center);
 
   const DIRS = { 북: 1, 남서: 2, 동: 3, 남동: 4, 중앙: 5, 북서: 6, 서: 7, 북동: 8, 남: 9 };
@@ -431,11 +460,25 @@ export function forecast(input, chart, period) {
   }
 
   const phase = ((period.sajuYear - chart.sajuYear) % 9 + 9) % 9;
+  const boardName = period.kind === 'day' ? '오늘의 방위반(일반)' : period.kind === 'month' ? '이달의 방위반(월반)' : `${period.sajuYear}년 방위반`;
+  let text = `${boardName}에서 본명성 ${j(STARS[honmei].name, '이')} ${eff.name.split(' · ')[0]}에 듭니다. `;
+  if (period.kind === 'day') {
+    // 본명성이 그날 중궁에 들면 전통적으로 사방이 막히는 날(八方塞) — 큰 결정·이동을 미룬다
+    text += where === 5 ? '본명성이 한가운데 갇히는 날이라 전통적으로 사방이 막힌다고 봅니다. 큰 결정과 먼 이동은 하루 미루세요.'
+      : `그날의 별은 ${STARS[center].name}입니다.`;
+    try {
+      const g = goodDirectionsOn(chart.sajuYear, period.sajuYear, period.sectorIndex, period.on.y, period.on.m, period.on.d);
+      if (g.day.length) text += ` 오늘 움직이기 좋은 방향은 ${g.day.join('·')}쪽입니다.`;
+    } catch { /* 방위가 없어도 운은 간다 */ }
+  } else if (period.kind === 'month') {
+    text += `이달의 별은 ${STARS[center].name}입니다.`;
+  } else {
+    text += `아홉 해 주기로는 ${phase + 1}번째 해 — ${PHASE_TEXT[phase]}`;
+  }
   return {
     id: meta.id, name: meta.name, weight: 1.1,
     headline: eff.name,
-    text: `${period.sajuYear}년 방위반에서 본명성 ${j(STARS[honmei].name, '이')} ${eff.name.split(' · ')[0]}에 듭니다. ` +
-      `아홉 해 주기로는 ${phase + 1}번째 해 — ${PHASE_TEXT[phase]}`,
+    text,
     areas,
   };
 }

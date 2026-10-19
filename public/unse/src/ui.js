@@ -24,6 +24,7 @@ import { buildView, buildCompatView } from './viewmodel.js';
 import { SYSTEM_META, TIER_LABEL, SOURCE_LABEL } from './meta.js';
 import { loadProfiles, createProfile, updateProfile, removeProfile, loginUrl } from './profile.js';
 import { aiSection, initAI, initCompatAI } from './ai.js';
+import { goodDirectionsOn } from './systems/gujeong.js';
 
 /** 방금 본 결과. 주소 갱신과 프로필 저장이 다시 쓴다 */
 let last = null;
@@ -382,6 +383,7 @@ function render(form, r, f) {
       <section class="rp-card rp-card-solo">
         <h3 class="rp-card-h"><span aria-hidden="true">☀️</span> 오늘의 운세 · ${f.today.m}월 ${f.today.d}일${todayInfo?.weekday ? `(${esc(todayInfo.weekday)})` : ''}</h3>
         ${v.now.grade ? `<p class="rp-chips"><span>오늘의 컨디션 · ${esc(v.now.grade)}</span></p>` : ''}
+        ${todayDirections(r, f.day)}
         ${v.now.line ? `<blockquote class="rp-quote">${esc(v.now.line)}</blockquote>` : ''}
         ${flowHead(f.day, 'day')}
         <ul class="rp-bul">${areaItems(f.day, 'day')}</ul>
@@ -406,6 +408,21 @@ function render(form, r, f) {
     ${chartPanel(r)}
 
   `;
+}
+
+/**
+ * 오늘 움직이기 좋은 방향 — 구성학 그날의 판(일반). 본명성이 그날 중궁에 들면 사방이 막히는 날로 알린다.
+ * 이사·여행처럼 오래 가는 움직임은 연반·월반까지 다 열린 방향만 따로 적는다.
+ */
+function todayDirections(r, day) {
+  try {
+    const p = day.period;
+    const g = goodDirectionsOn(r.chart.sajuYear, p.sajuYear, p.sectorIndex, p.on.y, p.on.m, p.on.d);
+    if (g.myDir === '중앙') return '<p class="rp-t">구성학으로 오늘은 내 별이 한가운데 갇히는 날이라, 큰 결정과 먼 이동은 하루 미루는 편이 좋아요.</p>';
+    if (!g.day.length) return '';
+    const far = g.all.length ? ` 이사·여행처럼 오래 가는 움직임은 ${esc(g.all.join('·'))}쪽이 올해·이달까지 함께 열려 있어요.` : '';
+    return `<p class="rp-t">구성학으로 오늘 움직이기 좋은 방향은 <strong>${esc(g.day.join('·'))}</strong>쪽이에요.${far}</p>`;
+  } catch { return ''; }
 }
 
 /**

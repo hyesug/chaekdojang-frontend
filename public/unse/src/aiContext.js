@@ -20,9 +20,9 @@ import { dictEntries, ziweiPalaceEntry } from './semantic/dict.js';
 import { readFortune } from './engine.js';
 import { futureDigest, careerFocus, lifeEventItems, periodFlow, pairLoveDigest, pairEventItems } from './report.js';
 import { buildCompatView } from './viewmodel.js';
-import { AREAS, readDay } from './forecast.js';
+import { AREAS, readDay, makePeriod } from './forecast.js';
 import { candidatesToward, DIR8 } from './hires/location.js';
-import { yearDirections, monthDirections } from './systems/gujeong.js';
+import { yearDirections, monthDirections, goodDirectionsOn, dailyStar } from './systems/gujeong.js';
 import { solarTermSector, fromJD } from './core/astro.js';
 import { dayRange, rankSurgeryDays, structureReading, patternReading,
          yearTimeline, innerReading, tabooReading } from './reading.js';
@@ -680,6 +680,12 @@ export function targetDayContext(form, r, day) {
         t.clashDay ? '일지충(본인과 부딪치는 날)' : '', t.clashYear ? '띠충' : '', ...row.sinsal].filter(Boolean).join(' · ');
       out.push(`택일 표시: ${tags} · 일반 등급 ${row.grade}`);
     }
+    try {
+      const p = block.period, g = goodDirectionsOn(r.chart.sajuYear, p.sajuYear, p.sectorIndex, day.y, day.m, day.d);
+      out.push(`구성학 그날의 판(일반): 그날의 별 ${dailyStar(day.y, day.m, day.d)} · ` +
+        (g.myDir === '중앙' ? '본명성이 중궁에 갇히는 날(사방이 막힘 — 큰 결정·먼 이동은 미룸)' : `본명성 자리 ${g.myDir}`) +
+        ` · 그날 움직이기 좋은 방향 ${g.day.join('·') || '없음'} · 연반·월반까지 모두 열린 방향(이사·여행용) ${g.all.join('·') || '없음'}`);
+    } catch { /* 방위가 없어도 그날 운은 간다 */ }
     out.push('이 구획이 그 일에 대한 1차 근거다. 점수는 순서로만 쓰고 숫자를 옮기지 말 것. 그날 흐름을 바탕으로 그 일이 어떤 결로 풀리기 쉬운지, 무엇을 챙기면 좋은지를 구체적으로 말할 것.');
     return out.join('\n');
   } catch { return ''; }
@@ -705,7 +711,7 @@ export function dayContext(r, f) {
   {
     const days = dayRange(r.input, r.chart, f.today, 120);
     out.push(`## 일자별 (${f.today.y}년 ${f.today.m}월 ${f.today.d}일부터 120일)`);
-    out.push('형식: 월/일(요일) 일진 등급 [황도|흑도] [천의=치료·수술에 쓰는 날] [일지충=본인과 부딪치는 날] 신살');
+    out.push('형식: 월/일(요일) 일진 등급 [황도|흑도] [천의=치료·수술에 쓰는 날] [일지충=본인과 부딪치는 날] 신살 [이사길방=구성학 연반·월반·일반이 모두 열린 방향] [팔방색=본명성이 그날 중궁에 갇힘]');
     out.push(yearNote(days));
     for (const x of days) {
       const t = x.taekil;
@@ -716,7 +722,13 @@ export function dayContext(r, f) {
         t.clashYear ? '띠충' : '',
         ...x.sinsal,
       ].filter(Boolean).join(' ');
-      out.push(`${x.m}/${x.d}(${x.weekday}) ${x.gz.hanja} ${x.grade} ${tags}`);
+      let dir = '';
+      try {
+        const p = makePeriod('day', { y: x.y, m: x.m, d: x.d });
+        const g = goodDirectionsOn(r.chart.sajuYear, p.sajuYear, p.sectorIndex, x.y, x.m, x.d);
+        dir = g.myDir === '중앙' ? ' 팔방색' : g.all.length ? ` 이사길방 ${g.all.join('·')}` : '';
+      } catch { /* */ }
+      out.push(`${x.m}/${x.d}(${x.weekday}) ${x.gz.hanja} ${x.grade} ${tags}${dir}`);
     }
     out.push('');
 
@@ -970,6 +982,7 @@ export function monthBoardSection(input) {
     jd = sec.endJD + 1;
   }
   out.push('이사 방위를 물으면 **연반·월반이 둘 다 열린 방위만** 길방으로 말한다. 둘 다 열린 방위가 없는 달은 "그 달은 맞는 방위가 없다"고 말할 것.');
+  out.push('이사·출발 **날짜**까지 고를 때는 그날의 판(일반)도 열린 날이어야 한다 — 일자별 표의 "이사길방"에 그 방향이 있는 날을 고르고, "팔방색" 날은 피할 것. 하루짜리 외출·미팅 방향은 그날 운 구획의 "그날 움직이기 좋은 방향"(일반)으로 말할 것.');
   out.push('방위는 출발지 기준이다. 거주지를 입력하지 않았으면 출생지 기준이라는 것을 밝히고 실제 출발지를 확인하라고 할 것. 이사 날짜(절입일 전후)에 따라 월반이 바뀐다.');
   return out.join('\n') + '\n';
 }

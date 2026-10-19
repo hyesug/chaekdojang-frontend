@@ -24,3 +24,36 @@ test('윤(閏) — 2008년 겨울은 甲午를 7(칠적)로 양둔, 2020년 여�
   assert.equal(dailyStar(2008, 12, 19), 7); assert.equal(dailyStar(2008, 12, 20), 7); assert.equal(dailyStar(2008, 12, 21), 8);
   assert.equal(dailyStar(2020, 6, 19), 3); assert.equal(dailyStar(2020, 6, 20), 3); assert.equal(dailyStar(2020, 6, 21), 2);
 });
+
+test('구성학 오늘·이달 운은 그날의 판(일반)·그달의 판(월반)으로 본다 — 예전엔 셋 다 연반이었다', async () => {
+  const { readForecast } = await import('../../public/unse/src/forecast.js');
+  const form = { name: 't', gender: 'female', year: 1986, month: 5, day: 9, hour: 10, minute: 8, birthPlace: '여주', homePlace: '서울' };
+  const f = readForecast(form, new Date('2026-10-19T03:00:00Z'));
+  const g = (b) => b.results.find((x) => x.id === 'gujeong').text;
+  assert.match(g(f.day), /^오늘의 방위반\(일반\)/);
+  assert.match(g(f.day), /그날의 별은 사록목성/); // 2026-10-19 = 4
+  assert.match(g(f.day), /오늘 움직이기 좋은 방향은 /);
+  assert.match(g(f.month), /^이달의 방위반\(월반\).*이달의 별은 구자화성/); // 2026 戌월 = 9
+  assert.match(g(f.year), /^2026년 방위반/);
+});
+
+test('그날 방위 — 일반만 열린 방향(하루짜리)과 연반·월반·일반이 모두 열린 방향(이사)', async () => {
+  const { goodDirectionsOn } = await import('../../public/unse/src/systems/gujeong.js');
+  const g = goodDirectionsOn(1986, 2026, 8, 2026, 10, 19);
+  assert.equal(g.center, 4);
+  assert.ok(g.day.length > 0);
+  assert.ok(g.all.every((d) => g.day.includes(d)), '이사 방향은 그날 방향 안에 있어야 한다');
+});
+
+test('AI 문맥 — 그날 운에 그날의 판, 120일 표에 이사길방·팔방색을 싣는다', async () => {
+  const { readFortune } = await import('../../public/unse/src/engine.js');
+  const { readForecast } = await import('../../public/unse/src/forecast.js');
+  const { targetDayContext, dayContext } = await import('../../public/unse/src/aiContext.js');
+  const form = { name: 't', gender: 'female', year: 1986, month: 5, day: 9, hour: 10, minute: 8, birthPlace: '여주', homePlace: '서울' };
+  const now = new Date('2026-10-19T03:00:00Z');
+  const r = readFortune(form, { now });
+  assert.match(targetDayContext(form, r, { y: 2026, m: 10, d: 20, label: '내일' }), /구성학 그날의 판\(일반\): 그날의 별 3 .*그날 움직이기 좋은 방향/);
+  const table = dayContext(r, readForecast(form, now));
+  assert.match(table, /10\/19\(월\) 丙寅 .*이사길방 /);
+  assert.match(table, /팔방색/);
+});

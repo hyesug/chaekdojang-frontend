@@ -256,35 +256,6 @@ interface AdminAuditLog {
   createdAt: string;
 }
 
-interface LottoPrediction {
-  model: "A" | "D" | "E" | "F" | "H" | "S1" | "S2" | "S3";
-  revision: number;
-  numbers: number[];
-  modelVersion: string;
-  sourceCommit: string;
-  generatedAt: string;
-  reason: string | null;
-  active: boolean;
-  hitCount: number;
-  hitNumbers: number[];
-  official: boolean;
-  engineVersion: string | null;
-}
-
-interface LottoPredictionRound {
-  round: number;
-  drawDate: string;
-  drawTime: string;
-  timezone: string;
-  timeSource: string;
-  timeSourceDetail: string | null;
-  generatedAt: string;
-  actualNumbers: number[] | null;
-  resultConfirmedAt: string | null;
-  predictions: LottoPrediction[];
-  leaderboard?: LottoLeaderboardEntry[];
-}
-
 interface DashboardSummary {
   todayVisitors: number;
   todayBotVisitors: number;
@@ -378,11 +349,6 @@ function formatLogTime(value: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-function hasLottoDrawPassed(round: Pick<LottoPredictionRound, "drawDate" | "drawTime">) {
-  const drawAt = new Date(`${round.drawDate}T${round.drawTime.length === 5 ? `${round.drawTime}:00` : round.drawTime}+09:00`);
-  return !Number.isNaN(drawAt.getTime()) && drawAt.getTime() <= Date.now();
 }
 
 function formatReviewTime(value: string) {
@@ -878,9 +844,6 @@ export default function AdminPage() {
   const [actionsLoading, setActionsLoading] = useState(false);
   const [errorLogs, setErrorLogs] = useState<ErrorLog[]>([]);
   const [auditLogs, setAuditLogs] = useState<AdminAuditLog[]>([]);
-  const [lottoRounds, setLottoRounds] = useState<LottoPredictionRound[]>([]);
-  const [lottoGenerating, setLottoGenerating] = useState(false);
-  const [lottoLeaderboardGenerating, setLottoLeaderboardGenerating] = useState(false);
   const [aiCreditStats, setAiCreditStats] = useState<AiCreditStatistics | null>(null);
   const [creditUserId, setCreditUserId] = useState("");
   // 회원 질문권 조회 — 조회 버튼을 눌렀을 때의 ID 와, 조정 뒤 다시 읽게 하는 신호
@@ -1117,7 +1080,6 @@ export default function AdminPage() {
         nextDashboard,
         nextSecurity,
         nextPublicReadAlerts,
-        nextLottoRounds,
         nextAiCreditStats,
       ] = await Promise.all([
         fetchAdmin<PageResponse<User>>(getUserSearchPath(0, userFiltersRef.current)),
@@ -1134,7 +1096,6 @@ export default function AdminPage() {
         fetchAdmin<DashboardSummary>("/api/admin/dashboard/summary"),
         fetchAdmin<AggregatedSecurity[]>("/api/admin/security/summary"),
         fetchAdmin<PublicReadAlert[]>("/api/admin/security/public-read-alerts"),
-        fetchAdmin<LottoPredictionRound[]>("/api/admin/lotto-future-validations"),
         fetchAdmin<AiCreditStatistics>("/api/admin/ai-credits/statistics"),
       ]);
       const nextContentLookups = await fetchContentLookups(nextMetrics, nextReviews, nextStats ?? []);
@@ -1156,7 +1117,6 @@ export default function AdminPage() {
       setDashboardSummary(nextDashboard);
       setAggregatedSecurity(nextSecurity ?? []);
       setPublicReadAlerts(nextPublicReadAlerts ?? []);
-      setLottoRounds(nextLottoRounds ?? []);
       setAiCreditStats(nextAiCreditStats);
     } finally {
       setLoading(false);
@@ -1178,90 +1138,6 @@ export default function AdminPage() {
       setCreditLookupId(String(userId)); setCreditRefresh((n) => n + 1);
       setAiCreditStats(await fetchAdmin<AiCreditStatistics>("/api/admin/ai-credits/statistics"));
     } finally { setCreditAdjusting(false); }
-  }
-
-  async function generateLottoFutureValidation() {
-    setLottoGenerating(true);
-    try {
-      const token = getToken();
-      if (!token) return;
-      const response = await authFetch(`${API_BASE}/api/admin/lotto-future-validations/generate-next`, {
-        method: "POST", headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.ok) {
-        setLottoRounds(await fetchAdmin<LottoPredictionRound[]>("/api/admin/lotto-future-validations") ?? []);
-        return;
-      }
-      // 실패를 삼키면 화면에서는 "눌러도 아무 일이 없는 버튼"이 된다.
-      // 실제로 계산 엔드포인트 설정이 비어 서버가 500을 내고 있었는데
-      // 여기서 조용히 넘겨서 원인을 볼 방법이 없었다.
-      const detail = await response.text().catch(() => "");
-      let message = detail;
-      try { message = (JSON.parse(detail)?.message as string) ?? detail; } catch { /* 본문이 JSON 이 아니면 그대로 */ }
-      window.alert(`회차 생성에 실패했습니다 (HTTP ${response.status})\n\n${message || "서버가 이유를 보내지 않았습니다."}`);
-    } finally {
-      setLottoGenerating(false);
-    }
-  }
-
-  async function confirmLottoResult(round: number) {
-    const entered = window.prompt("실제 당첨번호 6개를 쉼표로 입력하세요.");
-    if (!entered) return;
-    const numbers = entered.split(",").map((value) => Number(value.trim())).filter(Number.isInteger);
-    if (numbers.length !== 6 || new Set(numbers).size !== 6 || numbers.some((number) => number < 1 || number > 45)) {
-      window.alert("1~45 사이의 서로 다른 번호 6개를 입력하세요.");
-      return;
-    }
-    const token = getToken();
-    if (!token) return;
-    const response = await authFetch(`${API_BASE}/api/admin/lotto-future-validations/${round}/result`, {
-      method: "PATCH", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ numbers }),
-    });
-    if (response.ok) setLottoRounds(await fetchAdmin<LottoPredictionRound[]>("/api/admin/lotto-future-validations") ?? []);
-    else window.alert("실제번호를 저장하지 못했습니다. 추첨 시각 이후인지와 번호를 다시 확인하세요.");
-  }
-
-  async function reviseLottoDrawTime(round: number, currentTime: string) {
-    const drawTime = window.prompt("변경된 공식 추첨 시각(HH:mm)을 입력하세요.", currentTime.slice(0, 5));
-    if (!drawTime || !/^([01]\d|2[0-3]):[0-5]\d$/.test(drawTime)) return;
-    const reason = window.prompt("공식 편성 변경 근거를 입력하세요.");
-    if (!reason?.trim()) return;
-    const token = getToken();
-    if (!token) return;
-    const response = await authFetch(`${API_BASE}/api/admin/lotto-future-validations/${round}/draw-time`, {
-      method: "PATCH", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ drawTime, reason: reason.trim() }),
-    });
-    if (response.ok) setLottoRounds(await fetchAdmin<LottoPredictionRound[]>("/api/admin/lotto-future-validations") ?? []);
-    else window.alert("추첨시각은 추첨 전에만 변경할 수 있습니다.");
-  }
-
-  async function reviseLottoModel(round: number) {
-    const reason = window.prompt("수정 모델 revision 사유를 입력하세요.", "고정 모델 정의 정정 v2");
-    if (!reason?.trim()) return;
-    const token = getToken();
-    if (!token) return;
-    const response = await authFetch(`${API_BASE}/api/admin/lotto-future-validations/${round}/model-revision`, {
-      method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ reason: reason.trim() }),
-    });
-    if (response.ok) setLottoRounds(await fetchAdmin<LottoPredictionRound[]>("/api/admin/lotto-future-validations") ?? []);
-    else window.alert("모델 revision은 추첨 전에만 생성할 수 있습니다.");
-  }
-
-  async function generateLottoLeaderboard(round: number) {
-    const reason = window.prompt("순위표 생성 사유를 입력하세요.", "순위표 생성");
-    if (!reason?.trim()) return;
-    const token = getToken();
-    if (!token) return;
-    setLottoLeaderboardGenerating(true);
-    try {
-      const response = await authFetch(`${API_BASE}/api/admin/lotto-future-validations/${round}/leaderboard`, {
-        method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ reason: reason.trim() }),
-      });
-      if (response.ok) setLottoRounds(await fetchAdmin<LottoPredictionRound[]>("/api/admin/lotto-future-validations") ?? []);
-      else window.alert("순위표는 추첨 전 회차에서만 만들 수 있고, 직전 회차까지 당첨번호가 입력돼 있어야 합니다.");
-    } finally {
-      setLottoLeaderboardGenerating(false);
-    }
   }
 
   async function searchAdminUsers(event?: React.FormEvent) {

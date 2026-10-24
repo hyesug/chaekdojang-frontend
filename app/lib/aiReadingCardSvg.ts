@@ -97,8 +97,15 @@ function hashId(value: string) {
 function buildAiReadingCardSvg(card: AiReadingCardData, coverSrc: string) {
   const parts: string[] = [];
 
-  parts.push(`<text x="${PAD}" y="92" font-family="${SANS}" font-size="16" font-weight="700" letter-spacing="3" fill="${COLOR.primary}">AI READING CARD</text>`);
-  parts.push(`<text x="${WIDTH - PAD}" y="92" text-anchor="end" font-family="${SANS}" font-size="16" letter-spacing="1" fill="${COLOR.subtle}">chaekdojang.com</text>`);
+  // 머리: 작성자 서명 + 책도장 로고(app/icon.svg 의 동그라미 冊 도장)
+  const headerY = 92;
+  const name = (card.authorName || card.authorNickname || "책도장 독자").trim() || "책도장 독자";
+  parts.push(`<text x="${PAD}" y="${headerY}" font-family="${SANS}" font-size="11" font-weight="700" letter-spacing="2" fill="${COLOR.subtle}">BY</text>`);
+  parts.push(textLines(lines(name, (CONTENT - 260) / 16, 1), PAD + 26, headerY, 0, `font-family="${SERIF}" font-size="16" font-weight="700" letter-spacing="-0.2" fill="${COLOR.ink}"`));
+  const markSize = 34;
+  const markX = WIDTH - PAD - markSize;
+  parts.push(`<text x="${markX - 12}" y="${headerY}" text-anchor="end" font-family="${SANS}" font-size="14" letter-spacing="1" fill="${COLOR.subtle}">chaekdojang.com</text>`);
+  parts.push(`<g transform="translate(${markX} ${headerY - 5 - markSize / 2}) scale(${markSize / 512})"><g transform="rotate(-9 256 256)"><circle cx="256" cy="256" r="184" fill="none" stroke="#8B1E1E" stroke-width="34"/><text x="256" y="319" text-anchor="middle" font-family="Noto Serif KR, Nanum Myeongjo, Batang, serif" font-size="198" font-weight="800" fill="#8B1E1E">冊</text></g></g>`);
 
   // 책 정보: 표지 + 제목·저자·별점
   const cover = { x: PAD, y: 132, width: 112, height: 162 };
@@ -175,17 +182,7 @@ function buildAiReadingCardSvg(card: AiReadingCardData, coverSrc: string) {
     cursor = bottom;
   }
 
-  // 맺음: 작성자 서명 + 책도장 로고(app/icon.svg 의 동그라미 冊 도장)
-  const footerY = cursor + 48;
-  const name = (card.authorName || card.authorNickname || "책도장 독자").trim() || "책도장 독자";
-  parts.push(`<line x1="${PAD}" y1="${footerY}" x2="${WIDTH - PAD}" y2="${footerY}" stroke="${COLOR.border}" stroke-width="1.5"/>`);
-  const rowY = footerY + 42;
-  parts.push(`<text x="${PAD}" y="${rowY}" font-family="${SANS}" font-size="11" font-weight="700" letter-spacing="2" fill="${COLOR.subtle}">BY</text>`);
-  parts.push(textLines(lines(name, (CONTENT - 100) / 16, 1), PAD + 26, rowY, 0, `font-family="${SERIF}" font-size="16" font-weight="700" letter-spacing="-0.2" fill="${COLOR.ink}"`));
-  const markSize = 34;
-  parts.push(`<g transform="translate(${WIDTH - PAD - markSize} ${rowY - 5 - markSize / 2}) scale(${markSize / 512})"><g transform="rotate(-9 256 256)"><circle cx="256" cy="256" r="184" fill="none" stroke="#8B1E1E" stroke-width="34"/><text x="256" y="319" text-anchor="middle" font-family="Noto Serif KR, Nanum Myeongjo, Batang, serif" font-size="198" font-weight="800" fill="#8B1E1E">冊</text></g></g>`);
-
-  const height = rowY + 64;
+  const height = cursor + 72;
   // body 의 자간·글꼴 기능이 화면 카드에만 상속되지 않도록 svg 에서 초기화한다.
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${height}" viewBox="0 0 ${WIDTH} ${height}" style="letter-spacing:0;font-feature-settings:normal;font-weight:400">
     <defs><clipPath id="${clipId}"><rect ${coverRect}/></clipPath></defs>

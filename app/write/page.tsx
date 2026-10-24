@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { API_BASE } from "../lib/api";
 import { authFetch } from "../lib/auth";
 import { getSessionId, trackMetric } from "../components/AnalyticsTracker";
+import { PRESET_EMOTIONS, customEmotionKeywords } from "./emotionKeywords";
 
 const FEED_STATE_KEY = "chaekdojang:feed-state";
 const PENDING_REVIEW_KEY = "chaekdojang:pending-review";
@@ -840,7 +841,7 @@ function WriteContent() {
                   value={query}
                   onChange={(e) => { setQuery(e.target.value); setHasSearched(false); }}
                   onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), searchBooks())}
-                  placeholder={searchMode === "BOOK" ? "책 제목 또는 저자 검색" : "웹소설 제목 검색"}
+                  placeholder={searchMode === "BOOK" ? "책 제목, 저자 또는 ISBN 검색" : "웹소설 제목 검색"}
                   className="cdj-field text-sm flex-1"
                 />
                 <button
@@ -1072,7 +1073,7 @@ function WriteContent() {
                 읽고 난 감정 <span className="text-xs font-normal text-brown-400">(선택)</span>
               </p>
               <div className="flex flex-wrap gap-2">
-                {["성장", "혼란", "위로", "성찰", "흥미", "먹먹함", "기쁨", "분노"].map((keyword) => (
+                {PRESET_EMOTIONS.map((keyword) => (
                   <button
                     key={keyword}
                     type="button"
@@ -1087,6 +1088,21 @@ function WriteContent() {
                   </button>
                 ))}
               </div>
+              {customEmotionKeywords(selectedEmotions).length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {customEmotionKeywords(selectedEmotions).map((keyword) => (
+                    <button
+                      key={keyword}
+                      type="button"
+                      onClick={() => toggleEmotion(keyword)}
+                      className="rounded-full bg-brown-700 px-3 py-1.5 text-sm text-white transition hover:bg-brown-800"
+                      title="눌러서 제거"
+                    >
+                      {keyword} ×
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="mt-2 flex gap-2">
                 <input
                   value={emotionInput}

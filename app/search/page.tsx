@@ -248,7 +248,19 @@ function SearchContent() {
         );
         if (res.ok) {
           const json = await res.json();
-          setResults(json.data ?? []);
+          const books = json.data ?? [];
+          if (books.length === 0 && trimmed && !trimmedAuthor && !trimmedPublisher) {
+            const authorParams = new URLSearchParams({ author: trimmed });
+            const authorRes = await fetch(`${BASE}/api/books/search?${authorParams.toString()}`);
+            if (authorRes.ok) {
+              const authorJson = await authorRes.json();
+              setResults(authorJson.data ?? []);
+            } else {
+              setResults([]);
+            }
+          } else {
+            setResults(books);
+          }
         } else {
           setResults([]);
         }
@@ -395,7 +407,7 @@ function SearchContent() {
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={tab === "users" ? "닉네임으로 검색" : tab === "webNovels" ? "웹소설 제목" : "책 제목 또는 ISBN"}
+            placeholder={tab === "users" ? "닉네임으로 검색" : tab === "webNovels" ? "웹소설 제목" : "책 제목, 저자 또는 ISBN"}
             aria-label="검색어"
             className="cdj-field h-[52px] pl-11 pr-24 text-[15px]"
           />

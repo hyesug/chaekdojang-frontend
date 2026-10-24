@@ -307,7 +307,7 @@ export default function ReviewAiSummaryCard({
 
       {canShowSummary && !editing && readingCard && (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-          <div className="w-full max-w-[520px]">
+          <div className="w-full min-w-0 max-w-[520px]">
             <SummaryView card={readingCard} />
           </div>
           {isOwner && (

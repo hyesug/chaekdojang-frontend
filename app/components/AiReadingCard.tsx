@@ -28,7 +28,7 @@ export default function AiReadingCard({
   return (
     <div
       data-ai-reading-card
-      className={`relative overflow-hidden rounded-lg text-[#102A2C] shadow-md ${
+      className={`relative h-auto min-h-0 overflow-hidden rounded-lg text-[#102A2C] shadow-md ${
         compact ? "max-w-[360px]" : "w-full max-w-[520px]"
       }`}
       style={{ background: "linear-gradient(145deg, #FCFBF7 0%, #E3ECE7 100%)" }}

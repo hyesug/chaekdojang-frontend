@@ -21,12 +21,21 @@ export default function AiReadingCardDownloadV2({ targetRef }: { card: AiReading
       const target = targetRef.current;
       if (!target) throw new Error("card not found");
       await document.fonts.ready;
+      const styleMap = snapshotComputedStyles(target);
       const canvas = await html2canvas(target, {
         scale: 2,
         useCORS: true,
         allowTaint: false,
         backgroundColor: "#FCFBF7",
         imageTimeout: 10000,
+        onclone: (clonedDocument) => {
+          clonedDocument.querySelectorAll("style, link[rel='stylesheet']").forEach((node) => node.remove());
+          clonedDocument.querySelectorAll<HTMLElement>("[data-ai-reading-card-export-index]").forEach((node) => {
+            const index = Number(node.dataset.aiReadingCardExportIndex);
+            const cssText = styleMap[index];
+            if (cssText) node.style.cssText = cssText;
+          });
+        },
       });
       const url = canvas.toDataURL("image/png");
       const a = document.createElement("a");
@@ -52,6 +61,17 @@ export default function AiReadingCardDownloadV2({ targetRef }: { card: AiReading
       {saving ? "저장 중" : "이미지로 저장"}
     </button>
   );
+}
+
+function snapshotComputedStyles(root: HTMLElement): string[] {
+  const styles: string[] = [];
+  const nodes = [root, ...Array.from(root.querySelectorAll<HTMLElement>("*"))];
+  nodes.forEach((node, index) => {
+    node.dataset.aiReadingCardExportIndex = String(index);
+    const computed = window.getComputedStyle(node);
+    styles[index] = Array.from(computed).map((property) => `${property}:${computed.getPropertyValue(property)};`).join("");
+  });
+  return styles;
 }
 
 async function drawCard(card: AiReadingCardData) {

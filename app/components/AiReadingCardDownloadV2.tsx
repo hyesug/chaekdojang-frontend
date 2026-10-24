@@ -41,7 +41,8 @@ export default function AiReadingCardDownloadV2({ card, targetRef }: { card: AiR
       document.body.appendChild(a);
       a.click();
       a.remove();
-    } catch {
+    } catch (error) {
+      console.error("AI reading card export failed", error);
       alert("이미지 저장에 실패했어요.");
     } finally {
       setSaving(false);

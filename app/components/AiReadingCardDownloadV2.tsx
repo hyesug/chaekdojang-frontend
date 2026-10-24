@@ -26,10 +26,15 @@ export default function AiReadingCardDownloadV2({ targetRef }: { card: AiReading
       try {
         canvas = await captureCard(target, styleMap, false);
       } catch {
-        // 외부 표지 서버가 CORS를 허용하지 않는 경우에도 카드 본문은 저장한다.
-        canvas = await captureCard(target, styleMap, true);
+        // 캡처 라이브러리가 외부 표지 또는 전역 스타일을 처리하지 못해도 저장은 완료한다.
+        canvas = await drawCard(card);
       }
-      const url = canvas.toDataURL("image/png");
+      let url: string;
+      try {
+        url = canvas.toDataURL("image/png");
+      } catch {
+        url = (await drawCard(card)).toDataURL("image/png");
+      }
       const a = document.createElement("a");
       a.href = url;
       a.download = "chaekdojang-ai-reading-card.png";
@@ -82,7 +87,10 @@ function snapshotComputedStyles(root: HTMLElement): string[] {
   nodes.forEach((node, index) => {
     node.dataset.aiReadingCardExportIndex = String(index);
     const computed = window.getComputedStyle(node);
-    styles[index] = Array.from(computed).map((property) => `${property}:${computed.getPropertyValue(property)};`).join("");
+    styles[index] = Array.from(computed)
+      .filter((property) => !property.startsWith("--"))
+      .map((property) => `${property}:${computed.getPropertyValue(property)};`)
+      .join("");
   });
   return styles;
 }

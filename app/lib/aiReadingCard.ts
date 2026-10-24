@@ -2,6 +2,8 @@ export type AiReadingCardData = {
   bookTitle: string;
   bookAuthor?: string | null;
   bookThumbnail?: string | null;
+  rating?: number | null;
+  reviewContent?: string | null;
   authorName?: string | null;
   authorNickname: string;
   oneLineReview: string;

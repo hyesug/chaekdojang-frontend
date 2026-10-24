@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import AiReadingCardDownload from "./AiReadingCardDownload";
+import AiReadingCard from "./AiReadingCard";
 import type { AiReadingCardData } from "../lib/aiReadingCard";
 import { authFetch } from "../lib/auth";
 
@@ -40,6 +41,8 @@ export default function ReviewAiSummaryCard({
   bookTitle,
   bookAuthor,
   bookThumbnail,
+  rating,
+  reviewContent,
   authorNickname,
 }: {
   reviewId: number;
@@ -47,6 +50,8 @@ export default function ReviewAiSummaryCard({
   bookTitle: string;
   bookAuthor?: string | null;
   bookThumbnail?: string | null;
+  rating?: number | null;
+  reviewContent?: string | null;
   authorNickname: string;
 }) {
   const [summary, setSummary] = useState<ReviewAiSummary | null>(null);
@@ -76,6 +81,8 @@ export default function ReviewAiSummaryCard({
           bookTitle,
           bookAuthor,
           bookThumbnail,
+          rating,
+          reviewContent,
           authorName: authorNickname,
           authorNickname,
           oneLineReview: currentOneLineReview,
@@ -385,72 +392,8 @@ function StatusBox({ text, compact = false }: { text: string; compact?: boolean 
 }
 
 function SummaryView({ card }: { card: AiReadingCardData }) {
-  const hasExtra = !!(card.recommendedFor || card.impressivePoint);
   return (
-    <div className="overflow-hidden rounded-2xl border border-[#e8e4df] bg-[#fafaf8] shadow-md">
-      {/* 상단 다크 바 */}
-      <div className="h-[5px] w-full bg-[#2c2018]" />
-
-      <div className="px-5 pb-4 pt-3">
-        {/* 헤더 */}
-        <div className="flex items-center justify-between">
-          <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#2c2018]">AI Reading Card</p>
-          <p className="text-[9px] text-[#a09080]">chaekdojang</p>
-        </div>
-
-        {/* 책 제목 */}
-        <p className="mt-1.5 line-clamp-2 text-sm font-bold leading-snug text-[#1a110a]">
-          {card.bookTitle}
-          {card.bookAuthor && (
-            <span className="ml-1.5 font-normal text-[#6b5a4a] opacity-80">· {card.bookAuthor}</span>
-          )}
-        </p>
-
-        {/* 전체 너비 구분선 */}
-        <div className="my-2.5 h-[0.5px] w-full bg-[#2c2018] opacity-15" />
-
-        {/* 한줄 감상 — 히어로 */}
-        <p className="text-[22px] font-bold leading-snug text-[#1a110a] sm:text-[27px]">
-          {card.oneLineReview}
-        </p>
-
-        {/* 감정 키워드 */}
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {card.emotionKeywords.slice(0, 4).map((keyword) => (
-            <span
-              key={keyword}
-              className="rounded-sm bg-[#f0ebe4] px-2.5 py-0.5 text-[10px] font-medium text-[#6b5a4a]"
-            >
-              {keyword}
-            </span>
-          ))}
-        </div>
-
-        {/* 하단 섹션 */}
-        <div className="mt-4 border-t border-[#e0d8d0] pt-3">
-          {hasExtra && (
-            <div className="mb-2.5 grid grid-cols-2 gap-3">
-              {card.recommendedFor && (
-                <div>
-                  <p className="text-[7px] font-bold uppercase tracking-widest text-[#2c2018] opacity-50">추천 대상</p>
-                  <p className="mt-0.5 text-[10px] leading-snug text-[#5c3d28]">{card.recommendedFor}</p>
-                </div>
-              )}
-              {card.impressivePoint && (
-                <div>
-                  <p className="text-[7px] font-bold uppercase tracking-widest text-[#2c2018] opacity-50">인상적인 구절</p>
-                  <p className="mt-0.5 text-[10px] leading-snug text-[#5c3d28]">{card.impressivePoint}</p>
-                </div>
-              )}
-            </div>
-          )}
-          <div className="flex items-center justify-between">
-            <span className="text-[9px] text-[#9a8878]">by {card.authorName || card.authorNickname}</span>
-            <span className="text-[9px] font-bold text-[#4a3828]">책도장</span>
-          </div>
-        </div>
-      </div>
-    </div>
+    <AiReadingCard card={card} />
   );
 }
 

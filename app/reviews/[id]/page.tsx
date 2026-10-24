@@ -270,6 +270,8 @@ export default async function PublicReviewPage({ params, searchParams }: Props) 
             bookTitle={review.book?.title ?? ""}
             bookAuthor={review.book?.author}
             bookThumbnail={review.book?.thumbnail}
+            rating={review.rating}
+            reviewContent={review.content}
             authorNickname={review.author.nickname}
           />
         </div>

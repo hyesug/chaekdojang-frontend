@@ -17,7 +17,7 @@ export default function AiReadingCardDownloadV2({ card }: { card: AiReadingCardD
     if (saving) return;
     setSaving(true);
     try {
-      const canvas = drawCard(card);
+      const canvas = await drawCard(card);
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
       if (!blob) throw new Error("no blob");
       const url = URL.createObjectURL(blob);
@@ -47,7 +47,7 @@ export default function AiReadingCardDownloadV2({ card }: { card: AiReadingCardD
   );
 }
 
-function drawCard(card: AiReadingCardData) {
+async function drawCard(card: AiReadingCardData) {
   const canvas = document.createElement("canvas");
   canvas.width = SIZE;
   canvas.height = SIZE;
@@ -174,6 +174,16 @@ function drawCard(card: AiReadingCardData) {
   // 수직 중앙 정렬
   let y = ZONE_TOP + Math.round(Math.max(0, (ZONE_BOTTOM - ZONE_TOP - totalH) / 2));
 
+  if (card.bookThumbnail) {
+    try {
+      const image = await loadImage(card.bookThumbnail);
+      ctx.drawImage(image, PAD, y, 92, 132);
+      y += Math.max(bookH + authorH, 132) + 12;
+    } catch {
+      // 카드 저장은 표지 로드 실패 시에도 나머지 내용으로 계속한다.
+    }
+  }
+
   // 책 제목 그리기
   ctx.fillStyle = "#1a110a";
   ctx.font = `700 ${BOOK_FS}px ${SANS}`;
@@ -234,7 +244,28 @@ function drawCard(card: AiReadingCardData) {
     }
   }
 
+  if (card.impressivePoint) {
+    const quote = `“${card.impressivePoint}”`;
+    ctx.fillStyle = "#6b5a4a";
+    ctx.font = `400 20px ${SANS}`;
+    const quoteLines = measureLines(ctx, quote, SIZE - PAD * 2, 3);
+    y += 28;
+    ctx.fillText("내 독후감에서 고른 구절", PAD, y);
+    y += 28;
+    quoteLines.forEach((line, i) => ctx.fillText(line, PAD, y + i * 28));
+  }
+
   return canvas;
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.crossOrigin = "anonymous";
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = src;
+  });
 }
 
 /** textBaseline="top" 기준 줄바꿈 */

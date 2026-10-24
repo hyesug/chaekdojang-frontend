@@ -47,9 +47,16 @@ export default function AiReadingCard({
           <p className="text-[9px] text-[#b8956d]">chaekdojang</p>
         </div>
 
-        <p className={`mt-1 font-serif font-bold leading-tight text-[#1a0f07] ${compact ? "text-sm" : "text-base"}`}>
-          {card.bookTitle}
-        </p>
+        <div className="mt-2 flex gap-3">
+          {card.bookThumbnail && (
+            <img src={card.bookThumbnail} alt="" className={`${compact ? "h-16 w-11" : "h-24 w-16"} shrink-0 rounded-sm object-cover shadow-sm`} />
+          )}
+          <div className="min-w-0">
+            <p className={`font-serif font-bold leading-tight text-[#1a0f07] ${compact ? "text-sm" : "text-base"}`}>{card.bookTitle}</p>
+            {card.bookAuthor && <p className="mt-1 text-[10px] text-[#7a5a42]">{card.bookAuthor}</p>}
+            {card.rating != null && <p className="mt-2 text-xs tracking-wide text-[#c47f56]" aria-label={`별점 ${card.rating}점`}>{"★".repeat(Math.round(card.rating))}{"☆".repeat(5 - Math.round(card.rating))} <span className="text-[#7a5a42]">{card.rating.toFixed(1)}</span></p>}
+          </div>
+        </div>
 
         <div className={`bg-[#c47f56] opacity-60 ${compact ? "my-2 h-0.5 w-6" : "my-3 h-0.5 w-8"}`} />
 
@@ -81,8 +88,8 @@ export default function AiReadingCard({
               )}
               {card.impressivePoint && (
                 <div>
-                  <p className="text-[8px] font-semibold uppercase tracking-widest text-[#c47f56]">인상적인 구절</p>
-                  <p className="mt-0.5 text-[10px] text-[#5c3d28]">{card.impressivePoint}</p>
+                  <p className="text-[8px] font-semibold uppercase tracking-widest text-[#c47f56]">내 독후감에서 고른 구절</p>
+                  <p className="mt-0.5 text-[10px] text-[#5c3d28]">“{card.impressivePoint}”</p>
                 </div>
               )}
             </div>

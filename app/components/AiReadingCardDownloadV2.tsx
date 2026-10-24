@@ -261,8 +261,13 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.crossOrigin = "anonymous";
-    image.onload = () => resolve(image);
-    image.onerror = reject;
+    const timeout = window.setTimeout(() => reject(new Error("image timeout")), 3000);
+    const finish = (handler: () => void) => {
+      window.clearTimeout(timeout);
+      handler();
+    };
+    image.onload = () => finish(() => resolve(image));
+    image.onerror = () => finish(() => reject(new Error("image load failed")));
     image.src = src;
   });
 }

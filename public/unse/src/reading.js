@@ -869,7 +869,12 @@ const top = (days, key, n) =>
 const bottom = (days, key, n) =>
   days.slice().sort((a, b) => a[key] - b[key]).slice(0, n).map((x) => x.d);
 
-export function luckyDays(days, weakEl) {
+/**
+ * @param {number} weakEl  가장 약한 오행 — 숫자·방위·자음
+ * @param {number|null} colorEl  색을 고를 오행. 부족한 오행만으로 색을 정하지 않으므로 용신 검토(yongsin.js colorAdvice)의
+ *   결과를 받는다. 보탤 기운을 정하지 못했으면(null) 색을 내지 않는다
+ */
+export function luckyDays(days, weakEl, colorEl = null) {
   const avoid = days.filter((x) => x.sinsal.includes('양인')).map((x) => x.d);
   // 좋은 날을 고를 때는 양인이 든 날을 아예 뺀다. 점수가 높아도 권할 수 없다.
   const ok = days.filter((x) => !x.sinsal.includes('양인'));
@@ -890,7 +895,7 @@ export function luckyDays(days, weakEl) {
     avoid,
     worst: bottom(ok, 'score', 3),
     helper,
-    color: LUCKY_COLOR[weakEl],
+    color: colorEl == null ? [] : LUCKY_COLOR[colorEl],
     num: nums,
     dir: LUCKY_DIR[weakEl],
     consonant: LUCKY_CONSONANT[weakEl],

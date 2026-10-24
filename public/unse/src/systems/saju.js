@@ -14,6 +14,7 @@ import {
   isStemCombine, isStemClash, branchRelations, HIDDEN_STEMS,
 } from '../core/ganzhi.js';
 import { result } from './_base.js';
+import { colorAdvice } from '../semantic/structure/yongsin.js';
 import { j } from '../core/josa.js';
 
 export const meta = {
@@ -337,11 +338,12 @@ export function analyze(input) {
   if (harmony) seunText += ' 일지와 합(合)이 이루어져 사람과 기회가 붙는 해입니다. 관계에서 풀리는 일이 많습니다.';
   readings.push({ title: `${currentYear}년 세운`, text: seunText });
 
-  // 행운
-  const luck = LUCK[weak];
+  // 행운 — 가장 약한 오행 하나가 아니라 계절·조후·신강신약·용신으로 고른다(semantic/structure/yongsin.js)
+  const advice = colorAdvice(chart);
+  const luck = advice.el == null ? null : LUCK[advice.el];
   readings.push({
     title: '보태면 좋은 것',
-    text: `약한 ${j(ELEMENTS[weak], '을')} 채우는 쪽이 도움이 됩니다. 색은 ${luck.color}, 방향은 ${luck.dir}, 숫자는 ${luck.num}, 시간대는 ${luck.time}입니다. 미신처럼 쓰기보다 "내가 덜 쓰는 근육이 무엇인가"로 읽는 편이 실제로 쓸모가 있습니다.`,
+    text: `${advice.text}${luck ? ` 같은 기운의 방향은 ${luck.dir}, 숫자는 ${luck.num}, 시간대는 ${luck.time}입니다.` : ''} 미신처럼 쓰기보다 "내가 덜 쓰는 근육이 무엇인가"로 읽는 편이 실제로 쓸모가 있습니다.`,
   });
 
   // ── 종합용 지표 ──

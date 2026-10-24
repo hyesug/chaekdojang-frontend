@@ -13,6 +13,7 @@
  */
 
 import { AREAS } from './forecast.js';
+import { colorAdvice } from './semantic/structure/yongsin.js';
 import { traitLenses, verdictSummary, compatAxes } from './lens.js';
 import { lifeReading, yearTimeline, consensusReading, areaProse,
          monthDays, luckyDays, compatReading, signatureReading,
@@ -233,7 +234,9 @@ export function buildView(form, r, f) {
   const timeline = yearTimeline(r.input, r.chart, f.today.y - 1, f.today.y + 2);
   const thisYear = timeline.find((x) => x.year === f.today.y) ?? timeline[0];
   const days = monthDays(r.input, r.chart, f.today.y, f.today.m);
-  const lucky = luckyDays(days, life.meta.weak);
+  let colorEl = null;
+  try { colorEl = colorAdvice(r.chart).el; } catch { /* 색을 내지 않는다 */ }
+  const lucky = luckyDays(days, life.meta.weak, colorEl);
   const today = days.find((x) => x.d === f.today.d) ?? days[0];
 
   const themes = currentThemes(f);

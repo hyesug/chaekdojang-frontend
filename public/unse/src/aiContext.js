@@ -37,6 +37,7 @@ import { westernPair } from './semantic/structure/western.js';
 import { readClassical } from './semantic/structure/yukchin.js';
 import { SCHOOLS } from './semantic/structure/school.js';
 import { readStructures } from './semantic/structure/saju.js';
+import { colorAdvice, colorElement } from './semantic/structure/yongsin.js';
 import { palaceStars, natureOf } from './semantic/structure/stars.js';
 import { selectedWindows, selectedSpan } from './semantic/timing/selected.js';
 import { verifiedCareer } from './semantic/index.js';
@@ -164,6 +165,44 @@ function careerVerdict(input) {
     `근거: ${basis || vc.systems.join('·')}의 직업 성향을 합산한 상위 범주. 분야를 말할 땐 이 체계와 명반 요소를 함께 밝힐 것.`,
     '이것은 타고난 기질에 맞는 분야이지 그 일의 실제 능력·적응력·성과가 아니다.',
     '직업 분야는 이 순서를 그대로 쓸 것. "이직할 사람인지 한 우물 팔 사람인지"는 단정하지 말 것.'];
+}
+
+/**
+ * 행운의 색 — 사주 용신 검토와 다른 체계가 권한 색을 나란히.
+ *
+ * 태국 점성술은 태어난 요일의 행성으로, 사주는 오행 균형(조후·억부)으로 색을 정한다. 기준이 달라
+ * 사주가 피하라는 색을 태국이 권할 수 있다. 그 이유를 계산 쪽에서 적어 두고, 용신이 확정되지 않았으면
+ * 평생의 행운색으로 말하지 말라고 못박는다(행운의 색 규칙 2026-10-24). 사주 쪽 풀이 문장은 위
+ * 사주 구획의 '보태면 좋은 것'에 이미 있으니 여기서는 판정과 견줌만 싣는다.
+ */
+const YONG_STATUS = {
+  settled: '억부·조후가 같은 쪽 — 용신 확정', eokbuOnly: '조후가 급하지 않아 억부대로 — 용신 확정',
+  split: '억부와 조후가 갈림 — 용신 미확정', climateOnly: '중화라 조후로만 본 후보 — 용신 미확정',
+  none: '중화이고 조후도 급하지 않음 — 용신 미정',
+};
+function formatColors(r) {
+  const fact = (sys, label) => sys?.facts?.find((x) => x.label === label)?.value;
+  const thai = r.results.find((x) => x.id === 'thai');
+  const tc = fact(thai, '행운의 색');
+  const others = tc
+    ? [{ system: '태국 점성술', color: tc, basis: `태어난 요일(${fact(thai, '태어난 요일')})의 수호 행성 ${fact(thai, '수호 행성')}` }]
+    : [];
+  let a;
+  try { a = colorAdvice(r.chart, others); } catch { return ''; }
+  const u = a.review;
+  const E = (i) => (i == null ? '—' : ELEMENTS[i]);
+  const L = ['## 행운의 색 — 사주 용신 검토와 다른 체계의 색'];
+  L.push(`- 사주: ${YONG_STATUS[u.status]} · 계절 ${u.season} · ${u.strength.level} · 용신 ${E(u.yong)} · 희신 ${E(u.hee)} · 기신 ${E(u.gi)} · 가장 약한 오행 ${E(u.weak)}`);
+  L.push(`  추천색 ${a.colors.join(', ') || '없음'} · 기피색 ${a.avoid.join(', ') || '없음'} · 평생의 행운색으로 말해도 되는가: ${a.lifetime ? '예' : '아니오(후보로만)'}`);
+  if (tc) {
+    const el = colorElement(tc);
+    L.push(`- 태국 점성술: ${tc} — ${j(others[0].basis, '으로')} 정한 색`);
+    L.push(a.conflicts.length ? `  ⚠ 충돌: ${a.conflicts[0]}`
+      : el == null ? '  이 색은 오방색 대응이 유파마다 갈려 사주 색과 견주지 않는다.'
+        : el === u.yong ? '  사주 용신의 색과 같은 오행이다. 다만 기준이 다른 두 체계가 우연히 겹친 것이라 서로의 검증으로 세지 않는다.'
+          : '  사주의 추천색과도 기피색과도 다른 오행이다 — 두 체계가 색을 정하는 기준이 달라서다.');
+  }
+  return L.join('\n');
 }
 
 /** 직업 — 사주 격 · 자미 관록궁 · 태을 · 고전·현대 10하우스 · 육친 */
@@ -476,6 +515,8 @@ export function buildContext(form, r, f = null) {
     out.push(`계산하지 못한 체계: ${r.skipped.map((x) => x.system).join(', ')} — ${r.skipped[0].reason}`);
     out.push('');
   }
+  const colors = formatColors(r);
+  if (colors) { out.push(colors); out.push(''); }
 
   // ── 종합 ──
   out.push('## 종합');

@@ -119,6 +119,20 @@ export function findAspect(a, b) {
   return null;
 }
 
+/**
+ * 각 하나를 근거로 적는 꼴 — "사각 90°(오차 1.2°, 허용 ±7°)".
+ * 트랜짓·진행처럼 출생 명반 밖의 계산을 말할 때는 정확한 각도와 허용 오차를 함께 밝힌다
+ * (진로·이직 해석 규칙 4). 허용 오차는 기법마다 다를 수 있어(솔라 아크 1°) 넘겨받는다.
+ */
+export function aspectNote(name, off, allowed = ASPECTS.find((a) => a.name === name)?.orb, unit = '°') {
+  const asp = ASPECTS.find((a) => a.name === name);
+  return asp ? `${name} ${asp.angle}${unit}(오차 ${off}${unit}, 허용 ±${allowed}${unit})` : `${name}(오차 ${off}${unit})`;
+}
+
+/** 트랜짓 각마다의 정확한 각도·허용 오차 — 달마다 여러 줄이 나가는 표에 줄마다 붙이지 않고 범례 한 줄로 싣는다 */
+export const ASPECT_LEGEND = '각의 정확한 각도·허용 오차: ' +
+  ASPECTS.map((a) => `${a.name} ${a.angle}°(허용 ±${a.orb}°)`).join(' · ');
+
 export function analyze(input) {
   const { jdUT, place, timeKnown } = input;
 
@@ -518,6 +532,8 @@ export function forecast(input, chart, period) {
 
   const areas = { 총운: 50, 애정운: 50, 금전운: 50, 직장운: 50, 학업운: 50, 건강운: 50 };
   const hits = [];
+  // 설명 문장에는 각도·허용 오차까지 — 리포트 화면에도 나가는 글이라 '°' 대신 '도'로 쓴다
+  const notes = [];
 
   // 일운은 빠른 천체, 연운은 느린 천체가 의미 있다
   const movers = period.kind === 'day'
@@ -538,6 +554,7 @@ export function forecast(input, chart, period) {
         areas[k] += v * tone * tight * 0.9;
       }
       hits.push(`${p}–출생 ${tn} ${a.name}`);
+      notes.push(`${p}–출생 ${tn} ${aspectNote(a.name, Math.round(a.orbUsed * 10) / 10, a.orb, '도')}`);
     }
   }
 
@@ -547,7 +564,7 @@ export function forecast(input, chart, period) {
     id: meta.id, name: meta.name, weight: 1.2,
     headline: hits.length ? hits.slice(0, 2).join(' · ') : '뚜렷한 트랜싯 없음',
     text: hits.length
-      ? `지금 하늘의 행성이 출생 차트를 건드리는 자리입니다. ${hits.slice(0, 3).join(', ')}.`
+      ? `트랜짓 — 지금 하늘의 행성이 출생 차트를 건드리는 자리입니다. ${notes.slice(0, 3).join(', ')}.`
       : '이 시기에는 주요 트랜싯이 걸리지 않습니다. 큰 파도 없이 지나가는 구간입니다.',
     areas,
   };

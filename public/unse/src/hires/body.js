@@ -45,6 +45,7 @@
 
 import { PLANET_ORDER, houseOf } from '../core/planets.js';
 import { ELEMENTS } from '../core/ganzhi.js';
+import { aspectNote } from '../systems/astrology.js';
 
 // ─────────────────────────────────────────────────────────────
 // 표 — 문헌 그대로. 여기를 고칠 일은 없다
@@ -161,7 +162,7 @@ export function westernParts(N, transitHits = []) {
     let w = seg.share;
     const basis = [`6하우스의 ${Math.round(seg.share * 100)}%가 ${mel.sign}(${seg.deg}°)`];
     if (aff) { w *= 1.4; basis.push(`그 사인의 주인 ${ruler}이 ${aff.by}과 합 ${aff.orb}°`); }
-    if (hit) { w *= 1.3; basis.push(`지금 트랜싯 ${hit.planet}-${hit.target} ${hit.aspect} ${hit.orb}°`); }
+    if (hit) { w *= 1.3; basis.push(`지금 트랜싯 ${hit.planet}-${hit.target} ${aspectNote(hit.aspect, hit.orb)}`); }
     items.push({ parts: mel.parts, sign: mel.sign, ruler, weight: w, basis, from: '6하우스 사인' });
   }
 

@@ -278,7 +278,7 @@ function careerLife(v, r) {
 
   // 어떤 일이 맞는가 — AI 대화와 같은 직업 정책(careerRoles)
   const roles = careerRoles(r);
-  const fit = roles.lead;
+  const fit = [roles.lead, roles.basis].filter(Boolean).join(' ');
 
   // 일하는 방식 — 내 힘·표현(비겁·식상)과 책임·배움(관성·인성)의 견줌으로 조직형인지 독립형인지
   let style = '';
@@ -818,15 +818,38 @@ const CATEGORY_JOBS = {
 function verifiedJobs(r) {
   let vc = null;
   try { vc = verifiedCareer(r.input); } catch { /* */ }
-  if (!vc?.available) return [];
+  if (!vc?.available) return { jobs: [], vc: null };
   const cats = vc.top.map((x) => CATEGORY_JOBS[x.key] ?? []);
   // 범주마다 대표 직업 하나씩, 남는 칸은 1순위 범주의 둘째 직업
   const jobs = [];
   for (const js of [...cats.map((c) => c[0]), cats[0]?.[1]]) if (js && !jobs.includes(js) && jobs.length < 4) jobs.push(js);
-  return jobs;
+  return { jobs, vc };
+}
+/**
+ * 직업을 권할 때 함께 밝히는 근거 — 어느 체계의 어느 명반 요소에서 나왔는지(진로·이직 해석 규칙 6),
+ * 그리고 기질에 맞는 쪽일 뿐 실제 능력·성과가 아니라는 것(규칙 5). 리포트 화면 글이라 궁 이름·한자 대신 쉬운 이름으로.
+ */
+const PLAIN_ELEMENT = {
+  자미두수: '직업을 보는 자리의 별', 육임: '타고난 판의 흐름', 숙요: '타고난 별자리',
+  점성술: '사회적 위치를 보는 영역', 사주: '타고난 기운의 배합', 베딕: '직업을 따로 보는 차트',
+};
+function careerBasis(vc, systems) {
+  const parts = systems.map((s) => {
+    if (s !== '자미두수') return `${s} ${PLAIN_ELEMENT[s] ?? '배치'}`;
+    // 자미두수는 직업을 보는 자리에 든 별 이름까지 — 별 이름은 한글이라 화면에 그대로 써도 된다.
+    // 자리가 비어 있으면(공궁) 맞은편 자리의 별을 빌려 읽은 것이다("관록궁 공궁 → 대궁 염정")
+    const items = vc?.basis?.find((b) => b.system === s)?.items ?? [];
+    const stars = [...new Set(items.map((t) => /관록궁 (?:공궁 → 대궁 )?([가-힣]+)/.exec(t)?.[1]).filter((x) => x && x !== '공궁'))];
+    if (!stars.length) return `${s} ${PLAIN_ELEMENT[s]}`;
+    return items.some((t) => /공궁/.test(t))
+      ? `${s} 직업을 보는 자리(비어 있어 맞은편 별을 빌려 읽음: ${stars.join('·')})`
+      : `${s} ${PLAIN_ELEMENT[s]}(${stars.join('·')})`;
+  });
+  if (!parts.length) return '';
+  return `${parts.join(', ')}에서 읽은 직업 성향으로 고른 직업이에요. 명반으로 본 성향에 맞는 쪽이라는 뜻이고, 그 일을 실제로 얼마나 잘 해낼지는 경력과 실력이 정해요.`;
 }
 export function careerRoles(r) {
-  const verified = verifiedJobs(r);
+  const { jobs: verified, vc } = verifiedJobs(r);
   const said = verified.length ? [] : careerSaid(r);
   // 둘 이상의 체계가 함께 짚은 직업을 먼저, 그다음은 체계마다 앞선 직업을 하나씩 돌아가며 — 낱말이 많은 체계 하나가
   // 칸을 다 채우지 않게 한다(예전엔 베딕 "교육·법률·금융·상담" 넷이 칸을 독차지했다)
@@ -837,7 +860,10 @@ export function careerRoles(r) {
   // 받침에 따라 "이에요/예요" — 괄호로 끝나면 괄호 앞 글자를 본다
   const last = jobs.length ? jobs[jobs.length - 1].replace(/\([^)]*\)$/, '').slice(-1).charCodeAt(0) - 0xac00 : -1;
   const lead = jobs.length ? `잘 맞는 직업은 ${jobs.join(', ')}${last >= 0 && last % 28 ? '이에요' : '예요'}.` : '';
-  return { jobs, lead, each: [] };
+  // 근거는 실제로 직업을 낸 체계만 — 검증된 세 체계(자미두수·육임·숙요)거나, 시각이 없을 때 직업 이름을 낸 담당 체계
+  const from = verified.length ? (vc?.systems ?? []) : said.filter((_, i) => per[i].some((j) => jobs.includes(j))).map((x) => x.system);
+  const basis = jobs.length ? careerBasis(vc, [...new Set(from)]) : '';
+  return { jobs, lead, basis, source: [...new Set(from)].join('·'), each: [] };
 }
 
 export function careerFocus(r) {
@@ -894,7 +920,8 @@ const SEAT_EVENT = {
   },
 };
 const DOMAIN_EVENT = {
-  직업: ['일의 큰 변화', '하던 일의 방향이 바뀌거나 자리를 옮기는 일이 생기기 쉽습니다. 스스로 옮길 수도, 밖에서 제안이 올 수도, 맡은 일이 바뀔 수도 있습니다.', '1~2년 전부터 해 온 일을 정리하고 다음에 갈 쪽을 알아 두세요.'],
+  // 변화 신호는 가능성이다 — 지금 조직 안 이동·다른 곳으로 이직·맡은 일의 변화를 나눠 쓰고, 어느 쪽인지 정하지 않는다(진로·이직 해석 규칙 2·7)
+  직업: ['일의 큰 변화', '하던 일의 방향이 바뀔 가능성이 큰 때입니다. 지금 조직 안에서 자리나 부서가 바뀔 수도, 다른 곳으로 옮길 수도, 같은 자리에서 맡는 일이 바뀔 수도 있습니다.', '남는 쪽과 옮기는 쪽을 연봉·조직의 안정성·일이 맞는지·성장할 수 있는지로 함께 견줘 두세요. 지금 눈앞의 좋은 기회를 뒷날의 운 때문에 미룰 필요는 없습니다.'],
   재물: ['목돈이 움직이는 일', '큰돈이 들어오거나, 집·투자·사업처럼 큰돈을 쓰는 결정이 생기기 쉽습니다.', '들어온 돈의 일부는 먼저 떼어 두고, 큰 지출은 한 번에 몰지 말고 나눠 결정하세요.'],
   이사: ['사는 곳을 옮기는 일', '이사·이주처럼 생활의 근거지가 바뀌기 쉽습니다.', '옮길 곳의 일·가족 사정을 함께 따져 미리 후보를 좁혀 두세요.'],
   건강: ['몸을 챙겨야 하는 일', '몸에 신호가 오거나 치료·관리가 필요한 일이 생기기 쉽습니다.', '그 무렵에는 검진을 미루지 말고 일정과 잠을 먼저 챙기세요.'],
@@ -988,7 +1015,9 @@ function lifeEventItemsRaw(r) {
   const earn = coreField(es, 'm', 1, 0, (t) => EARN.test(t) && !IMPERATIVE.test(t))[0]?.text;
   const weak = weakKey ? ELEM_FILL[weakKey] : null;
   for (const it of items) {
-    if (it.domain === '직업' && roles.jobs.length) it.prep += ` 옮긴다면 ${roles.jobs.slice(0, 2).join('·')} 쪽이 이 명반에 맞습니다.`;
+    if (it.domain === '직업' && roles.jobs.length) {
+      it.prep += ` 일을 바꾼다면 ${roles.source ? `${roles.source}로 본 ` : ''}기질에는 ${roles.jobs.slice(0, 2).join('·')} 쪽이 맞습니다.`;
+    }
     if (it.domain === '재물' && earn) it.what += ` 이 명반은 ${earn}`;
     if (it.domain === '건강' && weak) it.prep += ` 이 명반에서 가장 옅은 것은 ${weak.name} 기운(${weak.means})이라, ${weak.how}`;
   }
@@ -1196,7 +1225,7 @@ function futureDigestRaw(r) {
       career: '',
       // "여러 점술이 함께 가리키는 쪽은 …" 머리말은 뺐다(사용자 요청) — 분야와 문장만
       // 직업은 체계들이 짚은 분야를 실제 직업 이름으로 옮겨 싣는다(careerRoles)
-      fields: [roles.lead].filter(Boolean),
+      fields: [roles.lead, roles.basis].filter(Boolean),
       earn: pick('m', 2, (t) => EARN.test(t) && !IMPERATIVE.test(t)),
       // 한 문장만 — 두 문장이면 "안정된 관계를 원합니다"처럼 같은 말이 되풀이되었다
       drawn: pick('r', 1, (t) => DRAWN_TO.test(t)),

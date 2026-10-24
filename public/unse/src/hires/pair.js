@@ -20,6 +20,7 @@ import { toJD } from '../core/astro.js';
 import { yearPillar, tenGod, TEN_GOD_GROUP, branchRelations } from '../core/ganzhi.js';
 import * as WS from './western.js';
 import * as WE from './westernExt.js';
+import { aspectNote } from '../systems/astrology.js';
 import * as VD from './vedic.js';
 import * as VE from './vedicExt.js';
 import * as ZW from './ziwei.js';
@@ -208,7 +209,7 @@ export function formatPair(mw, rel, nav, nameA, nameB) {
     out.push(`합성 차트 ASC ${rel.composite.asc ?? '—'} MC ${rel.composite.mc ?? '—'} · 태양 ${rel.composite.planets.태양}`);
     out.push(`데이비슨 ${rel.davison.at.y}.${rel.davison.at.m} ASC ${rel.davison.asc ?? '—'} · 태양 ${rel.davison.planets.태양}`);
     for (const t of rel.transits) {
-      out.push(`  ${t.year} 합성 트랜싯: ${t.hits.map((h) => `${h.planet}-${h.target} ${h.aspect}(${h.orb}°)`).join(', ')}`);
+      out.push(`  ${t.year} 합성 트랜싯: ${t.hits.map((h) => `${h.planet}-${h.target} ${aspectNote(h.aspect, h.orb)}`).join(', ')}`);
     }
   }
   if (nav) {

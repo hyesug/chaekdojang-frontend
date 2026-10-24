@@ -111,7 +111,10 @@ export function verifiedCareer(birth) {
   for (const s of reads) for (const [k, v] of Object.entries(s.features)) sum[k] = (sum[k] ?? 0) + v / reads.length;
   const top = categorizeCareer(sum)?.levelC?.ranked?.slice(0, 3) ?? [];
   return { available: top.length > 0, top: top.map((x) => ({ key: x.key, label: x.label, examples: x.examples.slice(0, 3) })),
-    systems: reads.map((s) => s.systemName) };
+    systems: reads.map((s) => s.systemName),
+    // 분야를 권할 때 함께 밝힐 명반 요소 — 체계마다 무게가 큰 근거 둘 (예: "원국 관록궁 자미")
+    basis: reads.map((s) => ({ system: s.systemName,
+      items: [...(s.evidence ?? [])].sort((a, b) => (b.weight ?? 0) - (a.weight ?? 0)).slice(0, 2).map((e) => e.basis).filter(Boolean) })) };
 }
 
 /**

@@ -159,7 +159,10 @@ function careerVerdict(input) {
   let vc = null;
   try { vc = verifiedCareer(input); } catch { /* */ }
   if (!vc?.available) return ['직업 분야는 단정하지 말고 위 전통 읽기의 성향으로만 답할 것.'];
+  const basis = (vc.basis ?? []).filter((b) => b.items.length).map((b) => `${b.system}(${b.items.join('·')})`).join(' + ');
   return [`가능성이 높은 직업 분야(단정하지 말고 '가능성이 높다'로 말할 것): ${vc.top.map((x) => `${x.label}(예: ${x.examples.join('·')})`).join(', ')} 순.`,
+    `근거: ${basis || vc.systems.join('·')}의 직업 성향을 합산한 상위 범주. 분야를 말할 땐 이 체계와 명반 요소를 함께 밝힐 것.`,
+    '이것은 타고난 기질에 맞는 분야이지 그 일의 실제 능력·적응력·성과가 아니다.',
     '직업 분야는 이 순서를 그대로 쓸 것. "이직할 사람인지 한 우물 팔 사람인지"는 단정하지 말 것.'];
 }
 

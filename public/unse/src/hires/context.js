@@ -16,6 +16,7 @@ import { inferEvents, chainOf } from './events.js';
 import * as LOC from './location.js';
 import * as WS from './western.js';
 import * as WE from './westernExt.js';
+import { ASPECT_LEGEND, aspectNote } from '../systems/astrology.js';
 import * as VD from './vedic.js';
 import * as VE from './vedicExt.js';
 import * as ZW from './ziwei.js';
@@ -82,12 +83,32 @@ function choiceLines(j, plan) {
     out.push("- 직업: '직무·역할 변경'·'승진·보상 조정'·'조직 개편에 따른 이동'은 **지금 회사 안인지 새 회사인지를 가리지 않는다.** " +
       '이 후보가 주 시나리오여도 "회사에 남는다"는 근거가 아니다.');
   }
-  out.push('**답하는 법:** 첫 문장에서 사건 후보만으로 "○○하는 게 낫다"고 판정하지 말 것. 그렇다고 "운세로는 알 수 없다"로 피하지도 말 것. ' +
-    '그 시기에 무엇이 강해지고 무엇이 약해지는지(질문 분야 핵심 궁의 사화, 사주 세운의 십성·합충, MC·해당 하우스 같은 계산값)를 근거로 ' +
-    '"지금 흐름은 ○○ 쪽과 더 맞는다 — 다만 ~이면 반대쪽"처럼 기울기와 갈림 조건을 함께 분명히 말한다.');
+  if ((plan.domains ?? []).includes('직업')) {
+    out.push(...CAREER_CHOICE);
+  } else {
+    out.push('**답하는 법:** 첫 문장에서 사건 후보만으로 "○○하는 게 낫다"고 판정하지 말 것. 그렇다고 "운세로는 알 수 없다"로 피하지도 말 것. ' +
+      '그 시기에 무엇이 강해지고 무엇이 약해지는지(질문 분야 핵심 궁의 사화, 사주 세운의 십성·합충, MC·해당 하우스 같은 계산값)를 근거로 ' +
+      '"지금 흐름은 ○○ 쪽과 더 맞는다 — 다만 ~이면 반대쪽"처럼 기울기와 갈림 조건을 함께 분명히 말한다.');
+  }
   out.push('');
   return out;
 }
+
+/**
+ * 진로를 고르는 질문(이직·잔류·퇴사)의 답하는 법 — 사용자가 정한 진로·이직 의사결정 해석 규칙(route.ts SYSTEM)을 이 질문에 맞춰 다시 짚는다.
+ *
+ * 관록궁 화권·관성 세운 같은 기회 신호를 "그러니 남는다/옮긴다"로 바로 읽거나, 다음 해가 더 좋다며
+ * 지금 기회를 미루라고 답하는 일을 막는다. 최종 선택은 명반 밖의 네 기준에 따른 조건부로만 말한다.
+ */
+const CAREER_CHOICE = [
+  '- 직업: 직업을 보는 자리의 기회·주도권 표시, 책임과 조직의 기운, 10하우스·중천의 좋은 각은 **직업적 기회**다. ' +
+    '별도 근거 없이 "지금 회사에 남는다" 또는 "밖으로 옮긴다" 한쪽으로 확정하지 말 것.',
+  '- 직업: 정면으로 부딪침·서로 벼름·10년 운 전환 같은 변화 신호는 변화 **가능성**이다. ' +
+    '내부 이동(지금 조직 안 자리·부서) / 외부 이직(다른 곳으로) / 업무 변화(같은 자리, 다른 일)를 나눠 적고, 가를 근거가 없으면 셋 다 열려 있다고 말할 것.',
+  '- 직업: 다른 해가 더 좋다는 이유만으로 지금 확인할 수 있는 기회(실제 제안·면접·승진 자리)를 포기하거나 미루라고 결론 내지 말 것. 여러 해의 기회는 서로 배타적이지 않다.',
+  '**답하는 법:** 첫 문장은 판정이 아니라 그 시기 명반상 **기회와 위험**(위 계산값으로). 그다음 최종 선택은 ' +
+    '연봉·조직 안정성·업무 적합성·성장 가능성에 따라 "~이면 남는 쪽, ~이면 옮기는 쪽"으로 조건부로 제시한다. "운세로는 알 수 없다"로 피하지도 말 것.',
+];
 
 const p2 = (n) => String(n).padStart(2, '0');
 
@@ -664,12 +685,15 @@ export function formatHiRes(j, plan) {
   for (const s of j.western.solarReturn) {
     out.push(`솔라리턴 ${s.year} (${s.at}) ASC ${s.asc} MC ${s.mc} · 태양 ${s.sunHouse}H 달 ${s.moonHouse}H · SR ASC는 출생 ${s.ascInNatalHouse ?? '—'}H, SR MC는 출생 ${s.mcInNatalHouse ?? '—'}H`);
   }
-  if (monthly) out.push('트랜싯 (달별, 위 네 개까지):');
+  if (monthly) {
+    out.push('트랜싯 (달별, 위 네 개까지):');
+    out.push(`  ${ASPECT_LEGEND} — 줄 끝 숫자는 정확한 각에서 벗어난 오차, ↗ 다가오는 각 · ↘ 멀어지는 각`);
+  }
   for (const t of monthly ? j.western.transits : []) {
     if (!t.hits.length) continue;
     out.push(`  ${t.label} ${t.hits.join(', ')}`);
   }
-  if (monthly) out.push('진행(2차 프로그레션) 석 달 간격:');
+  if (monthly) out.push('진행(2차 프로그레션) 석 달 간격 — 별자리 위치만이다. 각도·오차가 없으니 각으로 말하지 말 것:');
   for (const p of monthly ? j.western.progressions : []) {
     out.push(`  ${p.label} 달 ${p.moon ?? '—'} · 태양 ${p.sun ?? '—'} · ASC ${p.asc ?? '—'} · MC ${p.mc ?? '—'}`);
   }
@@ -707,7 +731,7 @@ export function formatHiRes(j, plan) {
     out.push('### [A] 계산 사실 — 연도를 좁히는 기법 (솔라 아크 · 프로펙션)');
     if (yt.solarArc.length) {
       out.push('솔라 아크 — 한 해에 약 1도라 한 각이 한두 해로 좁혀진다. 큰 사건의 연도를 고르는 자리다.');
-      for (const h of yt.solarArc) out.push(`  ${h.year} ${h.from}→${h.to} ${h.aspect} (오차 ${h.orb}°)`);
+      for (const h of yt.solarArc) out.push(`  ${h.year} ${h.from}→${h.to} ${aspectNote(h.aspect, h.orb, WE.SOLAR_ARC_ORB)}`);
     }
     if (yt.profections.length) {
       out.push('프로펙션 — 그 해의 무대와 주인. 주인 행성에 걸린 트랜싯이 그 해 사건을 만든다고 본다.');

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import AiReadingCardDownload from "./AiReadingCardDownload";
 import AiReadingCard from "./AiReadingCard";
 import type { AiReadingCardData } from "../lib/aiReadingCard";
@@ -61,7 +61,6 @@ export default function ReviewAiSummaryCard({
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
-  const cardRef = useRef<HTMLDivElement>(null);
 
   const isOwner = authorId != null && currentUserId === authorId;
   const isGenerating = summary?.status === "PENDING" || summary?.status === "PROCESSING";
@@ -308,12 +307,12 @@ export default function ReviewAiSummaryCard({
 
       {canShowSummary && !editing && readingCard && (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-          <div ref={cardRef} className="w-full max-w-[520px]">
+          <div className="w-full max-w-[520px]">
             <SummaryView card={readingCard} />
           </div>
           {isOwner && (
             <div className="flex shrink-0 flex-row flex-wrap gap-2 text-xs sm:w-28 sm:flex-col">
-              <AiReadingCardDownload card={readingCard} targetRef={cardRef} />
+              <AiReadingCardDownload card={readingCard} />
               <button
                 type="button"
                 onClick={() => setEditing(true)}

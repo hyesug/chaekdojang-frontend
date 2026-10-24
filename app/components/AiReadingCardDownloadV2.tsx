@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, type RefObject } from "react";
-import html2canvas from "html2canvas";
+import { useState } from "react";
 import type { AiReadingCardData } from "../lib/aiReadingCard";
 
 // B안 — 클린 에디토리얼 / 900×900
@@ -11,30 +10,16 @@ const PAD = 72;
 // 한국어가 잘 렌더링되는 폰트 스택
 const SANS = "'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', Arial, sans-serif";
 
-export default function AiReadingCardDownloadV2({ card, targetRef }: { card: AiReadingCardData; targetRef: RefObject<HTMLElement | null> }) {
+export default function AiReadingCardDownloadV2({ card }: { card: AiReadingCardData }) {
   const [saving, setSaving] = useState(false);
 
   async function save() {
     if (saving) return;
     setSaving(true);
     try {
-      const target = targetRef.current;
-      if (!target) throw new Error("card not found");
       await document.fonts.ready;
-      const styleMap = snapshotComputedStyles(target);
-      let canvas: HTMLCanvasElement;
-      try {
-        canvas = await captureCard(target, styleMap, false);
-      } catch {
-        // 캡처 라이브러리가 외부 표지 또는 전역 스타일을 처리하지 못해도 저장은 완료한다.
-        canvas = await drawCard(card);
-      }
-      let url: string;
-      try {
-        url = canvas.toDataURL("image/png");
-      } catch {
-        url = (await drawCard(card)).toDataURL("image/png");
-      }
+      const canvas = await drawCard(card);
+      const url = canvas.toDataURL("image/png");
       const a = document.createElement("a");
       a.href = url;
       a.download = "chaekdojang-ai-reading-card.png";
@@ -59,41 +44,6 @@ export default function AiReadingCardDownloadV2({ card, targetRef }: { card: AiR
       {saving ? "저장 중" : "이미지로 저장"}
     </button>
   );
-}
-
-function captureCard(target: HTMLElement, styleMap: string[], omitImages: boolean) {
-  return html2canvas(target, {
-    scale: 2,
-    useCORS: true,
-    allowTaint: false,
-    backgroundColor: "#FCFBF7",
-    imageTimeout: 10000,
-    onclone: (clonedDocument) => {
-      clonedDocument.querySelectorAll("style, link[rel='stylesheet']").forEach((node) => node.remove());
-      clonedDocument.querySelectorAll<HTMLElement>("[data-ai-reading-card-export-index]").forEach((node) => {
-        const index = Number(node.dataset.aiReadingCardExportIndex);
-        const cssText = styleMap[index];
-        if (cssText) node.style.cssText = cssText;
-      });
-      if (omitImages) {
-        clonedDocument.querySelectorAll("img").forEach((image) => image.remove());
-      }
-    },
-  });
-}
-
-function snapshotComputedStyles(root: HTMLElement): string[] {
-  const styles: string[] = [];
-  const nodes = [root, ...Array.from(root.querySelectorAll<HTMLElement>("*"))];
-  nodes.forEach((node, index) => {
-    node.dataset.aiReadingCardExportIndex = String(index);
-    const computed = window.getComputedStyle(node);
-    styles[index] = Array.from(computed)
-      .filter((property) => !property.startsWith("--"))
-      .map((property) => `${property}:${computed.getPropertyValue(property)};`)
-      .join("");
-  });
-  return styles;
 }
 
 async function drawCard(card: AiReadingCardData) {

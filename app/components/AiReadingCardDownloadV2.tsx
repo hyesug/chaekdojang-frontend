@@ -59,11 +59,11 @@ async function drawCard(card: AiReadingCardData) {
   ctx.textAlign = "left";
 
   // ─── 배경 ───
-  ctx.fillStyle = "#fafaf6";
+  ctx.fillStyle = "#FCFBF7";
   ctx.fillRect(0, 0, SIZE, SIZE);
 
   // ─── 상단 다크 바 ───
-  ctx.fillStyle = "#2c2018";
+  ctx.fillStyle = "#174A46";
   ctx.fillRect(0, 0, SIZE, 8);
 
   // ─── 헤더 ───
@@ -121,7 +121,7 @@ async function drawCard(card: AiReadingCardData) {
   const ZONE_BOTTOM = FOOTER_SEP_Y - 20;
 
   // 책 제목 높이 측정
-  const BOOK_FS = 42;
+  const BOOK_FS = 32;
   const BOOK_LH = Math.round(BOOK_FS * 1.30);
   ctx.font = `700 ${BOOK_FS}px ${SANS}`;
   const bookLines = measureLines(ctx, card.bookTitle || "제목 없음", SIZE - PAD * 2, 2);
@@ -140,7 +140,7 @@ async function drawCard(card: AiReadingCardData) {
   // 한줄 감상 — 폰트 크기 적응
   const oneLiner = card.oneLineReview || "이 책을 읽고 생각이 달라졌다.";
   const len = oneLiner.length;
-  const ONE_FS = len > 60 ? 42 : len > 36 ? 50 : len > 18 ? 58 : len > 10 ? 66 : 74;
+  const ONE_FS = len > 60 ? 28 : len > 36 ? 32 : len > 18 ? 38 : len > 10 ? 44 : 50;
   const ONE_LH = Math.round(ONE_FS * 1.35);
   ctx.font = `700 ${ONE_FS}px ${SANS}`;
   const oneLines = measureLines(ctx, oneLiner, SIZE - PAD * 2, 5);
@@ -185,7 +185,7 @@ async function drawCard(card: AiReadingCardData) {
   }
 
   // 책 제목 그리기
-  ctx.fillStyle = "#1a110a";
+  ctx.fillStyle = "#102A2C";
   ctx.font = `700 ${BOOK_FS}px ${SANS}`;
   bookLines.forEach((line, i) => ctx.fillText(line, PAD, y + i * BOOK_LH));
   y += bookH;
@@ -193,7 +193,7 @@ async function drawCard(card: AiReadingCardData) {
   // 저자 그리기
   if (hasAuthor && card.bookAuthor) {
     y += 6;
-    ctx.fillStyle = "#6b5a4a";
+    ctx.fillStyle = "#56706A";
     ctx.font = `400 ${AUTHOR_FS}px ${SANS}`;
     ctx.fillText(card.bookAuthor, PAD, y);
     y += AUTHOR_LH;
@@ -213,7 +213,7 @@ async function drawCard(card: AiReadingCardData) {
   y += 1 + DIVIDER_GAP2;
 
   // 한줄 감상 HERO
-  ctx.fillStyle = "#1a110a";
+  ctx.fillStyle = "#102A2C";
   ctx.font = `700 ${ONE_FS}px ${SANS}`;
   oneLines.forEach((line, i) => ctx.fillText(line, PAD, y + i * ONE_LH));
   y += oneH;
@@ -232,12 +232,12 @@ async function drawCard(card: AiReadingCardData) {
 
       // 칩 배경 (베이지)
       roundedRect(ctx, cx, cy, w, CHIP_H, 5);
-      ctx.fillStyle = "#f0ebe4";
+      ctx.fillStyle = "#E3ECE7";
       ctx.fill();
 
       // 칩 텍스트 — textBaseline="top" 기준으로 수직 중앙
       const textTopY = cy + Math.round((CHIP_H - CHIP_FS) / 2);
-      ctx.fillStyle = "#6b5a4a";
+      ctx.fillStyle = "#315F5A";
       ctx.fillText(label, cx + 20, textTopY);
 
       cx += w + 10;
@@ -246,7 +246,7 @@ async function drawCard(card: AiReadingCardData) {
 
   if (card.impressivePoint) {
     const quote = `“${card.impressivePoint}”`;
-    ctx.fillStyle = "#6b5a4a";
+    ctx.fillStyle = "#315F5A";
     ctx.font = `400 20px ${SANS}`;
     const quoteLines = measureLines(ctx, quote, SIZE - PAD * 2, 3);
     y += 28;

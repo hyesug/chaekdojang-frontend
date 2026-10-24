@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { AiReadingCardData } from "../lib/aiReadingCard";
+import { aiReadingCardPng } from "../lib/aiReadingCardSvg";
 
 // B안 — 클린 에디토리얼 / 900×900
 const SIZE = 900;
@@ -17,9 +18,7 @@ export default function AiReadingCardDownloadV2({ card }: { card: AiReadingCardD
     if (saving) return;
     setSaving(true);
     try {
-      await document.fonts.ready;
-      const canvas = await drawCard(card);
-      const url = canvas.toDataURL("image/png");
+      const url = await aiReadingCardPng(card);
       const a = document.createElement("a");
       a.href = url;
       a.download = "chaekdojang-ai-reading-card.png";

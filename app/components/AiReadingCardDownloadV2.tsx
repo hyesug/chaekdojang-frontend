@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type RefObject } from "react";
-import { toPng } from "html-to-image";
+import html2canvas from "html2canvas";
 import type { AiReadingCardData } from "../lib/aiReadingCard";
 
 // B안 — 클린 에디토리얼 / 900×900
@@ -21,11 +21,14 @@ export default function AiReadingCardDownloadV2({ targetRef }: { card: AiReading
       const target = targetRef.current;
       if (!target) throw new Error("card not found");
       await document.fonts.ready;
-      const url = await toPng(target, {
-        pixelRatio: 2,
-        cacheBust: true,
+      const canvas = await html2canvas(target, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: false,
         backgroundColor: "#FCFBF7",
+        imageTimeout: 10000,
       });
+      const url = canvas.toDataURL("image/png");
       const a = document.createElement("a");
       a.href = url;
       a.download = "chaekdojang-ai-reading-card.png";

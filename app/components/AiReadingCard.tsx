@@ -29,7 +29,7 @@ export default function AiReadingCard({
     <div
       data-ai-reading-card
       className={`relative overflow-hidden rounded-lg text-[#102A2C] shadow-md ${
-        compact ? "max-w-[360px]" : "aspect-square w-full max-w-[520px]"
+        compact ? "max-w-[360px]" : "w-full max-w-[520px]"
       }`}
       style={{ background: "linear-gradient(145deg, #FCFBF7 0%, #E3ECE7 100%)" }}
     >
@@ -41,7 +41,7 @@ export default function AiReadingCard({
         &ldquo;
       </span>
 
-      <div className={`relative flex h-full flex-col ${compact ? "p-5" : "p-7 sm:p-8"}`}>
+      <div className={`relative flex flex-col ${compact ? "p-5" : "p-5 sm:p-6"}`}>
         <div className="flex items-start justify-between">
           <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#174A46]">AI Reading Card</p>
           <p className="text-[9px] text-[#6F817C]">chaekdojang</p>

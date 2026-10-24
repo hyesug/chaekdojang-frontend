@@ -60,7 +60,7 @@ export default function AiReadingCard({
 
         <div className={`bg-[#8B3040] opacity-70 ${compact ? "my-2 h-px w-6" : "my-3 h-px w-8"}`} />
 
-        <div className="flex-1">
+        <div>
           <p className={`font-serif font-bold leading-snug text-[#102A2C] ${compact ? "text-base" : "text-xl sm:text-2xl"}`}>
             {sentence}
           </p>

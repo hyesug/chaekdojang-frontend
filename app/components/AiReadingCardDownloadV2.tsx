@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type RefObject } from "react";
 import { toPng } from "html-to-image";
 import type { AiReadingCardData } from "../lib/aiReadingCard";
 
@@ -11,14 +11,14 @@ const PAD = 72;
 // 한국어가 잘 렌더링되는 폰트 스택
 const SANS = "'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', Arial, sans-serif";
 
-export default function AiReadingCardDownloadV2({ card }: { card: AiReadingCardData }) {
+export default function AiReadingCardDownloadV2({ targetRef }: { card: AiReadingCardData; targetRef: RefObject<HTMLElement | null> }) {
   const [saving, setSaving] = useState(false);
 
   async function save() {
     if (saving) return;
     setSaving(true);
     try {
-      const target = document.querySelector<HTMLElement>("[data-ai-reading-card]");
+      const target = targetRef.current;
       if (!target) throw new Error("card not found");
       await document.fonts.ready;
       const url = await toPng(target, {

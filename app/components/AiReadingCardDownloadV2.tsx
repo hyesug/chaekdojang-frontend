@@ -11,7 +11,7 @@ const PAD = 72;
 // 한국어가 잘 렌더링되는 폰트 스택
 const SANS = "'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', Arial, sans-serif";
 
-export default function AiReadingCardDownloadV2({ targetRef }: { card: AiReadingCardData; targetRef: RefObject<HTMLElement | null> }) {
+export default function AiReadingCardDownloadV2({ card, targetRef }: { card: AiReadingCardData; targetRef: RefObject<HTMLElement | null> }) {
   const [saving, setSaving] = useState(false);
 
   async function save() {

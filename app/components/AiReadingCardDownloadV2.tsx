@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toPng } from "html-to-image";
 import type { AiReadingCardData } from "../lib/aiReadingCard";
 
 // B안 — 클린 에디토리얼 / 900×900
@@ -17,17 +18,20 @@ export default function AiReadingCardDownloadV2({ card }: { card: AiReadingCardD
     if (saving) return;
     setSaving(true);
     try {
-      const canvas = await drawCard(card);
-      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
-      if (!blob) throw new Error("no blob");
-      const url = URL.createObjectURL(blob);
+      const target = document.querySelector<HTMLElement>("[data-ai-reading-card]");
+      if (!target) throw new Error("card not found");
+      await document.fonts.ready;
+      const url = await toPng(target, {
+        pixelRatio: 2,
+        cacheBust: true,
+        backgroundColor: "#FCFBF7",
+      });
       const a = document.createElement("a");
       a.href = url;
       a.download = "chaekdojang-ai-reading-card.png";
       document.body.appendChild(a);
       a.click();
       a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch {
       alert("이미지 저장에 실패했어요.");
     } finally {

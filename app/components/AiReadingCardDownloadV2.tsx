@@ -22,21 +22,13 @@ export default function AiReadingCardDownloadV2({ targetRef }: { card: AiReading
       if (!target) throw new Error("card not found");
       await document.fonts.ready;
       const styleMap = snapshotComputedStyles(target);
-      const canvas = await html2canvas(target, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: false,
-        backgroundColor: "#FCFBF7",
-        imageTimeout: 10000,
-        onclone: (clonedDocument) => {
-          clonedDocument.querySelectorAll("style, link[rel='stylesheet']").forEach((node) => node.remove());
-          clonedDocument.querySelectorAll<HTMLElement>("[data-ai-reading-card-export-index]").forEach((node) => {
-            const index = Number(node.dataset.aiReadingCardExportIndex);
-            const cssText = styleMap[index];
-            if (cssText) node.style.cssText = cssText;
-          });
-        },
-      });
+      let canvas: HTMLCanvasElement;
+      try {
+        canvas = await captureCard(target, styleMap, false);
+      } catch {
+        // 외부 표지 서버가 CORS를 허용하지 않는 경우에도 카드 본문은 저장한다.
+        canvas = await captureCard(target, styleMap, true);
+      }
       const url = canvas.toDataURL("image/png");
       const a = document.createElement("a");
       a.href = url;
@@ -61,6 +53,27 @@ export default function AiReadingCardDownloadV2({ targetRef }: { card: AiReading
       {saving ? "저장 중" : "이미지로 저장"}
     </button>
   );
+}
+
+function captureCard(target: HTMLElement, styleMap: string[], omitImages: boolean) {
+  return html2canvas(target, {
+    scale: 2,
+    useCORS: true,
+    allowTaint: false,
+    backgroundColor: "#FCFBF7",
+    imageTimeout: 10000,
+    onclone: (clonedDocument) => {
+      clonedDocument.querySelectorAll("style, link[rel='stylesheet']").forEach((node) => node.remove());
+      clonedDocument.querySelectorAll<HTMLElement>("[data-ai-reading-card-export-index]").forEach((node) => {
+        const index = Number(node.dataset.aiReadingCardExportIndex);
+        const cssText = styleMap[index];
+        if (cssText) node.style.cssText = cssText;
+      });
+      if (omitImages) {
+        clonedDocument.querySelectorAll("img").forEach((image) => image.remove());
+      }
+    },
+  });
 }
 
 function snapshotComputedStyles(root: HTMLElement): string[] {

@@ -1,13 +1,6 @@
 # 프론트엔드 스테이징 운영
 
-## 주소
-
-| 구분 | 주소 |
-| --- | --- |
-| 스테이징 웹 | https://staging.chaekdojang.com |
-| 스테이징 API | https://staging-api.chaekdojang.com |
-
-스테이징 API EC2는 2026-10-14에 직접 중지한 상태입니다(2026-10-27 확인). 스테이징 웹에서 API를 쓰려면 EC2를 먼저 시작해야 합니다.
+스테이징 웹: https://staging.chaekdojang.com
 
 ## Vercel 환경 변수
 
@@ -21,7 +14,7 @@ NEXT_PUBLIC_SITE_URL=https://staging.chaekdojang.com
 
 ## 배포
 
-- `staging` 브랜치에 push하면 Vercel이 Preview 배포를 자동으로 만듭니다. `vercel.json`의 `git.deploymentEnabled.staging`이 `true`입니다. 2026-06-25에 꺼졌다가 2026-09-25 `eed7028`에서 다시 켰습니다.
+- `staging` 브랜치에 push하면 Vercel이 Preview 배포를 자동으로 만듭니다(`vercel.json`의 `git.deploymentEnabled.staging`).
 - 새 빌드를 `staging.chaekdojang.com`에 직접 연결하려면 GitHub Actions에서 `Deploy staging frontend` workflow를 수동 실행합니다. 실행하면 Vercel Preview를 만들고 `staging.chaekdojang.com` alias를 새 배포로 연결합니다.
 - workflow에 필요한 GitHub Secrets:
   - `VERCEL_TOKEN`

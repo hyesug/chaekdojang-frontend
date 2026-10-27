@@ -24,16 +24,17 @@ Smoke test after deploying staging:
 WEB_BASE=https://staging.chaekdojang.com npm run smoke:prod
 ```
 
-Manual staging deployment:
+Staging deployment:
 
-- GitHub Actions에서 `Deploy staging frontend` workflow를 수동 실행합니다.
-- `vercel.json`에서 `staging` 브랜치의 Vercel Git 자동 배포를 꺼두었습니다. 스테이징 반영은 위 workflow로만 진행합니다.
-- 필요한 GitHub Secrets:
+- `staging` 브랜치에 push하면 Vercel이 Preview 배포를 자동으로 만듭니다. `vercel.json`의 `git.deploymentEnabled.staging`이 `true`입니다. 2026-06-25에 꺼졌다가 2026-09-25 `eed7028`에서 다시 켰습니다.
+- 새 빌드를 `staging.chaekdojang.com`에 직접 연결하려면 GitHub Actions에서 `Deploy staging frontend` workflow를 수동 실행합니다.
+- workflow에 필요한 GitHub Secrets:
   - `VERCEL_TOKEN`
   - `VERCEL_ORG_ID`
   - `VERCEL_PROJECT_ID`
   - `NEXT_PUBLIC_GA_MEASUREMENT_ID_STAGING` (없으면 비워둬도 됨)
-- 실행하면 Vercel Preview를 만들고 `staging.chaekdojang.com` alias를 새 배포로 연결합니다.
+  - `NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY_STAGING`
+- workflow를 실행하면 Vercel Preview를 만들고 `staging.chaekdojang.com` alias를 새 배포로 연결합니다.
 
 Production smoke test:
 

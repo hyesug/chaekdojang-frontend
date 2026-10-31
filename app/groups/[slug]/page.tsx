@@ -74,12 +74,14 @@ async function getGroup(slug: string) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const group = await getGroup(slug);
-  if (!group) return { title: "독서모임 - 책도장", robots: { index: false, follow: false } };
+  if (!group) return { title: "독서모임", robots: { index: false, follow: false } };
   const description = group.description || `${group.name}에서 함께 읽은 책과 독후감을 책도장에서 확인해보세요.`;
   return {
-    title: `${group.name} 독서모임 - 책도장`,
+    title: `${group.name} 독서모임`,
     description,
     alternates: { canonical: `/groups/${group.slug}` },
+    // 비공개 모임은 모임 이름·소개도 검색 결과에 남기지 않는다.
+    ...(group.visibility === "PRIVATE" ? { robots: { index: false, follow: false } } : {}),
     openGraph: {
       type: "website",
       locale: "ko_KR",

@@ -158,4 +158,15 @@ export function reviewDescription(review: ReviewDetail): string {
 export function shareText(): string {
   return "읽은 책에 나만의 감상을 찍다";
 }
+
+// 검색 결과·AI 답변에 쓰일 서비스 한 줄 설명. 실제로 있는 기능만 적는다(기능이 바뀌면 /about 과 함께 고친다).
+export const SERVICE_DESCRIPTION =
+  "책도장은 독후감을 쓰고 읽은 책을 온라인 서재에 모으는 독서 기록 SNS입니다. 독서모임에서 함께 읽은 기록을 나누고, 긴 독후감은 AI 독서카드로 정리할 수 있어요.";
+
+export const DEFAULT_OG_IMAGE = {
+  url: "/chaekdojang-logo-512.png",
+  width: 512,
+  height: 512,
+  alt: "책도장",
+};
 import { cookies } from "next/headers";

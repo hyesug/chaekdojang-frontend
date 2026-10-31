@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { fetchApiData, SITE_URL } from "../../lib/serverApi";
+import { jsonLdHtml } from "../../lib/jsonLd";
 
 type OfficialProfileType = "AUTHOR" | "PUBLISHER" | "BOOKSTORE" | "LIBRARY" | "PLATFORM";
 
@@ -58,12 +59,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const profile = await getProfile(slug);
   if (!profile) {
     return {
-      title: "공식 프로필 - 책도장",
+      title: "공식 프로필",
       robots: { index: false, follow: false },
     };
   }
 
-  const title = `${profile.displayName} 공식 프로필 - 책도장`;
+  const title = `${profile.displayName} 공식 프로필`;
   const description = profile.bio
     ? profile.bio.replace(/\s+/g, " ").slice(0, 150)
     : `${profile.displayName}의 책과 독자 독후감을 책도장에서 확인해보세요.`;
@@ -124,7 +125,7 @@ export default async function OfficialProfilePage({ params }: Props) {
       <script
         type="application/ld+json"
         suppressHydrationWarning
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdHtml(jsonLd) }}
       />
 
       <section className="mb-8 border-b border-cream-200 pb-6">

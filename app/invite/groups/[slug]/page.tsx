@@ -7,7 +7,7 @@ import {
 } from "../../../lib/inviteTracking";
 
 export const metadata: Metadata = {
-  title: "독서모임 초대 - 책도장",
+  title: "독서모임 초대",
   robots: { index: false, follow: false },
 };
 

@@ -62,13 +62,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug, groupBookId } = await params;
   const group = await getGroup(slug);
   const book = group?.books.find((item) => String(item.id) === groupBookId);
-  if (!group || !book) return { title: "그룹 독후감 - 책도장", robots: { index: false, follow: false } };
-  const title = `${group.name}의 ${book.title} 독후감 - 책도장`;
+  if (!group || !book) return { title: "그룹 독후감", robots: { index: false, follow: false } };
+  const title = `${group.name}의 ${book.title} 독후감`;
   const description = `${group.name} 멤버들이 ${book.title}을 읽고 남긴 독후감을 모아보세요.`;
   return {
     title,
     description,
     alternates: { canonical: `/groups/${group.slug}/books/${groupBookId}` },
+    // 비공개 모임은 모임 이름·책 제목도 검색 결과에 남기지 않는다.
+    ...(group.visibility === "PRIVATE" ? { robots: { index: false, follow: false } } : {}),
     openGraph: {
       title,
       description,

@@ -25,6 +25,7 @@ import {
   SITE_URL,
   type ReviewDetail,
 } from "../../lib/serverApi";
+import { jsonLdHtml } from "../../lib/jsonLd";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -43,7 +44,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const review = await getReview(id);
   if (!review) {
     return {
-      title: "독후감 - 책도장",
+      title: "독후감",
       description: shareText(),
       robots: { index: false, follow: false },
     };
@@ -57,7 +58,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     : ["독후감", "서평", "감상문"];
 
   return {
-    title,
+    title: { absolute: title },
     description,
     keywords,
     alternates: { canonical: `/reviews/${review.id}` },
@@ -112,29 +113,36 @@ export default async function PublicReviewPage({ params, searchParams }: Props) 
     : [];
   const relatedReviews = (related ?? []).filter((item) => item.id !== review.id).slice(0, 3);
 
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Review",
-    itemReviewed: review.book
-      ? {
+  // Review 는 평가 대상(itemReviewed)이 있어야 유효하다. 책이 연결되지 않은 글에는 넣지 않는다.
+  const jsonLd = review.book
+    ? {
+        "@context": "https://schema.org",
+        "@type": "Review",
+        url: `${SITE_URL}/reviews/${review.id}`,
+        inLanguage: "ko-KR",
+        itemReviewed: {
           "@type": "Book",
           name: review.book.title,
-          author: review.book.author,
-        }
-      : undefined,
-    author: {
-      "@type": "Person",
-      name: review.author.nickname,
-    },
-    reviewBody: review.content,
-    reviewRating: {
-      "@type": "Rating",
-      ratingValue: review.rating,
-      bestRating: 5,
-      worstRating: 1,
-    },
-    datePublished: review.createdAt,
-  };
+          author: review.book.author ? { "@type": "Person", name: review.book.author } : undefined,
+          isbn: review.book.isbn13 || undefined,
+        },
+        author: {
+          "@type": "Person",
+          name: review.author.nickname,
+          url: `${SITE_URL}/u/${encodeURIComponent(review.author.nickname)}`,
+        },
+        publisher: { "@id": `${SITE_URL}/#organization` },
+        reviewBody: review.content,
+        reviewRating: {
+          "@type": "Rating",
+          ratingValue: review.rating,
+          bestRating: 5,
+          worstRating: 1,
+        },
+        datePublished: review.createdAt,
+        dateModified: review.updatedAt || undefined,
+      }
+    : null;
 
   const kindLabel =
     review.previousReviewId != null
@@ -152,11 +160,13 @@ export default async function PublicReviewPage({ params, searchParams }: Props) 
         returnTo={returnTo}
       />
       <ReviewViewTracker reviewId={review.id} />
-      <script
-        type="application/ld+json"
-        suppressHydrationWarning
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
+      {jsonLd && (
+        <script
+          type="application/ld+json"
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{ __html: jsonLdHtml(jsonLd) }}
+        />
+      )}
       <article className="cdj-page cdj-page--reading">
         <div className="mb-6 flex items-center justify-between gap-3">
           <BackButton

@@ -10,7 +10,7 @@ import {
 } from "./types";
 
 export const metadata = {
-  title: "독후감 공모전 - 책도장",
+  title: "독후감 공모전",
   description: "도서관·출판사와 책도장이 여는 독후감 공모전에 응모하고 수상작을 확인하세요.",
   alternates: { canonical: "/contests" },
   openGraph: {

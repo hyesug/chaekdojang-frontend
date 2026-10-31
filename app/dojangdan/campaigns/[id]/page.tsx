@@ -24,12 +24,12 @@ const isNumericId = (id: string) => /^\d+$/.test(id);
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  if (!isNumericId(id)) return { title: "책도장단 - 책도장" };
+  if (!isNumericId(id)) return { title: "책도장단" };
 
   const detail = await fetchApiData<CampaignDetail>(`/api/dojangdan/campaigns/${id}`, {
     cache: "no-store",
   });
-  if (!detail) return { title: "책도장단 - 책도장" };
+  if (!detail) return { title: "책도장단" };
 
   const title = `${detail.campaign.title} - 책도장단`;
   const description = `${detail.campaign.bookTitle} 서평단을 ${detail.campaign.recruitCount}명 모집합니다.`;

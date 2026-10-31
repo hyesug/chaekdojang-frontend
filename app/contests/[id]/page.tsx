@@ -26,12 +26,12 @@ const isNumericId = (id: string) => /^\d+$/.test(id);
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  if (!isNumericId(id)) return { title: "공모전 - 책도장" };
+  if (!isNumericId(id)) return { title: "공모전" };
 
   const detail = await fetchApiData<ContestDetail>(`/api/contests/${id}`, { cache: "no-store" });
-  if (!detail) return { title: "공모전 - 책도장" };
+  if (!detail) return { title: "공모전" };
 
-  const title = `${detail.contest.title} - 책도장 공모전`;
+  const title = detail.contest.title;
   const description = `${detail.contest.hostName}이 여는 공모전입니다. 접수 마감 ${formatDateTime(
     detail.contest.submitEndAt
   )}.`;

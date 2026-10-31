@@ -8,7 +8,7 @@ import {
 } from "../types";
 
 export const metadata = {
-  title: "책도장단 모집 - 책도장",
+  title: "책도장단 모집",
   description: "출판사·작가가 모집하는 서평단에 신청하고 독후감을 남겨보세요.",
   alternates: { canonical: "/dojangdan/campaigns" },
   openGraph: {

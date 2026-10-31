@@ -1,9 +1,22 @@
 import type { Metadata } from "next";
 import FeedClient, { type FeedPageData } from "./FeedClient";
-import { fetchApiData } from "./lib/serverApi";
+import { DEFAULT_OG_IMAGE, fetchApiData, SERVICE_DESCRIPTION } from "./lib/serverApi";
+
+const title = "책도장 - 독후감 쓰고 읽은 책을 기록하는 독서 SNS";
 
 export const metadata: Metadata = {
+  title: { absolute: title },
+  description: SERVICE_DESCRIPTION,
   alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    locale: "ko_KR",
+    url: "/",
+    siteName: "책도장",
+    title,
+    description: SERVICE_DESCRIPTION,
+    images: [DEFAULT_OG_IMAGE],
+  },
 };
 
 export default async function FeedPage() {

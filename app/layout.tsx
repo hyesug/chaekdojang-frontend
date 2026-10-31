@@ -11,7 +11,8 @@ import AnalyticsTracker from "./components/AnalyticsTracker";
 import GoogleAnalytics from "./components/GoogleAnalytics";
 import ServiceStatusGuard from "./components/ServiceStatusGuard";
 import IosInstallBanner from "./components/IosInstallBanner";
-import { shareText } from "./lib/serverApi";
+import { DEFAULT_OG_IMAGE, SERVICE_DESCRIPTION } from "./lib/serverApi";
+import { jsonLdHtml } from "./lib/jsonLd";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.chaekdojang.com";
 const themeColor = "#174A46";
@@ -19,11 +20,11 @@ const themeColor = "#174A46";
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "책도장",
+    default: "책도장 - 독후감 쓰고 읽은 책을 기록하는 독서 SNS",
     template: "%s | 책도장",
   },
-  description:
-    shareText(),
+  description: SERVICE_DESCRIPTION,
+  applicationName: "책도장",
   keywords: [
     "책도장",
     "독서 SNS",
@@ -49,18 +50,20 @@ export const metadata: Metadata = {
       { url: "/chaekdojang-logo-192.png", sizes: "192x192", type: "image/png" },
     ],
   },
+  // url 은 넣지 않는다. 자기 openGraph 가 없는 페이지가 물려받으면 모든 페이지가 홈 주소를 공유 주소로 내보낸다.
   openGraph: {
     type: "website",
     locale: "ko_KR",
-    url: siteUrl,
     siteName: "책도장",
     title: "책도장",
-    description: shareText(),
+    description: SERVICE_DESCRIPTION,
+    images: [DEFAULT_OG_IMAGE],
   },
   twitter: {
     card: "summary",
     title: "책도장",
-    description: shareText(),
+    description: SERVICE_DESCRIPTION,
+    images: [DEFAULT_OG_IMAGE.url],
   },
   robots: {
     index: true,
@@ -88,14 +91,35 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // 모든 페이지가 같은 운영 주체·사이트를 가리키도록 @id 를 고정한다(다른 페이지의 JSON-LD 가 이 @id 를 참조한다).
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "WebSite",
-    name: "책도장",
-    alternateName: "Chaekdojang",
-    url: siteUrl,
-    description: shareText(),
-    inLanguage: "ko-KR",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": `${siteUrl}/#organization`,
+        name: "책도장",
+        alternateName: "Chaekdojang",
+        url: siteUrl,
+        logo: {
+          "@type": "ImageObject",
+          url: `${siteUrl}/chaekdojang-logo-512.png`,
+          width: 512,
+          height: 512,
+        },
+        description: SERVICE_DESCRIPTION,
+      },
+      {
+        "@type": "WebSite",
+        "@id": `${siteUrl}/#website`,
+        name: "책도장",
+        alternateName: "Chaekdojang",
+        url: siteUrl,
+        description: SERVICE_DESCRIPTION,
+        inLanguage: "ko-KR",
+        publisher: { "@id": `${siteUrl}/#organization` },
+      },
+    ],
   };
 
   return (
@@ -104,7 +128,7 @@ export default function RootLayout({
         <script
           type="application/ld+json"
           suppressHydrationWarning
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          dangerouslySetInnerHTML={{ __html: jsonLdHtml(jsonLd) }}
         />
         <GoogleAnalytics />
         <AnalyticsTracker />
@@ -122,6 +146,7 @@ export default function RootLayout({
               <p className="mt-2 text-sm text-sage-600">읽은 책에 나만의 감상을 찍다</p>
             </div>
             <nav aria-label="서비스 정보" className="flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-sage-600">
+              <Link href="/about" className="transition-colors hover:text-brown-800">서비스 소개</Link>
               <Link href="/cs" className="transition-colors hover:text-brown-800">고객센터</Link>
               <Link href="/install" className="transition-colors hover:text-brown-800">앱 설치</Link>
               <Link href="/terms" className="transition-colors hover:text-brown-800">이용약관</Link>

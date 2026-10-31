@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "앱처럼 사용하기 - 책도장",
+  title: "앱처럼 사용하기",
   description: "책도장을 iPhone과 Android 홈 화면에 추가해서 앱처럼 사용하는 방법입니다.",
   robots: { index: false, follow: true },
 };

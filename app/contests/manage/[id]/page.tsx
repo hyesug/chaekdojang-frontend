@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import ManageContestClient from "./ManageContestClient";
 
 export const metadata: Metadata = {
-  title: "공모전 관리 - 책도장",
+  title: "공모전 관리",
   robots: { index: false },
 };
 

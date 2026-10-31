@@ -50,12 +50,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const report = await getReport(id);
   if (!report) {
     return {
-      title: "독자 반응 리포트 - 책도장",
+      title: "독자 반응 리포트",
       robots: { index: false, follow: false },
     };
   }
   return {
-    title: `${report.book.title} 독자 반응 리포트 | 책도장`,
+    title: `${report.book.title} 독자 반응 리포트`,
     description: `${report.book.title}에 남겨진 공개 독후감과 AI 독서카드를 모아본 독자 반응 리포트입니다.`,
     alternates: { canonical: `/books/${report.book.id}/reaction-report` },
     openGraph: {

@@ -14,6 +14,7 @@ import {
   type PublicBookDetail,
   type ReviewDetail,
 } from "../../lib/serverApi";
+import { jsonLdHtml } from "../../lib/jsonLd";
 
 type SortType = "recent" | "popular" | "rating";
 
@@ -101,7 +102,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const book = await getPublicBook(id);
   if (!book) {
     return {
-      title: "책 상세 - 책도장",
+      title: "책 상세",
       description: shareText(),
       robots: { index: false, follow: false },
     };
@@ -204,7 +205,7 @@ export default async function BookDetailPage({ params, searchParams }: Props) {
       <script
         type="application/ld+json"
         suppressHydrationWarning
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdHtml(jsonLd) }}
       />
 
       <div className="mb-6">

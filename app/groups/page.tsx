@@ -1,6 +1,6 @@
 import Link from "next/link";
 import GroupsClient, { type ReadingGroupListItem } from "./GroupsClient";
-import { fetchApiData, SITE_URL } from "../lib/serverApi";
+import { DEFAULT_OG_IMAGE, fetchApiData, SITE_URL } from "../lib/serverApi";
 
 type ReadingGroupBook = {
   id: number;
@@ -30,15 +30,19 @@ type ReadingGroup = {
   createdAt: string;
 };
 
+const description =
+  "책도장에서 독서모임을 만들고 함께 읽을 책을 정해, 멤버들이 쓴 독후감과 모임 질문을 한곳에 모아보세요.";
+
 export const metadata = {
-  title: "독서모임 - 책도장",
-  description: "책도장에서 독서모임이 함께 읽은 책과 독후감을 모아보세요.",
+  title: "독서모임 만들기·함께 읽은 독후감 모으기",
+  description,
   alternates: { canonical: "/groups" },
   openGraph: {
     title: "독서모임 - 책도장",
-    description: "우리 독서모임이 함께 읽은 책과 독후감을 한곳에 모아보세요.",
+    description,
     url: `${SITE_URL}/groups`,
     siteName: "책도장",
+    images: [DEFAULT_OG_IMAGE],
   },
 };
 

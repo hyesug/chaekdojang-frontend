@@ -89,7 +89,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description = `${profile.nickname}님의 책과 독서 기록을 책도장에서 확인해보세요.`;
 
   return {
-    title,
+    title: { absolute: title },
     description,
     alternates: { canonical: `/u/${encodeURIComponent(profile.nickname)}/library` },
     openGraph: {

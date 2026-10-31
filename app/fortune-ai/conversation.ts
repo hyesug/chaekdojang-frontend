@@ -136,7 +136,7 @@ export type DetailLevel = "short" | "normal" | "long";
 export function detailLevel(question: string): DetailLevel {
   const q = String(question ?? "");
   if (/한 ?줄|한 ?마디|한 ?문장|짧게|간단히|간단하게|간략|핵심만|요약해|결론만/.test(q)) return "short";
-  if (/자세히|자세하게|상세|구체적으로|낱낱이|하나하나|연도별|해마다|비교|전체 ?풀이|평생|인생|일생|\d0대부터/.test(q)) return "long";
+  if (/자세히|자세하게|상세|구체적으로|낱낱이|하나하나|연도별|해마다|비교|전체 ?풀이|평생|인생|일생|로드맵|\d0대부터/.test(q)) return "long";
   // 여러 갈래를 한꺼번에 묻는 복합 질문 — 핵심·상충·종합까지 가야 해서 심층으로 본다(2026-10-19)
   if (/종합|전반적|장단점|상충|엇갈|각각|분석해|정리해|vs|VS|대비해/.test(q) || (q.match(/\?/g)?.length ?? 0) >= 2) return "long";
   return "normal";
@@ -173,7 +173,7 @@ export const wantsThinking = (_tier: string, level: DetailLevel) => level === "l
  */
 export function lengthHint(level: DetailLevel) {
   if (level === "short") return "길이: 단순 — 소제목 없이 결론과 가장 강한 근거 하나를 2~5문장(해요체)으로 말하고, 끝에 [이어서 물어보기] 블록만 붙이세요.";
-  if (level === "long") return "길이: 심층 — 1,200~2,000자. 핵심 근거 → 엇갈리는 근거 → 종합 결론까지. 사용자가 '자세히'를 청했으면 필요한 범위에서 더 써도 됩니다.";
+  if (level === "long") return "길이: 심층 — 1,200~2,000자. 핵심 근거 → 엇갈리는 근거 → 종합 결론까지. 사용자가 '자세히'를 청했으면 필요한 범위에서 더 써도 되고, 인생 계획·로드맵이면 3,000자까지 씁니다.";
   return "길이: 일반 — 700~1,200자. 같은 말 되풀이·체계 나열·서론 없이.";
 }
 

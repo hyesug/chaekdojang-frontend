@@ -689,3 +689,17 @@ test('구성학 월반 — 寅월 중궁은 해 지지로 정하고, 이사 방�
   assert.match(s, /출발지/);
   assert.equal(s.split('\n').filter((l) => /^\d+\/\d+~/.test(l)).length, 3);
 });
+
+test('인생 계획·로드맵 질문은 여러 분야를 보고, 권고마다 근거·할 일·판단 기준을 붙인다', () => {
+  assert.match(PROMPT, /## 인생 계획·로드맵을 물으면/);
+  for (const h of ['## 타고난 원칙', '## 분야별 선택', '## 시기별 로드맵', '## 엇갈리는 근거', '## 종합']) {
+    assert.ok(PROMPT.includes(h), `빠진 소제목: ${h}`);
+  }
+  assert.ok(PROMPT.includes('**직업만 다루지 마세요.**'));
+  // '묻지 않은 축' 규칙과 부딪치지 않게 예외를 양쪽에 적는다
+  assert.ok(PROMPT.includes("'묻지 않은 축으로 넓히지 마세요'의 예외"));
+  assert.ok(PROMPT.includes("위 '인생 계획·로드맵을 물으면'을 따릅니다"));
+  assert.ok(PROMPT.includes('근거(체계·계산값) → 그 분야에서의 뜻 → 현실에서 할 일 → 하거나 미룰 판단 기준'));
+  assert.ok(PROMPT.includes('사용자가 말하지 않은 개인 배경'));
+  assert.ok(PROMPT.includes("문맥 '연도별' 줄의 \"연도(○○세)\"를 그대로"));
+});

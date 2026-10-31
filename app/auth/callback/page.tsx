@@ -3,6 +3,7 @@
 import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { markLoggedIn } from "../../lib/auth";
+import { markPendingSignup } from "../../lib/signupTracking";
 
 const LOGIN_RETURN_TO_KEY = "chaekdojang:login-return-to";
 
@@ -21,6 +22,7 @@ function OAuthCallback() {
     const token = searchParams.get("token");
     const error = searchParams.get("error");
     const setup = searchParams.get("setup");
+    if (!error && setup === "true") markPendingSignup();
 
     if (token) {
       markLoggedIn();

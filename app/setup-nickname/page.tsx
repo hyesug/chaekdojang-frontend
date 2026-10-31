@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { API_BASE } from "../lib/api";
 import { authFetch } from "../lib/auth";
+import { trackSignupCompleted } from "../lib/signupTracking";
 
 async function deleteAccount() {
   await authFetch(`${API_BASE}/api/users/me`, {
@@ -43,6 +44,7 @@ export default function SetupNicknamePage() {
       });
 
       if (res.ok) {
+        trackSignupCompleted();
         router.replace("/onboarding");
       } else if (res.status === 409) {
         setError("이미 사용 중인 닉네임이에요.");

@@ -21,6 +21,12 @@ function isExcludedPath(pathname: string) {
   return pathname.startsWith("/admin");
 }
 
+// GA4 이벤트를 보낸다. GA 가 켜진 운영 주소에서만 window.gtag 가 있어 실제로 전송된다.
+export function sendGaEvent(name: string, params: Record<string, unknown> = {}) {
+  if (typeof window === "undefined") return;
+  window.gtag?.("event", name, params);
+}
+
 export default function GoogleAnalytics() {
   const pathname = usePathname();
   const measurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;

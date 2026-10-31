@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { bookPathSegment, fetchApiData, SITE_URL, type BookDetail, type ReviewDetail } from "./lib/serverApi";
 import { IS_PRODUCTION } from "./lib/deployEnv";
 import { ABOUT_UPDATED_AT } from "./about/content";
+import { GUIDES } from "./guides/content";
 
 type ReviewPage = {
   content: ReviewDetail[];
@@ -26,6 +27,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }> = [
     { path: "", changeFrequency: "daily", priority: 1 },
     { path: "/about", changeFrequency: "monthly", priority: 0.9, lastModified: ABOUT_UPDATED_AT },
+    {
+      path: "/guides",
+      changeFrequency: "monthly",
+      priority: 0.7,
+      lastModified: GUIDES.map((guide) => guide.updatedAt).sort().at(-1),
+    },
+    ...GUIDES.map((guide) => ({
+      path: `/guides/${guide.slug}`,
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
+      lastModified: guide.updatedAt,
+    })),
     { path: "/search", changeFrequency: "weekly", priority: 0.8 },
     { path: "/explore", changeFrequency: "weekly", priority: 0.7 },
     { path: "/groups", changeFrequency: "weekly", priority: 0.7 },

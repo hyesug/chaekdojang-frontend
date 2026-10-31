@@ -1,8 +1,14 @@
 // 서비스 소개(/about)와 llms.txt 가 함께 쓰는 소개 문구.
 // 실제로 화면에 있는 기능만 적는다. 기능을 바꾸면 이 파일과 ABOUT_UPDATED_AT 을 함께 고친다.
 
+// "2026-10-30" → "2026년 10월 30일" (소개·가이드 글의 작성일·수정일 표시)
+export function formatKoreanDate(value: string) {
+  const [year, month, day] = value.split("-");
+  return `${year}년 ${Number(month)}월 ${Number(day)}일`;
+}
+
 export const ABOUT_PUBLISHED_AT = "2026-10-30";
-export const ABOUT_UPDATED_AT = "2026-10-30";
+export const ABOUT_UPDATED_AT = "2026-10-31";
 
 export const ABOUT_TITLE = "책도장 소개 - 독후감·독서 기록·온라인 서재·독서모임";
 export const ABOUT_DESCRIPTION =
@@ -19,6 +25,8 @@ export type AboutFeature = {
   summary: string;
   points: string[];
   link?: AboutLink;
+  // 이 기능을 더 잘 쓰는 법을 다룬 독서 가이드(/guides/...)
+  guide?: AboutLink;
 };
 
 export const ABOUT_AUDIENCES = [
@@ -42,6 +50,7 @@ export const ABOUT_FEATURES: AboutFeature[] = [
       "같은 책을 다시 읽으면 재독 기록으로, 다른 독자의 독후감에 이어지는 생각은 '나도 도장 찍기'로 남깁니다.",
     ],
     link: { href: "/search?tab=books", label: "책 찾아 독후감 쓰기" },
+    guide: { href: "/guides/how-to-write-book-review", label: "독후감 잘 쓰는 방법" },
   },
   {
     id: "library",
@@ -52,6 +61,7 @@ export const ABOUT_FEATURES: AboutFeature[] = [
       "서재는 내 프로필의 공개 서재 페이지에서 다른 독자도 볼 수 있습니다.",
       "완독한 책과 쓴 독후감은 독서 캘린더에서 날짜별로 다시 볼 수 있어요.",
     ],
+    guide: { href: "/guides/reading-log-habit", label: "독서 기록 꾸준히 하는 법" },
   },
   {
     id: "groups",
@@ -87,8 +97,9 @@ export const ABOUT_FEATURES: AboutFeature[] = [
     points: [
       "독후감을 저장할 때 'AI 독서카드 만들기'를 켜면 한 줄 감상, 감정 키워드, 추천 대상, 내 독후감에서 고른 구절이 카드로 정리됩니다.",
       "독후감을 고친 뒤에는 고친 내용으로 카드를 다시 만들 수 있습니다.",
-      "완성된 카드는 이미지로 저장할 수 있어요.",
+      "AI가 정리한 문구는 직접 고칠 수 있고, 완성된 카드는 이미지로 저장할 수 있어요.",
     ],
+    guide: { href: "/guides/ai-reading-card", label: "AI 독서카드 활용법" },
   },
   {
     id: "insights",
@@ -99,6 +110,7 @@ export const ABOUT_FEATURES: AboutFeature[] = [
       "올해 읽을 권수를 독서 목표로 정하고 진행 상황을 확인합니다.",
       "기록 회고 구독을 켜면 정한 주기마다 내 기록을 다시 꺼내 보여 줍니다. 이메일은 보내지 않고 책도장 안에서만 발행됩니다.",
     ],
+    guide: { href: "/guides/reading-log-habit", label: "독서 기록 꾸준히 하는 법" },
   },
 ];
 

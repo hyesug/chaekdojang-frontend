@@ -153,6 +153,7 @@ export default function RootLayout({
             </div>
             <nav aria-label="서비스 정보" className="flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-sage-600">
               <Link href="/about" className="transition-colors hover:text-brown-800">서비스 소개</Link>
+              <Link href="/guides" className="transition-colors hover:text-brown-800">독서 가이드</Link>
               <Link href="/cs" className="transition-colors hover:text-brown-800">고객센터</Link>
               <Link href="/install" className="transition-colors hover:text-brown-800">앱 설치</Link>
               <Link href="/terms" className="transition-colors hover:text-brown-800">이용약관</Link>

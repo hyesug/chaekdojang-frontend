@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { DEFAULT_OG_IMAGE, SITE_URL } from "../lib/serverApi";
 import { jsonLdHtml } from "../lib/jsonLd";
+import { GUIDES } from "../guides/content";
 import {
   ABOUT_AUDIENCES,
   ABOUT_COMPARISONS,
@@ -13,6 +14,7 @@ import {
   ABOUT_SUMMARY,
   ABOUT_TITLE,
   ABOUT_UPDATED_AT,
+  formatKoreanDate as formatDate,
 } from "./content";
 
 // 검색 엔진과 AI 가 JS 없이도 읽도록 서버에서 미리 그려 두는 정적 페이지다.
@@ -38,11 +40,6 @@ export const metadata: Metadata = {
     images: [DEFAULT_OG_IMAGE.url],
   },
 };
-
-function formatDate(value: string) {
-  const [year, month, day] = value.split("-");
-  return `${year}년 ${Number(month)}월 ${Number(day)}일`;
-}
 
 export default function AboutPage() {
   const pageUrl = `${SITE_URL}/about`;
@@ -156,13 +153,19 @@ export default function AboutPage() {
                   </li>
                 ))}
               </ul>
-              {feature.link && (
-                <Link
-                  href={feature.link.href}
-                  className="mt-4 inline-flex text-sm font-semibold text-brown-700 underline-offset-4 hover:underline"
-                >
-                  {feature.link.label} →
-                </Link>
+              {(feature.link || feature.guide) && (
+                <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm">
+                  {feature.link && (
+                    <Link href={feature.link.href} className="font-semibold text-brown-700 underline-offset-4 hover:underline">
+                      {feature.link.label} →
+                    </Link>
+                  )}
+                  {feature.guide && (
+                    <Link href={feature.guide.href} className="text-brown-600 underline-offset-4 hover:underline">
+                      가이드: {feature.guide.label} →
+                    </Link>
+                  )}
+                </div>
               )}
             </section>
           ))}
@@ -246,6 +249,21 @@ export default function AboutPage() {
             </section>
           ))}
         </div>
+      </section>
+
+      <section className="mt-9" aria-labelledby="about-guides">
+        <h2 id="about-guides" className="font-serif text-2xl font-bold text-brown-900">
+          독서 가이드
+        </h2>
+        <ul className="mt-4 space-y-2 text-sm leading-6">
+          {GUIDES.map((guide) => (
+            <li key={guide.slug}>
+              <Link href={`/guides/${guide.slug}`} className="font-semibold text-brown-700 underline-offset-4 hover:underline">
+                {guide.title} →
+              </Link>
+            </li>
+          ))}
+        </ul>
       </section>
 
       <p className="mt-9 text-sm leading-7 text-brown-500">

@@ -1,6 +1,7 @@
 import { SITE_URL } from "../lib/serverApi";
 import { IS_PRODUCTION } from "../lib/deployEnv";
 import { ABOUT_FAQ, ABOUT_FEATURES, ABOUT_SUMMARY, ABOUT_UPDATED_AT } from "../about/content";
+import { GUIDES } from "../guides/content";
 
 /**
  * /llms.txt — AI 검색·답변 도구에 사이트를 요약해 주는 파일(https://llmstxt.org 관례).
@@ -14,6 +15,9 @@ export function GET() {
     (feature) => `- [${feature.title}](${SITE_URL}/about#${feature.id}): ${feature.summary}`,
   ).join("\n");
   const faq = ABOUT_FAQ.map((item) => `- ${item.question} ${item.answer}`).join("\n");
+  const guides = GUIDES.map(
+    (guide) => `- [${guide.title}](${SITE_URL}/guides/${guide.slug}): ${guide.summary}`,
+  ).join("\n");
 
   const body = `# 책도장
 
@@ -28,6 +32,10 @@ export function GET() {
 ## 주요 기능
 
 ${features}
+
+## 독서 가이드
+
+${guides}
 
 ## 자주 묻는 질문
 

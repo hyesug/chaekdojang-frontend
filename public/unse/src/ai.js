@@ -210,6 +210,7 @@ export function aiSection(mode = 'solo', view = null) {
         ${quick.map((q, i) => `<button type="button" data-q="${i}"${off}>${esc(q[0])}</button>`).join('')}
       </div>
       <div id="ai-log" class="ai-log" aria-live="polite" aria-relevant="additions text"></div>
+      ${AI_OPEN ? '<div class="ai-tools" hidden><button type="button" id="ai-reset" class="ai-reset">대화 초기화</button></div>' : ''}
       <div class="ai-input">
         <label class="sr-only" for="ai-q">명반에 관해 질문하기</label>
         <textarea id="ai-q" rows="3" placeholder="${AI_OPEN ? '궁금한 걸 물어보세요 (Ctrl+Enter 로 보내기)' : 'AI 질문은 준비 중이에요'}"${off}></textarea>
@@ -376,32 +377,51 @@ export function splitFollowUps(text) {
   return { body: text.slice(0, at).trimEnd(), followUps };
 }
 
+// sessionId 는 사용량 로그를 상담 단위로 묶는 데만 쓴다 (사람을 가리키지 않는 임의 값)
+const newSessionId = () => globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
 /** 화면이 그려진 뒤 입력칸과 버튼을 붙인다. 개인·궁합이 같은 배선을 쓴다 */
 function wire(context, calc = null, compat = null) {
-  // sessionId 는 사용량 로그를 상담 단위로 묶는 데만 쓴다 (사람을 가리키지 않는 임의 값)
   const names = compat
     ? [[compat.A?.input?.name, PAIR_LABELS[0]], [compat.B?.input?.name, PAIR_LABELS[1]]]
     : [[calc?.fortune?.input?.name, '본인']];
-  session = { context: redactNames(context, names), calc, compat, names, messages: [], busy: false, lastPlan: null,
-    id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}` };
+  session = { context: redactNames(context, names), calc, compat, names, messages: [], busy: false, lastPlan: null, id: newSessionId() };
 
   const log = document.querySelector('#ai-log');
   const box = document.querySelector('#ai-q');
   const send = document.querySelector('#ai-send');
+  const reset = document.querySelector('#ai-reset');
   const credit = document.querySelector('#ai-credit-status');
   if (!log) return;
   // 닫혀 있으면 질문권 조회도, 버튼 배선도 하지 않는다 — 막힌 단추가 눌려도 아무 요청이 나가지 않게
   if (!AI_OPEN) return;
   let creditStatus = { kind: 'unavailable' };
 
-  // 지난 대화를 되살린다 — 질문권이 떨어져 독후감을 쓰고 돌아와도 이어서 물을 수 있게
   const saveKey = saveKeyOf(calc, compat);
+
+  // 대화 초기화 단추는 대화가 있을 때만 보인다. 대화 칸 맨 위에 두면
+  // 긴 대화에 밀려 올라가 안 보였다 — 입력칸 바로 위에 늘 둔다.
+  const showReset = () => { if (reset) reset.parentElement.hidden = !log.childElementCount; };
+  reset?.addEventListener('click', () => {
+    if (session.busy) return;
+    if (!confirm('지금까지 나눈 대화를 지우고 처음부터 새로 물을까요?\n지운 대화는 되살릴 수 없어요.')) return;
+    clearChat(saveKey);
+    // 앞 질문의 분야·기간을 잇지 않게 lastPlan 도 비우고, 사용량 로그도 새 상담으로 묶는다
+    session.messages = [];
+    session.lastPlan = null;
+    session.id = newSessionId();
+    log.innerHTML = '';
+    showReset();
+    box.focus();
+  });
+
+  // 지난 대화를 되살린다 — 질문권이 떨어져 독후감을 쓰고 돌아와도 이어서 물을 수 있게
   const restored = loadChat(saveKey);
   if (restored.length) {
     session.messages = restored;
     const head = document.createElement('div');
     head.className = 'ai-restored';
-    head.innerHTML = '<span>지난 대화를 이어서 보여 드려요.</span> <button type="button" class="ai-restart">새로 시작</button>';
+    head.innerHTML = '<span>지난 대화를 이어서 보여 드려요. AI 도 이 대화를 참고해 답하니, 처음부터 물으려면 아래 ‘대화 초기화’를 누르세요.</span>';
     log.appendChild(head);
     for (const m of restored) {
       if (m.role === 'user') { log.insertAdjacentHTML('beforeend', `<div class="ai-turn me"><p>${esc(m.content)}</p></div>`); continue; }
@@ -411,12 +431,8 @@ function wire(context, calc = null, compat = null) {
       log.appendChild(b);
     }
     log.scrollTop = log.scrollHeight;
-    head.querySelector('.ai-restart').addEventListener('click', () => {
-      clearChat(saveKey);
-      session.messages = [];
-      log.innerHTML = '';
-    });
   }
+  showReset();
 
   /** 답 한 덩이를 그린다 — 본문, 복사 단추, 이어 물을 질문 단추(마지막 답에만) */
   function paintAnswer(bubble, text, withFollowUps = true) {
@@ -500,6 +516,8 @@ function wire(context, calc = null, compat = null) {
     }
     session.busy = true;
     send.disabled = true;
+    // 답을 받는 도중에는 지우지 못하게 막는다 — 흘러오던 답이 빈 칸에 다시 붙는다
+    if (reset) reset.disabled = true;
 
     // 휴대폰은 화면을 벗어나면(탭 전환·홈 버튼·화면 꺼짐) 브라우저가 연결을
     // 끊는다. 그 자체는 막을 수 없으니, **끊겼을 때 무슨 일이 있었는지**를
@@ -514,6 +532,7 @@ function wire(context, calc = null, compat = null) {
     bubble.className = 'ai-turn bot';
     bubble.innerHTML = '<p class="ai-wait">생각하는 중…</p>';
     log.appendChild(bubble);
+    showReset();
     // 대화 칸은 자체 스크롤이다 — 새 질문은 칸 맨 아래로 내리고, 칸이 화면에 보이게 한다
     log.scrollTop = log.scrollHeight;
     log.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -614,6 +633,7 @@ function wire(context, calc = null, compat = null) {
       document.removeEventListener('visibilitychange', watchLeave);
       session.busy = false;
       send.disabled = false;
+      if (reset) reset.disabled = false;
     }
   }
 
@@ -624,6 +644,7 @@ function wire(context, calc = null, compat = null) {
     // 결제는 아직 열지 않았다 — 질문권은 독후감으로 받는다
     row.innerHTML = `<p><strong>질문권이 필요합니다.</strong> ${esc(reason)}</p><p>${balance}${EARN} · <a href="/terms">이용약관</a></p>`;
     parent.appendChild(row);
+    showReset();
     row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 

@@ -188,6 +188,22 @@ test('AI 대화는 명반별로 브라우저에 남아 독후감을 쓰고 돌�
   assert.match(ai, /관리자 · 무제한/);
 });
 
+test('대화 초기화 단추는 입력칸 위에 있고, 저장된 대화·앞 질문 맥락·상담 묶음을 함께 비운다', async () => {
+  const ai = await read('src/ai.js');
+  const section = ai.slice(ai.indexOf('export function aiSection'));
+  assert.ok(section.indexOf('id="ai-reset"') > section.indexOf('id="ai-log"'));
+  assert.ok(section.indexOf('id="ai-reset"') < section.indexOf('class="ai-input"'));
+  const handler = ai.slice(ai.indexOf("reset?.addEventListener('click'"));
+  const body = handler.slice(0, handler.indexOf('});'));
+  for (const step of ['clearChat(saveKey);', 'session.messages = [];', 'session.lastPlan = null;', 'session.id = newSessionId();', "log.innerHTML = '';"]) {
+    assert.ok(body.includes(step), step);
+  }
+  // 답을 받는 도중엔 지우지 못한다
+  assert.match(body, /if \(session\.busy\) return;/);
+  const css = await read('assets/style.css');
+  assert.match(css, /\.ai-tools\[hidden\] \{ display: none; \}/);
+});
+
 test('프로필 저장 칸은 결과 맨 위(제목 바로 아래, 핵심 요약 앞)에 있다 — 개인·궁합 모두', async () => {
   const ui = await read('src/ui.js');
   for (const start of ['function render(form, r, f)', 'function renderCompat(formA, formB, r)']) {

@@ -573,7 +573,12 @@ details.pool[open] > summary::before { content: '▾ '; }
 .ai-follow button { text-align: left; }
 /* 되살린 지난 대화 머리줄 */
 .ai-restored { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-3); padding: 6px 0 10px; border-bottom: 1px solid var(--line-soft); }
-.ai-restored .ai-restart { font-size: 12.5px; padding: 3px 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: transparent; color: var(--ink-2); cursor: pointer; }
+/* 대화 초기화 — 입력칸 바로 위, 대화가 있을 때만 */
+.ai-tools { display: flex; justify-content: flex-end; margin: -6px 0 8px; }
+.ai-tools[hidden] { display: none; }
+.ai-reset { font-size: 12.5px; padding: 5px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: transparent; color: var(--ink-2); font-family: inherit; cursor: pointer; }
+.ai-reset:hover { border-color: var(--stamp); color: var(--stamp); }
+.ai-reset:disabled { opacity: .45; cursor: default; }
 
 .ai-log { display: flex; flex-direction: column; gap: 0; border-top: 1px solid var(--line-soft);
   max-height: min(70vh, 640px); overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }

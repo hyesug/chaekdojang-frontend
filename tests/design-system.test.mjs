@@ -40,10 +40,16 @@ test("기존 보조 텍스트 별칭도 종이와 상아 배경에서 AA 대비�
   assert.match(css, /--color-brown-400:\s*#496A63/i);
 });
 
-test("공통 404·오류·로딩 화면을 제공한다", () => {
-  for (const file of ["app/not-found.tsx", "app/error.tsx", "app/loading.tsx"]) {
+test("공통 404·오류 화면과 페이지 이동 표시를 제공한다", () => {
+  for (const file of ["app/not-found.tsx", "app/error.tsx", "app/components/NavigationProgress.tsx"]) {
     assert.equal(existsSync(path.join(root, file)), true, `${file}가 필요합니다`);
   }
+  assert.match(read("app/layout.tsx"), /<NavigationProgress \/>/);
+});
+
+test("루트 loading.tsx 를 두지 않아 공개 페이지 본문이 첫 HTML 에 바로 실린다", () => {
+  // 루트 Suspense 경계가 있으면 긴 본문이 <div hidden> 블록으로 밀려나 JS 없는 수집기가 읽지 못한다.
+  assert.equal(existsSync(path.join(root, "app/loading.tsx")), false, "app/loading.tsx 대신 NavigationProgress 를 쓴다");
 });
 
 test("공통 field와 modal은 보조기술에 상태와 역할을 제공한다", () => {

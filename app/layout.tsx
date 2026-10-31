@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 // 글꼴은 사이트에 함께 싣는다. 사용자 PC에 설치된 글꼴에 따라 화면이 달라지지 않도록.
 // 두 파일 모두 글자 범위별로 쪼개져 있어 화면에 쓰인 글자 조각만 내려받는다.
 import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
@@ -11,6 +12,7 @@ import AnalyticsTracker from "./components/AnalyticsTracker";
 import GoogleAnalytics from "./components/GoogleAnalytics";
 import ServiceStatusGuard from "./components/ServiceStatusGuard";
 import IosInstallBanner from "./components/IosInstallBanner";
+import NavigationProgress from "./components/NavigationProgress";
 import { DEFAULT_OG_IMAGE, SERVICE_DESCRIPTION } from "./lib/serverApi";
 import { jsonLdHtml } from "./lib/jsonLd";
 
@@ -130,6 +132,10 @@ export default function RootLayout({
           suppressHydrationWarning
           dangerouslySetInnerHTML={{ __html: jsonLdHtml(jsonLd) }}
         />
+        {/* 주소 쿼리를 읽는 작은 부품만 경계로 감싼다. 페이지 본문은 경계 밖이라 첫 HTML 에 바로 실린다. */}
+        <Suspense fallback={null}>
+          <NavigationProgress />
+        </Suspense>
         <GoogleAnalytics />
         <AnalyticsTracker />
         <ServiceStatusGuard />

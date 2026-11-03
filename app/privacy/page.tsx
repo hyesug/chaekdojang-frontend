@@ -184,7 +184,7 @@ export default function PrivacyPage() {
             독후감 AI 기능은 다음과 같이 개인정보를 국외로 이전합니다. 해당 AI 기능을 쓰지 않으면 이전되지 않습니다.
           </p>
           <ul className="mt-2 list-disc pl-5 space-y-1">
-            <li>이전받는 자: OpenAI, L.L.C. (미국)</li>
+            <li>이전받는 자: OpenAI OpCo, LLC (미국)</li>
             <li>
               이전 항목: 독후감 본문(본문에 적은 내용 포함), AI 독서카드 내용, 모임 책의 제목·저자와 모임 질문,
               모임 AI 분석 시 회원들이 모임 책에 연결한 독후감 본문

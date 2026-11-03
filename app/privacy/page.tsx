@@ -11,7 +11,7 @@ export default function PrivacyPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-10 text-brown-700">
       <h1 className="font-serif text-3xl font-bold text-brown-800 mb-4">개인정보처리방침</h1>
-      <p className="text-sm text-brown-400 mb-8">버전: 0.2 · 시행일: 2026년 10월 13일 (이전 버전 0.1: 2026년 9월 24일)</p>
+      <p className="text-sm text-brown-400 mb-8">버전: 0.3 · 시행일: 2026년 11월 10일 (이전 버전 0.2: 2026년 10월 13일, 0.1: 2026년 9월 24일)</p>
 
       <div className="space-y-7 leading-7">
         <section>
@@ -96,15 +96,46 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="font-serif text-xl font-bold text-brown-800 mb-2">5. 이용 목적</h2>
+          <h2 className="font-serif text-xl font-bold text-brown-800 mb-2">5. 독후감 AI 기능</h2>
           <p>
-            개인정보는 회원 식별과 로그인, 독후감 작성/조회/공유, 프로필과 서재 기능 제공, 작가/출판사
+            아래 AI 기능을 쓰면 필요한 글이 책도장 서버를 거쳐 AI 서비스(OpenAI)로 전송됩니다. 닉네임과 내부
+            사용자 식별자는 AI 요청에 포함하지 않지만, 독후감 본문에 직접 적은 내용은 그대로 전송됩니다.
+          </p>
+          <ul className="mt-3 list-disc pl-5 space-y-1">
+            <li>
+              AI 독서카드: 독후감을 저장할 때 &quot;AI 독서카드&quot;가 선택되어 있으면(기본 선택) 그 독후감 본문을
+              보냅니다. 선택을 해제하고 저장하면 보내지 않습니다.
+            </li>
+            <li>
+              AI 회고: 회고 질문을 만들면 독후감 본문과 그 독후감의 AI 독서카드 내용을, 다시 읽기 비교를 만들면 같은
+              책에 쓴 이전 독후감과 현재 독후감 본문을 보냅니다.
+            </li>
+            <li>
+              도장 코멘트: 작성 중인 독후감 본문을 보냅니다. 보낸 본문과 받은 코멘트는 저장하지 않고 글자 수만
+              기록합니다.
+            </li>
+            <li>모임 AI 질문 초안: 모임 책의 제목·저자와 그 책에 이미 등록된 모임 질문을 보냅니다.</li>
+            <li>
+              모임 AI 분석: 모임 운영자가 요청하면 회원들이 그 모임 책에 연결한 독후감 본문(최대 12편)을 보냅니다.
+              작성자 닉네임은 보내지 않습니다.
+            </li>
+          </ul>
+          <p className="mt-3">
+            만들어진 독서카드, 회고 질문, 다시 읽기 비교, 모임 질문 초안과 분석 결과는 화면에 보여 주기 위해 책도장
+            서버에 저장합니다. 비용 확인을 위해 사용한 모델, 토큰 수, 처리 시각과 성공 여부를 기록할 수 있습니다.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="font-serif text-xl font-bold text-brown-800 mb-2">6. 이용 목적</h2>
+          <p>
+            개인정보는 회원 식별과 로그인, 독후감 작성/조회/공유, 독후감 AI 기능 제공, 프로필과 서재 기능 제공, 작가/출판사
             프로필 신청 검토, 종합 운세 AI 풀이·질문권 처리와 프로필 저장, 해석·답변 품질 개선(피드백), 서비스 운영과 보안, 오류 분석, 부정 이용 방지, 고객 문의 응대를 위해 사용합니다.
           </p>
         </section>
 
         <section>
-          <h2 className="font-serif text-xl font-bold text-brown-800 mb-2">6. 보관과 삭제</h2>
+          <h2 className="font-serif text-xl font-bold text-brown-800 mb-2">7. 보관과 삭제</h2>
           <p>
             회원 탈퇴 또는 삭제 요청 시 이메일, 닉네임, 프로필 이미지, 자기소개 등 계정 식별 정보는
             삭제하거나 탈퇴 계정 값으로 변경합니다. 서재, 팔로우, 알림, 북마크, 좋아요, 소셜 로그인 연결처럼
@@ -128,7 +159,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="font-serif text-xl font-bold text-brown-800 mb-2">7. 제3자 제공과 외부 서비스</h2>
+          <h2 className="font-serif text-xl font-bold text-brown-800 mb-2">8. 제3자 제공과 외부 서비스</h2>
           <p>
             책도장은 이용자의 개인정보를 임의로 제3자에게 판매하거나 제공하지 않습니다. 다만 서비스 제공에
             필요한 범위에서 카카오, 네이버, 구글의 로그인 기능, 카카오 책 API와 Google Books API의 도서 정보,
@@ -149,10 +180,28 @@ export default function PrivacyPage() {
             <li>이용 목적: AI 운세 풀이 답변 생성</li>
             <li>보유 기간: 각 이전받는 자의 API 데이터 보관 정책에 따른 기간</li>
           </ul>
+          <p className="mt-2">
+            독후감 AI 기능은 다음과 같이 개인정보를 국외로 이전합니다. 해당 AI 기능을 쓰지 않으면 이전되지 않습니다.
+          </p>
+          <ul className="mt-2 list-disc pl-5 space-y-1">
+            <li>이전받는 자: OpenAI, L.L.C. (미국)</li>
+            <li>
+              이전 항목: 독후감 본문(본문에 적은 내용 포함), AI 독서카드 내용, 모임 책의 제목·저자와 모임 질문,
+              모임 AI 분석 시 회원들이 모임 책에 연결한 독후감 본문
+            </li>
+            <li>이전 시기와 방법: 해당 AI 기능을 쓸 때마다 암호화된 네트워크로 전송(AI 독서카드는 저장 직후 순서대로 처리)</li>
+            <li>이용 목적: AI 독서카드, 회고 질문, 다시 읽기 비교, 도장 코멘트, 모임 질문 초안과 분석 생성</li>
+            <li>보유 기간: 각 이전받는 자의 API 데이터 보관 정책에 따른 기간</li>
+            <li>
+              거부 방법과 효과: AI 독서카드 선택을 해제하거나 해당 AI 기능을 쓰지 않으면 이전되지 않으며, 독후감
+              작성 등 다른 기능은 그대로 이용할 수 있습니다. 모임 AI 분석에 포함되지 않으려면 그 모임 책에 독후감을
+              연결하지 않으면 됩니다.
+            </li>
+          </ul>
         </section>
 
         <section>
-          <h2 className="font-serif text-xl font-bold text-brown-800 mb-2">8. 쿠키와 접속 기록</h2>
+          <h2 className="font-serif text-xl font-bold text-brown-800 mb-2">9. 쿠키와 접속 기록</h2>
           <p>
             책도장은 로그인 상태 유지, 보안, 오류 분석, 서비스 이용 통계 확인을 위해 쿠키 또는 유사 기술과
             접속 기록을 사용할 수 있습니다. 사용자는 브라우저 설정을 통해 쿠키 저장을 제한할 수 있으나,
@@ -162,7 +211,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="font-serif text-xl font-bold text-brown-800 mb-2">9. 이용자의 권리</h2>
+          <h2 className="font-serif text-xl font-bold text-brown-800 mb-2">10. 이용자의 권리</h2>
           <p>
             이용자는 개인정보의 열람, 정정, 삭제, 처리 정지를 요청할 수 있습니다. 로그인한 사용자는 프로필
             페이지에서 계정을 삭제할 수 있으며, 추가 조치가 필요한 경우 고객센터를 통해 요청할 수 있습니다.
@@ -170,7 +219,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="font-serif text-xl font-bold text-brown-800 mb-2">10. 아동의 개인정보</h2>
+          <h2 className="font-serif text-xl font-bold text-brown-800 mb-2">11. 아동의 개인정보</h2>
           <p>
             책도장은 만 14세 이상 이용자를 대상으로 서비스를 제공합니다. 만 14세 미만 아동은 책도장에 가입하거나
             서비스를 이용할 수 없습니다. 만 14세 미만 이용자의 가입 또는 개인정보 처리가 확인되는 경우 관련 정보를
@@ -179,7 +228,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="font-serif text-xl font-bold text-brown-800 mb-2">11. 변경 고지</h2>
+          <h2 className="font-serif text-xl font-bold text-brown-800 mb-2">12. 변경 고지</h2>
           <p>
             개인정보처리방침이 변경되는 경우 시행일과 변경 내용을 서비스 화면에 게시합니다. 중요한 변경이 있는
             경우 합리적인 방법으로 별도 안내할 수 있습니다.

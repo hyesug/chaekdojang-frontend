@@ -815,14 +815,23 @@ const CATEGORY_JOBS = {
   beauty_design: ['미용사', '디자이너'], arts_content: ['작가·예술가', '콘텐츠 제작자'], food_service: ['요리사·외식업', '서비스·접객직'],
   public_admin: ['공무원', '경찰·소방관'], manufacturing_construction: ['생산·제조직', '건설 기술자'], transport_machine: ['기관사·운전직', '기계 정비사'],
 };
+/**
+ * 리포트에 싣는 직업 수. 예전엔 상위 3범주에서 하나씩 + 1위 범주 하나 더(최대 4개)를 실어
+ * "다 된다는 말 같다"는 지적을 받았다(2026-11-03). 같은 사례집 9명(시각 있는 사람)으로 재 보니
+ * 실제 직업 범주 적중이 1위만 2/9 · 1~2위 4/9 · 1~3위 5/9 — 1·2위 점수 차는 대개 0.02 안쪽이라
+ * 하나만 고를 근거는 약하고, 둘이면 목록은 절반으로 줄고 적중은 한 명만 준다. 그래서 2개.
+ */
+export const CAREER_JOB_LIMIT = 2;
 function verifiedJobs(r) {
   let vc = null;
   try { vc = verifiedCareer(r.input); } catch { /* */ }
   if (!vc?.available) return { jobs: [], vc: null };
-  const cats = vc.top.map((x) => CATEGORY_JOBS[x.key] ?? []);
-  // 범주마다 대표 직업 하나씩, 남는 칸은 1순위 범주의 둘째 직업
+  // 상위 범주에서 대표 직업 하나씩, 앞선 범주부터 — 가장 유력한 것이 맨 앞
   const jobs = [];
-  for (const js of [...cats.map((c) => c[0]), cats[0]?.[1]]) if (js && !jobs.includes(js) && jobs.length < 4) jobs.push(js);
+  for (const x of vc.top) {
+    const js = (CATEGORY_JOBS[x.key] ?? [])[0];
+    if (js && !jobs.includes(js) && jobs.length < CAREER_JOB_LIMIT) jobs.push(js);
+  }
   return { jobs, vc };
 }
 /**
@@ -855,8 +864,10 @@ export function careerRoles(r) {
   // 칸을 다 채우지 않게 한다(예전엔 베딕 "교육·법률·금융·상담" 넷이 칸을 독차지했다)
   const per = said.map((x) => jobsIn(x.value));
   const count = new Map(); per.forEach((js) => new Set(js).forEach((j) => count.set(j, (count.get(j) ?? 0) + 1)));
-  const jobs = verified.length ? verified : [...count].filter(([, c]) => c >= 2).sort((a, b) => b[1] - a[1]).map(([j]) => j).slice(0, 4);
-  for (let k = 0; jobs.length < 4 && per.some((js) => js.length > k); k++) for (const js of per) if (js[k] && !jobs.includes(js[k]) && jobs.length < 4) jobs.push(js[k]);
+  // 시각이 없어 검증된 범주를 못 세울 때도 같은 개수(CAREER_JOB_LIMIT)까지만
+  const max = CAREER_JOB_LIMIT;
+  const jobs = verified.length ? verified : [...count].filter(([, c]) => c >= 2).sort((a, b) => b[1] - a[1]).map(([j]) => j).slice(0, max);
+  for (let k = 0; jobs.length < max && per.some((js) => js.length > k); k++) for (const js of per) if (js[k] && !jobs.includes(js[k]) && jobs.length < max) jobs.push(js[k]);
   // 받침에 따라 "이에요/예요" — 괄호로 끝나면 괄호 앞 글자를 본다
   const last = jobs.length ? jobs[jobs.length - 1].replace(/\([^)]*\)$/, '').slice(-1).charCodeAt(0) - 0xac00 : -1;
   const lead = jobs.length ? `잘 맞는 직업은 ${jobs.join(', ')}${last >= 0 && last % 28 ? '이에요' : '예요'}.` : '';

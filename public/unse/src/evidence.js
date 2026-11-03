@@ -74,6 +74,30 @@ export function natalLedger(r) {
   return out;
 }
 
+/**
+ * 궁합의 근거 목록 — 체계별로 두 사람을 견준 facts(compareFortune 결과). 번호 매기는 법은 natalLedger 와 같다.
+ * 이름표 체계 이름에 '궁합'을 붙여 한 사람의 값이 아니라 두 사람을 견준 값임을 드러낸다.
+ * @param {{results: {id,name,facts}[]}} c compareFortune 결과
+ */
+export function pairLedger(c) {
+  return natalLedger({ results: (c?.results ?? []).map((x) => ({ ...x, name: `${x.name} 궁합` })) });
+}
+
+/**
+ * 궁합의 시기·층 근거 — 두 사람의 결혼 자리 신호가 해마다 어디서 켜지는지(hires/pair.js marriageWindow).
+ * 결혼 시기를 점치는 값이 아니라 두 사람의 흐름이 겹치는 해라는 한계를 붙인다.
+ */
+export function pairTimeLedger(mw, max = 12) {
+  const rows = [];
+  const sys = (x) => (x?.systems?.length ? x.systems.join('·') : '없음');
+  for (const r of mw?.rows ?? []) {
+    rows.push({ system: '두 사람', field: `${r.year} 관계 자리 신호`,
+      value: `첫째 ${sys(r.a)} / 둘째 ${sys(r.b)}${r.both ? ` · 함께 켜짐${r.sharedSystems?.length ? `(같은 체계 ${r.sharedSystems.join('·')})` : ''}` : ''}`,
+      note: '', limits: '두 사람 흐름이 겹치는 해 — 결혼 시기 예측이 아니다(사례 검증 미통과)' });
+  }
+  return rows.slice(0, max).map((x, i) => ({ id: `${TIME_PREFIX}${i + 1}`, ...x }));
+}
+
 /** 자미두수 궁 한 줄 — 고해상도 ziweiPalaces 의 행 */
 function palaceRow(row) {
   const bits = [`${row.layer} ${row.palace} ${row.branchName}${row.natalPalace && row.natalPalace !== row.palace ? `(원국 ${row.natalPalace})` : ''}`];

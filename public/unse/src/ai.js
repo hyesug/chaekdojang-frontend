@@ -18,7 +18,7 @@ import * as PAIR from './hires/pair.js';
 import { horaryCast, formatHorary } from './systems/horary.js';
 import { loadCreditStatus } from './credits.js';
 import { attachAnswerFeedback } from './feedback.js';
-import { natalLedger, timeLedger, formatLedger, ledgerMap, resolveEvidence, plainEvidence } from './evidence.js';
+import { natalLedger, timeLedger, pairLedger, pairTimeLedger, formatLedger, ledgerMap, resolveEvidence, plainEvidence } from './evidence.js';
 import { checkAnswer, evidenceIdsIn } from './answerCheck.js';
 import { renderAnswer } from './answerView.js';
 
@@ -83,8 +83,9 @@ function shownAnswer(raw, turn, final = false) {
 
 /** 서버가 답의 설계(prompt.ts planAnswer)에 쓰는 질문 분석 — router.js 계획에서 필요한 칸만 */
 function intentOf(plan, pair) {
-  if (pair) return { pair: true };
-  if (!plan) return null;
+  // 궁합도 1인 명반과 같은 질문 분석을 보내고 '두 사람' 표시만 더한다
+  if (!plan) return pair ? { pair: true } : null;
+  if (pair) return { ...intentOf(plan, false), pair: true };
   const pick = ['domains', 'scopeLock', 'asksChoice', 'asksOutcome', 'needsHorary', 'asksDay', 'needsDay',
     'needsPlace', 'family', 'traitsOnly', 'fallback', 'wantsMonths', 'periodExplicit'];
   // 도시 이름은 보내지 않고 개수만 — 사건 판정의 입력 완성도(후보 목적지가 있는가)에만 쓴다
@@ -145,6 +146,8 @@ const PAIR_QUICK = [
   ['서로 뭘 채워주나요?', '한쪽에 없는 것을 다른 쪽이 가지고 있는 부분을 짚어 주세요.'],
   ['일로 만나면', '연애가 아니라 동업이나 같이 일하는 사이라면 어떤지 봐주세요.'],
   ['갈리는 지점', '열다섯 체계 가운데 판단이 엇갈리는 곳은 어디이고, 왜 그런지 설명해 주세요.'],
+  // 1인 명반의 '사건 판정'과 같은 모드(prompt.ts 'event') — 분야를 말하지 않으면 두 사람의 관계를 본다
+  ['사건 판정', '내년까지 두 사람 관계에서 일어날 가능성이 가장 높은 사건을 판정해 주세요. 가장 우세한 사건 하나와 그다음 후보를 골라 주세요.'],
 ];
 
 /** 지금 화면에 걸린 빠른 질문 목록 */
@@ -321,23 +324,33 @@ export function initCompatAI(formA, formB, compat) {
  * 한 사람에게만 결혼운이 있는 해는 뜻이 없다. **두 사람 모두 같은 기간에
  * 켜지는가**가 조건이라, 그 계산을 질문이 들어올 때 돌린다.
  */
-function pairFocus(question, compat) {
+/** 두 사람의 시기를 봐야 하는 질문 — 결혼·날짜·시기, 그리고 사건 판정("내년에 결혼하게 될까", "무슨 일이 생길까") */
+const PAIR_TIMING = /결혼|혼인|예식|언제|시기|날짜|신혼|판정|일어날|생길|하게 될|내년|올해|앞으로|(19|20)\d{2}/;
+
+function pairFocus(question, compat, plan = null) {
   if (!compat?.A?.input || !compat?.B?.input) return null;
-  if (!/결혼|혼인|예식|언제|시기|날짜|신혼/.test(question)) return null;
-  try {
-    const from = compat.A.input.currentYear;
-    const mw = PAIR.marriageWindow(compat.A, compat.B, from, 6);
-    const rel = PAIR.relationshipCharts(compat.A, compat.B, mw.rows.map((r) => r.year));
-    const nav = PAIR.navamsaPair(compat.A, compat.B);
-    // 이름은 AI 로 보내지 않는다(개인정보처리방침). 두 사람은 순서로만 부른다
-    const parts = [PAIR.formatPair(mw, rel, nav, PAIR_LABELS[0], PAIR_LABELS[1])];
-    // 결혼식·예식·상견례 날짜를 물으면 120일 너머까지 달별 주말 후보를 싣는다(가까운 날만 고르던 문제)
-    if (/날짜|날 ?잡|택일|며칠|예식|식장|결혼식|웨딩|상견례|좋은 날/.test(question)) parts.push(weddingDayCandidates(compat.A, compat.B));
-    return parts.join('\n\n');
-  } catch (e) {
-    console.warn('[운세] 두 사람 겹침 계산을 건너뜁니다:', e.message);
-    return null;
+  const parts = [];
+  if (PAIR_TIMING.test(question)) {
+    try {
+      const from = compat.A.input.currentYear;
+      const mw = PAIR.marriageWindow(compat.A, compat.B, from, 6);
+      const rel = PAIR.relationshipCharts(compat.A, compat.B, mw.rows.map((r) => r.year));
+      const nav = PAIR.navamsaPair(compat.A, compat.B);
+      // 1인 명반과 같은 시기 근거 번호([TM1]…) — 두 사람 흐름이 겹치는 해. 맨 앞에 둔다
+      const tm = pairTimeLedger(mw);
+      if (session) session.turnLedger = tm;
+      parts.push(formatLedger(tm, '근거 번호 — 두 사람의 시기 겹침'));
+      // 이름은 AI 로 보내지 않는다(개인정보처리방침). 두 사람은 순서로만 부른다
+      parts.push(PAIR.formatPair(mw, rel, nav, PAIR_LABELS[0], PAIR_LABELS[1]));
+      // 결혼식·예식·상견례 날짜를 물으면 120일 너머까지 달별 주말 후보를 싣는다(가까운 날만 고르던 문제)
+      if (/날짜|날 ?잡|택일|며칠|예식|식장|결혼식|웨딩|상견례|좋은 날/.test(question)) parts.push(weddingDayCandidates(compat.A, compat.B));
+    } catch (e) {
+      console.warn('[운세] 두 사람 겹침 계산을 건너뜁니다:', e.message);
+    }
   }
+  // 점시는 사람이 아니라 묻는 순간에 세운다 — 1인 명반과 같이 "지금 고백해도 될까" 같은 질문에 붙인다
+  if (plan?.needsHorary) parts.push(formatHorary(horaryCast(new Date()), question));
+  return parts.filter(Boolean).join('\n\n') || null;
 }
 
 const PAIR_LABELS = ['첫 번째 사람', '두 번째 사람'];
@@ -405,7 +418,7 @@ function wire(context, calc = null, compat = null) {
     : [[calc?.fortune?.input?.name, '본인']];
   session = { context: redactNames(context, names), calc, compat, names, messages: [], busy: false, lastPlan: null, id: newSessionId(),
     // 근거 번호 → 엔진 계산값(evidence.js). 출생 명반 것은 한 번, 시기·층 것은 질문마다(turnLedger)
-    natalLedger: calc?.fortune ? natalLedger(calc.fortune) : [], turnLedger: [] };
+    natalLedger: calc?.fortune ? natalLedger(calc.fortune) : compat ? pairLedger(compat) : [], turnLedger: [] };
 
   const log = document.querySelector('#ai-log');
   const box = document.querySelector('#ai-q');
@@ -564,8 +577,14 @@ function wire(context, calc = null, compat = null) {
     let turn = { sources: '', validIds: new Set(), asksMonth: false, map: new Map() };
 
     try {
+      // 궁합도 질문을 1인 명반과 같이 읽는다(질문 유형·사건 판정·점시). 계산은 두 사람 겹침만 돌린다
+      if (session.compat) {
+        const routed = inheritPlan(routeQuestion(question, session.compat.A.input.currentYear), session.lastPlan);
+        session.lastPlan = { ...routed, wantsMonths: MONTH_ASK.test(question) };
+        session.turnLedger = [];
+      }
       const focus = session.compat
-        ? pairFocus(question, session.compat)
+        ? pairFocus(question, session.compat, session.lastPlan)
         : focusFor(question, session.calc, session.lastPlan);
       const sentFocus = redactNames(focus, session.names);
       // 사용량 로그에 남길 질문 분야. 원가를 질문 유형별로 보려고 보낸다
@@ -577,13 +596,13 @@ function wire(context, calc = null, compat = null) {
         sources: [session.context, sentFocus ?? '', ...history.map((m) => m.content)].join('\n'),
         validIds: evidenceIdsIn(session.context, sentFocus),
         asksMonth: !!session.lastPlan?.wantsMonths,
-        map: ledgerMap(session.natalLedger, session.compat ? [] : session.turnLedger),
+        map: ledgerMap(session.natalLedger, session.turnLedger),
       };
       const res = await fetch(ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ context: session.context, focus: sentFocus, messages: history, tier: AI_TIER, sessionId: session.id, category,
-          intent: intentOf(session.compat ? null : session.lastPlan, !!session.compat) }),
+          intent: intentOf(session.lastPlan, !!session.compat) }),
       });
 
       if (!res.ok || !res.body) {

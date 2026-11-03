@@ -374,3 +374,93 @@ test('사건 판정 화면 — 입력 완성도 줄, 사건 카드 칸, 근거 �
   assert.match(html, /ai-lab-do"><span class="ai-k">현실화 조건<\/span>/);
   assert.match(html, /<section class="ai-aside"><h4>근거 요약<\/h4><ul><li>.*<span class="ai-chip"/);
 });
+
+/* ── 궁합도 1인 명반과 같은 파이프라인 · 전체 풀이 분류 · 리포트 직업 수 (2026-11-03) ── */
+
+const pairPlan = (q) => {
+  const r = routeQuestion(q, 2026);
+  return planAnswer(q, { ...r, lifetime: r.needsLifetime, cityCount: r.cities.length, pair: true }, detailLevel(q), { timeKnown: true });
+};
+const quickOf = async (name) => {
+  const { readFileSync } = await import('node:fs');
+  const ai = readFileSync('public/unse/src/ai.js', 'utf8');
+  const s = ai.indexOf(name);
+  return Object.fromEntries([...ai.slice(s, ai.indexOf('];', s)).matchAll(/\['([^']+)', '([^']+)'\]/g)].map((m) => [m[1], m[2]]));
+};
+
+test('전체 풀이처럼 소제목·순서를 정한 요청문은 사건 판정·비교로 뒤집히지 않는다', async () => {
+  const { READING_PROMPT, COMPAT_PROMPT } = await import('../../public/unse/src/aiContext.js');
+  const solo = planWith(READING_PROMPT);
+  assert.notEqual(solo.shape, 'event');
+  assert.equal(solo.userFormat, true);
+  const pair = pairPlan(COMPAT_PROMPT);
+  assert.equal(pair.shape, 'pair');
+  assert.ok(!pair.modules.includes('choice'), pair.modules.join());
+  assert.match(planNote(pair, ''), /이 질문은 소제목·순서를 직접 정했습니다/);
+});
+
+test('궁합도 질문 유형을 고른다 — 날짜는 시기, 사건은 사건 판정, 나머지는 궁합 모양, 궁합 규칙은 늘', async () => {
+  const q = await quickOf('const PAIR_QUICK');
+  assert.equal(pairPlan(q['결혼 날짜']).shape, 'timing');
+  assert.ok(!pairPlan(q['결혼 날짜']).modules.includes('career'), "'보고' 낱말에 진로 규칙이 붙지 않는다");
+  const ev = pairPlan(q['사건 판정']);
+  assert.equal(ev.shape, 'event');
+  assert.deepEqual(ev.eventFields, ['연애·결혼']);
+  assert.equal(ev.completeness.grade, '충분');
+  assert.equal(pairPlan('우리 내년에 결혼하게 될까?').shape, 'event');
+  assert.equal(pairPlan('헤어질까 말까').shape, 'compare');
+  for (const k of ['어디서 부딪칠까요?', '오래 갈까요?', '서로 뭘 채워주나요?', '일로 만나면', '갈리는 지점']) assert.equal(pairPlan(q[k]).shape, 'pair', k);
+  for (const k of Object.keys(q)) assert.ok(pairPlan(q[k]).modules.includes('pair'), k);
+  // 일로 만나는 사이는 연애·결혼 근거로 대신하지 않는다
+  const work = pairPlan(q['일로 만나면']);
+  assert.ok(!work.modules.includes('love'), work.modules.join());
+  assert.match(planNote(work, ''), /- 동업: /);
+  assert.match(planNote(pairPlan(q['어디서 부딪칠까요?']), ''), /- 궁합: 체계별로 견준 값/);
+});
+
+test('궁합 문맥에도 근거 번호가 붙고, 시기 겹침에는 [TM] 번호표가 생긴다', async () => {
+  const { compareFortune } = await import('../../public/unse/src/compat.js');
+  const { buildCompatContext } = await import('../../public/unse/src/aiContext.js');
+  const { pairLedger, pairTimeLedger } = await import('../../public/unse/src/evidence.js');
+  const PAIR = await import('../../public/unse/src/hires/pair.js');
+  const B = { name: '나', gender: 'male', year: 1991, month: 8, day: 2, hour: 9, minute: 10, birthPlace: '부산', homePlace: '서울' };
+  const c = compareFortune(FORM, B);
+  const ctx = buildCompatContext(FORM, B, c, forecast, readForecast(B, NOW));
+  const led = pairLedger(c);
+  const ids = evidenceIdsIn(ctx);
+  assert.ok(led.length > 30);
+  for (const e of led) assert.ok(ids.has(e.id), e.id);
+  assert.match(led[0].system, /^사주 궁합$/);
+  assert.doesNotMatch(ctx, /출생 시각을 몰라/);
+  const noTime = compareFortune(FORM, { ...B, hour: null, minute: null });
+  assert.match(buildCompatContext(FORM, { ...B, hour: null, minute: null }, noTime), /출생 시각을 몰라 시주가 없다/);
+  const tm = pairTimeLedger(PAIR.marriageWindow(c.A, c.B, 2026, 6));
+  assert.equal(tm.length, 6);
+  assert.match(formatLedger(tm), /\[TM1\] 두 사람 · 2026 관계 자리 신호: 첫째 .+ \/ 둘째 /);
+  assert.equal(formatLedger(tm).match(/결혼 시기 예측이 아니다/g).length, 1);
+});
+
+test('화면은 궁합에도 질문 분석·시기 번호표·점시를 싣는다', async () => {
+  const { readFileSync } = await import('node:fs');
+  const ai = readFileSync('public/unse/src/ai.js', 'utf8');
+  assert.match(ai, /compat \? pairLedger\(compat\)/);
+  assert.match(ai, /pairFocus\(question, session\.compat, session\.lastPlan\)/);
+  assert.match(ai, /if \(pair\) return \{ \.\.\.intentOf\(plan, false\), pair: true \};/);
+  assert.match(ai, /formatLedger\(tm, '근거 번호 — 두 사람의 시기 겹침'\)/);
+  assert.match(ai, /if \(plan\?\.needsHorary\) parts\.push\(formatHorary\(horaryCast\(new Date\(\)\), question\)\);/);
+  assert.match(ai, /map: ledgerMap\(session\.natalLedger, session\.turnLedger\)/);
+});
+
+test('리포트 잘 맞는 일은 가장 유력한 직업 2개까지만(앞선 범주부터)', async () => {
+  const { careerRoles, CAREER_JOB_LIMIT } = await import('../../public/unse/src/report.js');
+  assert.equal(CAREER_JOB_LIMIT, 2);
+  for (const f of [FORM, { ...FORM, year: 1985, month: 11, day: 2, hour: 7, minute: 10, gender: 'male' }, { ...FORM, hour: null, minute: null }]) {
+    const roles = careerRoles(readFortune(f, { now: NOW }));
+    assert.ok(roles.jobs.length >= 1 && roles.jobs.length <= 2, `${roles.jobs}`);
+    assert.match(roles.lead, /^잘 맞는 직업은 .+(이에요|예요)\.$/);
+  }
+  // 1위 범주의 대표 직업이 맨 앞 — 이 명반의 1위 범주는 돈·보험(finance_insurance)
+  const { verifiedCareer } = await import('../../public/unse/src/semantic/index.js');
+  assert.equal(verifiedCareer(FORM).top[0].key, 'finance_insurance');
+  assert.match(careerRoles(readFortune(FORM, { now: NOW })).lead, /^잘 맞는 직업은 회계사·경리, /);
+});

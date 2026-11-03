@@ -348,7 +348,7 @@ export const MODULES: Record<string, string> = {
 - 변화 신호는 "지금 조직 안에서 자리·부서가 바뀌는 내부 이동 / 다른 곳으로 옮기는 외부 이직 / 같은 자리에서 맡는 일이 바뀌는 업무 변화" 세 갈래로 나눠, 계산값이 어느 갈래를 더 가리키는지와 함께 적으세요. 갈래를 가를 근거가 없으면 세 갈래가 다 열려 있다고 말하세요.
 - "내년이 더 좋으니 지금 제안은 미루라"(✗) · "올해 이직하세요/남으세요"(✗, 별도 근거 없이) · "기질상 리더형이라 관리직에서 성과를 낸다"(✗, 기질≠성과) · "IT가 맞아요"(✗, 근거 없음) → "자미두수 직업을 보는 자리의 ○○별이 조직을 이끄는 결이라 기획·관리 쪽과 맞는 기질이에요. 실제로 해낼지는 경력과 실력이 정해요"(○).
 - 트랜짓·진행·솔라 아크를 근거로 쓸 땐 한 줄에 "트랜짓 토성–출생 중천 사각(90°, 오차 1.2°, 허용 ±7°)"처럼 기법·정확한 각도·허용 오차를 문맥의 값 그대로 적으세요. 문맥에 각도·오차가 없는 것(진행 달의 별자리 이동, 고차라의 별자리 위치)은 각이라고 하지 말고 "별자리·영역 위치"로만 쓰세요.
-- **직업은 역할 먼저, 분야는 후보로.** 문맥의 직업 후보는 여러 체계가 **나란히** 낸 것이라 1·2·3위로 줄 세우지 마세요. 먼저 **어떤 역할에서 힘이 나는지**(전문성을 쌓아 이끄는지, 결정권을 쥐는지, 사람을 직접 상대하는지, 혼자 판을 꾸리는지)를 단정하고, 분야는 그 역할이 드러나는 **겹치는 후보 3~5개**로 묶어 제시하세요. 분야·직무를 말할 땐 그 분야를 낸 **체계와 명반 요소**(문맥의 '근거' 칸)를 함께 적고, 기질에 맞는 분야일 뿐 그 일을 잘 해낸다는 뜻은 아니라는 점을 흐리지 마세요.`,
+- **직업은 역할 먼저, 분야는 후보로.** 문맥의 직업 후보는 여러 체계가 **나란히** 낸 것이라 1·2·3위로 줄 세우지 마세요. 먼저 **어떤 역할에서 힘이 나는지**(전문성을 쌓아 이끄는지, 결정권을 쥐는지, 사람을 직접 상대하는지, 혼자 판을 꾸리는지)를 단정하고, 분야는 그 역할이 드러나는 **가장 유력한 후보 2~3개**를 앞선 순서대로 제시하세요(리포트의 '잘 맞는 일'과 같은 직업을 맨 앞에). 여러 개를 늘어놓으면 다 된다는 말이 됩니다. 분야·직무를 말할 땐 그 분야를 낸 **체계와 명반 요소**(문맥의 '근거' 칸)를 함께 적고, 기질에 맞는 분야일 뿐 그 일을 잘 해낸다는 뜻은 아니라는 점을 흐리지 마세요.`,
 
   money: `## 돈을 물으면
 
@@ -431,11 +431,13 @@ export const MODULES: Record<string, string> = {
   pair: `## 두 사람(궁합)을 볼 때
 
 - 두 사람은 늘 "첫 번째 사람님", "두 번째 사람님"으로 부르세요(화면에서 입력한 이름으로 바뀝니다). "당신과 상대" 같은 다른 이름을 만들지 마세요.
-- 궁합 문맥에는 근거 번호가 없습니다 — 계산값을 쉬운 이름표로 적으세요.
+- 궁합 문맥의 근거 번호([SJ2]·[ZW5] …)는 두 사람을 체계별로 견준 계산값이고, 질문별 계산의 [TM] 번호는 두 사람의 시기 겹침입니다. 1인 명반과 같은 방식으로 인용하세요.
+- 시기·사건을 말할 때는 한 사람에게만 켜진 해보다 **두 사람에게 함께 켜진 해**를 앞세우세요. 한 사람에게만 켜진 해는 그 사람 쪽 사정으로만 말합니다.
 - 사주 구획의 배우자 자리 관계를 "육임도 그렇다"처럼 다른 체계에 옮겨 붙이지 마세요 — 같은 사실 하나는 한 번만 셉니다.
 - 부딪침은 세기 순으로: 정면으로 부딪침·서로 벼름, 자미 나를 보는 자리·배우자를 보는 자리끼리 부딪침, 서양 긴장(정확한 것부터) → 해·파 → **(보조)가 붙은 원진은 맨 뒤**. 보조 관계를 "가장 강한 충돌"로 세우지 마세요.
 - 생극은 문맥에 적힌 방향 그대로("○○ 쪽이 상대를 키움"). 방향이 없으면 누가 누구를 돕는다고 말하지 마세요. 괘·별·궁의 뜻도 문맥 문장 그대로 — 이름이 비슷한 다른 괘의 뜻을 끌어오지 마세요(뇌산소과 ≠ 수택절).
-- 끌림과 부딪침을 **양쪽 다** 근거 3~5개씩.`,
+- 궁합 모양으로 답할 때는 끌림과 부딪침을 **양쪽 다** 근거 3~5개씩.
+- "연애가 아니라 동업·같이 일하는 사이라면"을 물으면 연애·결혼 근거(배우자 자리·금성·결혼 쿠타)로 일의 궁합을 대신하지 말고, 일간 관계·오행 보완·명궁끼리·수성·화성·토성 각처럼 함께 일하는 방식과 이어지는 근거를 쓰세요.`,
 
   roadmap: `## 인생 계획·로드맵을 물으면
 
@@ -510,6 +512,8 @@ const EVIDENCE_FOCUS: Record<string, string> = {
   기질: "사주 타고난 나(일간)·십신 분포 · 자미두수 나를 보는 자리 · 서양 태양·달·상승점 · 속성마다 담당 체계([B~D])",
   시기: "사주 10년 운·그해 운 · 자미두수 대한·유년 · 베딕 다샤 · 질문별 계산의 [TM] 번호",
   점시: "질문시각 점시 괘 · 육임 · 타로 · 그날 운",
+  궁합: "체계별로 견준 값 — 사주 일간·일지 관계와 오행 보완, 자미두수 나를 보는 자리·배우자를 보는 자리끼리, 서양 두 사람 행성 각(금성·화성·달), 베딕 쿠타 점수 · '두 사람의 해석'과 '앞으로 두 사람이 마주할 중요한 일'",
+  동업: "사주 두 사람 일간 관계·오행 보완 · 자미두수 나를 보는 자리끼리 관계 · 서양 두 사람 행성 각(수성·화성·토성) — 연애·결혼 근거로 일의 궁합을 대신하지 않는다",
 };
 
 /**
@@ -548,6 +552,8 @@ export type Completeness = { grade: "충분" | "일부 부족" | "부족"; missi
 export type AnswerPlan = {
   shape: Shape; detail: Detail; domains: string[]; modules: string[];
   scopeLock: string[] | null; asksMonth: boolean; traits?: boolean;
+  /** 궁합(두 사람) · 궁합에서 일로 만나는 사이를 물었는가 · 질문이 소제목·순서를 직접 정했는가 */
+  pair?: boolean; pairWork?: boolean; userFormat?: boolean;
   completeness?: Completeness; eventFields?: string[];
 };
 
@@ -571,13 +577,21 @@ const REMEDY = /액땜|업상대체|개운|비보|살풀이|부적|운을 (바�
 const ROADMAP = /로드맵|인생 ?(계획|설계|전략|방향)|앞으로 \d+ ?년 ?(계획|전략)|\d0대부터|인생을 어떻게|생애 ?(계획|설계)/;
 const FACT = /^(내|제|나의|저의|나|저)?\s*(일간|대운|띠|본명성|명궁|상승궁|상승점|라그나|다샤|용신|오행|별자리|본명숙|라이프 ?패스|주성|격국|일주|본괘|사화)\S{0,3}\s*(뭐|무엇|어디|몇|무슨)/;
 const COMPARE = /비교|vs|VS|차이가|어느 쪽|둘 중|뭐가 (더 )?나아|어떤 게 (더 )?나아|중에 (뭐|무엇|어떤)/;
-const TIMING = /언제|시기|몇 ?년|흐름|올해|내년|(19|20)\d{2} ?년|운세|타이밍|몇 ?살/;
+const TIMING = /언제|시기|몇 ?년|흐름|올해|내년|(19|20)\d{2} ?년|운세|타이밍|몇 ?살|날짜|날 ?잡|택일|좋은 날|길일/;
+const DATE = /날짜|날 ?잡|택일|좋은 날|길일|며칠/;
 const DEEP = /방법|전략|방향|조건|어떻게|성공|맞는|적합|자세히|구체적으로|분석|종합/;
 const DAY_EVENT = /오늘|내일|모레|글피|이번 ?주|다음 ?주/;
 const COLOR = /색|컬러|행운의|럭키/;
 const PLACE = /이사|이주|방위|어디로|어느 쪽으로|지역|도시|해외|여행|살면|거주|통근|출퇴근|[동서남북]쪽/;
-/** 사건 판정을 묻는 말 — "무슨 일이 생길까", "사건 판정", "내년에 이직하게 될까" */
-const EVENT_ASK = /사건|무슨 일|어떤 일|일이 (생기|생길|일어나|일어날|있을)|일어날까|판정해/;
+/**
+ * 사건 판정을 묻는 말 — "무슨 일이 생길까", "사건 판정", "내년에 이직하게 될까".
+ * '무슨 일이'만으로 잡으면 전체 풀이 요청문("무슨 일이, 어떤 모양으로 오고")까지 걸렸다(2026-11-03) — 묻는 꼴까지 본다
+ */
+const EVENT_ASK = /사건 ?판정|판정해|(무슨|어떤) 일이 (생길|생기|일어날|일어나|있을)|일이 (생길까|일어날까|있을까)|일어날까|생길까/;
+/** 질문이 소제목·순서를 직접 정했는가(전체 풀이 요청문 등) — 그러면 그 순서가 답의 모양보다 앞선다 */
+const USER_FORMAT = /소제목|순으로 정리|순서로|같은 제목/;
+/** 궁합 화면에서 연애가 아니라 일로 만나는 사이를 묻는가 */
+const PAIR_WORK = /동업|같이 일|함께 일|일로 만나|사업 ?파트너|동료/;
 const EVENT_WILL = /(이직|퇴사|승진|이사|이주|결혼|약혼|동거|헤어지|이별|재회|연애|만남|인연|창업|독립|합격|계약|이민)\S{0,6}\s?(하게 될까|하게 되나|하게 될지|될까|될지|할 수 있을까|있을까|생길까|할지)/;
 
 const RANK: Record<Detail, number> = { short: 0, normal: 1, long: 2 };
@@ -596,21 +610,31 @@ export function planAnswer(question: string, intent: Intent | null | undefined, 
   const fromWords = DOMAIN_WORDS.filter(([, re]) => re.test(q)).map(([d]) => d);
   // router 는 결혼을 물으면 상대의 경제를 보려고 재물 계산을 미리 켠다. 계산은 그대로 두되,
   // 돈을 묻지 않았으면 답의 분야(먼저 볼 근거·규칙)에는 넣지 않는다
+  const pairWork = it.pair && PAIR_WORK.test(q);
   const domains = (it.domains.length ? it.domains : fromWords)
-    .filter((d) => d !== "재물" || fromWords.includes("재물") || !it.domains.includes("결혼"));
+    .filter((d) => d !== "재물" || fromWords.includes("재물") || !it.domains.includes("결혼"))
+    // 궁합에서 "연애가 아니라 동업이라면"은 연애·결혼 분야가 아니다
+    .filter((d) => !pairWork || (d !== "관계" && d !== "결혼"));
   const lifetime = it.lifetime || /평생|인생|일생|노후|말년/.test(q);
+  const userFormat = USER_FORMAT.test(q);
 
+  // 궁합은 모양이 아니라 '두 사람' 표시다 — 1인 명반과 같은 질문 유형(날짜·사건 판정·비교…)을 고르고,
+  // 특정 유형이 아니면 궁합 모양(강점·충돌 → 현실적 대응)으로 답한다. 궁합 규칙은 늘 붙는다.
   let shape: Shape;
-  if (it.pair) shape = "pair";
-  else if (REMEDY.test(q)) shape = "remedy";
+  if (REMEDY.test(q)) shape = "remedy";
   else if (ROADMAP.test(q) || (lifetime && /종합|로드맵|계획|전략|체계/.test(q))) shape = "roadmap";
   else if (it.asksDay && !it.needsDay && DAY_EVENT.test(q)) shape = "day";
   else if (detail === "short" || (q.length <= 40 && FACT.test(q.trim()))) shape = "fact";
-  // "할까 말까"(어떻게 할지)는 비교, "하게 될까·무슨 일이"(무엇이 일어날지)는 사건 판정
+  // 소제목·순서를 직접 정한 요청문(전체 풀이)은 사건 판정·비교·시기로 바꾸지 않는다 — 요청문 속
+  // "무슨 일이"·"아니면" 같은 말에 걸려 모양이 뒤집혔다(2026-11-03)
+  else if (userFormat) shape = it.pair ? "pair" : "deep";
+  // "할까 말까"(어떻게 할지)는 비교, "하게 될까·무슨 일이 생길까"(무엇이 일어날지)는 사건 판정
   else if (EVENT_ASK.test(q) || (EVENT_WILL.test(q) && !it.asksChoice)) shape = "event";
-  else if (domains[0] === "건강" || /사고수/.test(q)) shape = "health";
+  else if (!it.pair && (domains[0] === "건강" || /사고수/.test(q))) shape = "health";
   else if (it.asksChoice || COMPARE.test(q)) shape = "compare";
-  else if (TIMING.test(q) && !DEEP.test(q.replace(/운세/g, ""))) shape = "timing";
+  // 날짜를 고르는 질문은 "예식에 맞는 날짜"처럼 심층 낱말이 섞여도 시기 모양이다
+  else if (DATE.test(q) || (TIMING.test(q) && !DEEP.test(q.replace(/운세/g, "")))) shape = "timing";
+  else if (it.pair) shape = "pair";
   else if ((DEEP.test(q) && (domains.length > 0 || it.traitsOnly)) || domains.filter((d) => d !== "재물" || /돈|재물|부자|수입/.test(q)).length >= 2) shape = "deep";
   else shape = "focused";
 
@@ -622,15 +646,17 @@ export function planAnswer(question: string, intent: Intent | null | undefined, 
   const modules: string[] = [];
   const add = (m: string, when: boolean) => { if (when && !modules.includes(m)) modules.push(m); };
   const has = (d: string) => domains.includes(d);
-  add("pair", shape === "pair");
+  add("pair", it.pair);
   add("remedy", shape === "remedy");
   add("roadmap", shape === "roadmap");
-  add("career", has("직업") || /진로|적성/.test(q));
+  // router 의 직업 낱말에는 '보고'·'계약'도 있어 "흐름을 함께 보고"가 직업으로 걸린다. 직업이 첫 분야이거나
+  // 질문에 직업 낱말이 실제로 있을 때만 진로 규칙을 붙인다(계산 쪽 router 는 건드리지 않는다)
+  add("career", (has("직업") && (domains[0] === "직업" || fromWords.includes("직업"))) || /진로|적성/.test(q));
   add("money", has("재물") && (fromWords.includes("재물") || shape === "roadmap"));
   add("love", has("결혼") || has("관계"));
   add("study", has("학업"));
   add("health", shape === "health" || (has("건강") && shape !== "day"));
-  add("choice", shape === "compare" || it.asksChoice);
+  add("choice", shape === "compare" || (it.asksChoice && !userFormat));
   // "성공하는 방향"의 '성공'은 되냐 안 되냐가 아니다 — 판정 규칙은 한 가지 일의 결과를 물을 때만
   add("outcome", it.asksOutcome && !["deep", "roadmap", "remedy", "event"].includes(shape));
   add("event", shape === "event");
@@ -641,10 +667,12 @@ export function planAnswer(question: string, intent: Intent | null | undefined, 
   add("color", COLOR.test(q));
   add("timing", shape === "timing" || shape === "roadmap" || TIMING.test(q) || it.needsDay);
 
-  const base: AnswerPlan = { shape, detail: level, domains, modules, scopeLock: it.scopeLock, asksMonth: it.wantsMonths || MONTH_ASK.test(q), traits: it.traitsOnly };
+  const base: AnswerPlan = { shape, detail: level, domains, modules, scopeLock: it.scopeLock, asksMonth: it.wantsMonths || MONTH_ASK.test(q),
+    traits: it.traitsOnly, pair: it.pair, pairWork, userFormat };
   if (shape !== "event") return base;
   const fields = [...new Set(domains.map((d) => EVENT_FIELD[d]).filter(Boolean))];
-  const eventFields = it.family ? [...fields, "가족"] : fields.length ? fields : EVENT_DEFAULT;
+  // 궁합의 사건 판정은 분야를 말하지 않았으면 두 사람의 관계를 본다
+  const eventFields = it.family ? [...fields, "가족"] : fields.length ? fields : it.pair ? ["연애·결혼"] : EVENT_DEFAULT;
   return { ...base, eventFields, completeness: completenessOf(q, it, domains, chart) };
 }
 
@@ -656,7 +684,7 @@ export function completenessOf(question: string, it: ReturnType<typeof sanitize>
   const missing: string[] = [];
   if (chart.timeKnown === false) missing.push("출생 시각(시주·자미두수·육임·홍국기문 없이 판정)");
   if (!it.periodExplicit && !/(19|20)\d{2}|올해|내년|금년|앞으로|향후|이번|다음|\d+ ?(년|개월|달)/.test(question)) missing.push("예측 기간(정하지 않아 올해부터 3년으로 봄)");
-  if (!domains.length && !it.family) missing.push("분석 분야(직업·재정·연애·주거를 두루 봄)");
+  if (!domains.length && !it.family && !it.pair) missing.push("분석 분야(직업·재정·연애·주거를 두루 봄)");
   if ((domains.includes("이사") || domains.includes("주거")) && !it.cityCount) missing.push("후보 목적지(이사 방향·지역은 넓은 범주까지만)");
   const grade = missing.length === 0 ? "충분" : missing.length >= 3 || (chart.timeKnown === false && !domains.length) ? "부족" : "일부 부족";
   return { grade, missing };
@@ -687,7 +715,7 @@ export function planNote(plan: AnswerPlan, lengthLine: string) {
   const f = FORMATS[plan.shape];
   const focus = plan.scopeLock
     ? `지정한 체계(${plan.scopeLock.join(" · ")})만 — 다른 체계로 메우지 마세요.`
-    : [...(plan.traits ? ["기질"] : []),
+    : [...(plan.pair ? [plan.pairWork ? "동업" : "궁합"] : []), ...(plan.traits ? ["기질"] : []),
       // 분야를 정하지 않은 사건 질문은 두루 보는 분야의 근거를 먼저
       ...(plan.domains.length ? plan.domains : (plan.eventFields ?? []).map((k) => ({ 재정: "재물", "연애·결혼": "결혼" } as Record<string, string>)[k] ?? k)),
       ...(["timing", "roadmap", "event"].includes(plan.shape) ? ["시기"] : []), ...(plan.modules.includes("horary") ? ["점시"] : [])]
@@ -699,6 +727,7 @@ export function planNote(plan: AnswerPlan, lengthLine: string) {
     `질문 유형: ${f.name}${plan.domains.length ? ` · 분야 ${plan.domains.join("·")}` : ""}`,
     "",
     "## 답의 모양",
+    ...(plan.userFormat ? ["※ 이 질문은 소제목·순서를 직접 정했습니다. 그 순서와 제목을 따르고, 아래 모양에서는 '맨 위 핵심 결론 2~4문장 · 근거 번호 · 표와 카드로 읽히게 쓰기'만 가져다 쓰세요."] : []),
     f.body,
     "",
     "## 먼저 볼 근거 (문맥에 있는 것만, 출생 명반 전체 구조와 어긋나지 않게)",

@@ -167,7 +167,10 @@ function careerVerdict(input) {
   try { vc = verifiedCareer(input); } catch { /* */ }
   if (!vc?.available) return ['직업 분야는 단정하지 말고 위 전통 읽기의 성향으로만 답할 것.'];
   const basis = (vc.basis ?? []).filter((b) => b.items.length).map((b) => `${b.system}(${b.items.join('·')})`).join(' + ');
-  return [`가능성이 높은 직업 분야(단정하지 말고 '가능성이 높다'로 말할 것): ${vc.top.map((x) => `${x.label}(예: ${x.examples.join('·')})`).join(', ')} 순.`,
+  // 리포트 '잘 맞는 일'과 같은 수(앞선 두 범주)만 앞세운다 — 셋을 예시까지 다 주면 답이 직업을 늘어놓았다(2026-11-03)
+  const lead = vc.top.slice(0, 2), rest = vc.top.slice(2);
+  return [`가장 유력한 직업 분야(단정하지 말고 '가능성이 높다'로 말할 것): ${lead.map((x) => `${x.label}(예: ${x.examples.slice(0, 2).join('·')})`).join(', ')} 순.` +
+      (rest.length ? ` 그다음 후보 ${rest.map((x) => x.label).join(', ')}는 점수 차가 작은 덜 유력한 쪽이라 직업을 넓게 물을 때만 한 줄로.` : ''),
     `근거: ${basis || vc.systems.join('·')}의 직업 성향을 합산한 상위 범주. 분야를 말할 땐 이 체계와 명반 요소를 함께 밝힐 것.`,
     '이것은 타고난 기질에 맞는 분야이지 그 일의 실제 능력·적응력·성과가 아니다.',
     '직업 분야는 이 순서를 그대로 쓸 것. "이직할 사람인지 한 우물 팔 사람인지"는 단정하지 말 것.'];
@@ -885,12 +888,14 @@ function formatPairDict(formA, formB, c) {
 export function buildCompatContext(formA, formB, c, forecastA = null, forecastB = null) {
   const out = [];
   const s = c.synthesis;
-  const who = (f) => `${f.gender === 'male' ? '남성' : '여성'} · ` +
-    `출생 정보는 브라우저에서 계산했고, AI에는 궁합 계산 결과만 전송`;
+  // 출생 시각을 모르는 사람이 있으면 1인 명반과 같은 문구를 적는다 — 서버가 사건 판정의 입력 완성도를 이 문구로 센다
+  const who = (f, input) => `${f.gender === 'male' ? '남성' : '여성'} · ` +
+    `출생 정보는 브라우저에서 계산했고, AI에는 궁합 계산 결과만 전송` +
+    (input?.timeKnown === false ? ' · ※ 출생 시각을 몰라 시주가 없다(시주·자미두수는 견주지 못했다)' : '');
 
   out.push('## 두 사람');
-  out.push(who(formA));
-  out.push(who(formB));
+  out.push(who(formA, c.A?.input));
+  out.push(who(formB, c.B?.input));
   out.push('');
   out.push(...formatPairDict(formA, formB, c));
 
@@ -899,7 +904,8 @@ export function buildCompatContext(formA, formB, c, forecastA = null, forecastB 
   for (const x of c.results) {
     out.push(`### ${x.name}`);
     out.push(`${x.verdict} — ${x.headline}`);
-    const folded = foldFacts(x.facts);
+    // 1인 명반과 같은 근거 번호 — 두 사람을 견준 계산값(evidence.js pairLedger 와 같은 번호)
+    const folded = foldFacts(x.facts, FACTS_MAX, x.id);
     if (folded) out.push(folded);
     for (const v of (x.readings ?? []).slice(0, 2)) {
       out.push(`${v.title}: ${String(v.text).replace(/\n+/g, ' ')}`);

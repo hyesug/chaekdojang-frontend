@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, CalendarDays, Library, Plus, X } from "lucide-react";
+import { BookOpen, CalendarDays, Library, Plus, Sparkles, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -162,6 +162,10 @@ export default function LibraryPage() {
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Link href="/assistant" className="cdj-button cdj-button--secondary cdj-button--sm">
+            <Sparkles size={15} aria-hidden="true" />
+            AI 독서 도우미
+          </Link>
           <Link href="/calendar" className="cdj-button cdj-button--secondary cdj-button--sm">
             <CalendarDays size={15} aria-hidden="true" />
             월별 캘린더

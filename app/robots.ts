@@ -8,6 +8,7 @@ const DISALLOW = [
   "/admin/",
   "/ai-credits",
   "/api/",
+  "/assistant",
   "/fortune-ai",
   "/auth",
   "/auth/",

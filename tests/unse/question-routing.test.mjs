@@ -254,7 +254,8 @@ test('지괘는 동효 하나만 뒤집은 괘다', () => {
 
 /* ── 4. 계산에 없는 것을 사실처럼 쓰지 못하게 되어 있는가 ────── */
 
-const PROMPT = readFileSync('app/fortune-ai/route.ts', 'utf8');
+// 지시문은 prompt.ts 로 옮겼다(공통 SYSTEM + 답의 모양 + 질문마다 붙는 분야 규칙)
+const PROMPT = readFileSync('app/fortune-ai/prompt.ts', 'utf8');
 
 test('프롬프트 안에 백틱이나 ${ 가 없다 (있으면 빌드가 깨진다)', () => {
   // SYSTEM 프롬프트는 템플릿 리터럴이라 본문에 백틱을 쓰면 문자열이 거기서
@@ -571,7 +572,7 @@ test('계산에 없는 세부 속성을 만들지 말라는 규칙이 있다 (�
 
 test('답은 결론 3~5문장 뒤 근거 2~4개 꼴이다', () => {
   assert.match(PROMPT, /## 답의 뼈대 — 결론 먼저, 근거는 추려서/);
-  assert.match(PROMPT, /3~5문장으로 단정해서/);
+  assert.match(PROMPT, /2~4문장으로 단정해서/);
   assert.match(PROMPT, /가장 강한 근거 2~4개만/);
   // 예전의 "다섯~여덟 문단" 규칙이 남아 있으면 새 뼈대와 충돌한다
   assert.ok(!PROMPT.includes('다섯~여덟 문단'), '옛 길이 규칙이 남아 있으면 안 된다');
@@ -698,7 +699,8 @@ test('인생 계획·로드맵 질문은 여러 분야를 보고, 권고마다 �
   assert.ok(PROMPT.includes('**직업만 다루지 마세요.**'));
   // '묻지 않은 축' 규칙과 부딪치지 않게 예외를 양쪽에 적는다
   assert.ok(PROMPT.includes("'묻지 않은 축으로 넓히지 마세요'의 예외"));
-  assert.ok(PROMPT.includes("위 '인생 계획·로드맵을 물으면'을 따릅니다"));
+  // 로드맵 규칙은 질문마다 붙는 '이번 답의 설계'로 옮겼다 — 위치 낱말('위')만 바뀌었다
+  assert.ok(PROMPT.includes("'인생 계획·로드맵을 물으면'을 따릅니다"));
   assert.ok(PROMPT.includes('근거(체계·계산값) → 그 분야에서의 뜻 → 현실에서 할 일 → 하거나 미룰 판단 기준'));
   assert.ok(PROMPT.includes('사용자가 말하지 않은 개인 배경'));
   assert.ok(PROMPT.includes("문맥 '연도별' 줄의 \"연도(○○세)\"를 그대로"));

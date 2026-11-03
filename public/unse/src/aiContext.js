@@ -41,17 +41,23 @@ import { colorAdvice, colorElement } from './semantic/structure/yongsin.js';
 import { palaceStars, natureOf } from './semantic/structure/stars.js';
 import { selectedWindows, selectedSpan } from './semantic/timing/selected.js';
 import { verifiedCareer } from './semantic/index.js';
+import { FACTS_MAX, factId, hasValue } from './evidence.js';
 
 const p2 = (n) => String(n).padStart(2, '0');
 
-/** facts 배열을 한 줄로 접는다 */
-function foldFacts(facts, max = 10) {
+/**
+ * facts 배열을 한 줄로 접는다.
+ * sysId 를 주면 칸마다 근거 번호([SJ3] …)를 앞에 붙인다 — 답이 이 번호를 인용하면 화면이
+ * 엔진의 계산값 이름표로 바꿔 보여 준다(evidence.js). 번호는 원래 facts 순서라 근거 목록과 늘 같다.
+ */
+function foldFacts(facts, max = FACTS_MAX, sysId = null) {
   return facts
     .slice(0, max)
-    .filter((f) => f.value && f.value !== '—')
+    .map((f, i) => ({ f, id: sysId ? factId(sysId, i) : null }))
+    .filter(({ f }) => hasValue(f))
     // 값이 이미 괄호로 끝나면(한자 병기 등) 주석을 또 괄호로 싸지 않는다 —
     // '사궁(巳)(거문)' 처럼 겹쳐서 읽기가 나빠진다
-    .map((f) => `${f.label} ${f.value}`
+    .map(({ f, id }) => `${id ? `[${id}] ` : ''}${f.label} ${f.value}`
       + (f.note ? (/\)$/.test(String(f.value)) ? ` · ${f.note}` : `(${f.note})`) : ''))
     .join(' · ');
 }
@@ -500,7 +506,7 @@ export function buildContext(form, r, f = null) {
   for (const sys of r.results) {
     out.push(`### ${sys.name}${sys.hanja ? ` (${sys.hanja})` : ''}`);
     out.push(sys.headline);
-    const folded = foldFacts(sys.facts);
+    const folded = foldFacts(sys.facts, FACTS_MAX, sys.id);
     if (folded) out.push(folded);
     // 부처궁·관록궁·올해 열린 방위 같은 해석은 facts가 아니라 readings에만 있다
     for (const v of sys.readings ?? []) {

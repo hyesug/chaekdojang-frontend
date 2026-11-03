@@ -85,7 +85,7 @@ test('그날 운 구획 — 그날 간지·분야 순서·택일 표시를 싣�
 
 test('둘 중 하나를 물으면 하나를 고르게 하고, 두 사람은 순서 이름으로 부르게 한다(화면에서 이름으로 바뀜)', async () => {
   const { readFileSync } = await import('node:fs');
-  const PROMPT = readFileSync('app/fortune-ai/route.ts', 'utf8');
+  const PROMPT = readFileSync('app/fortune-ai/prompt.ts', 'utf8');
   assert.match(PROMPT, /## 둘 중 하나를 물으면 하나를 고르세요/);
   assert.match(PROMPT, /첫 문장에서 계산이 더 가까운 쪽 하나를 고르세요/);
   assert.match(PROMPT, /"첫 번째 사람님", "두 번째 사람님"으로 부르세요/);

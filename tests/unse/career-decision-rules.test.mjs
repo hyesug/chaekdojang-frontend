@@ -30,7 +30,8 @@ const FORM = {
 };
 const load = (form) => ({ r: readFortune(form, { now: NOW }), f: readForecast(form, NOW) });
 
-const PROMPT = readFileSync('app/fortune-ai/route.ts', 'utf8');
+// 지시문은 prompt.ts 로 옮겼다(공통 SYSTEM + 질문마다 붙는 분야 규칙)
+const PROMPT = readFileSync('app/fortune-ai/prompt.ts', 'utf8');
 
 /** 사용자가 준 문구 그대로 — 한 글자도 바꾸지 않는다 */
 const RULES = [

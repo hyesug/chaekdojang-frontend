@@ -163,7 +163,7 @@ test('단순 질문만 고해상도 층별 원자료를 빼고 보낸다 — 담
 
 test('답 길이 세 단계와 인과 설명·후속 질문 규칙이 시스템 지시에 있다', async () => {
   const { readFileSync } = await import('node:fs');
-  const P = readFileSync('app/fortune-ai/route.ts', 'utf8');
+  const P = readFileSync('app/fortune-ai/prompt.ts', 'utf8');
   assert.match(P, /단순\(사실 하나·한 줄 요청\): 소제목 없이 2~5문장/);
   assert.match(P, /일반: 700~1,200자/);
   assert.match(P, /심층\(비교·여러 갈래·"자세히"·종합\): 1,200~2,000자/);

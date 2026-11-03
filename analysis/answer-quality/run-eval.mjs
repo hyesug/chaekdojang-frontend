@@ -30,7 +30,8 @@ const PRICE = { in: 4, out: 20, read: 0.2, write: 5 };
 const cached = { type: 'ephemeral', ttl: '5m' };
 
 // ── 프롬프트 ──
-const routeSrc = readFileSync(join(HERE, '../../app/fortune-ai/route.ts'), 'utf8');
+// 2026-11-03 부터 SYSTEM 은 prompt.ts 에 있다(질문별 '이번 답의 설계'까지 재현하는 비교는 compare-pipeline.mjs)
+const routeSrc = readFileSync(join(HERE, '../../app/fortune-ai/prompt.ts'), 'utf8');
 const s0 = routeSrc.indexOf('const SYSTEM = `') + 16;
 const SYSTEM_A = routeSrc.slice(s0, routeSrc.indexOf('`;', s0));
 const SYSTEM_B = readFileSync(join(HERE, 'prompts/system-b.md'), 'utf8');

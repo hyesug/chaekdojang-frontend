@@ -600,6 +600,51 @@ details.pool[open] > summary::before { content: '▾ '; }
 .ai-turn strong { color: var(--ink); font-weight: 600; }
 .ai-wait { color: var(--ink-3); font-style: italic; }
 .ai-err { color: #f0a6a2; }
+
+/* ── 답의 구조 (answerView.js) — 결론 먼저, 영역은 카드로, 비교는 표로 ── */
+.ai-answer > * + * { margin-top: 12px; }
+.ai-answer section > h4:first-child { margin-top: 0; }
+/* 핵심 결론 — 이것만 읽어도 답이 되는 자리라 가장 또렷하게 */
+.ai-lead { padding: 12px 14px; border-left: 3px solid var(--gold); background: var(--card-2); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; color: var(--ink); }
+.ai-lead h4 { font-size: 12px; letter-spacing: .06em; margin-bottom: 4px; }
+.ai-lead p { margin-bottom: 6px; }
+/* 영역 카드 — 제목 · 명반 근거(작게) · 해석 · 추천/주의 */
+.ai-card { margin: 10px 0 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--bg-soft); }
+.ai-card h5 { margin: 0 0 6px; font-size: 14px; color: var(--ink); }
+.ai-card p { margin: 0 0 6px; }
+.ai-card > :last-child { margin-bottom: 0; }
+.ai-k { display: inline-block; min-width: 3.2em; margin-right: 4px; font-size: 11.5px; font-weight: 700; color: var(--ink-3); }
+.ai-ev { font-size: 12px; line-height: 1.9; color: var(--ink-3); }
+.ai-chip { display: inline-block; margin: 0 3px 3px 0; padding: 0 7px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--ink-3); font-size: 11.5px; line-height: 1.7; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
+.ai-lab-do .ai-k { color: var(--gold); }
+.ai-lab-warn .ai-k, .ai-lab-limit .ai-k { color: var(--stamp); }
+.ai-lab-rule .ai-k { color: var(--su); }
+/* 사건 판정 — 맨 위 입력 완성도 한 줄, 끝의 근거 요약·판정하지 못한 것은 작고 옅게 */
+.ai-lab-meta { font-size: 12.5px; color: var(--ink-3); }
+.ai-aside { font-size: 13px; color: var(--ink-3); border-top: 1px dashed var(--line); padding-top: 10px; }
+.ai-aside h4 { font-size: 12.5px; color: var(--ink-3); }
+.ai-aside ul { margin: 4px 0; }
+/* 종합 권고 — 마지막에 실행할 우선순위 */
+.ai-final { padding: 12px 14px; border: 1px solid var(--gold-soft); border-radius: var(--radius-sm); background: var(--card); }
+.ai-final ol, .ai-final ul { margin: 6px 0 0; padding-left: 20px; }
+.ai-turn ol { margin: 8px 0; padding-left: 20px; }
+.ai-answer hr { border: 0; border-top: 1px solid var(--line-soft); margin: 14px 0; }
+/* 비교표 — 넓으면 가로로 밀어 보고, 좁은 화면에서는 행마다 카드로 바꾼다 */
+.ai-table { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--line); border-radius: var(--radius-sm); }
+.ai-table table { width: 100%; border-collapse: collapse; font-size: 13px; line-height: 1.6; }
+.ai-table th, .ai-table td { padding: 7px 10px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line-soft); }
+.ai-table th { background: var(--card-2); color: var(--ink); font-weight: 600; white-space: nowrap; }
+.ai-table tr:last-child td { border-bottom: 0; }
+.ai-table td:first-child { color: var(--ink); font-weight: 600; }
+@media (max-width: 520px) {
+  .ai-table { border: 0; overflow: visible; }
+  .ai-table table, .ai-table tbody, .ai-table tr, .ai-table td { display: block; width: 100%; }
+  .ai-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+  .ai-table tr { margin-bottom: 8px; padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--bg-soft); }
+  .ai-table td { padding: 3px 0; border: 0; }
+  .ai-table td[data-label]::before { content: attr(data-label); display: block; font-size: 11px; font-weight: 700; color: var(--ink-3); }
+  .ai-lead, .ai-card, .ai-final { padding: 11px 12px; }
+}
 /* 답마다 붙는 복사 단추 — 읽는 데 방해되지 않게 옅게 두고 올리면 드러난다 */
 .ai-turn .ai-copy {
   display: block; margin: 10px 0 0 auto; padding: 3px 9px;

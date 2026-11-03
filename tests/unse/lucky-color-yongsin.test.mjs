@@ -32,7 +32,7 @@ const sajuRemedy = (form) => readFortune(form, { now: NOW }).results
   .find((x) => x.id === 'saju').readings.find((x) => x.title === '보태면 좋은 것').text;
 
 test('AI 지침에 행운의 색 규칙이 문구 그대로 있다', () => {
-  const PROMPT = readFileSync('app/fortune-ai/route.ts', 'utf8');
+  const PROMPT = readFileSync('app/fortune-ai/prompt.ts', 'utf8');
   assert.ok(PROMPT.includes('오행의 부족함만으로 행운의 색을 결정하지 않는다. 계절과 조후, 신강·신약, 용신·희신을 검토하고, '
     + '체계 간 추천색과 기피색이 충돌하면 그 이유를 명시한다. 용신이 확정되지 않았다면 평생의 행운색이라고 단정하지 않는다.'));
   assert.match(PROMPT, /가장 약한 오행만 들어 색을 고르지 마세요/);

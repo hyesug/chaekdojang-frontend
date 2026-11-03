@@ -18,6 +18,9 @@ import * as PAIR from './hires/pair.js';
 import { horaryCast, formatHorary } from './systems/horary.js';
 import { loadCreditStatus } from './credits.js';
 import { attachAnswerFeedback } from './feedback.js';
+import { natalLedger, timeLedger, formatLedger, ledgerMap, resolveEvidence, plainEvidence } from './evidence.js';
+import { checkAnswer, evidenceIdsIn } from './answerCheck.js';
+import { renderAnswer } from './answerView.js';
 
 const ENDPOINT = '/fortune-ai';
 
@@ -61,23 +64,31 @@ function showNames(t) {
   return out;
 }
 
-/** 문단을 최소한으로만 꾸민다. 마크다운 전체를 지원하지는 않는다 */
+/**
+ * 답을 화면 구조로 그린다 — 결론 상자·영역 카드·비교표·근거 칩·종합 권고(answerView.js).
+ * 넘겨받는 글은 이미 검증(answerCheck)과 근거 번호 → 이름표 변환(evidence)을 거친 것이다.
+ */
 function renderText(t) {
-  t = showNames(t);
-  // 모델이 줄바꿈 대신 넣는 역슬래시 줄("\", "- \")과 불릿 사이 빈 줄을 걷는다 — 빈 불릿이 '* \'로 보였다
-  t = String(t ?? '')
-    .replace(/^[ \t]*(?:[-*•][ \t]*)?\\[ \t]*$/gm, '')
-    .replace(/[ \t]*\\[ \t]*$/gm, '')
-    .replace(/(^[-*] .+)\n\s*\n(?=[-*] )/gm, '$1\n');
-  return esc(t)
-    .replace(/^### (.+)$/gm, '<h5>$1</h5>')
-    .replace(/^## (.+)$/gm, '<h4>$1</h4>')
-    .replace(/^# (.+)$/gm, '<h4>$1</h4>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/^[-*] (.+)$/gm, '<li>$1</li>')
-    .replace(/(<li>[\s\S]*?<\/li>)(?!\s*<li>)/g, '<ul>$1</ul>')
-    .replace(/\n{2,}/g, '</p><p>')
-    .replace(/\n/g, '<br>');
+  return `<div class="ai-answer">${renderAnswer(showNames(t))}</div>`;
+}
+
+/**
+ * 모델이 쓴 글(흘러오는 중이어도)을 보여 줄 글로 — ⑤ 코드 검증으로 고친 뒤 근거 번호를 계산값 이름표로.
+ * 저장·이력에도 이 글을 쓴다: 질문마다 바뀌는 [TM] 번호가 다음 질문에서 다른 값을 가리키지 않게.
+ */
+function shownAnswer(raw, turn, final = false) {
+  const { text } = checkAnswer(raw, { sources: turn.sources, validIds: turn.validIds, asksMonth: turn.asksMonth, final });
+  return resolveEvidence(text, turn.map);
+}
+
+/** 서버가 답의 설계(prompt.ts planAnswer)에 쓰는 질문 분석 — router.js 계획에서 필요한 칸만 */
+function intentOf(plan, pair) {
+  if (pair) return { pair: true };
+  if (!plan) return null;
+  const pick = ['domains', 'scopeLock', 'asksChoice', 'asksOutcome', 'needsHorary', 'asksDay', 'needsDay',
+    'needsPlace', 'family', 'traitsOnly', 'fallback', 'wantsMonths', 'periodExplicit'];
+  // 도시 이름은 보내지 않고 개수만 — 사건 판정의 입력 완성도(후보 목적지가 있는가)에만 쓴다
+  return { ...Object.fromEntries(pick.map((k) => [k, plan[k] ?? null])), lifetime: !!plan.needsLifetime, cityCount: plan.cities?.length ?? 0 };
 }
 
 /**
@@ -91,6 +102,9 @@ const SOLO_BASE = [
   ['전체 풀이', READING_PROMPT],
   ['과거 맞춰보기', '지난 십 년을 한 해씩 짚어서, 그 해에 어떤 일이 있었을지 구체적으로 말해주세요. 이직·이별·이사·시험·돈 문제처럼 사람들이 실제로 겪는 일로 짚어주시고, 제가 맞는지 확인할 수 있게 해마다 한두 줄로 써주세요.'],
   ['날 잡기', '앞으로 넉 달 안에서 계약·면접·이사·수술처럼 중요한 일을 하기 좋은 날을 실제 날짜로 골라주세요. 무슨 일이냐에 따라 맞는 날이 다르면 그것도 나눠서 알려주시고, 피해야 할 날도 함께 짚어주세요.'],
+  // 사건 판정(prompt.ts 'event') — 분야 낱말을 router 가 읽는 말로 적어 분야별 계산이 같이 실리게 한다.
+  // router 는 분야를 셋까지만 계산하고 '이사'는 사건 낱말이라 맨 앞으로 끼어든다 — 그래서 셋만 적는다
+  ['사건 판정', '내년까지 직업·돈·연애 쪽에서 일어날 가능성이 가장 높은 사건을 판정해 주세요. 분야마다 가장 우세한 사건 하나와 그다음 후보를 골라 주세요.'],
   ['건강', '올해 몸과 생활 리듬에서 조심할 시기와, 무리하지 않고 흐름을 지키는 방법을 알려주세요.'],
 ];
 
@@ -250,11 +264,15 @@ export function focusFor(question, calc, prevPlan = null) {
     const routed = inheritPlan(routeQuestion(question, calc.fortune.input.currentYear), prevPlan);
     // 달을 물었을 때만 달 단위 계산을 싣는다(hires/context.js formatHiRes)
     const plan = { ...routed, wantsMonths: routed.needsDay || MONTH_ASK.test(question) };
-    if (session) session.lastPlan = plan;
+    if (session) { session.lastPlan = plan; session.turnLedger = []; }
     const hires = buildHiRes(calc.fortune, calc.forecast, plan);
     // 성향만 물었으면 시기 계산·분야 구획 없이 속성별 담당 체계 구획만 보낸다
     if (plan.traitsOnly) return formatTraits(hires.json) || hires.text;
-    const parts = [hires.text];
+    // 시기·층 값에 근거 번호([TM1]…)를 붙여 맨 앞에 싣는다. 답은 이 번호를 인용하고, 화면은 번호를
+    // 이 계산값의 이름표로 바꾼다(evidence.js). 맨 앞이라 단순 질문에서 층별 원자료를 덜어 낼 때도 남는다
+    const tm = timeLedger(hires.json);
+    if (session) session.turnLedger = tm;
+    const parts = [formatLedger(tm), hires.text];
 
     // 분야 구획은 **걸린 분야만** 온다. 일곱을 다 캐시에 넣어 두었더니
     // 자녀를 물어도 재물·건강이 따라가 캐시 덩어리가 47,600자였다.
@@ -385,7 +403,9 @@ function wire(context, calc = null, compat = null) {
   const names = compat
     ? [[compat.A?.input?.name, PAIR_LABELS[0]], [compat.B?.input?.name, PAIR_LABELS[1]]]
     : [[calc?.fortune?.input?.name, '본인']];
-  session = { context: redactNames(context, names), calc, compat, names, messages: [], busy: false, lastPlan: null, id: newSessionId() };
+  session = { context: redactNames(context, names), calc, compat, names, messages: [], busy: false, lastPlan: null, id: newSessionId(),
+    // 근거 번호 → 엔진 계산값(evidence.js). 출생 명반 것은 한 번, 시기·층 것은 질문마다(turnLedger)
+    natalLedger: calc?.fortune ? natalLedger(calc.fortune) : [], turnLedger: [] };
 
   const log = document.querySelector('#ai-log');
   const box = document.querySelector('#ai-q');
@@ -437,8 +457,9 @@ function wire(context, calc = null, compat = null) {
   /** 답 한 덩이를 그린다 — 본문, 복사 단추, 이어 물을 질문 단추(마지막 답에만) */
   function paintAnswer(bubble, text, withFollowUps = true) {
     const { body, followUps } = splitFollowUps(text);
-    bubble.innerHTML = `<p>${renderText(body)}</p>`;
-    addCopy(bubble, showNames(body));
+    bubble.innerHTML = renderText(body);
+    // 복사는 태그 없는 글로 — 근거 이름표는 괄호 글로 푼다
+    addCopy(bubble, showNames(plainEvidence(body)));
     log.querySelectorAll('.ai-follow').forEach((x) => x.remove());
     if (withFollowUps && followUps.length) {
       const row = document.createElement('div');
@@ -540,17 +561,29 @@ function wire(context, calc = null, compat = null) {
     // 직접 친 질문에 들어간 이름도 AI 로는 순서 이름으로 보낸다
     session.messages.push({ role: 'user', content: redactNames(question, session.names) });
     let acc = '';
+    let turn = { sources: '', validIds: new Set(), asksMonth: false, map: new Map() };
 
     try {
       const focus = session.compat
         ? pairFocus(question, session.compat)
         : focusFor(question, session.calc, session.lastPlan);
+      const sentFocus = redactNames(focus, session.names);
       // 사용량 로그에 남길 질문 분야. 원가를 질문 유형별로 보려고 보낸다
       const category = session.compat ? 'pair' : (session.lastPlan?.domains ?? []).join(',');
+      // 지난 답의 근거 이름표는 평문으로 보낸다 — 이름표 꼴을 모델이 흉내 내지 않게
+      const history = session.messages.map((m) => (m.role === 'assistant' ? { ...m, content: plainEvidence(m.content) } : m));
+      // 이번 답을 코드로 대조할 자료 — 서버(route.ts)와 같은 범위다
+      turn = {
+        sources: [session.context, sentFocus ?? '', ...history.map((m) => m.content)].join('\n'),
+        validIds: evidenceIdsIn(session.context, sentFocus),
+        asksMonth: !!session.lastPlan?.wantsMonths,
+        map: ledgerMap(session.natalLedger, session.compat ? [] : session.turnLedger),
+      };
       const res = await fetch(ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ context: session.context, focus: redactNames(focus, session.names), messages: session.messages, tier: AI_TIER, sessionId: session.id, category }),
+        body: JSON.stringify({ context: session.context, focus: sentFocus, messages: history, tier: AI_TIER, sessionId: session.id, category,
+          intent: intentOf(session.compat ? null : session.lastPlan, !!session.compat) }),
       });
 
       if (!res.ok || !res.body) {
@@ -579,7 +612,8 @@ function wire(context, calc = null, compat = null) {
             acc += ev.t;
             // 사용자가 위로 올려 읽는 중이면 끌어내리지 않는다
             const stick = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
-            bubble.innerHTML = `<p>${renderText(acc)}</p>`;
+            // 흘러오는 중에도 검증·근거 변환을 거친 글을 그린다 — 지워질 문장을 보여 줬다 거두지 않게
+            bubble.innerHTML = renderText(shownAnswer(acc, turn));
             if (stick) log.scrollTop = log.scrollHeight;
           } else if (ev.error) {
             throw Object.assign(new Error(ev.error), { fromServer: true });
@@ -593,8 +627,9 @@ function wire(context, calc = null, compat = null) {
       }
 
       if (!acc) throw new Error('빈 응답이 돌아왔습니다.');
-      session.messages.push({ role: 'assistant', content: acc });
-      paintAnswer(bubble, acc);
+      const shown = shownAnswer(acc, turn, true);
+      session.messages.push({ role: 'assistant', content: shown });
+      paintAnswer(bubble, shown);
       // 답변마다 👍/👎 + 한 줄(선택) — 질문 글·출생 정보는 보내지 않는다(feedback.js)
       attachAnswerFeedback(bubble, { topic: session.compat ? '궁합' : (session.lastPlan?.domains ?? []).join('·'), names: session.names.map(([n]) => n).filter(Boolean) });
       saveChat(saveKey, session.messages);
@@ -615,7 +650,7 @@ function wire(context, calc = null, compat = null) {
         return;
       }
       bubble.innerHTML = acc
-        ? `<p>${renderText(acc)}</p><p class="ai-err" role="alert">${why} 여기까지 받았습니다.</p>`
+        ? `${renderText(shownAnswer(acc, turn))}<p class="ai-err" role="alert">${why} 여기까지 받았습니다.</p>`
         : `<p class="ai-err" role="alert">${why}</p>`;
 
       // 다시 묻기 — 끊긴 뒤에 질문을 손으로 다시 치게 하지 않는다

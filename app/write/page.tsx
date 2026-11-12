@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { API_BASE } from "../lib/api";
 import { authFetch } from "../lib/auth";
-import { getSessionId, trackMetric } from "../components/AnalyticsTracker";
+import { getSessionId } from "../components/AnalyticsTracker";
 import { PRESET_EMOTIONS, customEmotionKeywords } from "./emotionKeywords";
 
 const FEED_STATE_KEY = "chaekdojang:feed-state";
@@ -16,8 +16,9 @@ const REVIEW_DRAFT_KEY_PREFIX = "chaekdojang:review-draft:v2";
 // 로그인 전에 쓴 글을 로그인 화면 왕복 동안 보관한다. 접두사가 같아 복원 직후 일괄 삭제된다.
 const GUEST_DRAFT_KEY = `${REVIEW_DRAFT_KEY_PREFIX}:guest`;
 const GUEST_DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
-const DEFAULT_FEEDBACK_MIN_CHARS = 150;
-const DEFAULT_FEEDBACK_MAX_CHARS = 6000;
+// 맞춤법·띄어쓰기 교정 — 서버(app.feedback.proofread-min-chars, max-chars)와 같은 기본값
+const PROOFREAD_MIN_CHARS = 10;
+const PROOFREAD_MAX_CHARS = 6000;
 
 type BookResult = {
   id: number;
@@ -113,44 +114,17 @@ function detectWebNovelPlatform(rawUrl: string): DirectWebNovelPlatform | null {
   }
 }
 
-type FeedbackSentenceExample = {
+type ProofreadCorrection = {
   before: string;
   after: string;
+  kind: string;
 };
 
-type FeedbackImprovement = {
-  point: string;
-  before: string;
-  direction: string;
-  after: string;
-  reason: string;
-};
-
-type FeedbackResult = {
-  notReview: boolean;
-  message?: string;
-  coreTheme?: string;
-  strengths?: string[];
-  improvements?: FeedbackImprovement[];
-  sentenceExamples?: FeedbackSentenceExample[];
-  titleSuggestions?: string[];
-  deepQuestion?: string;
-};
-
-type FeedbackConfig = {
-  minChars: number;
-  maxChars: number;
-  boundaryMessage?: string | null;
-  betaApplyUrl?: string | null;
-  dailyLimitEnabled?: boolean;
-};
-
-function normalizeFeedbackText(value: string) {
-  return value.replace(/[\s.,!?;:'"“”‘’()[\]{}·…-]/g, "").trim();
-}
-
-function hasMeaningfulRewrite(item: FeedbackImprovement) {
-  return normalizeFeedbackText(item.before) !== normalizeFeedbackText(item.after);
+/** 교정 구간을 본문에서 정확히 한 번 찾을 때만 바꾼다 — 여러 번 나오거나 이미 바뀌었으면 null */
+function replaceOnce(text: string, c: ProofreadCorrection) {
+  const first = text.indexOf(c.before);
+  if (first < 0 || text.indexOf(c.before, first + 1) >= 0) return null;
+  return text.slice(0, first) + c.after + text.slice(first + c.before.length);
 }
 
 function clearReviewDraftStorage() {
@@ -392,14 +366,10 @@ function WriteContent() {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [feedbackConfig, setFeedbackConfig] = useState<FeedbackConfig>({
-    minChars: DEFAULT_FEEDBACK_MIN_CHARS,
-    maxChars: DEFAULT_FEEDBACK_MAX_CHARS,
-  });
-  const [feedback, setFeedback] = useState<FeedbackResult | null>(null);
-  const [feedbackLoading, setFeedbackLoading] = useState(false);
-  const [feedbackError, setFeedbackError] = useState("");
-  const [feedbackUsedForCurrentDraft, setFeedbackUsedForCurrentDraft] = useState(false);
+  const [corrections, setCorrections] = useState<ProofreadCorrection[] | null>(null);
+  const [correctionState, setCorrectionState] = useState<Record<number, "applied" | "missing">>({});
+  const [proofreadLoading, setProofreadLoading] = useState(false);
+  const [proofreadError, setProofreadError] = useState("");
 
   const [draftRestored, setDraftRestored] = useState(false);
 
@@ -457,19 +427,6 @@ function WriteContent() {
     const returnTo = `${window.location.pathname}${window.location.search}`;
     router.push(`/auth/login?returnTo=${encodeURIComponent(returnTo)}`);
   }
-
-  useEffect(() => {
-    authFetch(`${API_BASE}/api/feedback/config`, { cache: "no-store" })
-      .then(async (res) => {
-        if (!res.ok) return;
-        const json = await res.json().catch(() => null);
-        const data = json?.data;
-        if (typeof data?.minChars === "number" && typeof data?.maxChars === "number") {
-          setFeedbackConfig(data);
-        }
-      })
-      .catch(() => {});
-  }, []);
 
   function toggleEmotion(keyword: string) {
     setSelectedEmotions((prev) =>
@@ -591,22 +548,20 @@ function WriteContent() {
     }
   }
 
-  async function requestFeedback() {
-    const trimmedContent = content.trim();
-    if (trimmedContent.length < feedbackConfig.minChars || trimmedContent.length > feedbackConfig.maxChars) return;
+  async function requestProofread() {
+    const trimmed = content.trim();
+    if (trimmed.length < PROOFREAD_MIN_CHARS || trimmed.length > PROOFREAD_MAX_CHARS) return;
 
-    setFeedbackLoading(true);
-    setFeedbackError("");
-    setFeedback(null);
+    setProofreadLoading(true);
+    setProofreadError("");
+    setCorrections(null);
+    setCorrectionState({});
 
     try {
-      const res = await authFetch(`${API_BASE}/api/feedback/review-comment`, {
+      const res = await authFetch(`${API_BASE}/api/feedback/proofread`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          content: trimmedContent,
-          sessionId: getSessionId(),
-        }),
+        body: JSON.stringify({ content: trimmed, sessionId: getSessionId() }),
       });
 
       if (res.status === 401) {
@@ -614,29 +569,35 @@ function WriteContent() {
         return;
       }
 
+      const json = await res.json().catch(() => null);
       if (res.ok) {
-        const json = await res.json().catch(() => null);
-        const data = json?.data;
-        if (data?.feedback) {
-          setFeedback(data.feedback);
-          setFeedbackConfig((prev) => ({
-            ...prev,
-            minChars: data.minChars ?? prev.minChars,
-            maxChars: data.maxChars ?? prev.maxChars,
-            boundaryMessage: data.boundaryMessage ?? prev.boundaryMessage,
-            betaApplyUrl: data.betaApplyUrl ?? prev.betaApplyUrl,
-          }));
-          setFeedbackUsedForCurrentDraft(true);
-        }
+        const list = json?.data?.corrections;
+        setCorrections(Array.isArray(list) ? list : []);
       } else {
-        const data = await res.json().catch(() => ({}));
-        setFeedbackError((data as { message?: string }).message ?? "도장 코멘트를 만들지 못했습니다. 잠시 후 다시 시도해주세요.");
+        setProofreadError((json as { message?: string } | null)?.message ?? "교정 결과를 만들지 못했습니다. 잠시 후 다시 시도해주세요.");
       }
     } catch {
-      setFeedbackError("서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.");
+      setProofreadError("서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.");
     } finally {
-      setFeedbackLoading(false);
+      setProofreadLoading(false);
     }
+  }
+
+  function applyCorrections(indexes: number[]) {
+    if (!corrections) return;
+    let next = content;
+    const state = { ...correctionState };
+    for (const index of indexes) {
+      const replaced = replaceOnce(next, corrections[index]);
+      if (replaced === null) {
+        state[index] = "missing";
+        continue;
+      }
+      next = replaced;
+      state[index] = "applied";
+    }
+    setContent(next);
+    setCorrectionState(state);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -704,9 +665,6 @@ function WriteContent() {
         });
         if (res.status === 401) { router.push("/auth/login"); return; }
         if (res.ok) {
-          if (feedbackUsedForCurrentDraft) {
-            trackMetric("revision_saved", "/write", 0, { reviewId: Number(reviewId), mode: "edit" });
-          }
           router.push(`/reviews/${reviewId}`);
         } else {
           const data = await res.json().catch(() => ({}));
@@ -755,9 +713,6 @@ function WriteContent() {
         if (createdReview?.id && !createdReview.hidden) {
           sessionStorage.setItem(PENDING_REVIEW_KEY, JSON.stringify(createdReview));
         }
-        if (feedbackUsedForCurrentDraft) {
-          trackMetric("revision_saved", "/write", 0, { reviewId: createdReview?.id ?? null, mode: "create" });
-        }
         // 예약 글은 아직 피드에 없으니 내 글 화면으로 보낸다
         router.push((isLinkedWriteMode || scheduledAt) && createdReview?.id ? `/reviews/${createdReview.id}` : "/");
       } else {
@@ -771,13 +726,13 @@ function WriteContent() {
     }
   }
 
-  const feedbackCharCount = content.trim().length;
+  const proofreadChars = content.trim().length;
   // 운세 AI 질문권 보상 기준 — 서버(AiCreditService.reviewTextLength)와 같게 공백을 한 칸으로 줄여 센다
   const AI_REWARD_MIN_CHARS = 100;
   const aiRewardChars = content.replace(/\s+/g, " ").trim().length;
-  const isFeedbackTooShort = feedbackCharCount < feedbackConfig.minChars;
-  const isFeedbackTooLong = feedbackCharCount > feedbackConfig.maxChars;
-  const canRequestFeedback = !feedbackLoading && !isFeedbackTooShort && !isFeedbackTooLong;
+  const proofreadTooLong = proofreadChars > PROOFREAD_MAX_CHARS;
+  const canProofread = !proofreadLoading && proofreadChars >= PROOFREAD_MIN_CHARS && !proofreadTooLong;
+  const pendingCorrections = (corrections ?? []).map((_, index) => index).filter((index) => !correctionState[index]);
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 sm:py-8 pb-28 sm:pb-8">
@@ -1295,33 +1250,25 @@ function WriteContent() {
           <div className="mb-4 rounded-md border border-cream-200 bg-cream-50 p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm font-semibold text-brown-700">저장 전 도움 받기</p>
+                <p className="text-sm font-semibold text-brown-700">맞춤법·띄어쓰기 교정</p>
                 <p className="mt-1 text-xs leading-5 text-brown-400">
-                  본문을 {feedbackConfig.minChars}자 이상 쓰면 도장 코멘트를 받을 수 있어요.
+                  본문에서 틀린 맞춤법과 띄어쓰기만 찾아 드려요. 표현과 내용은 바꾸지 않아요.
                 </p>
               </div>
               <button
                 type="button"
-                onClick={requestFeedback}
-                disabled={!canRequestFeedback}
+                onClick={requestProofread}
+                disabled={!canProofread}
                 className="cdj-button cdj-button--primary"
               >
-                {feedbackLoading ? "코멘트 작성 중..." : "도장 코멘트 받기"}
+                {proofreadLoading ? "교정하는 중..." : "교정하기"}
               </button>
             </div>
-
-            {isFeedbackTooShort && (
-              <p className="mt-3 text-xs text-brown-400">
-                {feedbackConfig.minChars - feedbackCharCount}자 더 쓰면 활성화돼요.
-              </p>
+            {proofreadTooLong && (
+              <p className="mt-3 text-xs text-red-500">교정은 최대 {PROOFREAD_MAX_CHARS}자까지 할 수 있어요.</p>
             )}
-            {isFeedbackTooLong && (
-              <p className="mt-3 text-xs text-red-500">
-                도장 코멘트는 최대 {feedbackConfig.maxChars}자까지 받을 수 있어요.
-              </p>
-            )}
-            {feedbackError && (
-              <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-500">{feedbackError}</p>
+            {proofreadError && (
+              <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-500">{proofreadError}</p>
             )}
           </div>
           <textarea
@@ -1331,144 +1278,56 @@ function WriteContent() {
             rows={10}
             className="cdj-field text-sm w-full min-h-[42vh] sm:min-h-0 resize-none"
           />
-          <div className="mt-1.5 flex flex-col gap-1 text-xs sm:flex-row sm:items-center sm:justify-between">
-            <p className={isFeedbackTooShort || isFeedbackTooLong ? "text-amber-600" : "text-brown-300"}>
-              도장 코멘트 기준: {feedbackCharCount}자 / {feedbackConfig.minChars}-{feedbackConfig.maxChars}자
-            </p>
-            <p className="text-brown-300 sm:text-right">{content.length}자</p>
-          </div>
+          <p className="mt-1.5 text-right text-xs text-brown-300">{content.length}자</p>
           <p className={`mt-1 text-xs ${aiRewardChars >= AI_REWARD_MIN_CHARS ? "text-sage-700" : "text-brown-400"}`}>
             독후감을 올리면 <Link href="/unse" className="underline underline-offset-2">운세 AI</Link> 질문권 1회를 받아요 · 책 한 권당 한 번 · {AI_REWARD_MIN_CHARS}자 이상
             {aiRewardChars >= AI_REWARD_MIN_CHARS ? " (충족)" : ` (지금 ${aiRewardChars}자)`}
           </p>
 
-          {feedback && (
-            <section className="mt-4 rounded-md border border-brown-100 bg-white p-4">
-              <div className="mb-4 flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="font-serif text-lg font-bold text-brown-800">도장 코멘트</h3>
-                  <p className="mt-1 text-xs text-brown-400">코멘트를 참고해서 본문을 직접 다듬어보세요.</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setFeedback(null)}
-                  className="rounded-lg px-2 py-1 text-xs text-brown-400 hover:bg-cream-50 hover:text-brown-600"
-                >
-                  닫기
-                </button>
+          {corrections && (
+            <section className="mt-4 rounded-md border border-cream-200 bg-white p-4" aria-live="polite">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="font-serif text-lg font-bold text-brown-800">교정 결과</h3>
+                {pendingCorrections.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => applyCorrections(pendingCorrections)}
+                    className="cdj-button cdj-button--secondary"
+                  >
+                    모두 고치기
+                  </button>
+                )}
               </div>
-
-              {feedback.notReview ? (
-                <p className="rounded-lg bg-cream-50 px-3 py-3 text-sm text-brown-600">
-                  {feedback.message ?? "독후감을 입력해주시면 코멘트를 드릴 수 있어요."}
-                </p>
+              {corrections.length === 0 ? (
+                <p className="mt-2 text-sm text-brown-500">고칠 곳을 찾지 못했어요.</p>
               ) : (
-                <div className="space-y-4 text-sm text-brown-700">
-                  {feedback.coreTheme && (
-                    <div>
-                      <h4 className="mb-1 font-semibold text-brown-800">핵심 주제</h4>
-                      <p className="leading-6">{feedback.coreTheme}</p>
-                    </div>
-                  )}
-
-                  {feedback.strengths && feedback.strengths.length > 0 && (
-                    <div>
-                      <h4 className="mb-1 font-semibold text-brown-800">좋은 점</h4>
-                      <ul className="space-y-1">
-                        {feedback.strengths.map((item, index) => (
-                          <li key={`strength-${index}`} className="leading-6">- {item}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {feedback.improvements && feedback.improvements.length > 0 && (
-                    <div>
-                      <h4 className="mb-2 font-semibold text-brown-800">보완할 점</h4>
-                      <div className="space-y-2">
-                        {feedback.improvements.map((item, index) => {
-                          const showRewrite = hasMeaningfulRewrite(item);
-                          return (
-                            <div key={`improvement-${index}`} className="rounded-lg border border-cream-100 bg-cream-50 px-3 py-3">
-                              <p className="font-medium leading-6 text-brown-800">{item.point}</p>
-                              {item.direction && (
-                                <div className="mt-2 rounded-md bg-white px-3 py-2">
-                                  <p className="text-xs font-medium text-brown-400">수정 방향</p>
-                                  <p className="mt-1 leading-6">{item.direction}</p>
-                                </div>
-                              )}
-                              {showRewrite && (
-                                <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                                  <div className="rounded-md bg-white px-3 py-2">
-                                    <p className="text-xs font-medium text-brown-400">기존 표현</p>
-                                    <p className="mt-1 leading-6">{item.before}</p>
-                                  </div>
-                                  <div className="rounded-md bg-white px-3 py-2">
-                                    <p className="text-xs font-medium text-brown-400">바꿔볼 표현</p>
-                                    <p className="mt-1 leading-6">{item.after}</p>
-                                  </div>
-                                </div>
-                              )}
-                              <p className="mt-2 text-xs leading-5 text-brown-500">{item.reason}</p>
-                            </div>
-                          );
-                        })}
+                <ul className="mt-3 flex flex-col gap-2">
+                  {corrections.map((item, index) => (
+                    <li key={`${item.before}-${index}`} className="rounded-lg bg-cream-50 px-3 py-2 text-sm">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <span className="mr-2 rounded-full bg-cream-100 px-2 py-0.5 text-[11px] text-brown-500">{item.kind}</span>
+                          <span className="text-brown-400 line-through">{item.before}</span>
+                          <span className="mx-1 text-brown-300">→</span>
+                          <span className="font-medium text-brown-800">{item.after}</span>
+                        </div>
+                        {correctionState[index] === "applied" ? (
+                          <span className="flex-none text-xs text-sage-700">고침</span>
+                        ) : correctionState[index] === "missing" ? (
+                          <span className="flex-none text-xs text-amber-600">본문이 바뀌어 직접 고쳐주세요</span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => applyCorrections([index])}
+                            className="flex-none text-xs font-semibold text-brown-700 underline underline-offset-2"
+                          >
+                            고치기
+                          </button>
+                        )}
                       </div>
-                    </div>
-                  )}
-
-                  {feedback.sentenceExamples && feedback.sentenceExamples.length > 0 && (
-                    <div>
-                      <h4 className="mb-2 font-semibold text-brown-800">문장 개선 예시</h4>
-                      <div className="space-y-2">
-                        {feedback.sentenceExamples.map((item, index) => (
-                          <div key={`sentence-${index}`} className="rounded-lg bg-cream-50 px-3 py-2">
-                            <p className="text-xs font-medium text-brown-400">before</p>
-                            <p className="mt-1 leading-6">{item.before}</p>
-                            <p className="mt-2 text-xs font-medium text-brown-400">after</p>
-                            <p className="mt-1 leading-6">{item.after}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {feedback.titleSuggestions && feedback.titleSuggestions.length > 0 && (
-                    <div>
-                      <h4 className="mb-1 font-semibold text-brown-800">제목 추천</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {feedback.titleSuggestions.map((item, index) => (
-                          <span key={`title-${index}`} className="rounded-full bg-cream-100 px-3 py-1 text-xs text-brown-600">
-                            {item}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {feedback.deepQuestion && (
-                    <div>
-                      <h4 className="mb-1 font-semibold text-brown-800">깊이 질문</h4>
-                      <p className="leading-6">{feedback.deepQuestion}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {feedbackConfig.boundaryMessage && (
-                <p className="mt-4 border-t border-cream-100 pt-3 text-xs leading-5 text-brown-400">
-                  {feedbackConfig.boundaryMessage}
-                </p>
-              )}
-              {feedbackConfig.betaApplyUrl && (
-                <a
-                  href={feedbackConfig.betaApplyUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="cdj-button cdj-button--secondary mt-3 inline-flex"
-                >
-                  1:1 독후감 첨삭 베타 신청
-                </a>
+                    </li>
+                  ))}
+                </ul>
               )}
             </section>
           )}
@@ -1490,11 +1349,11 @@ function WriteContent() {
           <div className="grid grid-cols-[0.9fr_1.1fr] gap-2">
             <button
               type="button"
-              onClick={requestFeedback}
-              disabled={!canRequestFeedback}
+              onClick={requestProofread}
+              disabled={!canProofread}
               className="py-3 rounded-xl border border-brown-200 bg-white text-sm font-medium text-brown-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {feedbackLoading ? "작성 중..." : "코멘트"}
+              {proofreadLoading ? "교정 중..." : "교정하기"}
             </button>
           <button
             type="submit"

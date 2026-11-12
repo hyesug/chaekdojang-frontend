@@ -19,7 +19,7 @@ import { encodeState, decodeState, shareLink, buildShareCard, saveCanvas } from 
 import { buildHighlights, buildPairHighlights, renderHighlights } from './highlights.js';
 import { attachFeedback } from './feedback.js';
 import { readForecast, areaText } from './forecast.js';
-import { renderReport, renderPairReport, pairDigestFor, periodFlow, pairEventsHtml } from './report.js';
+import { renderReport, renderPairReport, renderBookCard, pairDigestFor, periodFlow, pairEventsHtml } from './report.js';
 import { buildView, buildCompatView } from './viewmodel.js';
 import { SYSTEM_META, TIER_LABEL, SOURCE_LABEL } from './meta.js';
 import { loadProfiles, createProfile, updateProfile, removeProfile, loginUrl } from './profile.js';
@@ -372,8 +372,7 @@ function render(form, r, f) {
       <p class="agree-note" style="margin:0">프로필 저장 여부를 확인하는 중…</p>
     </div>
 
-    ${h ? renderHighlights(h) : ''}
-
+    <!-- 순서(사용자 요청): 오늘의 운세 → 어울리는 책 → 핵심 요약·발견 → 나머지는 접어 둔 자세한 풀이 -->
     <div class="tabs">
       <button type="button" class="on" data-tab="today">오늘의 운세</button>
       <button type="button" data-tab="month">이달의 운세</button>
@@ -396,9 +395,16 @@ function render(form, r, f) {
         <ul class="rp-bul">${areaItems(f.month, 'month')}</ul>
       </section>`)}
 
+    ${renderBookCard(r, f)}
 
-    <div class="section-label">상세 분석</div>
-    ${renderReport(form, r, f, v, { memo: h?.memo })}
+    ${h ? renderHighlights(h, { parts: ['summary', 'discover'] }) : ''}
+
+    <details class="rp-fold">
+      <summary>자세한 풀이 더 보기 <small>특징 · 흐름 · 방향 · 조심할 것 · 올해 운세</small></summary>
+      ${h ? renderHighlights(h, { parts: ['traits', 'flow'] }) : ''}
+      <div class="section-label">상세 분석</div>
+      ${renderReport(form, r, f, v, { memo: h?.memo })}
+    </details>
 
     ${shareBlock(!!last.shareCard)}
 

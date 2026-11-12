@@ -199,8 +199,11 @@ test('책 추천 — 그 사람에게 필요한 주제 셋을 이유와 함께 �
   assert.equal(needs.length, 3);
   assert.equal(new Set(needs.map((x) => x.theme)).size, 3, '주제가 겹친다');
   for (const n of needs) assert.ok(n.reason.length > 10);
-  // 카드는 자리만(숨김) — 서버가 꺼져 있어도 빈 카드가 보이지 않는다
-  assert.match(personal(A), /class="rp-card rp-books-card" hidden data-book-seed="\d+" data-book-needs=/);
+  // 카드는 자리만(숨김) — 서버가 꺼져 있어도 빈 카드가 보이지 않는다.
+  // 결과 화면에서 오늘의 운세 바로 아래에 따로 놓으므로 리포트 본문에는 싣지 않는다(사용자 요청)
+  const { renderBookCard } = await import('../../public/unse/src/report.js');
+  assert.match(renderBookCard(readFortune(A), readForecast(A)), /class="rp-card rp-books-card" hidden data-book-seed="\d+" data-book-needs=/);
+  assert.doesNotMatch(personal(A), /rp-books-card/);
   assert.match(pair(A, B), /두 사람이 함께 읽으면 좋은 책/);
 });
 

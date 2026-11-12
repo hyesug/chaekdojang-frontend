@@ -43,14 +43,21 @@ test('결과는 핵심 요약·오늘/이달·상세 리포트·AI·체계별 �
   assert.doesNotMatch(ui, /해석 · 핵심 종합/);
   // 이달의 일자별 표와 날짜 가이드는 뺐다(사용자 요청)
   assert.doesNotMatch(ui, /이달의 날짜 가이드|일자별로 보기/);
-  // 핵심 요약이 맨 위 — 모바일 첫 화면에 핵심 성향이 보이게
-  const highlights = personalRender.indexOf('renderHighlights(h)');
+  // 순서(사용자 요청): 오늘의 운세가 맨 위, 어울리는 책이 두 번째, 그다음 핵심 요약·발견
   const tabs = personalRender.indexOf('data-tab="today"');
+  const books = personalRender.indexOf('${renderBookCard(r, f)}');
+  const highlights = personalRender.indexOf("renderHighlights(h, { parts: ['summary', 'discover'] })");
+  // 특징·흐름과 상세 리포트는 접어 둔다 — 첫 화면을 짧게
+  const fold = personalRender.indexOf('<details class="rp-fold">');
+  const foldedHighlights = personalRender.indexOf("renderHighlights(h, { parts: ['traits', 'flow'] })");
   // 상세 리포트는 AI 해석 위에 둔다 — 무료로 먼저 읽고, 더 궁금한 것만 AI 에 묻게 한다
   const reportAt = personalRender.indexOf('${renderReport(form, r, f, v, { memo: h?.memo })}');
+  const foldEnd = personalRender.indexOf('</details>', reportAt);
   const ai = personalRender.indexOf('AI 명반 해석');
   const calculation = personalRender.indexOf('${chartPanel(r)}');
-  assert.ok(highlights > 0 && tabs > highlights && reportAt > tabs && ai > reportAt && calculation > ai);
+  assert.ok(tabs > 0 && books > tabs && highlights > books && fold > highlights
+    && foldedHighlights > fold && reportAt > foldedHighlights && foldEnd > reportAt
+    && ai > foldEnd && calculation > ai);
   assert.match(ui, /체계별 상세 · 계산값 · 명반 요약/);
   // 요약 카드는 늘 보이고, 자세한 장은 접힌 채로 두되 펼칠 수 있다
   assert.match(report, /더 자세히 보기/);
@@ -209,8 +216,9 @@ test('프로필 저장 칸은 결과 맨 위(제목 바로 아래, 핵심 요약
   for (const start of ['function render(form, r, f)', 'function renderCompat(formA, formB, r)']) {
     const body = ui.slice(ui.indexOf(start));
     const card = body.indexOf('id="profileCard"');
-    const hl = body.indexOf('renderHighlights(h)');
-    assert.ok(card > 0 && card < hl, `${start}: 저장 칸이 핵심 요약보다 앞에 있어야 한다`);
+    // 개인 결과는 오늘의 운세 탭이 저장 칸 바로 다음 — 저장 칸이 그보다도 앞이어야 한다
+    const first = Math.min(...['renderHighlights(h', 'data-tab="today"'].map((s) => body.indexOf(s)).filter((i) => i >= 0));
+    assert.ok(card > 0 && card < first, `${start}: 저장 칸이 결과 내용보다 앞에 있어야 한다`);
   }
 });
 

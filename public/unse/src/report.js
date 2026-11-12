@@ -1429,8 +1429,12 @@ function lifeReport(form, r, f, memo = null) {
     + card('🚀', '앞으로 가야 할 방향', direction)
     + card('💡', '알아 두면 좋은 나', know || distinctCard(r))
     + card('⚠️', '조심해야 할 것', caution)
-    + bookCard('📚', '내 명반에 어울리는 책', bookNeeds(r, d, f), bookSeed(r) + monthIndex())
     + card('🗓️', `${f?.year?.period?.sajuYear ?? r.input.currentYear}년 운세 자세히`, yearDetail(r, f));
+}
+
+/** 책 추천 카드 — 결과 화면에서 오늘의 운세 바로 아래에 따로 놓는다(사용자 요청) */
+export function renderBookCard(r, f) {
+  return bookCard('📚', '내 명반에 어울리는 책', bookNeeds(r, futureDigest(r), f), bookSeed(r) + monthIndex());
 }
 
 export function renderReport(form, r, f, v, { memo = null } = {}) {

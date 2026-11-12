@@ -299,8 +299,11 @@ export function buildPairHighlights({ A, B, d, rA }) {
   };
 }
 
-/** 카드 화면 */
-export function renderHighlights(h) {
+/**
+ * 카드 화면. parts 로 그릴 카드와 순서를 고른다 — 개인 결과는 요약·발견만 위에 펼치고
+ * 특징·흐름은 접힌 '자세한 풀이'로 내린다.
+ */
+export function renderHighlights(h, { parts = ['summary', 'traits', 'discover', 'flow'] } = {}) {
   const T = { traits: '당신에게 특히 두드러지는 특징', discover: '나에 대한 발견', flow: '현재 흐름', ...h.titles };
   const card = (icon, title, body, cls = '') => (body
     ? `<section class="rp-card ${cls}"><h3 class="rp-card-h"><span aria-hidden="true">${icon}</span> ${esc(title)}</h3>${body}</section>` : '');
@@ -319,10 +322,13 @@ export function renderHighlights(h) {
   const flow = h.flow.length
     ? `<ol class="hl-flow">${h.flow.map(([k, when, t]) => `<li><p class="hl-label">${esc(k)} <small>${esc(when)}</small></p><p>${esc(t)}</p></li>`).join('')}</ol>`
     : '';
-  return card('✨', '핵심 요약', summary, 'hl-summary')
-    + card('🔎', T.traits, traits ? `<ul class="hl-traits">${traits}</ul>` : '')
-    + card('🧩', T.discover, discover)
-    + card('🧭', T.flow, flow);
+  const cards = {
+    summary: () => card('✨', '핵심 요약', summary, 'hl-summary'),
+    traits: () => card('🔎', T.traits, traits ? `<ul class="hl-traits">${traits}</ul>` : ''),
+    discover: () => card('🧩', T.discover, discover),
+    flow: () => card('🧭', T.flow, flow),
+  };
+  return parts.map((p) => cards[p]?.() ?? '').join('');
 }
 
 export { meta };

@@ -89,13 +89,13 @@ test('개인 화면은 명반 · 오늘/이달 · AI 질문 · 프로필 저장 
 
   assert.match(ui, /\$\{chartPanel\(r\)\}/);
   const tabs = [...ui.matchAll(/<button type="button"[^>]*data-tab="([^"]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(tabs, ['today', 'month']);
+  assert.deepEqual(tabs, ['today', 'month', 'year']);
   assert.match(ui, /오늘의 운세/);
   assert.match(ui, /이달의 운세/);
   assert.match(ui, /id="profileCard"/);
-  // 통합 해석 문서는 계산 근거를, AI는 사용자의 후속 질문을 맡는다.
-  assert.match(ui, /renderReport\(form, r, f, v, \{ memo: h\?\.memo \}\)/);
-  assert.match(ui, /renderHighlights\(h\)/);
+  // 긴 통합 문서는 화면에서 뺐다(사용자 요청). 타입 카드와 발견이 요약을, AI는 후속 질문을 맡는다.
+  assert.match(ui, /renderTypeCard\(last\.shareCard\)/);
+  assert.match(ui, /renderHighlights\(h, \{ parts: \['discover'\], skip: cardTexts\(last\.shareCard\) \}\)/);
   assert.match(ui, /aiSection\('solo', v\)/);
   assert.match(ui, /initAI\(form, r, f\)/);
 
@@ -110,9 +110,9 @@ test('두 패널은 화면에서 내렸고, 붙이더라도 첫 화면을 무겁
   const ui = await readFile(
     new URL('../../public/unse/src/ui.js', import.meta.url), 'utf8');
 
-  // 두 탭 구조는 그대로다
+  // 탭은 오늘·이달·올해(올해는 사용자 요청으로 더했다)
   const tabs = [...ui.matchAll(/<button type="button"[^>]*data-tab="([^"]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(tabs, ['today', 'month']);
+  assert.deepEqual(tabs, ['today', 'month', 'year']);
 
   // '칸으로 펼쳐 보기'와 '앞일 묻기'는 화면에서 내렸다.
   // 모듈은 남아 있으므로 여기서 고정하는 것은 **화면에 없다**는 사실이다.

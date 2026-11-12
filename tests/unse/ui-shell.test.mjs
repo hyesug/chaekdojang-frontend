@@ -33,41 +33,70 @@ test('계산 시작과 실패는 결과 busy 상태와 첫 입력 오류를 연�
   assert.match(boot, /box\.setAttribute\('aria-busy', 'false'\)/);
 });
 
-test('결과는 핵심 요약·오늘/이달·상세 리포트·AI·체계별 상세 순서로 읽게 한다', async () => {
+test('결과는 타입 카드·오늘/이달/올해·책·발견·AI·체계별 상세 순서로 짧게 읽게 한다', async () => {
   const ui = await read('src/ui.js');
-  const report = await read('src/report.js');
   const personalRender = ui.slice(ui.indexOf('function render(form, r, f)'));
-  const pairRender = ui.slice(ui.indexOf('function renderCompat(formA, formB, r)'));
+  const pairRender = ui.slice(ui.indexOf('function renderCompat(formA, formB, r)'), ui.indexOf('function render(form, r, f)'));
 
   // '해석 · 핵심 종합'은 아래 리포트와 겹쳐 뺐다
   assert.doesNotMatch(ui, /해석 · 핵심 종합/);
   // 이달의 일자별 표와 날짜 가이드는 뺐다(사용자 요청)
   assert.doesNotMatch(ui, /이달의 날짜 가이드|일자별로 보기/);
-  // 순서(사용자 요청): 오늘의 운세가 맨 위, 어울리는 책이 두 번째, 그다음 핵심 요약·발견
+  // 순서(사용자 요청): 타입 카드 → 오늘의 운세 → 어울리는 책 → 나에 대한 발견 → AI → 계산값
+  const typeCard = personalRender.indexOf('${renderTypeCard(last.shareCard)}');
   const tabs = personalRender.indexOf('data-tab="today"');
   const books = personalRender.indexOf('${renderBookCard(r, f)}');
-  const highlights = personalRender.indexOf("renderHighlights(h, { parts: ['summary', 'discover'] })");
-  // 특징·흐름과 상세 리포트는 접어 둔다 — 첫 화면을 짧게
-  const fold = personalRender.indexOf('<details class="rp-fold">');
-  const foldedHighlights = personalRender.indexOf("renderHighlights(h, { parts: ['traits', 'flow'] })");
-  // 상세 리포트는 AI 해석 위에 둔다 — 무료로 먼저 읽고, 더 궁금한 것만 AI 에 묻게 한다
-  const reportAt = personalRender.indexOf('${renderReport(form, r, f, v, { memo: h?.memo })}');
-  const foldEnd = personalRender.indexOf('</details>', reportAt);
+  const discover = personalRender.indexOf("renderHighlights(h, { parts: ['discover'], skip: cardTexts(last.shareCard) })");
   const ai = personalRender.indexOf('AI 명반 해석');
   const calculation = personalRender.indexOf('${chartPanel(r)}');
-  assert.ok(tabs > 0 && books > tabs && highlights > books && fold > highlights
-    && foldedHighlights > fold && reportAt > foldedHighlights && foldEnd > reportAt
-    && ai > foldEnd && calculation > ai);
+  assert.ok(typeCard > 0 && tabs > typeCard && books > tabs && discover > books && ai > discover && calculation > ai);
   assert.match(ui, /체계별 상세 · 계산값 · 명반 요약/);
-  // 요약 카드는 늘 보이고, 자세한 장은 접힌 채로 두되 펼칠 수 있다
-  assert.match(report, /더 자세히 보기/);
-  assert.match(report, /<details class="rp-ch">/);
+  // 읽히지 않던 긴 리포트는 접지 않고 화면에서 뺐다(사용자 요청). 면책 문구는 남긴다
+  assert.doesNotMatch(ui, /renderReport\(|renderPairReport\(|rp-fold/);
+  assert.match(personalRender, /과학적으로 검증된 예측이 아닙니다/);
 
-  const pairReportAt = pairRender.indexOf('${renderPairReport(');
+  const pairType = pairRender.indexOf('${renderTypeCard(last.shareCard)}');
+  const pairDiscover = pairRender.indexOf("renderHighlights(h, { parts: ['discover'], skip: cardTexts(last.shareCard) })");
+  const pairEssentials = pairRender.indexOf('${renderPairEssentials(');
   const pairAi = pairRender.indexOf('AI 명반 해석');
-  assert.ok(pairReportAt >= 0 && pairAi > pairReportAt);
+  assert.ok(pairType > 0 && pairDiscover > pairType && pairEssentials > pairDiscover && pairAi > pairEssentials);
+  assert.match(pairRender, /실제 미래를 확정하지 않습니다/);
   // 여덟 축마다 정해진 문단을 싣던 '관계 축별 해석'은 뺐다
   assert.doesNotMatch(pairRender, /<details class="compat-details"/);
+});
+
+test('타입 카드는 공유 카드 재료(타입·태그·칸·앞으로 찾아올 일)를 그대로 그린다', async () => {
+  const { renderTypeCard } = await import('../../public/unse/src/highlights.js');
+  assert.equal(renderTypeCard(null), '');
+  const html = renderTypeCard({
+    kicker: '나의 명반 카드', type: '끈기 있는 <전략가>', tags: ['#끈기'],
+    items: [{ label: '나의 강점', text: '한번 정하면 끝까지 갑니다.' }],
+    teaser: { label: '2년 뒤 · 2028년 무렵 찾아올 일', head: '이직', sub: '새 자리로 옮깁니다.' },
+  });
+  assert.match(html, /class="type-name">끈기 있는 &lt;전략가&gt;</);
+  assert.match(html, /<span>#끈기<\/span>/);
+  assert.match(html, /나의 강점/);
+  assert.match(html, /2028년 무렵 찾아올 일/);
+});
+
+test('발견 칸은 타입 카드에 나온 문장을 되풀이하지 않고, 화면에서 뺀 칸의 문장은 아래 칸을 지우지 않는다', async () => {
+  const { renderHighlights, cardTexts, shownTexts } = await import('../../public/unse/src/highlights.js');
+  const card = { type: 't', items: [{ label: '가까워져야 보이는 나', text: '겹치는 문장' }] };
+  const h = {
+    summary: [{ key: 'strong', label: 's', text: '요약 문장' }],
+    traits: [{ label: '특징', text: '화면에서 뺀 특징 문장' }],
+    discover: [
+      { title: '처음 보는 나 vs 가까워진 뒤의 나', a: ['처음', '다른 문장'], b: ['가까이', '겹치는 문장'] },
+      { title: '스트레스', text: '보이는 발견 문장' },
+    ],
+    flow: [],
+  };
+  const html = renderHighlights(h, { parts: ['discover'], skip: cardTexts(card) });
+  assert.doesNotMatch(html, /겹치는 문장|처음 보는 나/);
+  assert.match(html, /보이는 발견 문장/);
+  const shown = shownTexts(h, card);
+  assert.ok(shown.has('겹치는 문장') && shown.has('보이는 발견 문장'));
+  assert.ok(!shown.has('화면에서 뺀 특징 문장') && !shown.has('요약 문장') && !shown.has('다른 문장'));
 });
 
 test('AI 영역은 질문권 상태와 소진 paywall을 기록 안에서 표시한다', async () => {

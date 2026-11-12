@@ -299,11 +299,50 @@ export function buildPairHighlights({ A, B, d, rA }) {
   };
 }
 
+const entryTexts = (x) => (x.a ? [x.a[1], x.b[1]] : [x.text]).filter(Boolean);
+const visibleDiscover = (h, skip) => (h?.discover ?? []).filter((x) => !entryTexts(x).some((t) => skip.has(t)));
+
+/** 타입 카드가 이미 보인 문장 */
+export function cardTexts(c) {
+  return new Set([...(c?.items ?? []).map((x) => x.text), c?.teaser?.sub].filter(Boolean));
+}
+
+/**
+ * 화면에 실제로 보인 문장(타입 카드 + 나에 대한 발견). 아래 칸이 같은 말을 되풀이하지 않게 쓰되,
+ * 화면에서 뺀 칸(요약·특징·흐름)의 문장은 넣지 않는다 — 넣으면 보이지도 않은 말 때문에 아래 문장이 사라진다.
+ */
+export function shownTexts(h, c) {
+  const s = cardTexts(c);
+  for (const x of visibleDiscover(h, s)) for (const t of entryTexts(x)) s.add(t);
+  return s;
+}
+
+/**
+ * 타입 카드 — 공유 이미지에만 쓰던 '나는 ○○한 사람' 타입·해시태그·짧은 칸·앞으로 찾아올 일을
+ * 결과 맨 위에 그대로 보여 준다. 새 문장을 짓지 않고 공유 카드 재료를 그대로 쓴다.
+ */
+export function renderTypeCard(c) {
+  if (!c?.type) return '';
+  const tags = (c.tags ?? []).map((t) => `<span>${esc(t)}</span>`).join('');
+  const items = (c.items ?? []).map((x) => `<li><p class="hl-label">${esc(x.label)}</p><p>${esc(x.text)}</p></li>`).join('');
+  const t = c.teaser;
+  const teaser = t?.head
+    ? `<div class="type-teaser"><p class="hl-label">🔮 ${esc(t.label)}</p><p class="type-teaser-h">${esc(t.head)}</p>${t.sub ? `<p>${esc(t.sub)}</p>` : ''}</div>`
+    : '';
+  return `<section class="rp-card type-card">`
+    + (c.kicker ? `<p class="type-kicker">${esc(c.kicker)}</p>` : '')
+    + `<h3 class="type-name">${esc(c.type)}</h3>`
+    + (tags ? `<p class="type-tags">${tags}</p>` : '')
+    + (items ? `<ul class="type-items">${items}</ul>` : '')
+    + teaser
+    + `</section>`;
+}
+
 /**
  * 카드 화면. parts 로 그릴 카드와 순서를 고른다 — 개인 결과는 요약·발견만 위에 펼치고
  * 특징·흐름은 접힌 '자세한 풀이'로 내린다.
  */
-export function renderHighlights(h, { parts = ['summary', 'traits', 'discover', 'flow'] } = {}) {
+export function renderHighlights(h, { parts = ['summary', 'traits', 'discover', 'flow'], skip = new Set() } = {}) {
   const T = { traits: '당신에게 특히 두드러지는 특징', discover: '나에 대한 발견', flow: '현재 흐름', ...h.titles };
   const card = (icon, title, body, cls = '') => (body
     ? `<section class="rp-card ${cls}"><h3 class="rp-card-h"><span aria-hidden="true">${icon}</span> ${esc(title)}</h3>${body}</section>` : '');
@@ -315,9 +354,11 @@ export function renderHighlights(h, { parts = ['summary', 'traits', 'discover', 
     ? `<div class="hl-vs"><div><p class="hl-label">${esc(x.a[0])}</p><p>${esc(x.a[1])}</p></div><div><p class="hl-label">${esc(x.b[0])}</p><p>${esc(x.b[1])}</p></div></div>`
     : `<p class="rp-t">${esc(x.text)}</p>`);
   const disc = (xs) => xs.map((x) => `<div class="hl-disc"><h4 class="rp-h4">${esc(x.title)}</h4>${vs(x)}</div>`).join('');
-  const discover = h.discover.length
-    ? disc(h.discover.slice(0, 3)) + (h.discover.length > 3
-      ? `<details class="hl-more"><summary>더 발견하기 (${h.discover.length - 3})</summary>${disc(h.discover.slice(3))}</details>` : '')
+  // skip — 위 타입 카드가 이미 보인 문장이 든 발견은 거른다
+  const found = visibleDiscover(h, skip);
+  const discover = found.length
+    ? disc(found.slice(0, 3)) + (found.length > 3
+      ? `<details class="hl-more"><summary>더 발견하기 (${found.length - 3})</summary>${disc(found.slice(3))}</details>` : '')
     : '';
   const flow = h.flow.length
     ? `<ol class="hl-flow">${h.flow.map(([k, when, t]) => `<li><p class="hl-label">${esc(k)} <small>${esc(when)}</small></p><p>${esc(t)}</p></li>`).join('')}</ol>`

@@ -1424,14 +1424,19 @@ input, select, textarea, button.go, .ask-btn, .mode, .lt, .ft, .planned span {
 .hl-more { margin-top: 14px; }
 .hl-more > summary { cursor: pointer; color: var(--gold); font-weight: 600; font-size: 14px; padding: 6px 0; }
 .hl-more > .hl-disc:first-of-type { margin-top: 10px; }
-/* 결과 아래쪽 자세한 풀이 — 기본은 접어 두고 한 줄 버튼만 보인다 */
-.rp-fold { margin-top: 20px; }
-.rp-fold > summary {
-  cursor: pointer; padding: 14px 18px; border: 1px solid var(--line); border-radius: var(--radius);
-  background: var(--bg-soft); color: var(--gold); font-weight: 700; font-size: 15px;
-}
-.rp-fold > summary small { display: block; margin-top: 3px; color: var(--gold-soft); font-size: 12px; font-weight: 500; }
-.rp-fold[open] > summary { margin-bottom: 4px; }
+/* 결과 맨 위 타입 카드 — 공유 이미지와 같은 재료를 화면에 */
+.type-card { border-color: var(--gold-soft); }
+.type-kicker { margin: 0; color: var(--stamp); font-size: 12px; font-weight: 700; letter-spacing: .08em; }
+.type-name { margin: 6px 0 12px; color: var(--ink); font-family: var(--serif); font-size: 24px; font-weight: 700; line-height: 1.35; letter-spacing: -0.02em; }
+.type-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
+.type-tags span { padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg); color: var(--gold); font-size: 13px; font-weight: 600; }
+.type-items { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.type-items li { padding: 10px 12px; border-radius: 12px; background: var(--bg); }
+.type-items p { margin: 0; }
+.type-items li > p:last-child { margin-top: 2px; color: var(--ink); line-height: 1.6; }
+.type-teaser { margin-top: 14px; padding: 12px 14px; border-left: 3px solid var(--stamp); border-radius: 0 12px 12px 0; background: var(--bg); }
+.type-teaser p { margin: 0; line-height: 1.6; }
+.type-teaser-h { margin: 4px 0 2px !important; color: var(--ink); font-weight: 700; }
 .hl-flow { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 2px solid var(--line-strong); display: grid; gap: 12px; }
 @media (max-width: 560px) {
   .hl-grid { grid-template-columns: 1fr; }

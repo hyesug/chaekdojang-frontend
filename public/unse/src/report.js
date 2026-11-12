@@ -1677,6 +1677,19 @@ export function pairDigestFor(formA, formB, c, v, people = {}) {
   return { A, B, rA, rB, d: pairLoveDigest(rA, rB, A, B, v, { married }) };
 }
 
+/**
+ * 궁합 결과 화면에 남기는 칸 — 연애·결혼의 좋은 점과 아쉬운 점, 함께 읽을 책.
+ * 나머지 칸(재산·육아·배려·고칠 점·자녀·사건 장)은 읽히지 않아 화면에서 뺐다(사용자 요청).
+ */
+export function renderPairEssentials(formA, formB, c, v, people = {}, { digest = null, memo = null } = {}) {
+  const { rA, rB, d } = digest ?? pairDigestFor(formA, formB, c, v, people);
+  const fresh = (xs) => (memo ? xs.filter((t) => !memo.has(t) && memo.add(t)) : xs);
+  const goodBad = (g, b) => { g = fresh(g); b = fresh(b); return (g.length ? h4('🟢', '좋은 점') + lineList(g) : '') + (b.length ? h4('⚠️', '아쉬운 점') + lineList(b) : ''); };
+  return card('💗', d.married ? '두 사람 사이의 설렘과 대화' : '연애할 때', goodBad(d.dating.good, d.dating.bad))
+    + card('💍', d.married ? '함께 사는 일' : '결혼하면', goodBad(d.marriage.good, d.marriage.bad))
+    + bookCard('📚', '두 사람이 함께 읽으면 좋은 책', d.books, bookSeed(rA) + bookSeed(rB) + monthIndex());
+}
+
 export function renderPairReport(formA, formB, c, v, elementDist, people = {}, { digest = null, memo = null } = {}) {
   const { A, B, rA, rB, d } = digest ?? pairDigestFor(formA, formB, c, v, people);
   const today = new Date();

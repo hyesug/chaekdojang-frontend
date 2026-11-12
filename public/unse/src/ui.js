@@ -13,13 +13,12 @@ import { readFortune, prepareInput } from './engine.js';
 import { loadDicts } from './semantic/dict.js';
 import { compareFortune } from './compat.js';
 import { lunarToSolar } from './core/lunar.js';
-import { elementDistribution } from './core/ganzhi.js';
 import { j } from './core/josa.js';
 import { encodeState, decodeState, shareLink, buildShareCard, saveCanvas } from './share.js';
-import { buildHighlights, buildPairHighlights, renderHighlights } from './highlights.js';
+import { buildHighlights, buildPairHighlights, renderHighlights, renderTypeCard, cardTexts, shownTexts } from './highlights.js';
 import { attachFeedback } from './feedback.js';
 import { readForecast, areaText } from './forecast.js';
-import { renderReport, renderPairReport, renderBookCard, pairDigestFor, periodFlow, pairEventsHtml } from './report.js';
+import { renderPairEssentials, renderBookCard, pairDigestFor, periodFlow } from './report.js';
 import { buildView, buildCompatView } from './viewmodel.js';
 import { SYSTEM_META, TIER_LABEL, SOURCE_LABEL } from './meta.js';
 import { loadProfiles, createProfile, updateProfile, removeProfile, loginUrl } from './profile.js';
@@ -64,13 +63,8 @@ export async function run(mode, box, next) {
     box.innerHTML = renderCompat(form, formB, c);
     attachFeedback(box, { mode: 'pair', names: [form.name, formB.name] });
     fillProfileCard([form, formB]);
-    // 화면부터 띄우고, 무거운 계산(두 사람의 시기 → 사건 장, AI 문맥)은 그다음에 — 예전에는 둘 다 끝나야 화면이 떴다.
-    // AI 문맥은 사건 장이 계산해 둔 시기를 출생 정보 캐시로 다시 쓰므로 뒤에 두면 금방 끝난다.
+    // 화면부터 띄우고, 무거운 계산(AI 문맥)은 그다음에. 사건 장은 화면에서 뺐다(사용자 요청)
     setTimeout(() => {
-      const p = last?.people ?? {};
-      const el = box.querySelector('.rp-pair-events');
-      const married = [form.marital, formB.marital].includes('married');
-      if (el && p.a && p.b) el.innerHTML = pairEventsHtml(p.a, p.b, form.name, formB.name, { married });
       initCompatAI(form, formB, c);
       fillBooks(box);
     }, 30);
@@ -188,13 +182,16 @@ function renderCompat(formA, formB, r) {
       <p class="agree-note" style="margin:0">프로필 저장 여부를 확인하는 중…</p>
     </div>
 
-    ${h ? renderHighlights(h) : ''}
+    <!-- 순서(사용자 요청): 궁합 타입 카드 → 두 사람에 대한 발견 → 연애·결혼 → 함께 읽을 책.
+         읽히지 않던 긴 리포트(재산·육아·배려·고칠 점·자녀·사건 장)는 화면에서 뺐다 -->
+    ${renderTypeCard(last.shareCard)}
 
-    <div class="section-label">상세 분석</div>
-    ${renderPairReport(formA, formB, r, v, {
-      a: elementDistribution(r.A?.chart?.pillars ?? {}).count,
-      b: elementDistribution(r.B?.chart?.pillars ?? {}).count,
-    }, people, { digest: pd, memo: h?.memo })}
+    ${h ? renderHighlights(h, { parts: ['discover'], skip: cardTexts(last.shareCard) }) : ''}
+
+    ${renderPairEssentials(formA, formB, r, v, people, { digest: pd, memo: shownTexts(h, last.shareCard) })}
+
+    <p class="rp-note">점술은 상징적 해석 도구이며 실제 미래를 확정하지 않습니다.
+      결혼·이별·임신·투자·건강과 관련된 결정은 두 사람의 대화와 전문가의 객관적 조언을 우선해 주세요.</p>
 
     ${shareBlock(!!last.shareCard)}
 
@@ -353,6 +350,12 @@ function render(form, r, f) {
     return [fl?.theme, fl?.seat].filter(Boolean).map((t) => `<p class="rp-t">${esc(t)}</p>`).join('');
   };
   const todayInfo = v.month.days.find((x) => x.d === f.today.d);
+  // 올해 운세 — 분야별 한 줄(periodFlow 는 오늘·이달 전용이라 점수 구간 문장을 쓴다)
+  const yearLabel = `${f.year?.period?.sajuYear ?? f.today.y}년`;
+  const yearItems = ['총운', '애정운', '금전운', '직장운', '건강운']
+    .filter((a) => f.year?.areas?.[a]?.score != null)
+    .map((a) => item(AREA_ICON[a], a === '총운' ? '전체 흐름' : a.replace('운', ''), areaText(a, f.year.areas[a].score, 'year')))
+    .join('');
 
   const pane = (id, on, html) =>
     `<div class="tab-pane" data-tab="${id}" ${on ? '' : 'hidden'}>${html}</div>`;
@@ -372,10 +375,14 @@ function render(form, r, f) {
       <p class="agree-note" style="margin:0">프로필 저장 여부를 확인하는 중…</p>
     </div>
 
-    <!-- 순서(사용자 요청): 오늘의 운세 → 어울리는 책 → 핵심 요약·발견 → 나머지는 접어 둔 자세한 풀이 -->
+    <!-- 순서(사용자 요청): 나의 타입 카드 → 오늘·이달·올해 운세 → 어울리는 책 → 나에 대한 발견.
+         읽히지 않던 긴 리포트(방향·조심할 것·상세 장)는 화면에서 뺐다 -->
+    ${renderTypeCard(last.shareCard)}
+
     <div class="tabs">
       <button type="button" class="on" data-tab="today">오늘의 운세</button>
       <button type="button" data-tab="month">이달의 운세</button>
+      <button type="button" data-tab="year">${esc(yearLabel)} 운세</button>
     </div>
 
     ${pane('today', true, `
@@ -395,16 +402,18 @@ function render(form, r, f) {
         <ul class="rp-bul">${areaItems(f.month, 'month')}</ul>
       </section>`)}
 
+    ${pane('year', false, `
+      <section class="rp-card rp-card-solo">
+        <h3 class="rp-card-h"><span aria-hidden="true">🎯</span> ${esc(yearLabel)}의 운세</h3>
+        <ul class="rp-bul">${yearItems}</ul>
+      </section>`)}
+
     ${renderBookCard(r, f)}
 
-    ${h ? renderHighlights(h, { parts: ['summary', 'discover'] }) : ''}
+    ${h ? renderHighlights(h, { parts: ['discover'], skip: cardTexts(last.shareCard) }) : ''}
 
-    <details class="rp-fold">
-      <summary>자세한 풀이 더 보기 <small>특징 · 흐름 · 방향 · 조심할 것 · 올해 운세</small></summary>
-      ${h ? renderHighlights(h, { parts: ['traits', 'flow'] }) : ''}
-      <div class="section-label">상세 분석</div>
-      ${renderReport(form, r, f, v, { memo: h?.memo })}
-    </details>
+    <p class="rp-note">여러 점술의 해석을 모은 기록이며 과학적으로 검증된 예측이 아닙니다.
+      이직·투자·건강·관계 결정에서는 현실 조건과 객관적 자료를 우선해 주세요.</p>
 
     ${shareBlock(!!last.shareCard)}
 

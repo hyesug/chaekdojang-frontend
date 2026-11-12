@@ -13,6 +13,9 @@ const FEED_STATE_KEY = "chaekdojang:feed-state";
 const PENDING_REVIEW_KEY = "chaekdojang:pending-review";
 const LEGACY_REVIEW_DRAFT_KEY = "chaekdojang:review-draft";
 const REVIEW_DRAFT_KEY_PREFIX = "chaekdojang:review-draft:v2";
+// 로그인 전에 쓴 글을 로그인 화면 왕복 동안 보관한다. 접두사가 같아 복원 직후 일괄 삭제된다.
+const GUEST_DRAFT_KEY = `${REVIEW_DRAFT_KEY_PREFIX}:guest`;
+const GUEST_DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_FEEDBACK_MIN_CHARS = 150;
 const DEFAULT_FEEDBACK_MAX_CHARS = 6000;
 
@@ -53,6 +56,38 @@ type WebNovelResult = {
 };
 
 type DirectWebNovelPlatform = Pick<WebNovelResult, "platform" | "platformLabel">;
+
+type GuestDraft = {
+  savedAt: number;
+  selectedBook: BookResult | null;
+  searchMode: SearchMode;
+  webNovelCandidate: WebNovelResult | null;
+  webNovelTitle: string;
+  webNovelAuthor: string;
+  showDirectRegister: boolean;
+  directWorkUrl: string;
+  directWorkTitle: string;
+  directWorkAuthor: string;
+  rating: number;
+  content: string;
+  oneLineReview: string;
+  selectedEmotions: string[];
+  isPublic: boolean;
+  hasSpoiler: boolean;
+  generateAiSummary: boolean;
+};
+
+function readGuestDraft(): GuestDraft | null {
+  try {
+    const raw = localStorage.getItem(GUEST_DRAFT_KEY);
+    if (!raw) return null;
+    const draft = JSON.parse(raw) as GuestDraft;
+    if (typeof draft?.savedAt !== "number" || Date.now() - draft.savedAt > GUEST_DRAFT_TTL_MS) return null;
+    return draft;
+  } catch {
+    return null;
+  }
+}
 
 function detectWebNovelPlatform(rawUrl: string): DirectWebNovelPlatform | null {
   try {
@@ -366,9 +401,62 @@ function WriteContent() {
   const [feedbackError, setFeedbackError] = useState("");
   const [feedbackUsedForCurrentDraft, setFeedbackUsedForCurrentDraft] = useState(false);
 
+  const [draftRestored, setDraftRestored] = useState(false);
+
   useEffect(() => {
+    const guestDraft = readGuestDraft();
     clearReviewDraftStorage();
-  }, []);
+    if (!guestDraft || isEditMode || isLinkedWriteMode) return;
+    setSelectedBook(guestDraft.selectedBook);
+    setSearchMode(guestDraft.searchMode);
+    setWebNovelCandidate(guestDraft.webNovelCandidate);
+    setWebNovelTitle(guestDraft.webNovelTitle);
+    setWebNovelAuthor(guestDraft.webNovelAuthor);
+    setShowDirectRegister(guestDraft.showDirectRegister);
+    setDirectWorkUrl(guestDraft.directWorkUrl);
+    setDirectWorkTitle(guestDraft.directWorkTitle);
+    setDirectWorkAuthor(guestDraft.directWorkAuthor);
+    setRating(guestDraft.rating);
+    setContent(guestDraft.content);
+    setOneLineReview(guestDraft.oneLineReview);
+    setSelectedEmotions(guestDraft.selectedEmotions);
+    setIsPublic(guestDraft.isPublic);
+    setHasSpoiler(guestDraft.hasSpoiler);
+    setGenerateAiSummary(guestDraft.generateAiSummary);
+    setDraftRestored(true);
+  }, [isEditMode, isLinkedWriteMode]);
+
+  // 비로그인 작성자가 로그인 화면에 다녀와도 쓰던 글과 위치를 잃지 않게 한다.
+  function redirectToLoginKeepingDraft() {
+    if (!isEditMode && !isLinkedWriteMode) {
+      const draft: GuestDraft = {
+        savedAt: Date.now(),
+        selectedBook,
+        searchMode,
+        webNovelCandidate,
+        webNovelTitle,
+        webNovelAuthor,
+        showDirectRegister,
+        directWorkUrl,
+        directWorkTitle,
+        directWorkAuthor,
+        rating,
+        content,
+        oneLineReview,
+        selectedEmotions,
+        isPublic,
+        hasSpoiler,
+        generateAiSummary,
+      };
+      try {
+        localStorage.setItem(GUEST_DRAFT_KEY, JSON.stringify(draft));
+      } catch {
+        // 저장 공간 부족 등으로 보관하지 못해도 로그인 이동은 계속한다.
+      }
+    }
+    const returnTo = `${window.location.pathname}${window.location.search}`;
+    router.push(`/auth/login?returnTo=${encodeURIComponent(returnTo)}`);
+  }
 
   useEffect(() => {
     authFetch(`${API_BASE}/api/feedback/config`, { cache: "no-store" })
@@ -473,7 +561,7 @@ function WriteContent() {
         }),
       });
       if (res.status === 401) {
-        router.push("/auth/login");
+        redirectToLoginKeepingDraft();
         return null;
       }
       if (!res.ok) {
@@ -522,7 +610,7 @@ function WriteContent() {
       });
 
       if (res.status === 401) {
-        router.push("/auth/login");
+        redirectToLoginKeepingDraft();
         return;
       }
 
@@ -658,7 +746,7 @@ function WriteContent() {
         }),
       });
 
-      if (res.status === 401) { router.push("/auth/login"); return; }
+      if (res.status === 401) { redirectToLoginKeepingDraft(); return; }
 
       if (res.ok) {
         const json = await res.json().catch(() => null);
@@ -752,6 +840,12 @@ function WriteContent() {
                 : "원문 기록을 불러오지 못했습니다."}
           </p>
         </div>
+      )}
+
+      {draftRestored && (
+        <p className="mb-5 rounded-xl bg-sage-50 px-4 py-3 text-sm text-brown-600" role="status">
+          로그인 전에 쓰던 독후감을 불러왔어요. 확인하고 올려주세요.
+        </p>
       )}
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">

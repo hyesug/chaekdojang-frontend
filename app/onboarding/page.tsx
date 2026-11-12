@@ -12,6 +12,15 @@ type Recommendation = {
   bio: string | null;
 };
 
+const LOGIN_RETURN_TO_KEY = "chaekdojang:login-return-to";
+
+// 신규 가입자는 닉네임·취향 설정을 거치므로, 로그인 전에 있던 화면으로 여기서 돌려보낸다.
+function takeSafeReturnTo() {
+  const value = sessionStorage.getItem(LOGIN_RETURN_TO_KEY);
+  sessionStorage.removeItem(LOGIN_RETURN_TO_KEY);
+  return value?.startsWith("/") && !value.startsWith("//") ? value : "/";
+}
+
 const GENRES = [
   "소설", "시/에세이", "인문", "가정/육아", "요리", "건강", "취미/실용/스포츠",
   "경제/경영", "자기계발", "정치/사회", "역사/문화", "종교", "예술/대중문화",
@@ -58,7 +67,7 @@ export default function OnboardingPage() {
       body: JSON.stringify({ genres: selected }),
     });
     setSaving(false);
-    if (res.ok) router.replace("/");
+    if (res.ok) router.replace(takeSafeReturnTo());
   }
 
   return (

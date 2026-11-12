@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import ReviewDetailModal from "./ReviewDetailModal";
@@ -304,12 +304,15 @@ export default function ReviewCard({
   onNavigateToDetail,
   onVisibilityChange,
   returnTo,
+  layout = "default",
 }: {
   post: Review;
   forceOwner?: boolean;
   onNavigateToDetail?: () => void;
   onVisibilityChange?: (review: Review) => void;
   returnTo?: string;
+  /** photo — 홈 피드용 인스타형 카드(작성자 → 큰 이미지 → 반응 → 캡션). 다른 화면은 기본 카드 */
+  layout?: "default" | "photo";
 }) {
   const coverColor = COVER_COLORS[post.id % COVER_COLORS.length];
   const router = useRouter();
@@ -611,10 +614,43 @@ export default function ReviewCard({
   const profileHref = `/u/${encodeURIComponent(post.author.nickname)}`;
   const purchaseLinks = post.book ? buildSearchLinks(post.book.title, post.book.source, post.book.sourceUrl) : [];
 
-  return (
-    <>
-      <article className="cdj-card cdj-card--interactive overflow-hidden">
-        {/* 작성자 줄: 프로필 · 팔로우 · (내 글이면) 관리 · 날짜 */}
+  // 본문 — 짧은 감상과 본문이 함께 저장된 경우에만 첫 문단을 건너뜀
+  const paragraphs = displayContent.split("\n\n");
+  const bodyWithoutShortReview = paragraphs.length > 1 ? paragraphs.slice(1).join("\n\n").trim() : "";
+  const bodyText = post.aiSummary?.oneLineReview && bodyWithoutShortReview ? bodyWithoutShortReview : displayContent.trim();
+  const spoilerHidden = Boolean(post.spoiler) && !spoilerRevealed;
+
+  // 상세로 가는 링크 — 비공개 내 글은 모달로 연다
+  function detailLink(className: string, children: ReactNode, label?: string) {
+    return canOpenHiddenDetail ? (
+      <button type="button" className={className} aria-label={label} onClick={() => setShowDetail(true)}>
+        {children}
+      </button>
+    ) : (
+      <Link
+        href={hidden ? "#" : reviewHref}
+        className={className}
+        aria-label={label}
+        onClick={(e) => {
+          if (hidden) { e.preventDefault(); return; }
+          onNavigateToDetail?.();
+          rememberReturnTo();
+        }}
+      >
+        {children}
+      </Link>
+    );
+  }
+
+  const coverArt = post.book?.thumbnail ? (
+    <img src={post.book.thumbnail} alt="" loading="lazy" />
+  ) : (
+    <span className="flex h-full items-end justify-center pb-2 font-serif text-sm font-bold text-white/80" style={{ backgroundColor: coverColor }}>
+      {post.book?.title?.[0] ?? ""}
+    </span>
+  );
+
+  const authorHeader = (
         <header className="flex items-center justify-between gap-3 px-5 pt-4">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <Link href={profileHref} className="shrink-0">
@@ -676,29 +712,158 @@ export default function ReviewCard({
             </time>
           </div>
         </header>
+  );
+
+  // 인스타형 카드 — 큰 이미지(표지·한 줄 감상)가 먼저 보이고 글은 캡션으로 내린다
+  // 한 줄 감상이 있으면 이미지 위에, 없으면 책 제목을 올린다 — 캡션과 같은 문장이 두 번 보이지 않게
+  const quote = post.aiSummary?.oneLineReview ?? "";
+  const captionTruncates = bodyText.length > 50 || bodyText.includes("\n");
+  const photoCard = (
+      <article className="cdj-card mx-auto w-full max-w-[480px] overflow-hidden">
+        {authorHeader}
+
+        {detailLink(
+          "relative mt-3 block aspect-square w-full overflow-hidden bg-brown-800",
+          <>
+            {post.book?.thumbnail && (
+              <img
+                src={post.book.thumbnail}
+                alt=""
+                aria-hidden="true"
+                loading="lazy"
+                className="absolute inset-0 h-full w-full scale-125 object-cover opacity-70 blur-2xl"
+              />
+            )}
+            {!post.book?.thumbnail && <span className="absolute inset-0" style={{ backgroundColor: coverColor }} aria-hidden="true" />}
+            <span className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/10 to-black/70" aria-hidden="true" />
+            <span className="absolute inset-x-0 top-[9%] flex justify-center" aria-hidden="true">
+              <span className="cdj-cover w-[38%] shadow-2xl">{coverArt}</span>
+            </span>
+            {quote && !spoilerHidden ? (
+              <span className="absolute inset-x-5 bottom-5 line-clamp-3 font-serif text-[18px] font-bold leading-snug text-white [text-shadow:0_1px_8px_rgb(0_0_0/45%)]">
+                “{quote}”
+              </span>
+            ) : !spoilerHidden && post.book ? (
+              <span className="absolute inset-x-5 bottom-5 text-white [text-shadow:0_1px_8px_rgb(0_0_0/45%)]">
+                <span className="line-clamp-2 font-serif text-[18px] font-bold leading-snug">{post.book.title}</span>
+                {post.book.author && <span className="mt-1 block truncate text-[13px] text-white/80">{post.book.author}</span>}
+              </span>
+            ) : null}
+            {spoilerHidden && (
+              <span className="absolute inset-x-0 bottom-5 flex items-center justify-center gap-2 text-sm font-medium text-white/90">
+                <EyeOff size={15} aria-hidden="true" />
+                스포일러가 있어요
+              </span>
+            )}
+          </>,
+          `${post.book?.title ?? "독후감"} 독후감 보기`
+        )}
+
+        {/* 반응 줄 — 아이콘만, 좋아요 수는 아래 줄에 */}
+        <div className="flex items-center px-2 pt-1.5">
+          <button
+            onClick={handleLike}
+            className={`flex h-10 w-10 items-center justify-center transition-transform active:scale-90 ${liked ? "text-wine-500" : "text-brown-900"}`}
+            aria-label={liked ? "좋아요 취소" : "좋아요"}
+            aria-pressed={liked}
+          >
+            <Heart size={24} strokeWidth={1.75} className={liked ? "fill-wine-500" : ""} aria-hidden="true" />
+          </button>
+          <button
+            onClick={() => setShowComments(true)}
+            className="flex h-10 w-10 items-center justify-center text-brown-900"
+            aria-label="댓글 보기"
+          >
+            <MessageCircle size={24} strokeWidth={1.75} aria-hidden="true" />
+          </button>
+          <button
+            onClick={() => setShowShare(true)}
+            className="flex h-10 w-10 items-center justify-center text-brown-900"
+            aria-label="공유"
+          >
+            <Share2 size={22} strokeWidth={1.75} aria-hidden="true" />
+          </button>
+          <button
+            onClick={handleBookmark}
+            disabled={bookmarkSaving}
+            className={`ml-auto flex h-10 items-center gap-1 px-2 disabled:opacity-60 ${bookmarked ? "text-brown-800" : "text-brown-900"}`}
+            aria-label={bookmarked ? "북마크 해제" : "북마크"}
+            aria-pressed={bookmarked}
+          >
+            {bookmarkFeedback && <span className="text-xs">{bookmarkFeedback}</span>}
+            <Bookmark size={24} strokeWidth={1.75} className={bookmarked ? "fill-brown-800" : ""} aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className="px-4 pb-4">
+          <p className="text-[14px] font-semibold text-brown-900">좋아요 {likeCount}개</p>
+
+          {post.book && (
+            <div className="mt-1 flex min-w-0 items-center gap-2">
+              {post.book.id ? (
+                <Link href={bookHref} className="truncate text-[14px] font-semibold text-brown-800 hover:underline" onClick={(e) => e.stopPropagation()}>
+                  {post.book.title}
+                </Link>
+              ) : (
+                <span className="truncate text-[14px] font-semibold text-brown-800">{post.book.title}</span>
+              )}
+              <StarRating rating={displayRating} size={12} className="flex-none" />
+            </div>
+          )}
+
+          {bodyText && (spoilerHidden ? (
+            <button
+              type="button"
+              onClick={() => setSpoilerRevealed(true)}
+              className="mt-1 text-[14px] text-sage-600 underline underline-offset-2"
+            >
+              스포일러 감상 보기
+            </button>
+          ) : (
+            detailLink(
+              "mt-1 block text-left",
+              <>
+                <span className="line-clamp-2 text-[14px] leading-6 text-brown-900">
+                  <span className="mr-1.5 font-semibold">{post.author.nickname}</span>
+                  {bodyText}
+                </span>
+                {captionTruncates && <span className="text-[13px] text-sage-500">더 보기</span>}
+              </>
+            )
+          ))}
+
+          {post.keywords && post.keywords.length > 0 && (
+            <p className="mt-1 text-[13px] text-sage-700">
+              {post.keywords.map((keyword) => `#${keyword}`).join(" ")}
+            </p>
+          )}
+
+          {commentCount > 0 && (
+            <button type="button" onClick={() => setShowComments(true)} className="mt-1 block text-[13px] text-sage-500">
+              댓글 {commentCount}개 모두 보기
+            </button>
+          )}
+        </div>
+      </article>
+  );
+
+  return (
+    <>
+      {layout === "photo" ? photoCard : (
+      <article className="cdj-card cdj-card--interactive overflow-hidden">
+        {/* 작성자 줄: 프로필 · 팔로우 · (내 글이면) 관리 · 날짜 */}
+        {authorHeader}
 
         <div className="px-5 pb-1 pt-4">
           {/* 책 정보 */}
           <div className="flex gap-4">
             {post.book?.id ? (
               <Link href={bookHref} className="cdj-cover w-[60px]" onClick={(e) => e.stopPropagation()} tabIndex={-1} aria-hidden="true">
-                {post.book.thumbnail ? (
-                  <img src={post.book.thumbnail} alt="" loading="lazy" />
-                ) : (
-                  <span className="flex h-full items-end justify-center pb-2 font-serif text-sm font-bold text-white/80" style={{ backgroundColor: coverColor }}>
-                    {post.book.title?.[0]}
-                  </span>
-                )}
+                {coverArt}
               </Link>
             ) : (
               <div className="cdj-cover w-[60px]" aria-hidden="true">
-                {post.book?.thumbnail ? (
-                  <img src={post.book.thumbnail} alt="" loading="lazy" />
-                ) : (
-                  <span className="flex h-full items-end justify-center pb-2 font-serif text-sm font-bold text-white/80" style={{ backgroundColor: coverColor }}>
-                    {post.book?.title?.[0] ?? ""}
-                  </span>
-                )}
+                {coverArt}
               </div>
             )}
 
@@ -726,15 +891,8 @@ export default function ReviewCard({
 
           {/* 본문 — 짧은 감상과 본문이 함께 저장된 경우에만 첫 문단을 건너뜀 */}
           {(() => {
-            const paragraphs = displayContent.split("\n\n");
-            const bodyWithoutShortReview = paragraphs.length > 1
-              ? paragraphs.slice(1).join("\n\n").trim()
-              : "";
-            const bodyText = post.aiSummary?.oneLineReview && bodyWithoutShortReview
-              ? bodyWithoutShortReview
-              : displayContent.trim();
             if (!bodyText) return null;
-            if (post.spoiler && !spoilerRevealed) {
+            if (spoilerHidden) {
               return (
                 <button
                   type="button"
@@ -757,23 +915,7 @@ export default function ReviewCard({
                 </span>
               </>
             );
-            return canOpenHiddenDetail ? (
-              <button type="button" className="group mt-3 block w-full text-left" onClick={() => setShowDetail(true)}>
-                {body}
-              </button>
-            ) : (
-              <Link
-                href={hidden ? "#" : reviewHref}
-                className="group mt-3 block w-full text-left"
-                onClick={(e) => {
-                  if (hidden) { e.preventDefault(); return; }
-                  onNavigateToDetail?.();
-                  rememberReturnTo();
-                }}
-              >
-                {body}
-              </Link>
-            );
+            return detailLink("group mt-3 block w-full text-left", body);
           })()}
 
           {post.keywords && post.keywords.length > 0 && (
@@ -849,6 +991,7 @@ export default function ReviewCard({
           </button>
         </footer>
       </article>
+      )}
 
       {editing && (
         <EditModal

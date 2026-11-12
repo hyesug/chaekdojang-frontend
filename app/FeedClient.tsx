@@ -308,6 +308,7 @@ export default function FeedClient({ initialPage }: FeedClientProps) {
             <ReviewCard
               key={post.id}
               post={post}
+              layout="photo"
               onVisibilityChange={(updated) => {
                 setReviews((prev) =>
                   updated.hidden

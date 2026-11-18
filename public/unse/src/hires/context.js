@@ -822,10 +822,10 @@ function interpretedLines(j) {
     out.push('등급: 측정됨=영점을 넘었다 · 잠정=표본이 모자라 영점과 구별되지 않는다 · 비움=영점보다 나빠 답하지 않는다');
     for (const [axis, box] of Object.entries(j.interpreted.best)) {
       if (box.grade === '비움') {
-        out.push(`  ${axis}: **말하지 말 것** — ${box.note}. ${box.say}`);
+        out.push(`  ${axis}: **말하지 말 것** — ${box.note}. ${box.say} (이 속성만 뺀다 — 질문은 나머지 근거로 답할 것)`);
         continue;
       }
-      if (!box.said) { out.push(`  ${axis}: 담당이 침묵한다 — **말하지 말 것** (${box.note})`); continue; }
+      if (!box.said) { out.push(`  ${axis}: 담당이 침묵한다 — **말하지 말 것** (${box.note}) (이 속성만 뺀다 — 질문은 나머지 근거로 답할 것)`); continue; }
       out.push(`  ${axis} [${box.grade}] — ${box.note} · ${box.say}`);
       for (const x of box.said) out.push(`    [${x.system}] ${x.value}   (${x.basis})`);
     }
@@ -862,7 +862,7 @@ function afterBaseRates(j, plan) {
     if (ph.length) out.push(`  국면: ${ph.join(' → ')}`);
   }
   if (!j.timingWindows.length) {
-    out.push('두드러진 구간 없음 — 이 기간에는 월 단위로 좁힐 근거가 부족하다.');
+    out.push('두드러진 구간 없음 — 달로 좁히지 말고, 이 기간 전체(해 단위)의 흐름으로 답할 것.');
   }
   out.push('');
 
@@ -882,11 +882,11 @@ function afterBaseRates(j, plan) {
         const why = e.tied >= 3
           ? `1위와 같은 값(${e.top}%)인 달이 ${e.tied}개나 되어 하나를 고를 수 없다`
           : `가장 높은 달 ${e.top}%, 보통 달 ${e.typical}% (차이 ${e.spread}%p)`;
-        out.push(`  ${name}: 이 후보로는 달을 가리지 못한다 — ${why}. **이 사건으로 시기를 말하지 말 것.**`);
+        out.push(`  ${name}: 이 후보로는 달을 가리지 못한다 — ${why}. **이 사건의 달은 고르지 말고 해 단위 흐름으로 말할 것.**`);
         continue;
       }
       const top = e.months.filter((m) => m.share > 0).slice(0, 3);
-      if (!top.length) { out.push(`  ${name}: 앞서는 달 없음 — 이 사건으로는 좁힐 근거가 부족하다`); continue; }
+      if (!top.length) { out.push(`  ${name}: 앞서는 달 없음 — 이 사건은 달 대신 해 단위 흐름으로 말할 것`); continue; }
       out.push(`  ${name}: ${top.map((m) =>
         `${m.label}(점유 ${Math.round(m.share * 100)}%${m.margin > 0 ? '·1위' : ''})`).join(' / ')}`);
     }

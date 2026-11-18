@@ -705,3 +705,15 @@ test('인생 계획·로드맵 질문은 여러 분야를 보고, 권고마다 �
   assert.ok(PROMPT.includes('사용자가 말하지 않은 개인 배경'));
   assert.ok(PROMPT.includes("문맥 '연도별' 줄의 \"연도(○○세)\"를 그대로"));
 });
+
+test('AI는 근거가 약해도 답을 거절하지 않는다 — 빼는 것은 달·사건·속성 단위뿐 (사용자 요청 2026-11)', () => {
+  const SYSTEM = PROMPT;
+  assert.match(SYSTEM, /답을 거절하지 마세요/);
+  assert.match(SYSTEM, /그 단위\(달·사건·속성 하나\)만 빼라는 뜻/);
+  assert.doesNotMatch(SYSTEM, /이 질문에는 근거가 얇다"고 말하세요/);
+  // 측정으로 정한 '담당이 침묵하면 같이 침묵'은 지키되, 질문 전체 거절로 번지지 않게 한다
+  assert.match(SYSTEM, /담당이 침묵하면 같이 침묵하세요/);
+  assert.match(SYSTEM, /침묵은 \*\*그 속성 하나\*\*를 빼는 것이지 답을 거절하는 것이 아닙니다/);
+  // 자녀 성별 같은 절대 금지는 그대로
+  assert.match(SYSTEM, /자녀의 성별/);
+});

@@ -613,7 +613,7 @@ export function formatWealth(paths, wf, life) {
         out.push(`  ${p.year}년 (${p.techs.join('·')}) — ${p.hits.map((h) => h.why).join(' / ')}`);
       }
     } else {
-      out.push('여러 기법이 겹치는 해 없음 — 비정기 재물 시기를 좁힐 근거가 부족하다.');
+      out.push('여러 기법이 겹치는 해 없음 — 비정기 재물은 특정 해로 좁히지 말고, 돈이 들어오고 나가는 결(벌기·지키기)로 답할 것.');
     }
     out.push(`돈의 출처 후보 (앞설수록 근거가 두텁다): ${wf.sources.map((s) => `${s.source}(${s.detail})`).join(' > ') || '후보 없음'}`);
     out.push(`순수 복권형: ${wf.pureWindfallPossible

@@ -58,14 +58,14 @@ test('결과는 사주 명반·오늘/이달·책·명반 풀이·AI 순서로 �
   assert.ok(panel.indexOf('<details class="pool">') < panel.indexOf("cells(by('astrology')"));
   // 읽히지 않던 긴 리포트는 접지 않고 화면에서 뺐다(사용자 요청). 면책 문구는 남긴다
   assert.doesNotMatch(ui, /renderReport\(|renderPairReport\(|rp-fold/);
-  assert.match(ui.slice(ui.indexOf('function renderCompat')), /과학적으로 검증된 예측이 아닙니다|실제 미래를 확정하지 않습니다/);
 
-  const pairType = pairRender.indexOf('${renderTypeCard(last.shareCard)}');
-  const pairDiscover = pairRender.indexOf("renderHighlights(h, { parts: ['discover'], skip: cardTexts(last.shareCard) })");
-  const pairEssentials = pairRender.indexOf('${renderPairEssentials(');
+  // 궁합도 같은 방식(사용자 요청 2026-11): 두 사람의 명반 → 함께 읽을 책 → 궁합 풀이 → AI
+  const pairBoard = pairRender.indexOf('${sajuBoard(people.a, formA.name)}');
+  const pairBooks = pairRender.indexOf('renderPairBookCard(pd)');
+  const pairReport = pairRender.indexOf('renderPairSajuReport(pd,');
   const pairAi = pairRender.indexOf('AI 명반 해석');
-  assert.ok(pairType > 0 && pairDiscover > pairType && pairEssentials > pairDiscover && pairAi > pairEssentials);
-  assert.match(pairRender, /실제 미래를 확정하지 않습니다/);
+  assert.ok(pairBoard > 0 && pairBooks > pairBoard && pairReport > pairBooks && pairAi > pairReport);
+  assert.doesNotMatch(pairRender, /renderTypeCard\(|renderHighlights\(|renderPairEssentials\(/);
   // 여덟 축마다 정해진 문단을 싣던 '관계 축별 해석'은 뺐다
   assert.doesNotMatch(pairRender, /<details class="compat-details"/);
 });
@@ -245,9 +245,9 @@ test('대화 초기화 단추는 입력칸 위에 있고, 저장된 대화·앞 
   assert.match(css, /\.ai-tools\[hidden\] \{ display: none; \}/);
 });
 
-test('프로필 저장 칸은 결과 맨 위(제목 바로 아래, 명반·타입 카드 앞)에 있다 — 개인·궁합 모두', async () => {
+test('프로필 저장 칸은 결과 맨 위(제목 바로 아래, 명반 앞)에 있다 — 개인·궁합 모두', async () => {
   const ui = await read('src/ui.js');
-  for (const [start, next] of [['function render(form, r, f)', '${chartPanel(r)}'], ['function renderCompat(formA, formB, r)', '${renderTypeCard(last.shareCard)}']]) {
+  for (const [start, next] of [['function render(form, r, f)', '${chartPanel(r)}'], ['function renderCompat(formA, formB, r)', '${sajuBoard(people.a, formA.name)}']]) {
     const body = ui.slice(ui.indexOf(start));
     const card = body.indexOf('id="profileCard"');
     const after = body.indexOf(next);

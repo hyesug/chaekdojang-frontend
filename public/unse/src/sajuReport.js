@@ -12,8 +12,9 @@
  */
 import {
   STEMS, STEMS_KR, BRANCHES, BRANCHES_KR, ELEMENTS, ELEMENT_HANJA, STEM_ELEMENT, BRANCH_ELEMENT, MAIN_HIDDEN,
-  TEN_GOD_GROUP, tenGod, tenGodDistribution, computeDaeun, currentDaeun, branchRelations, yearPillar,
+  TEN_GOD_GROUP, ZODIAC, tenGod, tenGodDistribution, computeDaeun, currentDaeun, branchRelations, yearPillar,
 } from './core/ganzhi.js';
+const ZODIAC_OF = (b) => ZODIAC[b];
 import { CHEONEUL } from './core/sinsal.js';
 import { usefulGod, colorAdvice } from './semantic/structure/yongsin.js';
 import { monthsOfYear, forecastPeriod } from './forecast.js';
@@ -293,5 +294,154 @@ export function renderSajuReport(r, f) {
       ${cards}
       <p class="rp-note">여러 점술의 해석을 모은 기록이며 과학적으로 검증된 예측이 아닙니다.
         이직·투자·건강·관계 결정에서는 현실 조건과 객관적 자료를 우선해 주세요.</p>
+    </section>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// 궁합 — 같은 질문 카드 형식(사용자 요청 2026-11)
+// 문장은 pairLoveDigest 가 이미 쓴 것(판정·관계·연애·결혼·함께 살 때·마음·고칠 점·자녀·사건)을 고르고,
+// 근거 칸에는 두 사람의 글자끼리의 관계(천간 십신·지지 합충)를 적는다.
+// ═══════════════════════════════════════════════════════════
+
+/** 두 지지 사이 관계 한 마디 — 없으면 '특별한 합·충 없음' */
+const branchRel = (a, b) => branchRelations(a, b).filter((x) => !x.minor).map((x) => x.kind).join('·') || '특별한 합·충 없음';
+/** 문장에서 ' — ' 뒤 결론만 (궁합 사전의 "A는 '…', B는 '…' — 이 점이 닮아 …" 꼴) */
+const tail = (t) => {
+  const s = String(t ?? ''); const i = s.lastIndexOf(' — ');
+  return first(i >= 0 ? s.slice(i + 3) : s).replace(/^이 점이 닮아/, '닮은 점이 있어').replace(/^이 차이로/, '성향 차이로');
+};
+/** 첫 문장이 "역할이 이렇게 나뉘면 좋습니다"처럼 뒤 문장을 가리키기만 하면 그 뒤 문장을 답으로 */
+const lead = (t) => { const f = first(t); return /이렇게|다음과 같/.test(f) ? first(String(t).slice(f.length).trim()) || f : f; };
+
+/** 두 사람의 열두 달 — 둘의 흐름 점수 평균으로 함께 움직일 달을 고른다 */
+function pairMonths(rA, rB, today) {
+  const a = nextMonths(rA, today); const b = nextMonths(rB, today);
+  return a.map((x) => {
+    const y = b.find((z) => z.y === x.y && z.m === x.m);
+    return y ? { ...x, score: (x.score + y.score) / 2 } : null;
+  }).filter(Boolean);
+}
+
+/**
+ * @param {{A:string,B:string,rA:object,rB:object,d:object}} pd pairDigestFor 결과
+ * @param {{ type?: string, today: {y,m,d} }} opt type 은 공유 카드의 궁합 이름
+ */
+export function renderPairSajuReport(pd, { type = '', today } = {}) {
+  const { A, B, rA, rB, d } = pd;
+  const PA = rA.chart.pillars; const PB = rB.chart.pillars;
+  const dsA = rA.chart.dayStem; const dsB = rB.chart.dayStem;
+  const gb = (good, bad) => (good.length ? `<h4 class="sz-h">좋은 점</h4>${items(good.map((t) => ['', t]))}` : '')
+    + (bad.length ? `<h4 class="sz-h">아쉬운 점</h4>${items(bad.map((t) => ['', t]))}` : '');
+  const cards = [];
+
+  // 1. 어떤 궁합인가 — 판정·관계. 근거: 두 사람의 일간이 서로에게 무엇인지
+  cards.push(card({
+    q: '우리 두 사람은 어떤 궁합인가',
+    a: type || first(d.verdict?.text),
+    body: para([d.verdict?.text, d.relation]),
+    basis: basis(stemChip(dsA) + stemChip(dsB), `일간 ${STEMS[dsA]}(${A}) · ${STEMS[dsB]}(${B})`,
+      `${A}님에게 ${B}님은 ${tenGod(dsA, dsB)} · ${B}님에게 ${A}님은 ${tenGod(dsB, dsA)}`),
+  }));
+
+  // 2. 연애할 때 — 근거: 띠(연지)끼리
+  cards.push(card({
+    q: d.married ? '두 사람 사이의 설렘과 대화' : '연애할 때 우리는',
+    a: tail(d.dating.good[0] ?? d.dating.bad[0]),
+    body: gb(d.dating.good, d.dating.bad),
+    basis: basis(branchChip(PA.year.branch) + branchChip(PB.year.branch),
+      `연지 ${BRANCHES[PA.year.branch]} · ${BRANCHES[PB.year.branch]} (${ZODIAC_OF(PA.year.branch)}띠 · ${ZODIAC_OF(PB.year.branch)}띠)`, branchRel(PA.year.branch, PB.year.branch)),
+  }));
+
+  // 3. 결혼하면 — 근거: 배우자 자리(일지)끼리
+  cards.push(card({
+    q: d.married ? '함께 사는 일' : '결혼하면 우리는',
+    a: lead(d.marriage.good[0] ?? d.marriage.bad[0]),
+    body: gb(d.marriage.good, d.marriage.bad),
+    basis: basis(branchChip(PA.day.branch) + branchChip(PB.day.branch), `배우자 자리(일지) ${BRANCHES[PA.day.branch]} · ${BRANCHES[PB.day.branch]}`,
+      branchRel(PA.day.branch, PB.day.branch)),
+  }));
+
+  // 4. 함께 산다면 — 재산·육아·일. 근거: 두 사람의 재성 수
+  const home = d.home ?? [];
+  if (home.length) {
+    const cnt = (r) => tenGodDistribution(r.chart.pillars, r.chart.dayStem).groups.재성;
+    cards.push(card({
+      q: d.married ? '함께 살며 — 재산·육아·일' : '함께 산다면 — 재산·육아·일',
+      a: first(home[0][1]),
+      body: items(home.map(([k, t], i) => [k, i ? t : t.slice(first(t).length).trim()])),
+      basis: basis('', `재성(財星) ${A} ${cnt(rA)}개 · ${B} ${cnt(rB)}개`, '돈과 현실을 다루는 기운의 수'),
+    }));
+  }
+
+  // 5. 서로 알아 둘 마음
+  if (d.care?.length) {
+    cards.push(card({
+      q: '서로에게 바라는 것',
+      a: `${B}님은 ${first(d.wants?.b ?? '')}`.replace(/님은 $/, ''),
+      body: items(d.care),
+    }));
+  }
+
+  // 6. 각자 고칠 점 — '이것만은 하지 마세요'
+  if (d.fix?.length) {
+    cards.push(card({
+      q: '이것만은 하지 마세요',
+      a: `${d.fix[0][0]}, ${first(d.fix[0][1])}`,
+      body: items(d.fix.map(([who, t], i) => [who, i ? t : t.slice(first(t).length).trim()])),
+    }));
+  }
+
+  // 7. 함께 움직일 달 — 둘의 흐름 평균
+  let months = [];
+  try { months = today ? pairMonths(rA, rB, today) : []; } catch (err) { console.warn('pair months', err); }
+  if (months.length >= 6) {
+    const ranked = [...months].sort((x, y) => y.score - x.score);
+    const good = ranked.slice(0, 3); const bad = ranked.slice(-2).filter((x) => !good.includes(x));
+    const byTime = (xs) => xs.sort((x, y) => x.y * 12 + x.m - (y.y * 12 + y.m));
+    const label = (x) => `${x.y}년 ${x.m}월`;
+    const top = good[0];
+    const rel = (r) => branchRel(r.chart.pillars.day.branch, top.gz.branch);
+    cards.push(card({
+      q: '앞으로 열두 달, 둘이 함께 움직일 달',
+      a: `${label(top)}에 두 사람의 흐름이 가장 잘 맞아요`,
+      body: `<h4 class="sz-h">함께 움직일 달</h4>${items(byTime(good).map((x) => [`${label(x)} · ${x.d}일부터`, '중요한 대화·여행·결정을 이달에 잡아 보세요.']))}`
+        + (bad.length ? `<h4 class="sz-h">숨 고를 달</h4>${items(byTime(bad).map((x) => [`${label(x)} · ${x.d}일부터`, '큰 결정은 미루고 서로의 컨디션을 먼저 살피세요.']))}` : ''),
+      key: '두 사람 각자의 달 흐름을 평균해 고른 달이에요.',
+      basis: basis(stemChip(top.gz.stem) + branchChip(top.gz.branch), `${label(top)} · ${top.gz.kr}월(${top.gz.hanja}月)`,
+        `${A}님 일지와 ${rel(rA)} · ${B}님 일지와 ${rel(rB)}`),
+    }));
+  }
+
+  // 8. 자녀 — 몇 명을 낳는다는 예측이 아니라 권하는 말(report.js kidsAdvice)
+  if (d.kids?.length) {
+    cards.push(card({
+      q: d.married ? '아이가 두 사람에게 주는 의미' : '자녀와 함께라면',
+      a: first(d.kids[0][1]),
+      body: items(d.kids.map(([k, t], i) => (i ? [k, t] : ['', t.slice(first(t).length).trim()]))),
+      basis: (PA.hour && PB.hour) ? basis(branchChip(PA.hour.branch) + branchChip(PB.hour.branch),
+        `자녀 자리(시지) ${BRANCHES[PA.hour.branch]} · ${BRANCHES[PB.hour.branch]}`, branchRel(PA.hour.branch, PB.hour.branch)) : '',
+    }));
+  }
+
+  // 9. 앞으로 마주할 일
+  const now = Number(rA.input.currentYear);
+  const up = (d.events ?? []).filter((e) => e.y >= now).slice(0, 3);
+  if (up.length) {
+    const yp = yearPillar(up[0].y);
+    cards.push(card({
+      q: '앞으로 두 사람이 마주할 중요한 일',
+      a: `${up[0].when}, ${up[0].title.replace(/일$/, '일이 와요')}`,
+      body: up.map((e) => `<div class="sz-ev"><p class="sz-ev-h"><b>${esc(e.when)}</b> ${esc(e.title)}</p>`
+        + `${e.what ? `<p class="rp-t">${esc(e.what)}</p>` : ''}${e.prep ? `<p class="rp-t"><b>대비</b> — ${esc(e.prep)}</p>` : ''}</div>`).join(''),
+      basis: basis(stemChip(yp.stem) + branchChip(yp.branch), `${up[0].y}년 · ${yp.kr}년(${yp.hanja}年)`,
+        `${A}님 일지와 ${branchRel(PA.day.branch, yp.branch)} · ${B}님 일지와 ${branchRel(PB.day.branch, yp.branch)}`),
+    }));
+  }
+
+  return `
+    <section class="sz" aria-label="궁합 풀이">
+      ${cards.filter(Boolean).map((c, i) => c(i + 1)).join('')}
+      <p class="rp-note">점술은 상징적 해석 도구이며 실제 미래를 확정하지 않습니다.
+        결혼·이별·임신·투자·건강과 관련된 결정은 두 사람의 대화와 전문가의 객관적 조언을 우선해 주세요.</p>
     </section>`;
 }

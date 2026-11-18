@@ -93,8 +93,8 @@ test('개인 화면은 명반 · 오늘/이달 · AI 질문 · 프로필 저장 
   assert.match(ui, /오늘의 운세/);
   assert.match(ui, /이달의 운세/);
   assert.match(ui, /id="profileCard"/);
-  // 궁합은 타입 카드와 발견이 요약을, 개인은 명반 풀이가 해석을, AI는 후속 질문을 맡는다.
-  assert.match(ui, /renderTypeCard\(last\.shareCard\)/);
+  // 개인·궁합 모두 명반 풀이(질문 카드)가 해석을, AI는 후속 질문을 맡는다.
+  assert.match(ui, /renderPairSajuReport\(pd,/);
   assert.match(ui, /renderSajuReport\(r, f\)/);
   assert.match(ui, /renderBookCard\(r, f\)/);
   assert.match(ui, /aiSection\('solo', v\)/);

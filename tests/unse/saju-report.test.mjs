@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 
 import { readFortune } from '../../public/unse/src/engine.js';
 import { readForecast } from '../../public/unse/src/forecast.js';
-import { renderSajuReport, nextMonths } from '../../public/unse/src/sajuReport.js';
+import { renderSajuReport, renderPairSajuReport, nextMonths } from '../../public/unse/src/sajuReport.js';
+import { compareFortune } from '../../public/unse/src/compat.js';
+import { buildCompatView } from '../../public/unse/src/viewmodel.js';
+import { pairDigestFor } from '../../public/unse/src/report.js';
 import { loadDicts } from '../../public/unse/src/semantic/dict.js';
 
 await loadDicts();
@@ -58,4 +61,32 @@ test('열두 달은 이번 달부터 이어지고, 움직일 달과 숨 고를 �
 
 test('같은 형식도 출생 정보가 바뀌면 내용이 달라진다', () => {
   assert.notEqual(render(A).html, render({ ...A, month: 1, day: 3, hour: 4 }).html);
+});
+
+const pairHtml = (a, b) => {
+  const c = compareFortune(a, b);
+  const pd = pairDigestFor(a, b, c, buildCompatView(a, b, c), { a: readFortune(a), b: readFortune(b) });
+  return renderPairSajuReport(pd, { type: '', today: { y: 2026, m: 11, d: 18 } });
+};
+
+test('궁합 풀이도 같은 질문 카드 형식이고, 본문에 용어·한자가 없다', () => {
+  for (const [a, b] of [[A, B], [{ ...A, marital: 'married' }, B], [B, { ...A, gender: 'female' }]]) {
+    const html = pairHtml(a, b);
+    const nums = [...html.matchAll(/<span class="sz-n">(\d+)<\/span>/g)].map((m) => Number(m[1]));
+    assert.ok(nums.length >= 6, `카드가 너무 적다: ${nums.length}`);
+    assert.deepEqual(nums, nums.map((_, i) => i + 1));
+    assert.doesNotMatch(html, /undefined|NaN|null/);
+    const text = bodyText(html);
+    const hit = text.match(JARGON);
+    assert.equal(hit, null, `남은 용어: ${hit?.[0]} — ${hit ? text.slice(Math.max(0, hit.index - 30), hit.index + 30) : ''}`);
+    // 자녀 수·출산 단정은 하지 않는다
+    assert.doesNotMatch(text, /\d명을 낳|낳게 됩니다|자녀는 \d명/);
+  }
+});
+
+test('기혼이면 궁합 풀이 질문이 부부용으로 바뀐다', () => {
+  const html = pairHtml({ ...A, marital: 'married' }, B);
+  assert.match(html, /두 사람 사이의 설렘과 대화/);
+  assert.match(html, /함께 사는 일/);
+  assert.doesNotMatch(html, /결혼하면 우리는|연애할 때 우리는/);
 });

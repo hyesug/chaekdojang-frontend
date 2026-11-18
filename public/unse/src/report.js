@@ -1690,6 +1690,11 @@ export function renderPairEssentials(formA, formB, c, v, people = {}, { digest =
     + bookCard('📚', '두 사람이 함께 읽으면 좋은 책', d.books, bookSeed(rA) + bookSeed(rB) + monthIndex());
 }
 
+/** 궁합 화면의 책 카드 — 두 사람 명반 바로 아래에 둔다(ui.js) */
+export function renderPairBookCard({ rA, rB, d }) {
+  return bookCard('📚', '두 사람이 함께 읽으면 좋은 책', d.books, bookSeed(rA) + bookSeed(rB) + monthIndex());
+}
+
 export function renderPairReport(formA, formB, c, v, elementDist, people = {}, { digest = null, memo = null } = {}) {
   const { A, B, rA, rB, d } = digest ?? pairDigestFor(formA, formB, c, v, people);
   const today = new Date();

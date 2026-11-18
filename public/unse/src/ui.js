@@ -17,11 +17,11 @@ import { STEMS, BRANCHES, STEMS_KR, BRANCHES_KR, STEM_ELEMENT, BRANCH_ELEMENT, M
 import { usefulGod } from './semantic/structure/yongsin.js';
 import { j } from './core/josa.js';
 import { encodeState, decodeState, shareLink, buildShareCard, saveCanvas } from './share.js';
-import { buildHighlights, buildPairHighlights, renderHighlights, renderTypeCard, cardTexts, shownTexts } from './highlights.js';
-import { renderSajuReport } from './sajuReport.js';
+import { buildHighlights, buildPairHighlights } from './highlights.js';
+import { renderSajuReport, renderPairSajuReport } from './sajuReport.js';
 import { attachFeedback } from './feedback.js';
-import { readForecast, areaText } from './forecast.js';
-import { renderPairEssentials, renderBookCard, pairDigestFor, periodFlow } from './report.js';
+import { readForecast, areaText, todayKST } from './forecast.js';
+import { renderBookCard, renderPairBookCard, pairDigestFor, periodFlow } from './report.js';
 import { buildView, buildCompatView } from './viewmodel.js';
 import { SYSTEM_META, TIER_LABEL, SOURCE_LABEL } from './meta.js';
 import { loadProfiles, createProfile, updateProfile, removeProfile, loginUrl } from './profile.js';
@@ -176,7 +176,7 @@ function renderCompat(formA, formB, r) {
     <div class="result-header">
       <p class="result-kicker">분석 기록 · 궁합</p>
       <h2 class="hero-title">${esc(formA.name)} <span style="color:var(--gold-soft)">×</span> ${esc(formB.name)}</h2>
-      <p class="result-meta">두 사람의 출생 기준을 열다섯 체계로 나란히 살폈습니다. 계산 기준은 맨 아래에 있습니다.</p>
+      <p class="result-meta">두 사람의 출생 기준을 열다섯 체계로 나란히 살폈습니다. 출생 정보는 맨 아래에 있습니다.</p>
       ${basisNote(people.a?.input ?? r.A?.input, formA.name)}${basisNote(people.b?.input ?? r.B?.input, formB.name)}
     </div>
 
@@ -185,16 +185,20 @@ function renderCompat(formA, formB, r) {
       <p class="agree-note" style="margin:0">프로필 저장 여부를 확인하는 중…</p>
     </div>
 
-    <!-- 순서(사용자 요청): 궁합 타입 카드 → 두 사람에 대한 발견 → 연애·결혼 → 함께 읽을 책.
-         읽히지 않던 긴 리포트(재산·육아·배려·고칠 점·자녀·사건 장)는 화면에서 뺐다 -->
-    ${renderTypeCard(last.shareCard)}
+    <!-- 순서(사용자 요청 2026-11, 개인 화면과 같은 방식): 두 사람의 사주 명반 → 함께 읽을 책 → 궁합 풀이(질문 카드).
+         타입 카드·발견 칸은 궁합 풀이 첫 카드로 옮겼다(공유 이미지는 그대로 shareCard 를 쓴다) -->
+    ${people.a && people.b ? `
+    <div class="section-label">두 사람의 사주 명반</div>
+    <div class="card sj sj-pair">
+      ${sajuBoard(people.a, formA.name)}
+      <hr class="sj-sep">
+      ${sajuBoard(people.b, formB.name)}
+    </div>` : ''}
 
-    ${h ? renderHighlights(h, { parts: ['discover'], skip: cardTexts(last.shareCard) }) : ''}
+    ${pd ? renderPairBookCard(pd) : ''}
 
-    ${renderPairEssentials(formA, formB, r, v, people, { digest: pd, memo: shownTexts(h, last.shareCard) })}
-
-    <p class="rp-note">점술은 상징적 해석 도구이며 실제 미래를 확정하지 않습니다.
-      결혼·이별·임신·투자·건강과 관련된 결정은 두 사람의 대화와 전문가의 객관적 조언을 우선해 주세요.</p>
+    ${pd ? `<div class="section-label">궁합 풀이</div>
+    ${renderPairSajuReport(pd, { type: last.shareCard?.type ?? '', today: todayKST() })}` : ''}
 
     ${shareBlock(!!last.shareCard)}
 
@@ -273,8 +277,8 @@ const ELEM_NAME = ['나무', '불', '흙', '쇠', '물'];
  * 사주 명반 — 결과 맨 위(사용자 요청 2026-11). 사주 여덟 글자와 십신·오행만 펼쳐 두고,
  * 점성술·자미두수·타로와 나머지 체계의 계산값은 접어 둔다.
  */
-function chartPanel(r) {
-  const by = (id) => r.results.find((x) => x.id === id);
+/** 사주 여덟 글자 판 — 개인 명반과 궁합(두 사람)이 함께 쓴다. who 를 주면 제목에 이름을 붙인다 */
+function sajuBoard(r, who = '') {
   const P = r.chart.pillars;
   const ds = r.chart.dayStem;
   const tile = (ch, kr, el) => `<div class="sj-tile el-${el}"><b>${ch}</b><small>${kr}</small></div>`;
@@ -301,8 +305,18 @@ function chartPanel(r) {
   try { level = usefulGod(r.chart).strength.level; } catch { /* */ }
   let dae = null;
   try { dae = currentDaeun(computeDaeun(r.chart, r.input.isMale, r.input.jdUT), r.input.elapsedYears ?? r.input.age); } catch { /* */ }
-  const who = [`${ZODIAC[P.year.branch]}띠`, level, dae ? `지금은 ${dae.kr} 대운` : ''].filter(Boolean).join(' · ');
+  const who_ = [`${ZODIAC[P.year.branch]}띠`, level, dae ? `지금은 ${dae.kr} 대운` : ''].filter(Boolean).join(' · ');
 
+  return `
+      <p class="sj-title">${who ? `${esc(who)}님 · ` : ''}<b>${STEM_COLOR_NAME[STEM_ELEMENT[ds]]} ${ZODIAC[P.day.branch]}</b> ${esc(P.day.kr)}일주</p>
+      <p class="sj-sub">${esc(who_)}</p>
+      <div class="sj-grid">${pillar}</div>
+      <div class="sj-bar" aria-hidden="true">${bar}</div>
+      <p class="sj-legend">${legend}<small>여덟 글자 기준 · 합 ${total}</small></p>`;
+}
+
+function chartPanel(r) {
+  const by = (id) => r.results.find((x) => x.id === id);
   const group = (title, body) => body
     ? `<div class="mb-group"><div class="mb-head">${esc(title)}</div>${body}</div>` : '';
   const rest = r.results.filter((x) => !SHOWN.includes(x.id));
@@ -320,11 +334,7 @@ function chartPanel(r) {
   return `
     <div class="section-label">사주 명반</div>
     <div class="card sj">
-      <p class="sj-title"><b>${STEM_COLOR_NAME[STEM_ELEMENT[ds]]} ${ZODIAC[P.day.branch]}</b> ${esc(P.day.kr)}일주</p>
-      <p class="sj-sub">${esc(who)}</p>
-      <div class="sj-grid">${pillar}</div>
-      <div class="sj-bar" aria-hidden="true">${bar}</div>
-      <p class="sj-legend">${legend}<small>여덟 글자 기준 · 합 ${total}</small></p>
+      ${sajuBoard(r)}
 
       <details class="pool">
         <summary>다른 체계 명반 보기 (점성술·자미두수·타로 외 ${rest.length}개)</summary>

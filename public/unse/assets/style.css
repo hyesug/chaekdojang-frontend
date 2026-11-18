@@ -1546,3 +1546,4 @@ input, select, textarea, button.go, .ask-btn, .mode, .lt, .ft, .planned span {
 .sz-basis-t { display: flex; flex-direction: column; min-width: 0; }
 .sz-basis-t b { color: var(--ink); font-size: 13.5px; }
 .sz-basis-t small { color: var(--ink-3); font-size: 12px; }
+.sj-pair .sj-sep { margin: 20px 0; border: 0; border-top: 1px dashed var(--line); }

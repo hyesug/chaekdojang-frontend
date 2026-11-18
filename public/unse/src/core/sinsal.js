@@ -22,7 +22,7 @@ const GROUP = [
 const groupOf = (branch) => GROUP.find((g) => g.members.includes(branch));
 
 /** 천을귀인(天乙貴人) — 어려울 때 사람이 돕는 자리 */
-const CHEONEUL = [
+export const CHEONEUL = [
   [1, 7], [0, 8], [11, 9], [11, 9], [1, 7],
   [0, 8], [1, 7], [2, 6], [5, 3], [5, 3],
 ];

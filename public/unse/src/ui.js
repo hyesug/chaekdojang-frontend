@@ -13,9 +13,12 @@ import { readFortune, prepareInput } from './engine.js';
 import { loadDicts } from './semantic/dict.js';
 import { compareFortune } from './compat.js';
 import { lunarToSolar } from './core/lunar.js';
+import { STEMS, BRANCHES, STEMS_KR, BRANCHES_KR, STEM_ELEMENT, BRANCH_ELEMENT, MAIN_HIDDEN, ZODIAC, tenGod, computeDaeun, currentDaeun } from './core/ganzhi.js';
+import { usefulGod } from './semantic/structure/yongsin.js';
 import { j } from './core/josa.js';
 import { encodeState, decodeState, shareLink, buildShareCard, saveCanvas } from './share.js';
 import { buildHighlights, buildPairHighlights, renderHighlights, renderTypeCard, cardTexts, shownTexts } from './highlights.js';
+import { renderSajuReport } from './sajuReport.js';
 import { attachFeedback } from './feedback.js';
 import { readForecast, areaText } from './forecast.js';
 import { renderPairEssentials, renderBookCard, pairDigestFor, periodFlow } from './report.js';
@@ -262,23 +265,49 @@ function basisNote(input, who = '') {
       </div>`;
 }
 
+/** 일간 오행 → 일주 별칭의 색 */
+const STEM_COLOR_NAME = ['푸른', '붉은', '노란', '흰', '검은'];
+const ELEM_NAME = ['나무', '불', '흙', '쇠', '물'];
+
+/**
+ * 사주 명반 — 결과 맨 위(사용자 요청 2026-11). 사주 여덟 글자와 십신·오행만 펼쳐 두고,
+ * 점성술·자미두수·타로와 나머지 체계의 계산값은 접어 둔다.
+ */
 function chartPanel(r) {
   const by = (id) => r.results.find((x) => x.id === id);
   const P = r.chart.pillars;
-  const pillar = [['시', P.hour], ['일', P.day], ['월', P.month], ['년', P.year]]
-    .map(([pos, g]) => `
-      <div class="pillar${pos === '일' ? ' me' : ''}">
-        <div class="pos">${pos}주${pos === '일' ? ' · 나' : ''}</div>
-        <div class="gz">${g ? esc(g.hanja) : '—'}</div>
-        <div class="kr">${g ? esc(g.kr) : '시간 미상'}</div>
-      </div>`).join('');
+  const ds = r.chart.dayStem;
+  const tile = (ch, kr, el) => `<div class="sj-tile el-${el}"><b>${ch}</b><small>${kr}</small></div>`;
+  const pillar = [['시주', P.hour], ['일주', P.day], ['월주', P.month], ['연주', P.year]]
+    .map(([pos, g]) => {
+      const me = pos === '일주';
+      if (!g) return `<div class="sj-col"><p class="sj-pos">${pos}</p><p class="sj-god">&nbsp;</p>`
+        + '<div class="sj-tile sj-none"><b>—</b></div><div class="sj-tile sj-none"><b>—</b></div><p class="sj-god">시간 미상</p></div>';
+      return `<div class="sj-col${me ? ' me' : ''}"><p class="sj-pos">${pos}</p>
+        <p class="sj-god">${me ? '나' : esc(tenGod(ds, g.stem))}</p>
+        ${tile(STEMS[g.stem], STEMS_KR[g.stem], STEM_ELEMENT[g.stem])}
+        ${tile(BRANCHES[g.branch], BRANCHES_KR[g.branch], BRANCH_ELEMENT[g.branch])}
+        <p class="sj-god">${esc(tenGod(ds, MAIN_HIDDEN[g.branch]))}</p></div>`;
+    }).join('');
+
+  // 여덟 글자 겉에 드러난 오행 수 — 막대와 범례
+  const cnt = [0, 0, 0, 0, 0];
+  for (const g of [P.year, P.month, P.day, P.hour].filter(Boolean)) { cnt[STEM_ELEMENT[g.stem]]++; cnt[BRANCH_ELEMENT[g.branch]]++; }
+  const total = cnt.reduce((a, b) => a + b, 0) || 1;
+  const bar = cnt.map((c, i) => (c ? `<span class="el-${i}" style="flex:${c}"></span>` : '')).join('');
+  const legend = cnt.map((c, i) => `<span class="sj-lg el-${i}"><i></i>${ELEM_NAME[i]} ${c}</span>`).join('');
+
+  let level = '';
+  try { level = usefulGod(r.chart).strength.level; } catch { /* */ }
+  let dae = null;
+  try { dae = currentDaeun(computeDaeun(r.chart, r.input.isMale, r.input.jdUT), r.input.elapsedYears ?? r.input.age); } catch { /* */ }
+  const who = [`${ZODIAC[P.year.branch]}띠`, level, dae ? `지금은 ${dae.kr} 대운` : ''].filter(Boolean).join(' · ');
 
   const group = (title, body) => body
     ? `<div class="mb-group"><div class="mb-head">${esc(title)}</div>${body}</div>` : '';
-
   const rest = r.results.filter((x) => !SHOWN.includes(x.id));
 
-  // 펼치지 않아도 보이는 한 줄 — 점성술 태양·달·상승점, 자미 명궁
+  // 접힌 칸 맨 위의 한 줄 — 점성술 태양·달·상승점, 자미 명궁
   const val = (sys, k) => sys?.facts.find((x) => x.label === k)?.value;
   const brief = [
     ['태양', val(by('astrology'), '태양')],
@@ -289,13 +318,17 @@ function chartPanel(r) {
     .map(([k, x]) => `${k} ${String(x).replace(/ [\d.]+°$/, '')}`).join(' · ');
 
   return `
-    <div class="section-label">체계별 상세 · 계산값 · 명반 요약</div>
-    <div class="card">
-      <div class="pillars">${pillar}</div>
-      ${brief ? `<p class="mb-brief">${esc(brief)}</p>` : ''}
+    <div class="section-label">사주 명반</div>
+    <div class="card sj">
+      <p class="sj-title"><b>${STEM_COLOR_NAME[STEM_ELEMENT[ds]]} ${ZODIAC[P.day.branch]}</b> ${esc(P.day.kr)}일주</p>
+      <p class="sj-sub">${esc(who)}</p>
+      <div class="sj-grid">${pillar}</div>
+      <div class="sj-bar" aria-hidden="true">${bar}</div>
+      <p class="sj-legend">${legend}<small>여덟 글자 기준 · 합 ${total}</small></p>
 
       <details class="pool">
-        <summary>명반 자세히 보기</summary>
+        <summary>다른 체계 명반 보기 (점성술·자미두수·타로 외 ${rest.length}개)</summary>
+        ${brief ? `<p class="mb-brief">${esc(brief)}</p>` : ''}
         ${group('점성술 네이탈', `<dl class="mb-grid">${
           cells(by('astrology'), ['태양', '달', '상승점', '중천'])}</dl>`)}
         ${group('자미두수 명반', `<dl class="mb-grid">${
@@ -315,9 +348,9 @@ function chartPanel(r) {
 /**
  * 개인 운세 화면.
  *
- * 핵심 요약 → 개인 특이점·발견 → 현재 흐름(highlights.js) → 오늘/이달 → 상세 분석(report.js, 장은 접힘)
- * → 공유 → AI 에게 묻기 → 체계별 상세(명반 계산값) → 프로필 저장.
- * 모바일 첫 화면에 핵심 성향이 보이게 요약을 맨 위에 두고, 자세한 결과는 지우지 않고 아래로 내렸다.
+ * 프로필 저장 → 사주 명반(다른 체계는 접힘) → 오늘/이달 → 내 명반에 어울리는 책 → 명반 풀이(sajuReport.js)
+ * → 공유 → AI 에게 묻기. (사용자 요청 2026-11 — 명반을 맨 위로, '핵심 요약·발견'과 '상세 분석'은
+ * 질문 카드 형식의 명반 풀이로 바꿨다. 공유 카드 문장은 계속 highlights 에서 고른다)
  *
  * 화면에 쓰는 문장은 전부 엔진이 이미 쓴 것이다(viewmodel·forecast).
  * 여기서 새로 짓지 않는다.
@@ -326,7 +359,7 @@ function render(form, r, f) {
   last = { mode: 'solo', formA: form, formB: null, result: r, forecast: f };
   const v = buildView(form, r, f);
   lastView = v;
-  // 맨 위 핵심 요약·발견 — 한 번만 계산하고, 그 memo 로 아래 리포트가 같은 문장을 다시 내지 않게 한다
+  // 공유 카드 문장 — 화면에는 내지 않고 공유 이미지에만 쓴다
   let h = null;
   try { h = buildHighlights(r, f); } catch (err) { console.warn('highlights', err); }
   last.shareCard = h?.shareCard?.items?.length
@@ -366,7 +399,7 @@ function render(form, r, f) {
     <div class="result-header">
       <p class="result-kicker">분석 기록 · 개인 명반</p>
       <h2 class="hero-title">${esc(v.who.name)} 님</h2>
-      <p class="result-meta">${esc(v.who.born)} · 계산 기준은 맨 아래 체계별 상세에서 확인할 수 있습니다.</p>
+      <p class="result-meta">${esc(v.who.born)}</p>
       ${basisNote(r.input)}
     </div>
 
@@ -375,9 +408,7 @@ function render(form, r, f) {
       <p class="agree-note" style="margin:0">프로필 저장 여부를 확인하는 중…</p>
     </div>
 
-    <!-- 순서(사용자 요청): 나의 타입 카드 → 오늘·이달·올해 운세 → 어울리는 책 → 나에 대한 발견.
-         읽히지 않던 긴 리포트(방향·조심할 것·상세 장)는 화면에서 뺐다 -->
-    ${renderTypeCard(last.shareCard)}
+    ${chartPanel(r)}
 
     <div class="tabs">
       <button type="button" class="on" data-tab="today">오늘의 운세</button>
@@ -410,17 +441,13 @@ function render(form, r, f) {
 
     ${renderBookCard(r, f)}
 
-    ${h ? renderHighlights(h, { parts: ['discover'], skip: cardTexts(last.shareCard) }) : ''}
-
-    <p class="rp-note">여러 점술의 해석을 모은 기록이며 과학적으로 검증된 예측이 아닙니다.
-      이직·투자·건강·관계 결정에서는 현실 조건과 객관적 자료를 우선해 주세요.</p>
+    <div class="section-label">명반 풀이</div>
+    ${renderSajuReport(r, f)}
 
     ${shareBlock(!!last.shareCard)}
 
     <div class="section-label">AI 명반 해석</div>
     ${aiSection('solo', v)}
-
-    ${chartPanel(r)}
 
   `;
 }

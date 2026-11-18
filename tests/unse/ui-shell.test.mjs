@@ -33,7 +33,7 @@ test('계산 시작과 실패는 결과 busy 상태와 첫 입력 오류를 연�
   assert.match(boot, /box\.setAttribute\('aria-busy', 'false'\)/);
 });
 
-test('결과는 타입 카드·오늘/이달/올해·책·발견·AI·체계별 상세 순서로 짧게 읽게 한다', async () => {
+test('결과는 사주 명반·오늘/이달·책·명반 풀이·AI 순서로 읽게 한다', async () => {
   const ui = await read('src/ui.js');
   const personalRender = ui.slice(ui.indexOf('function render(form, r, f)'));
   const pairRender = ui.slice(ui.indexOf('function renderCompat(formA, formB, r)'), ui.indexOf('function render(form, r, f)'));
@@ -42,18 +42,23 @@ test('결과는 타입 카드·오늘/이달/올해·책·발견·AI·체계별 
   assert.doesNotMatch(ui, /해석 · 핵심 종합/);
   // 이달의 일자별 표와 날짜 가이드는 뺐다(사용자 요청)
   assert.doesNotMatch(ui, /이달의 날짜 가이드|일자별로 보기/);
-  // 순서(사용자 요청): 타입 카드 → 오늘의 운세 → 어울리는 책 → 나에 대한 발견 → AI → 계산값
-  const typeCard = personalRender.indexOf('${renderTypeCard(last.shareCard)}');
+  // 사주 명반이 맨 위 → 오늘/이달 → 책 → 명반 풀이 → AI (사용자 요청 2026-11)
+  const chart = personalRender.indexOf('${chartPanel(r)}');
   const tabs = personalRender.indexOf('data-tab="today"');
   const books = personalRender.indexOf('${renderBookCard(r, f)}');
-  const discover = personalRender.indexOf("renderHighlights(h, { parts: ['discover'], skip: cardTexts(last.shareCard) })");
+  const reportAt = personalRender.indexOf('${renderSajuReport(r, f)}');
   const ai = personalRender.indexOf('AI 명반 해석');
-  const calculation = personalRender.indexOf('${chartPanel(r)}');
-  assert.ok(typeCard > 0 && tabs > typeCard && books > tabs && discover > books && ai > discover && calculation > ai);
-  assert.match(ui, /체계별 상세 · 계산값 · 명반 요약/);
+  assert.ok(chart > 0 && tabs > chart && books > tabs && reportAt > books && ai > reportAt);
+  // 핵심 요약·발견과 옛 상세 분석은 명반 풀이로 바뀌었다
+  assert.doesNotMatch(personalRender, /renderHighlights\(h\)|renderReport\(/);
+  // 명반은 사주만 펼치고 다른 체계는 접어 둔다
+  const panel = ui.slice(ui.indexOf('function chartPanel(r)'), ui.indexOf('function render(form, r, f)'));
+  assert.match(panel, /사주 명반/);
+  assert.ok(panel.indexOf('class="sj-grid"') < panel.indexOf('<details class="pool">'));
+  assert.ok(panel.indexOf('<details class="pool">') < panel.indexOf("cells(by('astrology')"));
   // 읽히지 않던 긴 리포트는 접지 않고 화면에서 뺐다(사용자 요청). 면책 문구는 남긴다
   assert.doesNotMatch(ui, /renderReport\(|renderPairReport\(|rp-fold/);
-  assert.match(personalRender, /과학적으로 검증된 예측이 아닙니다/);
+  assert.match(ui.slice(ui.indexOf('function renderCompat')), /과학적으로 검증된 예측이 아닙니다|실제 미래를 확정하지 않습니다/);
 
   const pairType = pairRender.indexOf('${renderTypeCard(last.shareCard)}');
   const pairDiscover = pairRender.indexOf("renderHighlights(h, { parts: ['discover'], skip: cardTexts(last.shareCard) })");
@@ -240,14 +245,13 @@ test('대화 초기화 단추는 입력칸 위에 있고, 저장된 대화·앞 
   assert.match(css, /\.ai-tools\[hidden\] \{ display: none; \}/);
 });
 
-test('프로필 저장 칸은 결과 맨 위(제목 바로 아래, 핵심 요약 앞)에 있다 — 개인·궁합 모두', async () => {
+test('프로필 저장 칸은 결과 맨 위(제목 바로 아래, 명반·타입 카드 앞)에 있다 — 개인·궁합 모두', async () => {
   const ui = await read('src/ui.js');
-  for (const start of ['function render(form, r, f)', 'function renderCompat(formA, formB, r)']) {
+  for (const [start, next] of [['function render(form, r, f)', '${chartPanel(r)}'], ['function renderCompat(formA, formB, r)', '${renderTypeCard(last.shareCard)}']]) {
     const body = ui.slice(ui.indexOf(start));
     const card = body.indexOf('id="profileCard"');
-    // 개인 결과는 오늘의 운세 탭이 저장 칸 바로 다음 — 저장 칸이 그보다도 앞이어야 한다
-    const first = Math.min(...['renderHighlights(h', 'data-tab="today"'].map((s) => body.indexOf(s)).filter((i) => i >= 0));
-    assert.ok(card > 0 && card < first, `${start}: 저장 칸이 결과 내용보다 앞에 있어야 한다`);
+    const after = body.indexOf(next);
+    assert.ok(card > 0 && after > 0 && card < after, `${start}: 저장 칸이 맨 위에 있어야 한다`);
   }
 });
 

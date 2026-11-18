@@ -93,9 +93,10 @@ test('개인 화면은 명반 · 오늘/이달 · AI 질문 · 프로필 저장 
   assert.match(ui, /오늘의 운세/);
   assert.match(ui, /이달의 운세/);
   assert.match(ui, /id="profileCard"/);
-  // 긴 통합 문서는 화면에서 뺐다(사용자 요청). 타입 카드와 발견이 요약을, AI는 후속 질문을 맡는다.
+  // 궁합은 타입 카드와 발견이 요약을, 개인은 명반 풀이가 해석을, AI는 후속 질문을 맡는다.
   assert.match(ui, /renderTypeCard\(last\.shareCard\)/);
-  assert.match(ui, /renderHighlights\(h, \{ parts: \['discover'\], skip: cardTexts\(last\.shareCard\) \}\)/);
+  assert.match(ui, /renderSajuReport\(r, f\)/);
+  assert.match(ui, /renderBookCard\(r, f\)/);
   assert.match(ui, /aiSection\('solo', v\)/);
   assert.match(ui, /initAI\(form, r, f\)/);
 

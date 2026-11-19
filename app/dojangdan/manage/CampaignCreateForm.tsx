@@ -292,7 +292,7 @@ export default function CampaignCreateForm({ profiles, onCreated }: Props) {
         type="button"
         onClick={submit}
         disabled={submitting}
-        className="mt-4 w-full rounded-full bg-brown-700 px-5 py-3 text-sm font-semibold text-white hover:bg-brown-800 disabled:opacity-60"
+        className="mt-4 w-full rounded-full bg-brand px-5 py-3 text-sm font-semibold text-white hover:bg-brand-hover disabled:opacity-60"
       >
         {submitting ? "만드는 중…" : "캠페인 만들기"}
       </button>

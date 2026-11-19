@@ -2288,7 +2288,7 @@ export default function AdminPage() {
                     />
                     <button
                       type="submit"
-                      className="shrink-0 rounded-xl bg-brown-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brown-800"
+                      className="shrink-0 rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-hover"
                     >
                       만들기
                     </button>
@@ -2565,7 +2565,7 @@ export default function AdminPage() {
               <button
                 type="submit"
                 disabled={bookSearching || !bookSearchQuery.trim()}
-                className="rounded-xl bg-brown-600 px-4 py-2 text-sm text-white hover:bg-brown-700 disabled:opacity-50"
+                className="rounded-xl bg-brand px-4 py-2 text-sm text-white hover:bg-brand-hover disabled:opacity-50"
               >
                 {bookSearching ? "검색 중" : "검색"}
               </button>

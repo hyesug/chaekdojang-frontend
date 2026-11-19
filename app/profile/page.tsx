@@ -776,7 +776,7 @@ export default function ProfilePage() {
               <button
                 type="submit"
                 disabled={saving}
-                className="flex-1 py-2.5 bg-brown-600 text-white rounded-xl text-sm font-medium hover:bg-brown-700 transition-colors disabled:opacity-50"
+                className="flex-1 py-2.5 bg-brand text-white rounded-xl text-sm font-medium hover:bg-brand-hover transition-colors disabled:opacity-50"
               >
                 {saving ? "저장 중..." : "저장"}
               </button>
@@ -1054,7 +1054,7 @@ export default function ProfilePage() {
             <button
               type="submit"
               disabled={officialSubmitting}
-              className="w-full rounded-xl bg-brown-600 py-2.5 text-sm font-medium text-white hover:bg-brown-700 disabled:opacity-50"
+              className="w-full rounded-xl bg-brand py-2.5 text-sm font-medium text-white hover:bg-brand-hover disabled:opacity-50"
             >
               {officialSubmitting ? "신청 중..." : "신청 접수"}
             </button>

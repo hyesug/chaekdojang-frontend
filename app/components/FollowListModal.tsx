@@ -171,7 +171,7 @@ export default function FollowListModal({ userId, type, onClose }: Props) {
                         className={`flex-shrink-0 text-xs px-3 py-1.5 rounded-full border transition-colors disabled:opacity-50 ${
                           isFollowing
                             ? "border-brown-300 text-brown-500 hover:border-red-300 hover:text-red-400"
-                            : "border-brown-500 bg-brown-600 text-white hover:bg-brown-700"
+                            : "border-brand bg-brand text-white hover:bg-brand-hover"
                         }`}
                       >
                         {isFollowing ? "팔로잉" : "팔로우"}

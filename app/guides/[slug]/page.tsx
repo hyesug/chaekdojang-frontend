@@ -200,7 +200,7 @@ export default async function GuidePage({ params }: Props) {
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           <Link
             href="/auth/login?mode=signup"
-            className="inline-flex items-center justify-center rounded-full bg-brown-700 px-5 py-3 text-sm font-semibold text-white hover:bg-brown-800"
+            className="inline-flex items-center justify-center rounded-full bg-brand px-5 py-3 text-sm font-semibold text-white hover:bg-brand-hover"
           >
             책도장에서 기록 시작하기
           </Link>

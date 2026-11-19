@@ -38,7 +38,7 @@ export default function ReadingGoalProgress({ goal, emptyText = "아직 설정�
       </div>
 
       <div className={`${compact ? "mt-3" : "mt-4"} h-2 overflow-hidden rounded-full bg-cream-100`}>
-        <div className="h-full rounded-full bg-brown-600 transition-all" style={{ width: `${progress}%` }} />
+        <div className="h-full rounded-full bg-brand transition-all" style={{ width: `${progress}%` }} />
       </div>
 
       <p className={`${compact ? "mt-2 text-xs" : "mt-3 text-sm"} text-brown-500`}>

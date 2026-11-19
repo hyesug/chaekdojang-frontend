@@ -61,7 +61,7 @@ async function drawCard(card: AiReadingCardData) {
   ctx.fillRect(0, 0, SIZE, SIZE);
 
   // ─── 상단 다크 바 ───
-  ctx.fillStyle = "#174A46";
+  ctx.fillStyle = "#C2410C";
   ctx.fillRect(0, 0, SIZE, 8);
 
   // ─── 헤더 ───
@@ -230,7 +230,7 @@ async function drawCard(card: AiReadingCardData) {
 
       // 칩 배경 (베이지)
       roundedRect(ctx, cx, cy, w, CHIP_H, 5);
-      ctx.fillStyle = "#E3ECE7";
+      ctx.fillStyle = "#FFF7ED";
       ctx.fill();
 
       // 칩 텍스트 — textBaseline="top" 기준으로 수직 중앙

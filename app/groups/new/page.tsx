@@ -125,7 +125,7 @@ export default function NewGroupPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-xl bg-brown-700 px-4 py-3 text-sm font-semibold text-white hover:bg-brown-800 disabled:opacity-50"
+          className="w-full rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white hover:bg-brand-hover disabled:opacity-50"
         >
           {loading ? "독서모임 만드는 중..." : "독서모임 만들기"}
         </button>

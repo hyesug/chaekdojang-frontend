@@ -7,15 +7,17 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const read = (relativePath) => readFileSync(path.join(root, relativePath), "utf8");
 
-test("청록 잉크 아카이브 토큰과 키보드 포커스가 전역 스타일에 제공된다", () => {
+test("브랜드 색 토큰과 키보드 포커스가 전역 스타일에 제공된다", () => {
   const css = read("app/globals.css");
 
   for (const [name, value] of Object.entries({
-    "--color-bg": "#F3F2EB",
+    "--color-bg": "#FFFFFF",
     "--color-surface": "#FCFBF7",
-    "--color-primary": "#174A46",
+    "--color-primary": "#C2410C",
+    "--color-primary-hover": "#9A3412",
+    "--color-primary-soft": "#FFF7ED",
     "--color-ink": "#102A2C",
-    "--color-text": "#182321",
+    "--color-text": "#1E293B",
     "--color-sage": "#78988F",
     "--color-accent": "#8B3040",
   })) {

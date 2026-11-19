@@ -87,7 +87,7 @@ export default function OnboardingPage() {
               onClick={() => toggleGenre(genre)}
               className={`rounded-full border px-4 py-2 text-sm transition-colors ${
                 selected.includes(genre)
-                  ? "border-brown-600 bg-brown-600 text-white"
+                  ? "border-brand bg-brand text-white"
                   : "border-cream-300 bg-white text-brown-500 hover:border-brown-300"
               }`}
             >
@@ -126,7 +126,7 @@ export default function OnboardingPage() {
         type="button"
         onClick={finish}
         disabled={saving}
-        className="w-full rounded-xl bg-brown-600 py-3 text-sm font-medium text-white hover:bg-brown-700 disabled:opacity-50"
+        className="w-full rounded-xl bg-brand py-3 text-sm font-medium text-white hover:bg-brand-hover disabled:opacity-50"
       >
         {saving ? "저장 중..." : "책도장 시작하기"}
       </button>

@@ -1144,7 +1144,7 @@ function WriteContent() {
                       key={keyword}
                       type="button"
                       onClick={() => toggleEmotion(keyword)}
-                      className="rounded-full bg-brown-700 px-3 py-1.5 text-sm text-white transition hover:bg-brown-800"
+                      className="rounded-full bg-brand px-3 py-1.5 text-sm text-white transition hover:bg-brand-hover"
                       title="눌러서 제거"
                     >
                       {keyword} ×
@@ -1340,7 +1340,7 @@ function WriteContent() {
         <button
           type="submit"
           disabled={submitting}
-          className="hidden sm:block w-full py-3 bg-brown-600 text-white rounded-xl font-medium hover:bg-brown-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="hidden sm:block w-full py-3 bg-brand text-white rounded-xl font-medium hover:bg-brand-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {submitting ? "저장 중..." : isEditMode ? "수정 완료" : isRereadMode ? "재독 기록 남기기" : isContinuationMode ? "내 생각 남기기" : isPublic && scheduleOn ? "예약하기" : "독후감 올리기"}
         </button>

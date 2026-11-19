@@ -194,7 +194,7 @@ export default function CampaignEditForm({ detail, onSaved, onCancel }: Props) {
         type="button"
         onClick={save}
         disabled={saving}
-        className="mt-5 w-full rounded-full bg-brown-700 px-5 py-3 text-sm font-semibold text-white hover:bg-brown-800 disabled:opacity-60"
+        className="mt-5 w-full rounded-full bg-brand px-5 py-3 text-sm font-semibold text-white hover:bg-brand-hover disabled:opacity-60"
       >
         {saving ? "저장 중…" : "수정 내용 저장"}
       </button>

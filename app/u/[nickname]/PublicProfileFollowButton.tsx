@@ -80,7 +80,7 @@ export default function PublicProfileFollowButton({ userId }: { userId: number }
   const label = status === "following" ? "팔로잉" : status === "guest" ? "로그인 후 팔로우" : "팔로우";
   const className = status === "following"
     ? "border-brown-300 bg-white text-brown-600 hover:bg-cream-50"
-    : "border-brown-700 bg-brown-700 text-white hover:bg-brown-800";
+    : "border-brand bg-brand text-white hover:bg-brand-hover";
 
   return (
     <button

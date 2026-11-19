@@ -323,7 +323,7 @@ export default function ContestEntryPanel({
           !agreeTerms ||
           (entryType === "REVIEW" ? reviewId === null : !title.trim() || !content.trim())
         }
-        className="mt-4 w-full rounded-full bg-brown-700 px-5 py-3 text-sm font-semibold text-white hover:bg-brown-800 disabled:opacity-60"
+        className="mt-4 w-full rounded-full bg-brand px-5 py-3 text-sm font-semibold text-white hover:bg-brand-hover disabled:opacity-60"
       >
         {submitting ? "응모 중…" : "공모전에 응모하기"}
       </button>

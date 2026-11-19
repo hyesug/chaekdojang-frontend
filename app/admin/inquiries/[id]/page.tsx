@@ -82,7 +82,7 @@ export default function AdminInquiryDetailPage({ params }: { params: Promise<{ i
           <button
             type="submit"
             disabled={submitting || !comment.trim()}
-            className="self-end px-5 py-2 text-sm bg-brown-600 text-white rounded-xl hover:bg-brown-700 disabled:opacity-50"
+            className="self-end px-5 py-2 text-sm bg-brand text-white rounded-xl hover:bg-brand-hover disabled:opacity-50"
           >
             {submitting ? "전송 중..." : "답변 보내기"}
           </button>

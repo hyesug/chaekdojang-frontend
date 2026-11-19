@@ -196,7 +196,7 @@ export default function ExplorePage() {
                   className={`w-full py-1 text-xs rounded-full transition-colors disabled:opacity-50 ${
                     followingMap[user.id]
                       ? "bg-cream-200 text-brown-600 border border-brown-300"
-                      : "bg-brown-600 text-white hover:bg-brown-700"
+                      : "bg-brand text-white hover:bg-brand-hover"
                   }`}
                 >
                   {followingMap[user.id] ? "팔로잉" : "팔로우"}

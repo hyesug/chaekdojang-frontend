@@ -195,7 +195,7 @@ export default function UserProfilePage() {
               className={`px-5 py-2 text-sm rounded-full transition-colors flex-shrink-0 disabled:opacity-50 ${
                 following
                   ? "bg-cream-200 text-brown-600 border border-brown-300 hover:bg-cream-300"
-                  : "bg-brown-600 text-white hover:bg-brown-700"
+                  : "bg-brand text-white hover:bg-brand-hover"
               }`}
             >
               {following ? "팔로잉" : "팔로우"}

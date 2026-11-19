@@ -17,7 +17,7 @@ import { DEFAULT_OG_IMAGE, SERVICE_DESCRIPTION } from "./lib/serverApi";
 import { jsonLdHtml } from "./lib/jsonLd";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.chaekdojang.com";
-const themeColor = "#174A46";
+const themeColor = "#C2410C";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

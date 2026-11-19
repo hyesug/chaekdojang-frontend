@@ -250,7 +250,7 @@ export default function CampaignApplyPanel({
         type="button"
         onClick={handleApply}
         disabled={submitting || !agreeTerms}
-        className="mt-4 w-full rounded-full bg-brown-700 px-5 py-3 text-sm font-semibold text-white hover:bg-brown-800 disabled:opacity-60"
+        className="mt-4 w-full rounded-full bg-brand px-5 py-3 text-sm font-semibold text-white hover:bg-brand-hover disabled:opacity-60"
       >
         {submitting ? "신청 중…" : "서평단 신청하기"}
       </button>

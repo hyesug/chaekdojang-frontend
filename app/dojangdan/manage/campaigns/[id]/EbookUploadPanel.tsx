@@ -79,7 +79,7 @@ export default function EbookUploadPanel({ campaignId }: { campaignId: number })
           const selected = event.target.files?.[0];
           if (selected) void upload(selected);
         }}
-        className="mt-4 block w-full text-sm text-brown-600 file:mr-3 file:rounded-full file:border-0 file:bg-brown-700 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-brown-800"
+        className="mt-4 block w-full text-sm text-brown-600 file:mr-3 file:rounded-full file:border-0 file:bg-brand file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-brand-hover"
       />
 
       {uploading && <p className="mt-2 text-sm text-brown-400">올리는 중…</p>}

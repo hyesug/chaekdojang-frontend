@@ -279,7 +279,7 @@ export default function ManageContestClient({ contestId }: { contestId: number }
                   type="button"
                   onClick={saveAwards}
                   disabled={busy}
-                  className="mt-3 w-full rounded-full bg-brown-700 px-5 py-3 text-sm font-semibold text-white hover:bg-brown-800 disabled:opacity-60"
+                  className="mt-3 w-full rounded-full bg-brand px-5 py-3 text-sm font-semibold text-white hover:bg-brand-hover disabled:opacity-60"
                 >
                   수상자 저장
                 </button>

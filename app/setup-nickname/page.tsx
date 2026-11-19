@@ -84,7 +84,7 @@ export default function SetupNicknamePage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-brown-600 text-white rounded-xl text-sm font-medium hover:bg-brown-700 transition-colors disabled:opacity-50"
+            className="w-full py-3 bg-brand text-white rounded-xl text-sm font-medium hover:bg-brand-hover transition-colors disabled:opacity-50"
           >
             {loading ? "저장 중..." : "시작하기"}
           </button>

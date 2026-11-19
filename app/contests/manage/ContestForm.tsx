@@ -311,7 +311,7 @@ export default function ContestForm({ profiles = [], detail, onSaved, onCancel }
           type="button"
           onClick={submit}
           disabled={submitting || !title.trim()}
-          className="flex-1 rounded-full bg-brown-700 px-5 py-3 text-sm font-semibold text-white hover:bg-brown-800 disabled:opacity-60"
+          className="flex-1 rounded-full bg-brand px-5 py-3 text-sm font-semibold text-white hover:bg-brand-hover disabled:opacity-60"
         >
           {submitting ? "저장 중…" : editing ? "수정 저장" : "공모전 만들기"}
         </button>

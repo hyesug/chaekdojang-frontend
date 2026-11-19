@@ -4,14 +4,14 @@
 
 :root {
   color-scheme: light;
-  --color-bg: #F3F2EB;
+  --color-bg: #FFFFFF;
   --color-surface: #FCFBF7;
   --color-surface-sunken: #ECEBE3;
-  --color-primary: #174A46;
-  --color-primary-hover: #102A2C;
-  --color-primary-soft: #E3ECE7;
+  --color-primary: #C2410C;
+  --color-primary-hover: #9A3412;
+  --color-primary-soft: #FFF7ED;
   --color-ink: #102A2C;
-  --color-text: #182321;
+  --color-text: #1E293B;
   --color-text-muted: #56706A;
   --color-text-subtle: #6F817C;
   --color-sage: #78988F;
@@ -44,30 +44,35 @@
   --font-size-h1: clamp(1.75rem, 3.2vw, 2.375rem);
   --line-height-tight: 1.3;
   --line-height-body: 1.7;
-  --focus-ring: 0 0 0 3px rgb(23 74 70 / 22%);
+  --focus-ring: 0 0 0 3px rgb(194 65 12 / 22%);
   --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
 @theme inline {
   --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   --font-serif: "Noto Serif KR", "Nanum Myeongjo", "AppleMyungjo", serif;
+  /* 브랜드 색: :root 토큰 하나만 바꾸면 Tailwind 유틸리티까지 따라간다. */
+  --color-brand: var(--color-primary);
+  --color-brand-hover: var(--color-primary-hover);
+  --color-brand-soft: var(--color-primary-soft);
+  --color-cream-100: var(--color-bg);
+  --color-brown-100: var(--color-primary-soft);
+  --color-brown-700: var(--color-primary);
+  --color-brown-900: var(--color-text);
+  --color-gray-800: var(--color-text);
 }
 
 /* Existing utility names remain semantic aliases so pages can migrate safely. */
 @theme {
   --color-cream-50: #FCFBF7;
-  --color-cream-100: #F3F2EB;
   --color-cream-200: #E8E8E0;
   --color-cream-300: #DCDDD3;
-  --color-brown-100: #E3ECE7;
   --color-brown-200: #C0D2C9;
   --color-brown-300: #566F69;
   --color-brown-400: #496A63;
   --color-brown-500: #3C5E58;
   --color-brown-600: #315F5A;
-  --color-brown-700: #174A46;
   --color-brown-800: #102A2C;
-  --color-brown-900: #182321;
   --color-sage-50: #EDF3EE;
   --color-sage-300: #B7C9C0;
   --color-sage-400: #9BB4AA;
@@ -135,7 +140,6 @@
   --color-gray-500: #6F817C;
   --color-gray-600: #56706A;
   --color-gray-700: #3C5E58;
-  --color-gray-800: #182321;
   --color-gray-900: #102A2C;
 }
 
@@ -175,7 +179,7 @@ body {
   box-shadow: var(--focus-ring);
 }
 
-::selection { background: rgb(23 74 70 / 16%); color: var(--color-text); }
+::selection { background: color-mix(in srgb, var(--color-primary) 16%, transparent); color: var(--color-text); }
 
 /* The old site overused large rounded shadows. Keep legacy markup calm during migration. */
 .rounded, .rounded-sm { border-radius: var(--radius-sm); }

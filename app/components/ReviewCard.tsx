@@ -723,11 +723,11 @@ export default function ReviewCard({
         {authorHeader}
 
         {detailLink(
-          "relative mt-3 block aspect-square w-full overflow-hidden bg-brand-soft",
+          "cdj-plaster relative mt-3 block aspect-square w-full overflow-hidden",
           <>
-            {/* 바탕은 연한 주 색상 단색, 표지만 또렷하게 띄우고 글자는 짙게 */}
+            {/* 바탕은 흰 석고 벽 질감, 표지는 벽에 놓인 물건처럼 부드러운 그림자, 글자는 짙게 */}
             <span className="absolute inset-x-0 top-[7%] flex justify-center" aria-hidden="true">
-              <span className="cdj-cover w-[44%] shadow-[0_18px_40px_-12px_rgb(154_52_18/35%)]">{coverArt}</span>
+              <span className="cdj-cover w-[44%] shadow-[0_14px_30px_-10px_rgb(15_23_42/30%)]">{coverArt}</span>
             </span>
             {quote && !spoilerHidden ? (
               <span className="absolute inset-x-5 bottom-5 line-clamp-3 font-serif text-[18px] font-bold leading-snug text-brown-900">

@@ -9,8 +9,8 @@ const COLOR = {
   text: "#1E293B",
   muted: "#475569",
   subtle: "#5B6678",
-  border: "#F1E3D5",
-  borderStrong: "#E3CDB8",
+  border: "#E2E8F0",
+  borderStrong: "#CBD5E1",
   accent: "#C2410C",
   star: "#B07A1E",
 };

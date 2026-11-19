@@ -28,12 +28,12 @@ const mobileLinks: NavItem[] = [
 
 export default function Header() {
   return (
-    <header className="sticky top-0 z-50 border-b border-cream-300 bg-cream-50">
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-5">
+    <header className="sticky top-0 z-50 border-b border-cream-300/80 bg-white/85 backdrop-blur-md backdrop-saturate-150">
+      <div className="mx-auto flex h-16 max-w-6xl items-center gap-5 px-5">
         <Link
           href="/"
           aria-label="책도장 홈으로 이동"
-          className="relative z-10 -ml-1 inline-flex min-h-11 flex-none items-center gap-2.5 px-1 font-serif text-[1.3rem] font-bold text-brown-800"
+          className="relative z-10 -ml-1 inline-flex min-h-11 flex-none items-center gap-2 px-1 text-[1.125rem] font-extrabold tracking-[-0.04em] text-brown-800"
         >
           <span className="stamp-mark pointer-events-none" aria-hidden="true">冊</span>
           책도장

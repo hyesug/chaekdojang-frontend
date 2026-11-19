@@ -45,7 +45,7 @@ export default function MobileMenu({ links }: { links: NavItem[] }) {
 
   const itemCls = (active: boolean) =>
     `flex min-h-12 items-center justify-between rounded-md px-3 text-[15px] transition-colors ${
-      active ? "bg-brown-100 font-semibold text-brown-800" : "text-brown-900 hover:bg-cream-200"
+      active ? "bg-brand-soft font-semibold text-brand" : "text-brown-900 hover:bg-cream-200"
     }`;
 
   return (
@@ -66,7 +66,7 @@ export default function MobileMenu({ links }: { links: NavItem[] }) {
             onClick={() => setOpen(false)}
             aria-hidden="true"
           />
-          <div className="fixed inset-x-0 top-16 flex max-h-[calc(100dvh-64px)] flex-col overflow-y-auto border-b border-cream-300 bg-cream-50 px-4 pb-5 pt-3 shadow-[var(--shadow-floating)]">
+          <div className="fixed inset-x-0 top-16 flex max-h-[calc(100dvh-64px)] flex-col overflow-y-auto border-b border-cream-300 bg-white px-4 pb-5 pt-3 shadow-[var(--shadow-floating)]">
             <nav className="flex flex-col gap-0.5" aria-label="모바일 메뉴">
               {links.map(({ href, label, external }) => {
                 const active = isActivePath(pathname, href);

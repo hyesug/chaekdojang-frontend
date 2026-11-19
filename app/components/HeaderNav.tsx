@@ -18,10 +18,10 @@ export default function HeaderNav({ links }: { links: NavItem[] }) {
     <nav className="hidden flex-1 items-center gap-0.5 lg:flex" aria-label="주요 메뉴">
       {links.map(({ href, label, external }) => {
         const active = isActivePath(pathname, href);
-        const cls = `relative whitespace-nowrap rounded-md px-3 py-2 text-[15px] transition-colors ${
+        const cls = `whitespace-nowrap rounded-lg px-3 py-1.5 text-[14.5px] transition-colors ${
           active
-            ? "font-semibold text-brown-800"
-            : "font-medium text-sage-600 hover:bg-cream-200/70 hover:text-brown-800"
+            ? "bg-brand-soft font-semibold text-brand"
+            : "font-medium text-sage-600 hover:bg-cream-200 hover:text-brown-800"
         }`;
         return external ? (
           <a key={href} href={href} className={cls}>
@@ -30,9 +30,6 @@ export default function HeaderNav({ links }: { links: NavItem[] }) {
         ) : (
           <Link key={href} href={href} className={cls} aria-current={active ? "page" : undefined}>
             {label}
-            {active && (
-              <span className="absolute inset-x-3 -bottom-[13px] h-0.5 rounded-full bg-brown-700" aria-hidden="true" />
-            )}
           </Link>
         );
       })}

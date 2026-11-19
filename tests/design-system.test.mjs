@@ -11,7 +11,7 @@ test("브랜드 색 토큰과 키보드 포커스가 전역 스타일에 제공�
   const css = read("app/globals.css");
 
   for (const [name, value] of Object.entries({
-    "--color-bg": "#FFF8F2",
+    "--color-bg": "#FFFFFF",
     "--color-surface": "#FFFFFF",
     "--color-primary": "#C2410C",
     "--color-primary-hover": "#9A3412",

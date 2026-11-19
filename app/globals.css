@@ -57,7 +57,6 @@
   --color-brand-soft: var(--color-primary-soft);
   --color-cream-100: var(--color-bg);
   --color-brown-100: var(--color-primary-soft);
-  --color-brown-700: var(--color-primary);
   --color-brown-900: var(--color-text);
   --color-gray-800: var(--color-text);
 }
@@ -72,6 +71,8 @@
   --color-brown-400: #475569;
   --color-brown-500: #3B4A5E;
   --color-brown-600: #334155;
+  /* 본문 글자로 많이 쓰이는 단계라 주 색상이 아니라 짙은 슬레이트. 주 색상은 brand 를 쓴다. */
+  --color-brown-700: #283548;
   --color-brown-800: #0F172A;
   --color-sage-50: #F1F5F9;
   --color-sage-300: #CBD5E1;

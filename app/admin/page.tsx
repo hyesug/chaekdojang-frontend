@@ -1921,7 +1921,7 @@ export default function AdminPage() {
                 </div>
                 <div className="mt-3 flex items-center justify-between gap-3">
                   <p className="text-xs text-brown-400">위 검색창에는 닉네임 또는 사용자 ID를 입력할 수 있습니다.</p>
-                  <button type="submit" disabled={userSearching} className="rounded-xl bg-brown-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{userSearching ? "검색 중" : "필터 적용"}</button>
+                  <button type="submit" disabled={userSearching} className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{userSearching ? "검색 중" : "필터 적용"}</button>
                 </div>
               </form>
 
@@ -2522,7 +2522,7 @@ export default function AdminPage() {
                   <input value={creditUserId} onChange={(e) => setCreditUserId(e.target.value)} inputMode="numeric" placeholder="회원 ID" className="rounded-lg border border-cream-300 px-3 py-2 text-sm" />
                   <input value={creditAmount} onChange={(e) => setCreditAmount(e.target.value)} inputMode="numeric" placeholder="수량 (+/-)" className="rounded-lg border border-cream-300 px-3 py-2 text-sm" />
                   <input value={creditDescription} onChange={(e) => setCreditDescription(e.target.value)} placeholder="조정 사유" className="rounded-lg border border-cream-300 px-3 py-2 text-sm" />
-                  <button disabled={creditAdjusting} className="rounded-lg bg-brown-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{creditAdjusting ? "처리 중" : "원장 반영"}</button>
+                  <button disabled={creditAdjusting} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{creditAdjusting ? "처리 중" : "원장 반영"}</button>
                 </div>
                 {creditMessage && <p className="mt-3 text-sm text-brown-600">{creditMessage}</p>}
               </form>

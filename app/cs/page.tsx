@@ -81,7 +81,7 @@ export default function CustomerSupportPage() {
       <header className="mb-8"><p className="cdj-kicker">Customer support</p><h1 className="cdj-title mt-3 text-3xl">고객센터</h1><p className="mt-2 text-sm text-brown-400">문의사항이나 건의사항을 남겨주세요.</p></header>
 
       <div role="tablist" aria-label="고객센터 메뉴" className="mb-6 flex border-b border-cream-300">
-        {(["write", "list"] as const).map((item) => <button key={item} type="button" role="tab" aria-selected={tab === item} aria-controls={`cs-${item}`} onClick={() => setTab(item)} className={`min-h-11 border-b-2 px-4 text-sm ${tab === item ? "border-brown-700 text-brown-800" : "border-transparent text-brown-400 hover:text-brown-600"}`}>{item === "write" ? "문의 작성" : "내 문의"}</button>)}
+        {(["write", "list"] as const).map((item) => <button key={item} type="button" role="tab" aria-selected={tab === item} aria-controls={`cs-${item}`} onClick={() => setTab(item)} className={`min-h-11 border-b-2 px-4 text-sm ${tab === item ? "border-brand text-brown-800" : "border-transparent text-brown-400 hover:text-brown-600"}`}>{item === "write" ? "문의 작성" : "내 문의"}</button>)}
       </div>
 
       {tab === "write" && <section id="cs-write" role="tabpanel" className="cdj-surface p-5 sm:p-6">

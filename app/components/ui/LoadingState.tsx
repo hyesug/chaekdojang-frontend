@@ -1,7 +1,7 @@
 export function LoadingState({ label = "기록을 불러오는 중입니다" }: { label?: string }) {
   return (
     <div className="flex items-center justify-center gap-2.5 py-12 text-sm text-sage-600" aria-live="polite" aria-busy="true">
-      <span className="h-4 w-4 animate-spin rounded-full border-2 border-cream-300 border-t-brown-700" aria-hidden="true" />
+      <span className="h-4 w-4 animate-spin rounded-full border-2 border-cream-300 border-t-brand" aria-hidden="true" />
       {label}
     </div>
   );

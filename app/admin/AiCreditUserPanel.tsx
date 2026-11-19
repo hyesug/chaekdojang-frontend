@@ -101,7 +101,7 @@ export default function AiCreditUserPanel({ userId, refreshKey = 0, canGrant = f
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="지급 사유 (비우면 '관리자 지급')" className="min-w-0 flex-1 rounded-lg border border-cream-300 px-3 py-2 text-sm" />
           {[1, 3, 5].map((n) => (
-            <button key={n} type="button" disabled={granting} onClick={() => void grant(n)} className="rounded-lg bg-brown-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">+{n}회</button>
+            <button key={n} type="button" disabled={granting} onClick={() => void grant(n)} className="rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">+{n}회</button>
           ))}
           {grantMessage && <p className="w-full text-sm text-brown-600">{grantMessage}</p>}
         </div>

@@ -118,7 +118,7 @@ export default function SubscriptionPage() {
         <h2 className="font-serif text-lg font-bold text-brown-800">발행 설정</h2>
         <div className="mt-4 grid grid-cols-2 gap-2">
           {(["WEEKLY", "MONTHLY"] as const).map((value) => (
-            <button key={value} type="button" onClick={() => setFrequency(value)} className={`rounded-xl border px-4 py-3 text-sm ${frequency === value ? "border-brown-600 bg-brown-700 text-white" : "border-cream-300 text-brown-500"}`}>
+            <button key={value} type="button" onClick={() => setFrequency(value)} className={`rounded-xl border px-4 py-3 text-sm ${frequency === value ? "border-brown-600 bg-brand text-white" : "border-cream-300 text-brown-500"}`}>
               {value === "WEEKLY" ? "매주" : "매월"}
             </button>
           ))}

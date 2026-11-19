@@ -205,7 +205,7 @@ export default function AboutPage() {
         <ol className="mt-4 space-y-4">
           {ABOUT_STEPS.map((step, index) => (
             <li key={step.title} className="flex gap-3">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brown-700 text-sm font-semibold text-white">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-semibold text-white">
                 {index + 1}
               </span>
               <div>

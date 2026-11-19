@@ -31,7 +31,7 @@ const TABS: { value: LibraryStatus | "ALL"; label: string }[] = [
 ];
 
 const STATUS_STYLE: Record<LibraryStatus, string> = {
-  READING: "bg-brown-700 text-white",
+  READING: "bg-brand text-white",
   FINISHED: "bg-cream-50/95 text-brown-800",
   WISHLIST: "bg-cream-50/95 text-sage-700",
 };

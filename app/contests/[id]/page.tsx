@@ -84,7 +84,7 @@ export default async function ContestDetailPage({ params, searchParams }: Props)
             {ENTRY_TYPE_LABEL[contest.entryType]}
           </span>
           {contest.platformHosted ? (
-            <span className="rounded-full bg-brown-700 px-2.5 py-0.5 text-xs font-semibold text-white">
+            <span className="rounded-full bg-brand px-2.5 py-0.5 text-xs font-semibold text-white">
               책도장 주최
             </span>
           ) : (
@@ -162,7 +162,7 @@ export default async function ContestDetailPage({ params, searchParams }: Props)
             {detail.awards.map((award) => (
               <article key={award.entryId} className="rounded-2xl bg-cream-50 p-4">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full bg-brown-700 px-2.5 py-0.5 text-xs font-semibold text-white">
+                  <span className="rounded-full bg-brand px-2.5 py-0.5 text-xs font-semibold text-white">
                     {award.awardName ?? "수상"}
                   </span>
                   <span className="text-sm font-semibold text-brown-800">{award.nickname}</span>

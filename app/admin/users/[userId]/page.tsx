@@ -214,7 +214,7 @@ export default function AdminUserActivityPage() {
             }} />
             기술 로그 포함
           </label>
-          <button disabled={loading} className="rounded-xl bg-brown-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">활동 필터 적용</button>
+          <button disabled={loading} className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">활동 필터 적용</button>
           <p className="text-xs leading-5 text-brown-400 sm:col-span-2 lg:col-span-5">기본값은 실제 사용자 행동을 보기 쉽게 보여주며, 체류 신호와 세션 종료 기록은 숨깁니다.</p>
         </form>
 

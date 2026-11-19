@@ -231,7 +231,7 @@ export default function NotificationsPage() {
               >
                 {/* 읽지 않음 표시 */}
                 {!n.isRead && (
-                  <span className="absolute left-1.5 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-brown-700 sm:left-2" aria-label="읽지 않음" />
+                  <span className="absolute left-1.5 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-brand sm:left-2" aria-label="읽지 않음" />
                 )}
 
                 {/* 타입 아이콘 */}

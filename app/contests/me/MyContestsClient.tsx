@@ -98,7 +98,7 @@ export default function MyContestsClient() {
                 <span
                   className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
                     entry.status === "AWARDED"
-                      ? "bg-brown-700 text-white"
+                      ? "bg-brand text-white"
                       : "bg-cream-100 text-brown-600"
                   }`}
                 >

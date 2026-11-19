@@ -1129,7 +1129,7 @@ function WriteContent() {
                     onClick={() => toggleEmotion(keyword)}
                     className={`rounded-full px-3 py-1.5 text-sm transition ${
                       selectedEmotions.includes(keyword)
-                        ? "bg-brown-700 text-white"
+                        ? "bg-brand text-white"
                         : "bg-cream-100 text-brown-500 hover:bg-cream-200"
                     }`}
                   >
@@ -1358,7 +1358,7 @@ function WriteContent() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full py-3 bg-brown-700 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-3 bg-brand text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? "저장 중..." : isEditMode ? "수정 완료" : isRereadMode ? "재독 기록 남기기" : isContinuationMode ? "내 생각 남기기" : isPublic && scheduleOn ? "예약하기" : "독후감 올리기"}
           </button>

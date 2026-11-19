@@ -75,7 +75,7 @@ export default function GroupsClient({ initialGroups }: { initialGroups: Reading
           ].map((option) => (
             <label
               key={option.value}
-              className="cdj-chip cursor-pointer has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brown-700/30"
+              className="cdj-chip cursor-pointer has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand/30"
               data-active={visibilityFilter === option.value}
             >
               <input

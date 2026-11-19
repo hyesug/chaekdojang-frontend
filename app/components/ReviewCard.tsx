@@ -972,7 +972,7 @@ export default function ReviewCard({
             aria-label={bookmarked ? "북마크 해제" : "북마크"}
             aria-pressed={bookmarked}
           >
-            <Bookmark size={18} strokeWidth={1.75} className={bookmarked ? "fill-brown-700" : ""} aria-hidden="true" />
+            <Bookmark size={18} strokeWidth={1.75} className={bookmarked ? "fill-brand" : ""} aria-hidden="true" />
             {bookmarkFeedback && <span className="text-xs">{bookmarkFeedback}</span>}
           </button>
         </footer>

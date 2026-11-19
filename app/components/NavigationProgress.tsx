@@ -97,7 +97,7 @@ export default function NavigationProgress() {
       <div aria-hidden="true" className="pointer-events-none fixed inset-x-0 top-0 z-[60] h-0.5">
         <div
           ref={barRef}
-          className="h-full w-0 bg-brown-700 opacity-0 transition-[width,opacity] duration-300 ease-out motion-reduce:transition-none"
+          className="h-full w-0 bg-brand opacity-0 transition-[width,opacity] duration-300 ease-out motion-reduce:transition-none"
         />
       </div>
       <p ref={statusRef} role="status" className="sr-only" />

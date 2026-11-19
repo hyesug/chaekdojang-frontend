@@ -264,7 +264,7 @@ export default async function PublicReviewPage({ params, searchParams }: Props) 
                   bookId={review.book.id}
                   href={bookReviewsHref}
                   preferHref={Boolean(returnTo)}
-                  className="font-medium text-brown-700 underline decoration-brown-200 underline-offset-4 hover:decoration-brown-700"
+                  className="font-medium text-brown-700 underline decoration-brown-200 underline-offset-4 hover:decoration-brand"
                 >
                   이 책의 다른 독후감 보기
                 </BookReturnLink>

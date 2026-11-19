@@ -736,9 +736,9 @@ export default function ReviewCard({
             )}
             {!post.book?.thumbnail && <span className="absolute inset-0" style={{ backgroundColor: coverColor }} aria-hidden="true" />}
             {/* 위는 표지 색이 밝게 번진 면, 글자가 올라가는 아래만 어둡게 */}
-            <span className="absolute inset-0 bg-gradient-to-b from-transparent from-45% to-black/65" aria-hidden="true" />
-            <span className="absolute inset-x-0 top-[9%] flex justify-center" aria-hidden="true">
-              <span className="cdj-cover w-[38%] shadow-2xl">{coverArt}</span>
+            <span className="absolute inset-0 bg-gradient-to-b from-transparent from-50% to-slate-900/75" aria-hidden="true" />
+            <span className="absolute inset-x-0 top-[7%] flex justify-center" aria-hidden="true">
+              <span className="cdj-cover w-[44%] shadow-2xl">{coverArt}</span>
             </span>
             {quote && !spoilerHidden ? (
               <span className="absolute inset-x-5 bottom-5 line-clamp-3 font-serif text-[18px] font-bold leading-snug text-white [text-shadow:0_1px_8px_rgb(0_0_0/45%)]">

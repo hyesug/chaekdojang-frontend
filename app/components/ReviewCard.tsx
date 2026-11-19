@@ -714,7 +714,7 @@ export default function ReviewCard({
         </header>
   );
 
-  // 인스타형 카드 — 흰 벽 사진처럼 표지만 가운데 작게 두고, 책 이름·저자는 그 위에 흰 글씨로 은은하게 적는다
+  // 인스타형 카드 — 흰 벽 사진처럼 표지만 가운데에 둔다(책 이름·저자는 아래 캡션 줄에 있다)
   const captionTruncates = bodyText.length > 50 || bodyText.includes("\n");
   const photoCard = (
       <article className="cdj-card mx-auto w-full max-w-[480px] overflow-hidden">
@@ -723,17 +723,8 @@ export default function ReviewCard({
         {detailLink(
           "cdj-plaster relative mt-3 block aspect-square w-full overflow-hidden",
           <>
-            {post.book && (
-              <span
-                className="absolute inset-x-8 top-[17%] truncate text-center font-serif text-[17px] font-bold tracking-[-0.01em] text-white [text-shadow:0_0_1px_rgb(15_23_42/80%),0_1px_3px_rgb(15_23_42/55%),0_2px_10px_rgb(15_23_42/25%)]"
-                aria-hidden="true"
-              >
-                {post.book.title}
-                {post.book.author && <span className="ml-2 text-[12px] font-medium">{post.book.author}</span>}
-              </span>
-            )}
-            <span className="absolute inset-x-0 top-[29%] flex justify-center" aria-hidden="true">
-              <span className="cdj-cover w-[30%] shadow-[0_10px_22px_-10px_rgb(15_23_42/35%)]">{coverArt}</span>
+            <span className="absolute inset-x-0 top-[21%] flex justify-center" aria-hidden="true">
+              <span className="cdj-cover w-[38%] shadow-[0_12px_26px_-10px_rgb(15_23_42/35%)]">{coverArt}</span>
             </span>
             {spoilerHidden && (
               <span className="absolute inset-x-0 bottom-5 flex items-center justify-center gap-2 text-sm font-medium text-brown-400">

@@ -725,7 +725,7 @@ export default function ReviewCard({
           <>
             {post.book && (
               <span
-                className="absolute inset-x-8 top-[17%] truncate text-center font-serif text-[16px] font-semibold tracking-[-0.01em] text-white [text-shadow:0_0_1px_rgb(15_23_42/60%),0_1px_4px_rgb(15_23_42/30%)]"
+                className="absolute inset-x-8 top-[17%] truncate text-center font-serif text-[16px] font-semibold tracking-[-0.01em] text-brown-900/50"
                 aria-hidden="true"
               >
                 {post.book.title}

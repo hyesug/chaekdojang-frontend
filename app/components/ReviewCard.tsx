@@ -714,9 +714,7 @@ export default function ReviewCard({
         </header>
   );
 
-  // 인스타형 카드 — 큰 이미지(표지·한 줄 감상)가 먼저 보이고 글은 캡션으로 내린다
-  // 한 줄 감상이 있으면 이미지 위에, 없으면 책 제목을 올린다 — 캡션과 같은 문장이 두 번 보이지 않게
-  const quote = post.aiSummary?.oneLineReview ?? "";
+  // 인스타형 카드 — 흰 벽 사진처럼 표지만 가운데 작게 두고, 책 이름·저자는 그 위에 흰 글씨로 은은하게 적는다
   const captionTruncates = bodyText.length > 50 || bodyText.includes("\n");
   const photoCard = (
       <article className="cdj-card mx-auto w-full max-w-[480px] overflow-hidden">
@@ -725,20 +723,18 @@ export default function ReviewCard({
         {detailLink(
           "cdj-plaster relative mt-3 block aspect-square w-full overflow-hidden",
           <>
-            {/* 바탕은 흰 석고 벽 질감, 표지는 벽에 놓인 물건처럼 부드러운 그림자, 글자는 짙게 */}
-            <span className="absolute inset-x-0 top-[12%] flex justify-center" aria-hidden="true">
-              <span className="cdj-cover w-[39%] shadow-[0_14px_30px_-10px_rgb(15_23_42/30%)]">{coverArt}</span>
+            {post.book && (
+              <span
+                className="absolute inset-x-8 top-[17%] truncate text-center font-serif text-[15px] font-semibold tracking-[-0.01em] text-white [text-shadow:0_0_1px_rgb(15_23_42/35%),0_1px_3px_rgb(15_23_42/18%)]"
+                aria-hidden="true"
+              >
+                {post.book.title}
+                {post.book.author && <span className="ml-2 text-[12px] font-medium">{post.book.author}</span>}
+              </span>
+            )}
+            <span className="absolute inset-x-0 top-[29%] flex justify-center" aria-hidden="true">
+              <span className="cdj-cover w-[30%] shadow-[0_10px_22px_-10px_rgb(15_23_42/35%)]">{coverArt}</span>
             </span>
-            {quote && !spoilerHidden ? (
-              <span className="absolute inset-x-5 bottom-5 line-clamp-3 font-serif text-[18px] font-bold leading-snug text-brown-900">
-                “{quote}”
-              </span>
-            ) : !spoilerHidden && post.book ? (
-              <span className="absolute inset-x-5 bottom-5 text-brown-900">
-                <span className="line-clamp-2 font-serif text-[18px] font-bold leading-snug">{post.book.title}</span>
-                {post.book.author && <span className="mt-1 block truncate text-[13px] text-brown-400">{post.book.author}</span>}
-              </span>
-            ) : null}
             {spoilerHidden && (
               <span className="absolute inset-x-0 bottom-5 flex items-center justify-center gap-2 text-sm font-medium text-brown-400">
                 <EyeOff size={15} aria-hidden="true" />

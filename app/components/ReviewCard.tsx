@@ -726,8 +726,8 @@ export default function ReviewCard({
           "cdj-plaster relative mt-3 block aspect-square w-full overflow-hidden",
           <>
             {/* 바탕은 흰 석고 벽 질감, 표지는 벽에 놓인 물건처럼 부드러운 그림자, 글자는 짙게 */}
-            <span className="absolute inset-x-0 top-[7%] flex justify-center" aria-hidden="true">
-              <span className="cdj-cover w-[44%] shadow-[0_14px_30px_-10px_rgb(15_23_42/30%)]">{coverArt}</span>
+            <span className="absolute inset-x-0 top-[12%] flex justify-center" aria-hidden="true">
+              <span className="cdj-cover w-[39%] shadow-[0_14px_30px_-10px_rgb(15_23_42/30%)]">{coverArt}</span>
             </span>
             {quote && !spoilerHidden ? (
               <span className="absolute inset-x-5 bottom-5 line-clamp-3 font-serif text-[18px] font-bold leading-snug text-brown-900">

@@ -736,22 +736,24 @@ export default function ReviewCard({
           `${post.book?.title ?? "독후감"} 독후감 보기`
         )}
 
-        {/* 반응 줄 — 아이콘만, 좋아요 수는 아래 줄에 */}
+        {/* 반응 줄 — 하트·댓글 아이콘 옆에 숫자만 */}
         <div className="flex items-center px-2 pt-1.5">
           <button
             onClick={handleLike}
-            className={`flex h-10 w-10 items-center justify-center transition-transform active:scale-90 ${liked ? "text-wine-500" : "text-brown-900"}`}
-            aria-label={liked ? "좋아요 취소" : "좋아요"}
+            className={`flex h-10 items-center gap-1.5 px-2 transition-transform active:scale-90 ${liked ? "text-wine-500" : "text-brown-900"}`}
+            aria-label={liked ? `좋아요 취소 (좋아요 ${likeCount}개)` : `좋아요 (좋아요 ${likeCount}개)`}
             aria-pressed={liked}
           >
             <Heart size={24} strokeWidth={1.75} className={liked ? "fill-wine-500" : ""} aria-hidden="true" />
+            <span className="tabular text-[15px] font-semibold text-brown-900">{likeCount}</span>
           </button>
           <button
             onClick={() => setShowComments(true)}
-            className="flex h-10 w-10 items-center justify-center text-brown-900"
-            aria-label="댓글 보기"
+            className="flex h-10 items-center gap-1.5 px-2 text-brown-900"
+            aria-label={`댓글 보기 (댓글 ${commentCount}개)`}
           >
             <MessageCircle size={24} strokeWidth={1.75} aria-hidden="true" />
+            <span className="tabular text-[15px] font-semibold">{commentCount}</span>
           </button>
           <button
             onClick={() => setShowShare(true)}
@@ -773,10 +775,8 @@ export default function ReviewCard({
         </div>
 
         <div className="px-4 pb-4">
-          <p className="text-[14px] font-semibold text-brown-900">좋아요 {likeCount}개</p>
-
           {post.book && (
-            <div className="mt-1 flex min-w-0 items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               {post.book.id ? (
                 <Link href={bookHref} className="truncate text-[14px] font-semibold text-brown-800 hover:underline" onClick={(e) => e.stopPropagation()}>
                   {post.book.title}

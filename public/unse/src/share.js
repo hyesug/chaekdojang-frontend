@@ -383,8 +383,8 @@ export function downloadText(text, filename) {
  */
 const SC = {
   W: 1080, H: 1350,
-  paper: '#F3F2EB', paper2: '#FCFBF7', ink: '#102A2C', ink2: '#315F5A', ink3: '#56706A',
-  teal: '#174A46', tealSoft: '#E1EBE5', stamp: '#8B3040', line: '#D3D5C9',
+  paper: '#FFFFFF', paper2: '#F8FAFC', ink: '#0F172A', ink2: '#334155', ink3: '#5B6678',
+  teal: '#C2410C', tealSoft: '#FFF7ED', stamp: '#C2410C', line: '#E2E8F0',
 };
 const SERIF = '"Noto Serif KR", "AppleMyungjo", serif';
 const SANS = '"Pretendard Variable", Pretendard, -apple-system, "Malgun Gothic", "Apple SD Gothic Neo", sans-serif';

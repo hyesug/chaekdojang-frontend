@@ -2,16 +2,16 @@ import type { AiReadingCardData } from "./aiReadingCard";
 
 // 화면 카드와 저장 이미지가 같은 SVG 를 쓴다. 색은 app/globals.css 토큰과 같은 값이다.
 const COLOR = {
-  paper: "#FCFBF7",
+  paper: "#FFFFFF",
   primary: "#C2410C",
   primarySoft: "#FFF7ED",
-  ink: "#102A2C",
+  ink: "#0F172A",
   text: "#1E293B",
-  muted: "#56706A",
-  subtle: "#6F817C",
-  border: "#DCDDD3",
-  borderStrong: "#B9C2B9",
-  accent: "#8B3040",
+  muted: "#475569",
+  subtle: "#5B6678",
+  border: "#E7E2D9",
+  borderStrong: "#D3CBBE",
+  accent: "#C2410C",
   star: "#B07A1E",
 };
 const WIDTH = 900;

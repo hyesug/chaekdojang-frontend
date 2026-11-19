@@ -11,15 +11,15 @@ test("브랜드 색 토큰과 키보드 포커스가 전역 스타일에 제공�
   const css = read("app/globals.css");
 
   for (const [name, value] of Object.entries({
-    "--color-bg": "#FFFFFF",
-    "--color-surface": "#FCFBF7",
+    "--color-bg": "#FAF7F2",
+    "--color-surface": "#FFFFFF",
     "--color-primary": "#C2410C",
     "--color-primary-hover": "#9A3412",
     "--color-primary-soft": "#FFF7ED",
-    "--color-ink": "#102A2C",
+    "--color-ink": "#0F172A",
     "--color-text": "#1E293B",
-    "--color-sage": "#78988F",
-    "--color-accent": "#8B3040",
+    "--color-sage": "#94A3B8",
+    "--color-accent": "#C2410C",
   })) {
     assert.match(css, new RegExp(`${name}\\s*:\\s*${value}`, "i"));
   }
@@ -38,8 +38,8 @@ test("기존 화면의 surface와 capsule 버튼도 아카이브 형태 언어�
 
 test("기존 보조 텍스트 별칭도 종이와 상아 배경에서 AA 대비를 유지한다", () => {
   const css = read("app/globals.css");
-  assert.match(css, /--color-brown-300:\s*#566F69/i);
-  assert.match(css, /--color-brown-400:\s*#496A63/i);
+  assert.match(css, /--color-brown-300:\s*#5B6678/i);
+  assert.match(css, /--color-brown-400:\s*#475569/i);
 });
 
 test("공통 404·오류 화면과 페이지 이동 표시를 제공한다", () => {

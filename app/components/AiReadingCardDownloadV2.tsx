@@ -57,7 +57,7 @@ async function drawCard(card: AiReadingCardData) {
   ctx.textAlign = "left";
 
   // ─── 배경 ───
-  ctx.fillStyle = "#FCFBF7";
+  ctx.fillStyle = "#FFFFFF";
   ctx.fillRect(0, 0, SIZE, SIZE);
 
   // ─── 상단 다크 바 ───
@@ -183,7 +183,7 @@ async function drawCard(card: AiReadingCardData) {
   }
 
   // 책 제목 그리기
-  ctx.fillStyle = "#102A2C";
+  ctx.fillStyle = "#0F172A";
   ctx.font = `700 ${BOOK_FS}px ${SANS}`;
   bookLines.forEach((line, i) => ctx.fillText(line, PAD, y + i * BOOK_LH));
   y += bookH;
@@ -211,7 +211,7 @@ async function drawCard(card: AiReadingCardData) {
   y += 1 + DIVIDER_GAP2;
 
   // 한줄 감상 HERO
-  ctx.fillStyle = "#102A2C";
+  ctx.fillStyle = "#0F172A";
   ctx.font = `700 ${ONE_FS}px ${SANS}`;
   oneLines.forEach((line, i) => ctx.fillText(line, PAD, y + i * ONE_LH));
   y += oneH;

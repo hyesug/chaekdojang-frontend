@@ -12,7 +12,7 @@ export default function AiReadingCard({
   return (
     <div
       data-ai-reading-card
-      className={`relative h-auto min-h-0 overflow-hidden rounded-lg border border-cream-300 bg-cream-50 text-[#102A2C] ${
+      className={`relative h-auto min-h-0 overflow-hidden rounded-lg border border-cream-300 bg-cream-50 text-[#0F172A] ${
         compact ? "w-full max-w-[360px]" : "w-full max-w-[520px]"
       }`}
     >

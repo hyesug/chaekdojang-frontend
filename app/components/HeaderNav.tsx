@@ -18,7 +18,7 @@ export default function HeaderNav({ links }: { links: NavItem[] }) {
     <nav className="hidden flex-1 items-center gap-0.5 xl:flex" aria-label="주요 메뉴">
       {links.map(({ href, label, external }) => {
         const active = isActivePath(pathname, href);
-        const cls = `whitespace-nowrap rounded-lg px-3 py-1.5 text-[14.5px] transition-colors ${
+        const cls = `whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[14.5px] transition-colors ${
           active
             ? "bg-brand-soft font-semibold text-brand"
             : "font-medium text-sage-600 hover:bg-cream-200 hover:text-brown-800"

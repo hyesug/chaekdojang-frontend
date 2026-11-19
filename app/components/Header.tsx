@@ -13,6 +13,7 @@ const navLinks: NavItem[] = [
   { href: "/", label: "피드" },
   { href: "/search?tab=books", label: "검색" },
   { href: "/library", label: "서재" },
+  { href: "/assistant", label: "AI 도우미" },
   { href: "/groups", label: "독서모임" },
   { href: "/dojangdan", label: "도장단" },
   { href: "/contests", label: "공모전" },

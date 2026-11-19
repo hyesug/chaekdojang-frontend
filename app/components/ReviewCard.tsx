@@ -723,7 +723,7 @@ export default function ReviewCard({
         {authorHeader}
 
         {detailLink(
-          "relative mt-3 block aspect-square w-full overflow-hidden bg-brown-800",
+          "relative mt-3 block aspect-square w-full overflow-hidden bg-brand-soft",
           <>
             {post.book?.thumbnail && (
               <img
@@ -731,11 +731,12 @@ export default function ReviewCard({
                 alt=""
                 aria-hidden="true"
                 loading="lazy"
-                className="absolute inset-0 h-full w-full scale-125 object-cover opacity-70 blur-2xl"
+                className="absolute inset-0 h-full w-full scale-150 object-cover opacity-55 blur-3xl saturate-150"
               />
             )}
             {!post.book?.thumbnail && <span className="absolute inset-0" style={{ backgroundColor: coverColor }} aria-hidden="true" />}
-            <span className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/10 to-black/70" aria-hidden="true" />
+            {/* 위는 표지 색이 밝게 번진 면, 글자가 올라가는 아래만 어둡게 */}
+            <span className="absolute inset-0 bg-gradient-to-b from-transparent from-45% to-black/65" aria-hidden="true" />
             <span className="absolute inset-x-0 top-[9%] flex justify-center" aria-hidden="true">
               <span className="cdj-cover w-[38%] shadow-2xl">{coverArt}</span>
             </span>

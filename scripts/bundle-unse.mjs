@@ -114,6 +114,17 @@ function copyFonts() {
   for (const m of css.matchAll(/url\(\.\/files\/([^)]+\.woff2)\)/g)) {
     copyFileSync(join(noto, 'files', m[1]), join(notoOut, 'files', m[1]));
   }
+
+  // 고운돋움 400(본문 기본 글꼴): 글자 범위별 조각 그대로, woff2 만 옮긴다
+  const gowun = join(nm, '@fontsource', 'gowun-dodum');
+  const gowunOut = join(out, 'gowun-dodum');
+  mkdirSync(join(gowunOut, 'files'), { recursive: true });
+  const gowunCss = readFileSync(join(gowun, '400.css'), 'utf8')
+    .replace(/,\s*url\([^)]*\.woff\) format\('woff'\)/g, '');
+  writeFileSync(join(gowunOut, 'gowun-dodum.css'), gowunCss);
+  for (const m of gowunCss.matchAll(/url\(\.\/files\/([^)]+\.woff2)\)/g)) {
+    copyFileSync(join(gowun, 'files', m[1]), join(gowunOut, 'files', m[1]));
+  }
 }
 
 /** 원본 몇 개를 얼마나 줄였는지 — 묶은 보람을 눈으로 확인하려고 적는다 */

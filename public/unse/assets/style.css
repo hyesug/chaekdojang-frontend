@@ -1,6 +1,7 @@
 /* 종합 운세 — 화면 */
 
 /* 책도장 본 사이트와 같은 글꼴. 파일은 npm run unse:bundle 이 node_modules 에서 복사한다 */
+@import url('fonts/gowun-dodum/gowun-dodum.css');
 @import url('fonts/pretendard/pretendard.css');
 @import url('fonts/noto-serif-kr/noto-serif-kr.css');
 
@@ -38,7 +39,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
-  font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
+  font-family: 'Gowun Dodum', 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
                'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
   font-size: 16px;
   line-height: 1.75;
@@ -1134,7 +1135,7 @@ footer .ver { font-size: 11.5px; color: var(--ink-3); margin-top: 18px; letter-s
      선택자라 이 헤더에도 먹는다. 되돌리지 않으면 로고 위아래로 92px 이
      붙어 화면 첫 장이 통째로 빈다. 높이는 .cd-inner 가 정한다 */
   padding: 0; text-align: left;
-  font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-family: "Gowun Dodum", "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   letter-spacing: -0.011em;
 }
 .cd-inner {

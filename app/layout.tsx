@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 // 글꼴은 사이트에 함께 싣는다. 사용자 PC에 설치된 글꼴에 따라 화면이 달라지지 않도록.
 // 두 파일 모두 글자 범위별로 쪼개져 있어 화면에 쓰인 글자 조각만 내려받는다.
+import "@fontsource/gowun-dodum/400.css";
 import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 import "@fontsource/noto-serif-kr/korean-600.css";
 import "@fontsource/noto-serif-kr/korean-700.css";

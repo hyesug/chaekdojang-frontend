@@ -49,7 +49,7 @@
 }
 
 @theme inline {
-  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-sans: "Gowun Dodum", "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   --font-serif: "Noto Serif KR", "Nanum Myeongjo", "AppleMyungjo", serif;
   /* 브랜드 색: :root 토큰 하나만 바꾸면 Tailwind 유틸리티까지 따라간다. */
   --color-brand: var(--color-primary);

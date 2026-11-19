@@ -49,7 +49,7 @@ export default function MobileMenu({ links }: { links: NavItem[] }) {
     }`;
 
   return (
-    <div className="lg:hidden">
+    <div className="xl:hidden">
       <button
         onClick={() => setOpen((v) => !v)}
         className="cdj-icon-button"

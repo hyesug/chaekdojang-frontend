@@ -725,33 +725,22 @@ export default function ReviewCard({
         {detailLink(
           "relative mt-3 block aspect-square w-full overflow-hidden bg-brand-soft",
           <>
-            {post.book?.thumbnail && (
-              <img
-                src={post.book.thumbnail}
-                alt=""
-                aria-hidden="true"
-                loading="lazy"
-                className="absolute inset-0 h-full w-full scale-150 object-cover opacity-55 blur-3xl saturate-150"
-              />
-            )}
-            {!post.book?.thumbnail && <span className="absolute inset-0" style={{ backgroundColor: coverColor }} aria-hidden="true" />}
-            {/* 위는 표지 색이 밝게 번진 면, 글자가 올라가는 아래만 어둡게 */}
-            <span className="absolute inset-0 bg-gradient-to-b from-transparent from-50% to-slate-900/75" aria-hidden="true" />
+            {/* 바탕은 연한 주 색상 단색, 표지만 또렷하게 띄우고 글자는 짙게 */}
             <span className="absolute inset-x-0 top-[7%] flex justify-center" aria-hidden="true">
-              <span className="cdj-cover w-[44%] shadow-2xl">{coverArt}</span>
+              <span className="cdj-cover w-[44%] shadow-[0_18px_40px_-12px_rgb(154_52_18/35%)]">{coverArt}</span>
             </span>
             {quote && !spoilerHidden ? (
-              <span className="absolute inset-x-5 bottom-5 line-clamp-3 font-serif text-[18px] font-bold leading-snug text-white [text-shadow:0_1px_8px_rgb(0_0_0/45%)]">
+              <span className="absolute inset-x-5 bottom-5 line-clamp-3 font-serif text-[18px] font-bold leading-snug text-brown-900">
                 “{quote}”
               </span>
             ) : !spoilerHidden && post.book ? (
-              <span className="absolute inset-x-5 bottom-5 text-white [text-shadow:0_1px_8px_rgb(0_0_0/45%)]">
+              <span className="absolute inset-x-5 bottom-5 text-brown-900">
                 <span className="line-clamp-2 font-serif text-[18px] font-bold leading-snug">{post.book.title}</span>
-                {post.book.author && <span className="mt-1 block truncate text-[13px] text-white/80">{post.book.author}</span>}
+                {post.book.author && <span className="mt-1 block truncate text-[13px] text-brown-400">{post.book.author}</span>}
               </span>
             ) : null}
             {spoilerHidden && (
-              <span className="absolute inset-x-0 bottom-5 flex items-center justify-center gap-2 text-sm font-medium text-white/90">
+              <span className="absolute inset-x-0 bottom-5 flex items-center justify-center gap-2 text-sm font-medium text-brown-400">
                 <EyeOff size={15} aria-hidden="true" />
                 스포일러가 있어요
               </span>

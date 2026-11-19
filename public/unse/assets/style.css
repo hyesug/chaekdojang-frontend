@@ -1222,8 +1222,8 @@ footer .ver { font-size: 11.5px; color: var(--ink-3); margin-top: 18px; letter-s
   padding: 12px; border-radius: 8px; border: 1px solid #CBD5E1; background: #FFFFFF; cursor: pointer;
 }
 
-/* 좁은 화면 — 가로 메뉴를 접고 햄버거를 연다 (Header.tsx 의 lg 분기와 같은 폭) */
-@media (max-width: 1023px) {
+/* 좁은 화면 — 가로 메뉴를 접고 햄버거를 연다 (Header.tsx 의 xl 분기와 같은 폭) */
+@media (max-width: 1279px) {
   .cd-nav, .cd-write, .cd-account { display: none; }
   .cd-burger { display: inline-flex; }
   .cd-menu:not([hidden]) { display: block; padding: 8px 0 16px; border-top: 1px solid #E2E8F0; background: #FFFFFF; }

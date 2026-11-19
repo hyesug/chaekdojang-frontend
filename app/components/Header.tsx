@@ -41,7 +41,7 @@ export default function Header() {
 
         <HeaderNav links={navLinks} />
 
-        <div className="ml-auto hidden flex-none items-center gap-1.5 lg:flex">
+        <div className="ml-auto hidden flex-none items-center gap-1.5 xl:flex">
           <AdminNavLink />
           <NotificationBell />
           <AuthButtons />
@@ -51,7 +51,7 @@ export default function Header() {
           </Link>
         </div>
 
-        <div className="ml-auto flex flex-none items-center gap-1 lg:hidden">
+        <div className="ml-auto flex flex-none items-center gap-1 xl:hidden">
           <NotificationBell />
           <MobileMenu links={mobileLinks} />
         </div>

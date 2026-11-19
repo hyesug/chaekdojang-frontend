@@ -11,7 +11,7 @@ export default function PrivacyPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-10 text-brown-700">
       <h1 className="font-serif text-3xl font-bold text-brown-800 mb-4">개인정보처리방침</h1>
-      <p className="text-sm text-brown-400 mb-4">버전: 0.3 · 시행일: 2026년 11월 27일 (이전 버전 0.2: 2026년 10월 13일, 0.1: 2026년 9월 24일)</p>
+      <p className="text-sm text-brown-400 mb-4">버전: 0.3 · 시행일: 2026년 11월 19일 (이전 버전 0.2: 2026년 10월 13일, 0.1: 2026년 9월 24일)</p>
       <div className="mb-8 rounded-md border border-cream-300 bg-brand-soft px-4 py-3 text-sm leading-6 text-brown-800">
         <p className="font-semibold">0.3 주요 변경 (0.2 대비)</p>
         <ul className="mt-1 list-disc pl-5">

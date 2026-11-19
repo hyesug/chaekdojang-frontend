@@ -4,9 +4,9 @@
 
 :root {
   color-scheme: light;
-  --color-bg: #FAF7F2;
+  --color-bg: #FFF8F2;
   --color-surface: #FFFFFF;
-  --color-surface-sunken: #F3EEE6;
+  --color-surface-sunken: #FCEFE3;
   --color-primary: #C2410C;
   --color-primary-hover: #9A3412;
   --color-primary-soft: #FFF7ED;
@@ -16,8 +16,8 @@
   --color-text-subtle: #5B6678;
   --color-sage: #94A3B8;
   --color-accent: #C2410C;
-  --color-border: #E7E2D9;
-  --color-border-strong: #D3CBBE;
+  --color-border: #F1E3D5;
+  --color-border-strong: #E3CDB8;
   --color-danger: #8B3040;
   --color-success: #174A46;
   --color-warning: #7A5A1B;
@@ -65,8 +65,8 @@
 /* Existing utility names remain semantic aliases so pages can migrate safely. */
 @theme {
   --color-cream-50: #FFFFFF;
-  --color-cream-200: #F3EEE6;
-  --color-cream-300: #E7E2D9;
+  --color-cream-200: #FCEFE3;
+  --color-cream-300: #F1E3D5;
   --color-brown-200: #FED7AA;
   --color-brown-300: #5B6678;
   --color-brown-400: #475569;
@@ -132,10 +132,10 @@
   --color-indigo-100: #E1E8EC;
   --color-indigo-600: #2F5263;
   --color-indigo-700: #24414F;
-  --color-gray-50: #FAF8F5;
-  --color-gray-100: #F3F1EC;
-  --color-gray-200: #E7E2D9;
-  --color-gray-300: #D3CBBE;
+  --color-gray-50: #FFFAF6;
+  --color-gray-100: #FBF1E8;
+  --color-gray-200: #F1E3D5;
+  --color-gray-300: #E3CDB8;
   --color-gray-400: #94A3B8;
   --color-gray-500: #5B6678;
   --color-gray-600: #475569;
@@ -268,7 +268,7 @@ button.rounded-full, a.rounded-full { border-radius: var(--radius-md); }
 .cdj-alert--warning { border-color: #E7D9B9; background: #F7F1E4; }
 .cdj-table-wrap { overflow-x: auto; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); }
 .cdj-table-wrap table { font-variant-numeric: tabular-nums; }
-.cdj-skeleton { border-radius: var(--radius-sm); background: linear-gradient(90deg, #EFEAE2, #F7F4EF, #EFEAE2); background-size: 200% 100%; animation: cdj-shimmer 1.4s ease-in-out infinite; }
+.cdj-skeleton { border-radius: var(--radius-sm); background: linear-gradient(90deg, #F8E8DA, #FFF5EC, #F8E8DA); background-size: 200% 100%; animation: cdj-shimmer 1.4s ease-in-out infinite; }
 
 /* Book cover: consistent proportions, a paper edge and a soft lift. */
 .cdj-cover { position: relative; flex: none; overflow: hidden; aspect-ratio: 2 / 3; border-radius: 3px; background: var(--color-surface-sunken); box-shadow: 0 1px 1px rgb(15 23 42 / 8%), 0 4px 12px -4px rgb(15 23 42 / 22%); }
